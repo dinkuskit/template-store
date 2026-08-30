@@ -52,7 +52,7 @@ mise x node@22.23.2 -- corepack pnpm@11.9.0 run verify:full
 
 Result: pass.
 
-- Astro check: 24 files, 0 errors, 0 warnings, 0 hints.
+- Astro check: 26 files, 0 errors, 0 warnings, 0 hints.
 - Unit behavior: 3 tests passed, including idempotent command replay,
   conflicting-command rejection, and proof-route `404` outside proof mode.
 - Preserved workflow tests: 6 passed.
