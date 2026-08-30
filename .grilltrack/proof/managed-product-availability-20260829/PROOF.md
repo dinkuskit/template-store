@@ -53,8 +53,8 @@ mise x node@22.23.2 -- corepack pnpm@11.9.0 run verify:full
 Result: pass.
 
 - Astro check: 24 files, 0 errors, 0 warnings, 0 hints.
-- Unit behavior: 2 tests passed, including idempotent command replay and
-  conflicting-command rejection.
+- Unit behavior: 3 tests passed, including idempotent command replay,
+  conflicting-command rejection, and proof-route `404` outside proof mode.
 - Preserved workflow tests: 6 passed.
 - Feature/source-pin audit: passed.
 - Astro server build: passed. Vite reported one non-fatal chunk-size warning.
@@ -64,6 +64,8 @@ Result: pass.
   Inventory sequence `8 -> 5 -> 8` with monotonically increasing versions.
 - Both assert readable hero-action colors, no document horizontal overflow,
   and no fact-rail overflow.
+- A clean-source preparation check removed the ignored Commerce checkout and
+  proved `pnpm verify:quick` recreates the exact pinned commit before checks.
 
 Renderer: Astro 7.1.3 development server with EmDash 0.35.0, Playwright 1.61.1,
 headless Chromium desktop and emulated Pixel 7. This proves those browser

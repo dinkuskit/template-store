@@ -10,6 +10,7 @@ if [[ "$MODE" != "quick" && "$MODE" != "full" ]]; then
   exit 2
 fi
 
+pnpm prepare:sources
 pnpm exec astro check
 pnpm exec vitest run
 node --test tests/workflows/*.test.mjs

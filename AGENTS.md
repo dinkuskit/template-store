@@ -34,8 +34,9 @@ Assume every committed byte is immediately public.
 - `tests/` owns deterministic and browser acceptance.
 - `bin/verify-web` is the canonical verification entry.
 - `skills/managed-product-verification/` documents the project-local verifier.
-- `proof/` owns curated text proof. Routine screenshot media stays ignored
-  under `runs/` until separately selected for immutable release-asset hosting.
+- `.grilltrack/proof/` owns curated track text proof. Routine screenshot media
+  stays ignored under `runs/` until separately selected for immutable
+  release-asset hosting.
 - Generated databases, uploads, browser output, and temporary package material
   stay ignored under `.artifacts/`, `test-results/`, and `runs/`.
 

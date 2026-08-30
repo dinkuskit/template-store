@@ -1,6 +1,6 @@
 # Managed product availability implementation plan
 
-Status: implemented and locally verified; immutable-source review pending
+Status: implemented and locally verified; exact-source review history recorded
 Baseline: `93c6991af4b433877d5bf252e059822e45562662`
 GrillTrack decisions: `template-store-role-001`,
 `managed-product-vertical-002`, `xapi568-proof-003`
