@@ -11,6 +11,8 @@ const expectedPins = {
   "@dinkuskit/inventory":
     "github:dinkuskit/inventory#d735b180b3f4ed911667586f5131ff1727e46546",
 };
+const expectedCommerceCommit =
+  "530348c07769a010b0fa4ef24604292a4254eda0";
 
 const failures = [];
 for (const feature of [
@@ -25,9 +27,27 @@ if (
   manifest.dinkuskit?.sourcePins?.commerce?.repository !==
     "https://github.com/dinkuskit/commerce.git" ||
   manifest.dinkuskit?.sourcePins?.commerce?.commit !==
-    "9fd24c6a13a4a4d332109e2d4541b05ec5f83786"
+    expectedCommerceCommit
 ) {
   failures.push("Commerce source preparation must retain its exact repository and commit");
+}
+
+const managedProductRuntime = readFileSync(
+  resolve(root, "src/features/managed-product-availability/runtime.ts"),
+  "utf8",
+);
+for (const officialAction of [
+  "createStoreInventoryConfiguration",
+  "configureCatalogItemInventory",
+]) {
+  if (!managedProductRuntime.includes(officialAction)) {
+    failures.push(`managed-product runtime must use ${officialAction}`);
+  }
+}
+if (managedProductRuntime.includes("startManagedSkuRegistration")) {
+  failures.push(
+    "managed-product runtime must not bypass Configure Inventory with startManagedSkuRegistration",
+  );
 }
 for (const path of [
   "src/features/store-shell/index.ts",

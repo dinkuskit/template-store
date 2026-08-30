@@ -1,13 +1,11 @@
 import {
+  configureCatalogItemInventory,
   createCatalogItem,
-  startManagedSkuRegistration,
+  createStoreInventoryConfiguration,
   type CatalogItemRecord,
-  type InventoryProviderBinding,
   type ManagedSkuRegistration,
-  type ManagedSkuRegistrationClaimInput,
-  type ManagedSkuRegistrationClaimRecord,
-  type ManagedSkuRegistrationClaimResult,
   type ManagedStockManagement,
+  type StoreInventoryConfigurationRecord,
 } from "@dinkuskit/commerce";
 import {
   COMMAND_SCHEMA,
@@ -27,7 +25,7 @@ import {
 } from "@dinkuskit/inventory";
 
 import { ManagedProductAvailabilityError } from "./errors.js";
-import { createMemoryCatalogStorage } from "./memory-catalog-storage.js";
+import { createMemoryCommerceStorage } from "./memory-catalog-storage.js";
 import { MemoryInventoryStore } from "./memory-inventory-store.js";
 import type {
   ManagedProductAvailability,
@@ -35,7 +33,7 @@ import type {
   StockProofAdjustment,
 } from "./types.js";
 
-const SITE_ID = "dinkus-template-store";
+const PROOF_SITE_ID = "dinkus-template-store";
 const POOL_ID = "dinkus-template-proof-pool";
 const LOCATION_ID = "dinkus-template-proof-location";
 const LOCATION_NAME = "Starter proof shelf";
@@ -47,15 +45,15 @@ const OPENING_QUANTITY = "8";
 
 const PROVENANCE = {
   blocks: "82a31183cc06ae0fc5b4829f5a8875753ecde10a",
-  commerce: "9fd24c6a13a4a4d332109e2d4541b05ec5f83786",
+  commerce: "530348c07769a010b0fa4ef24604292a4254eda0",
   inventory: "d735b180b3f4ed911667586f5131ff1727e46546",
 } as const;
 
-const binding: InventoryProviderBinding = {
+const binding = {
   providerRef: "dinkuskit.inventory/local-proof",
   poolId: POOL_ID,
   defaultFulfillmentLocationId: LOCATION_ID,
-};
+} as const;
 
 const systemPrincipal: CommandPrincipal = {
   kind: "system",
@@ -67,6 +65,8 @@ type BootstrapState = Readonly<{
   catalogItem: CatalogItemRecord;
   inventorySkuId: string;
   locationId: string;
+  poolId: string;
+  siteId: string;
 }>;
 
 function validAdjustment(input: StockProofAdjustment): void {
@@ -105,9 +105,9 @@ function sameAdjustment(
 }
 
 export function createManagedProductAvailabilityRuntime(): ManagedProductAvailabilityRuntime {
-  const catalogStorage = createMemoryCatalogStorage();
+  const commerceStorage = createMemoryCommerceStorage();
+  const catalogStorage = commerceStorage.catalog;
   const inventoryStore = new MemoryInventoryStore();
-  const claims = new Map<string, ManagedSkuRegistrationClaimRecord>();
   const adjustmentInputs = new Map<string, StockProofAdjustment>();
   const adjustmentCommands = new Map<string, AdjustStockCommandV1>();
   let stockManagement: ManagedStockManagement = {
@@ -132,7 +132,7 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
   const executeLocation = createExecuteLocationCommand({
     store: inventoryStore,
     now,
-    createLocationId: () => LOCATION_ID,
+    createLocationId: () => binding.defaultFulfillmentLocationId,
     createReceiptId,
   });
   const registerInventorySku = createRegisterManagedSku({
@@ -153,33 +153,19 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
   const readStock = createReadSkuStock({ store: inventoryStore });
   const readBalance = createReadSkuLocationBalance({ store: inventoryStore });
 
-  async function claimRegistration(
-    input: ManagedSkuRegistrationClaimInput,
-  ): Promise<ManagedSkuRegistrationClaimResult> {
-    const existing = claims.get(input.claimKey);
-    if (existing !== undefined) {
-      return { outcome: "existing", claim: structuredClone(existing) };
-    }
-    const claim: ManagedSkuRegistrationClaimRecord = {
-      recordKind: "managed-sku-registration-claim",
-      recordId: `claim-${input.catalogItemId}`,
-      claimKey: input.claimKey,
-      catalogItemId: input.catalogItemId,
-      operationId: input.registration.operationId,
-      request: structuredClone(input.registration.request),
-      createdAt: now().toISOString(),
-    };
-    claims.set(input.claimKey, claim);
-    return { outcome: "claimed", claim: structuredClone(claim) };
-  }
-
-  async function registerThroughInventory(registration: ManagedSkuRegistration) {
+  async function registerThroughInventory(
+    configuration: StoreInventoryConfigurationRecord,
+    registration: ManagedSkuRegistration,
+  ) {
     const result = await registerInventorySku(
       {
         schema: COMMAND_SCHEMA,
         commandId: registration.operationId,
         type: REGISTER_MANAGED_SKU_TYPE,
-        context: { siteId: SITE_ID, poolId: registration.request.poolId },
+        context: {
+          siteId: configuration.siteId,
+          poolId: registration.request.poolId,
+        },
         payload: {
           sku: registration.request.sku,
           displayNameIfNew: registration.request.displayNameIfNew,
@@ -203,12 +189,24 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
   }
 
   async function bootstrap(): Promise<BootstrapState> {
+    const configurationResult = await createStoreInventoryConfiguration(
+      commerceStorage.configurations,
+      binding,
+      {
+        createRecordId: () => "template-store-inventory-configuration",
+        createSiteId: () => PROOF_SITE_ID,
+        now,
+      },
+    );
+    const configuration = configurationResult.configuration;
+    const { poolId, defaultFulfillmentLocationId: locationId } =
+      configuration.binding;
     const locationResult = await executeLocation(
       {
         schema: COMMAND_SCHEMA,
         commandId: "template-store-location-v1",
         type: CREATE_LOCATION_TYPE,
-        context: { siteId: SITE_ID, poolId: POOL_ID },
+        context: { siteId: configuration.siteId, poolId },
         payload: { name: LOCATION_NAME },
         references: [],
       },
@@ -236,35 +234,33 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
     );
     const catalogItem = catalogResult.item;
     stockManagement = catalogItem.stockManagement as ManagedStockManagement;
-    const registrationResult = await startManagedSkuRegistration(
-      stockManagement,
-      binding,
-      { sku: catalogItem.sku, productTitle: catalogItem.name },
+    const registrationResult = await configureCatalogItemInventory(
+      commerceStorage,
+      { catalogItemId: catalogItem.itemId },
       {
-        catalogItemId: catalogItem.itemId,
-        claimKey: `catalog-item:${catalogItem.itemId}`,
-        claim: claimRegistration,
+        createClaimRecordId: () => `claim-${catalogItem.itemId}`,
         createOperationId: () => "template-store-register-sku-v1",
-        provider: { registerManagedSku: registerThroughInventory },
-        persist: async (state) => {
-          stockManagement = state;
-          await catalogStorage.put(catalogItem.itemId, {
-            ...catalogItem,
-            stockManagement: state,
-          });
-        },
+        now,
+        resolveProvider: async (configuredStore) =>
+          configuredStore.binding.providerRef === binding.providerRef
+            ? {
+                registerManagedSku: (registration) =>
+                  registerThroughInventory(configuredStore, registration),
+              }
+            : null,
       },
     );
     if (
-      registrationResult.outcome !== "started" ||
-      registrationResult.state.status !== "active"
+      registrationResult.outcome !== "inventory-active" ||
+      registrationResult.item.stockManagement.mode !== "managed" ||
+      registrationResult.item.stockManagement.status !== "active"
     ) {
       throw new ManagedProductAvailabilityError(
         "INVENTORY_STATE_INVALID",
         "Commerce did not establish one active Inventory SKU identity.",
       );
     }
-    stockManagement = registrationResult.state;
+    stockManagement = registrationResult.item.stockManagement;
 
     const openingResult = await setOpeningBalance(
       {
@@ -272,20 +268,20 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
         commandId: "template-store-opening-balance-v1",
         type: OPENING_BALANCE_TYPE,
         context: {
-          siteId: SITE_ID,
-          poolId: POOL_ID,
-          locationId: LOCATION_ID,
+          siteId: configuration.siteId,
+          poolId,
+          locationId,
         },
         payload: {
-          skuId: registrationResult.state.inventorySkuId,
+          skuId: stockManagement.inventorySkuId,
           quantity: { value: OPENING_QUANTITY, unit: MANAGED_SKU_UNIT },
         },
         reason: { code: "template-proof", note: "Set starter proof stock" },
         references: [{ kind: "commerce.catalog-item", id: catalogItem.itemId }],
         expectedVersions: [
           {
-            skuId: registrationResult.state.inventorySkuId,
-            locationId: LOCATION_ID,
+            skuId: stockManagement.inventorySkuId,
+            locationId,
             version: "0",
           },
         ],
@@ -301,8 +297,10 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
 
     return {
       catalogItem,
-      inventorySkuId: registrationResult.state.inventorySkuId,
-      locationId: LOCATION_ID,
+      inventorySkuId: stockManagement.inventorySkuId,
+      locationId,
+      poolId,
+      siteId: configuration.siteId,
     };
   }
 
@@ -321,12 +319,12 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
     }
     const [stock, balanceResult] = await Promise.all([
       readStock({
-        poolId: POOL_ID,
+        poolId: state.poolId,
         skuId: state.inventorySkuId,
         scope: { kind: "location", locationId: state.locationId },
       }),
       readBalance({
-        poolId: POOL_ID,
+        poolId: state.poolId,
         skuId: state.inventorySkuId,
         locationId: state.locationId,
       }),
@@ -347,7 +345,7 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
       },
       inventory: {
         inventorySkuId: state.inventorySkuId,
-        poolId: POOL_ID,
+        poolId: state.poolId,
         locationId: state.locationId,
         onHand: stock.stock.onHand.value,
         reserved: stock.stock.reserved.value,
@@ -375,7 +373,7 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
     let command = adjustmentCommands.get(input.commandId);
     if (command === undefined) {
       const current = await readBalance({
-        poolId: POOL_ID,
+        poolId: state.poolId,
         locationId: state.locationId,
         skuId: state.inventorySkuId,
       });
@@ -390,8 +388,8 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
         commandId: input.commandId,
         type: STOCK_ADJUSTMENT_TYPE,
         context: {
-          siteId: SITE_ID,
-          poolId: POOL_ID,
+          siteId: state.siteId,
+          poolId: state.poolId,
           locationId: state.locationId,
         },
         payload: {

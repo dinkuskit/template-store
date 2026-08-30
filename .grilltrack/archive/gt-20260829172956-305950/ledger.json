@@ -1,0 +1,455 @@
+{
+  "closeout": {
+    "closed_at": "2026-08-30T19:00:18+00:00",
+    "confirmed_by": "user",
+    "deferred_decisions": [],
+    "proof_refs": [
+      ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md"
+    ],
+    "reason": "The managed-product availability slice is implemented, verified, exact-head reviewed, proof-published, explicitly sponsored as a bounded pilot, and merged by the maintainer.",
+    "reviews": [
+      {
+        "classifications": [],
+        "decision_id": "template-store-role-001",
+        "ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+        "result": "clean",
+        "source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6"
+      },
+      {
+        "classifications": [],
+        "decision_id": "managed-product-vertical-002",
+        "ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+        "result": "clean",
+        "source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6"
+      },
+      {
+        "classifications": [
+          "human_gate"
+        ],
+        "decision_id": "xapi568-proof-003",
+        "ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+        "result": "findings",
+        "source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6"
+      }
+    ],
+    "summary": "Accepted template-store as the neutral dogfood surface; proved EmDash plus Blocks plus Commerce managed-SKU identity plus Inventory 8-to-5-to-8 availability on desktop and mobile; adopted the XAPI-568 repository/verifier contract; kept SmokyClub untouched; published immutable PR evidence; recorded the temporary source-alias and disposable proof-adapter compatibility risk as an explicitly sponsored non-production pilot; delivered through template-store PR #3 and human merge commit 4bc9122b67f580b6ef7564bfbe81f8785aab52a0. No deploy, package publication, production mutation, or agent merge occurred.",
+    "superseded_decisions": [],
+    "verified_decisions": [
+      "template-store-role-001",
+      "managed-product-vertical-002",
+      "xapi568-proof-003"
+    ]
+  },
+  "created_at": "2026-08-29T17:29:56+00:00",
+  "current_focus": {
+    "cadence": "sequential",
+    "confirmed": true,
+    "confirmed_at": "2026-08-29T17:29:57+00:00",
+    "domain": "Blocks, Commerce, and Inventory storefront availability vertical",
+    "started_at": "2026-08-29T17:29:56+00:00",
+    "status": "closed",
+    "summary": "Build the managed-product availability vertical in dinkuskit/template-store only: a neutral Astro/EmDash storefront composed with Blocks and wired through the current public Commerce and Inventory contracts, with change-and-restore browser proof. Preserve SmokyClub as reference-only and exclude cart, checkout, payments, shipping, deploy, publish, merge, and production mutation."
+  },
+  "decisions": [
+    {
+      "baseline_ref": "git:93c6991af4b433877d5bf252e059822e45562662",
+      "candidate_refs": [],
+      "choice": "dinkuskit/template-store is the canonical generic integration and dogfood surface. SmokyClub remains untouched and reference-only; useful behavior may be reconstructed later by reviewed source-by-source rewrite without brand, credential, production, database, or legacy-worker state.",
+      "context_ref": "github:dinkuskit/template-store;github:saari-co/smokyclub",
+      "created_at": "2026-08-29T17:29:56+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Blocks, Commerce, and Inventory storefront availability vertical",
+      "history": [
+        {
+          "at": "2026-08-29T17:29:56+00:00",
+          "choice": "dinkuskit/template-store is the canonical generic integration and dogfood surface. SmokyClub remains untouched and reference-only; useful behavior may be reconstructed later by reviewed source-by-source rewrite without brand, credential, production, database, or legacy-worker state.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-29T17:51:36+00:00",
+          "choice": "dinkuskit/template-store is the canonical generic integration and dogfood surface. SmokyClub remains untouched and reference-only; useful behavior may be reconstructed later by reviewed source-by-source rewrite without brand, credential, production, database, or legacy-worker state.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-29T17:51:36+00:00",
+          "choice": "dinkuskit/template-store is the canonical generic integration and dogfood surface. SmokyClub remains untouched and reference-only; useful behavior may be reconstructed later by reviewed source-by-source rewrite without brand, credential, production, database, or legacy-worker state.",
+          "from": "implemented",
+          "implementation_ref": "file:AGENTS.md;file:README.md;file:design.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-store-role-001",
+      "implementation_ref": "file:AGENTS.md;file:README.md;file:design.md",
+      "question": "Which repository owns the clean commerce integration proving ground?",
+      "rationale": "The existing template is an empty public shell and SmokyClub contains active legacy and proof work that should not become the foundation.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/review-f132dfb712351ef7a956d0d13b1379d136d67b2d/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T18:22:59+00:00",
+          "source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T18:26:10+00:00",
+          "source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T19:00:02+00:00",
+          "source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6"
+        }
+      ],
+      "review_ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+      "review_result": "clean",
+      "review_source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6",
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-08-30T19:00:02+00:00",
+      "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#accepted-decisions"
+    },
+    {
+      "baseline_ref": "git:93c6991af4b433877d5bf252e059822e45562662",
+      "candidate_refs": [],
+      "choice": "One neutral CMS-composed product surface uses real Dinkus Blocks, Commerce catalog and managed-SKU identity, and Dinkus Inventory registration, opening balance, and availability read. Browser proof observes initial availability, a stock change, and restoration. Cart, checkout, payment, shipping, deployment, publication, and production mutation remain out of scope.",
+      "context_ref": "github:dinkuskit/commerce/discussions/13",
+      "created_at": "2026-08-29T17:29:57+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-store-role-001"
+      ],
+      "domain": "Blocks, Commerce, and Inventory storefront availability vertical",
+      "history": [
+        {
+          "at": "2026-08-29T17:29:57+00:00",
+          "choice": "One neutral CMS-composed product surface uses real Dinkus Blocks, Commerce catalog and managed-SKU identity, and Dinkus Inventory registration, opening balance, and availability read. Browser proof observes initial availability, a stock change, and restoration. Cart, checkout, payment, shipping, deployment, publication, and production mutation remain out of scope.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-29T17:51:36+00:00",
+          "choice": "One neutral CMS-composed product surface uses real Dinkus Blocks, Commerce catalog and managed-SKU identity, and Dinkus Inventory registration, opening balance, and availability read. Browser proof observes initial availability, a stock change, and restoration. Cart, checkout, payment, shipping, deployment, publication, and production mutation remain out of scope.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-29T17:51:36+00:00",
+          "choice": "One neutral CMS-composed product surface uses real Dinkus Blocks, Commerce catalog and managed-SKU identity, and Dinkus Inventory registration, opening balance, and availability read. Browser proof observes initial availability, a stock change, and restoration. Cart, checkout, payment, shipping, deployment, publication, and production mutation remain out of scope.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/managed-product-availability/index.ts;file:src/pages/index.astro;file:src/live.config.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-30T18:22:59+00:00",
+          "choice": "One neutral CMS-composed product surface uses real Dinkus Blocks, Commerce catalog and managed-SKU identity, and Dinkus Inventory registration, opening balance, and availability read. Browser proof observes initial availability, a stock change, and restoration. Cart, checkout, payment, shipping, deployment, publication, and production mutation remain out of scope.",
+          "from": "verified",
+          "implementation_ref": "file:src/features/managed-product-availability/index.ts;file:src/pages/index.astro;file:src/live.config.ts",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+        },
+        {
+          "at": "2026-08-30T18:23:22+00:00",
+          "choice": "One neutral CMS-composed product surface uses real Dinkus Blocks, Commerce catalog and managed-SKU identity, and Dinkus Inventory registration, opening balance, and availability read. Browser proof observes initial availability, a stock change, and restoration. Cart, checkout, payment, shipping, deployment, publication, and production mutation remain out of scope.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:src/features/managed-product-availability/index.ts;file:src/pages/index.astro;file:src/live.config.ts",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": ".grilltrack/proof/review-f132dfb712351ef7a956d0d13b1379d136d67b2d/PROOF.md",
+          "review_result": "findings",
+          "review_source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d",
+          "to": "implemented",
+          "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+        },
+        {
+          "at": "2026-08-30T18:25:05+00:00",
+          "choice": "One neutral CMS-composed product surface uses real Dinkus Blocks, Commerce catalog and managed-SKU identity, and Dinkus Inventory registration, opening balance, and availability read. Browser proof observes initial availability, a stock change, and restoration. Cart, checkout, payment, shipping, deployment, publication, and production mutation remain out of scope.",
+          "from": "implemented",
+          "implementation_ref": "file:tests/unit/proof-route.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+        }
+      ],
+      "id": "managed-product-vertical-002",
+      "implementation_ref": "file:tests/unit/proof-route.test.ts",
+      "question": "What is the first complete cross-package storefront proof?",
+      "rationale": "This is the first truthful intersection of the packages currently implemented; Commerce price, cart, checkout, payment, and shipping contracts do not exist yet.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": ".grilltrack/proof/review-f132dfb712351ef7a956d0d13b1379d136d67b2d/PROOF.md",
+          "result": "findings",
+          "reviewed_at": "2026-08-30T18:22:59+00:00",
+          "source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T18:26:10+00:00",
+          "source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T19:00:02+00:00",
+          "source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6"
+        }
+      ],
+      "review_ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+      "review_result": "clean",
+      "review_source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6",
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-08-30T19:00:02+00:00",
+      "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+    },
+    {
+      "baseline_ref": "git:93c6991af4b433877d5bf252e059822e45562662",
+      "candidate_refs": [],
+      "choice": "The starter adopts XAPI-568 feature co-location, a repository FEATURE_MAP.md, bin/verify-web, a repo-local verification skill, deterministic integration assertions, Chromium and mobile browser captures, fail-closed errors, exact Dinkus source pins, and a root design.md that leaves visual language unresolved.",
+      "context_ref": "x-api#568",
+      "created_at": "2026-08-29T17:29:57+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "managed-product-vertical-002"
+      ],
+      "domain": "Blocks, Commerce, and Inventory storefront availability vertical",
+      "history": [
+        {
+          "at": "2026-08-29T17:29:57+00:00",
+          "choice": "The starter adopts XAPI-568 feature co-location, a repository FEATURE_MAP.md, bin/verify-web, a repo-local verification skill, deterministic integration assertions, Chromium and mobile browser captures, fail-closed errors, exact Dinkus source pins, and a root design.md that leaves visual language unresolved.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-29T17:51:36+00:00",
+          "choice": "The starter adopts XAPI-568 feature co-location, a repository FEATURE_MAP.md, bin/verify-web, a repo-local verification skill, deterministic integration assertions, Chromium and mobile browser captures, fail-closed errors, exact Dinkus source pins, and a root design.md that leaves visual language unresolved.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-29T17:51:37+00:00",
+          "choice": "The starter adopts XAPI-568 feature co-location, a repository FEATURE_MAP.md, bin/verify-web, a repo-local verification skill, deterministic integration assertions, Chromium and mobile browser captures, fail-closed errors, exact Dinkus source pins, and a root design.md that leaves visual language unresolved.",
+          "from": "implemented",
+          "implementation_ref": "file:FEATURE_MAP.md;file:bin/verify-web;file:skills/managed-product-verification/SKILL.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-08-30T18:22:59+00:00",
+          "choice": "The starter adopts XAPI-568 feature co-location, a repository FEATURE_MAP.md, bin/verify-web, a repo-local verification skill, deterministic integration assertions, Chromium and mobile browser captures, fail-closed errors, exact Dinkus source pins, and a root design.md that leaves visual language unresolved.",
+          "from": "verified",
+          "implementation_ref": "file:FEATURE_MAP.md;file:bin/verify-web;file:skills/managed-product-verification/SKILL.md",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+        },
+        {
+          "at": "2026-08-30T18:23:22+00:00",
+          "choice": "The starter adopts XAPI-568 feature co-location, a repository FEATURE_MAP.md, bin/verify-web, a repo-local verification skill, deterministic integration assertions, Chromium and mobile browser captures, fail-closed errors, exact Dinkus source pins, and a root design.md that leaves visual language unresolved.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:FEATURE_MAP.md;file:bin/verify-web;file:skills/managed-product-verification/SKILL.md",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": ".grilltrack/proof/review-f132dfb712351ef7a956d0d13b1379d136d67b2d/PROOF.md",
+          "review_result": "findings",
+          "review_source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d",
+          "to": "implemented",
+          "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+        },
+        {
+          "at": "2026-08-30T18:25:05+00:00",
+          "choice": "The starter adopts XAPI-568 feature co-location, a repository FEATURE_MAP.md, bin/verify-web, a repo-local verification skill, deterministic integration assertions, Chromium and mobile browser captures, fail-closed errors, exact Dinkus source pins, and a root design.md that leaves visual language unresolved.",
+          "from": "implemented",
+          "implementation_ref": "file:bin/verify-web",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+        }
+      ],
+      "id": "xapi568-proof-003",
+      "implementation_ref": "file:bin/verify-web",
+      "question": "What verification contract governs the first vertical?",
+      "rationale": "These contracts make the template an autonomous proof consumer without pretending a neutral scaffold has a finished design system.",
+      "repair_required": false,
+      "review_classifications": [
+        "human_gate"
+      ],
+      "review_history": [
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": ".grilltrack/proof/review-f132dfb712351ef7a956d0d13b1379d136d67b2d/PROOF.md",
+          "result": "findings",
+          "reviewed_at": "2026-08-30T18:22:59+00:00",
+          "source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T18:26:10+00:00",
+          "source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5"
+        },
+        {
+          "classifications": [
+            "human_gate"
+          ],
+          "ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+          "result": "findings",
+          "reviewed_at": "2026-08-30T19:00:02+00:00",
+          "source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6"
+        }
+      ],
+      "review_ref": ".grilltrack/proof/pr-3-terminal-closeout/PROOF.md",
+      "review_result": "findings",
+      "review_source_identity": "git:72f01198d6c579f769f510ec5ec321ceb56c14c6",
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-08-30T19:00:02+00:00",
+      "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
+    }
+  ],
+  "last_activation": {
+    "at": "2026-08-30T18:20:10+00:00",
+    "mechanism": "implicit"
+  },
+  "last_pause": {
+    "artifact_refs": [
+      ".grilltrack/proof/managed-product-availability-20260829/PROOF.md"
+    ],
+    "next_safe_action": "After explicit commit authorization, create one local commit, rerun the verifier against that exact SHA, perform exact-source review, adjudicate findings, and request closure confirmation.",
+    "paused_at": "2026-08-29T17:51:48+00:00",
+    "reason": "Local implementation and verification are complete; immutable-source review requires separately authorized local commit.",
+    "resumed_at": "2026-08-30T18:20:10+00:00"
+  },
+  "pause": null,
+  "recommendation": {
+    "alternatives": [
+      "Extend this track with price and sellability behavior before closeout."
+    ],
+    "reason": "Blocks, Commerce, and Inventory now have exact-source UI and verifier proof; payment and shipping are a distinct architecture decision already captured in Commerce discussion 13.",
+    "recommended": "Close this proven availability slice, then open a dedicated Commerce payment-and-shipping provider-boundary grill.",
+    "recorded_at": "2026-08-30T18:27:06+00:00"
+  },
+  "schema_version": "grilltrack/v0.1",
+  "status": "closed",
+  "title": "DinkusKit template-store managed product availability",
+  "track_id": "gt-20260829172956-305950",
+  "updated_at": "2026-08-30T19:00:18+00:00"
+}
