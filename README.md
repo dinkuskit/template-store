@@ -1,9 +1,45 @@
-# template-store
+# DinkusKit Store Starter
 
-`* * *`
+The public integration and dogfood storefront for EmDash, DinkusKit Blocks,
+Commerce, and Inventory.
 
-A complete store starter: EmDash + Dinkus blocks + AI Commerce, fork-and-go. Will be usable as `npm create astro -- --template dinkuskit/template-store`.
+## Current proof
 
-Part of [Dinkus](https://github.com/dinkuskit) — blocks, commerce, and templates for [EmDash](https://github.com/emdash-cms/emdash) sites. Use one, use all — none requires the others.
+The first vertical is deliberately smaller than checkout. One neutral product
+page proves:
 
-Under construction, dogfooding in the open. MIT.
+```text
+EmDash composition -> Dinkus Blocks
+                    -> Commerce catalog + managed SKU
+                    -> Inventory registration + stock truth
+                    -> storefront availability
+```
+
+The browser verifier observes an opening quantity of eight, applies a real
+Inventory adjustment to five, then restores eight. Price, cart, checkout,
+payments, shipping, deployment, and production persistence are not claimed yet.
+
+## Development
+
+Requires Node `22.23.2` or another compatible Node 22 release and pnpm 11.
+
+```bash
+pnpm install
+pnpm verify
+pnpm dev
+```
+
+The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build`,
+and the verifiers prepare Commerce's exact source in an ignored checkout, then
+resolve Commerce and Inventory through their package-root source entries because
+neither has an installable release yet. See
+[`docs/implementation/managed-product-availability.md`](docs/implementation/managed-product-availability.md).
+
+The intended eventual starter command remains:
+
+```bash
+npm create astro -- --template dinkuskit/template-store
+```
+
+Part of [DinkusKit](https://github.com/dinkuskit). Under construction,
+dogfooding in the open. MIT.

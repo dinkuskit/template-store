@@ -1,0 +1,51 @@
+---
+import { getEmDashEntry, type PortableTextBlock } from "emdash";
+import { PortableText } from "emdash/ui";
+
+import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
+import { managedProductAvailabilityRuntime } from "../features/managed-product-availability/index.js";
+import {
+  STORE_DESCRIPTION,
+  STORE_TITLE,
+} from "../features/store-shell/index.js";
+import "../features/store-shell/global.css";
+
+const { entry: page } = await getEmDashEntry("pages", "home");
+const content = page?.data.content as PortableTextBlock[] | undefined;
+const availability = await managedProductAvailabilityRuntime.read();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={STORE_DESCRIPTION} />
+    <title>{STORE_TITLE}</title>
+  </head>
+  <body>
+    <header class="store-header">
+      <a class="store-header__mark" href="/">DinkusKit / Store</a>
+      <span class="store-header__status">Local integration proof</span>
+    </header>
+    <main>
+      {
+        content ? (
+          <div class="cms-composition" data-cms-composition>
+            <PortableText value={content} />
+          </div>
+        ) : (
+          <section class="store-error" role="alert" data-content-missing>
+            <h1>Storefront composition is unavailable</h1>
+            <p>Load the neutral EmDash seed before presenting this starter.</p>
+          </section>
+        )
+      }
+      <ManagedProductAvailability availability={availability} />
+    </main>
+    <footer class="store-footer">
+      Transactional facts remain in Commerce and Inventory; EmDash owns the
+      surrounding composition.
+    </footer>
+  </body>
+</html>

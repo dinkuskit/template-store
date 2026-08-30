@@ -1,0 +1,75 @@
+{
+  "$schema": "https://emdashcms.com/seed.schema.json",
+  "version": "1",
+  "meta": {
+    "name": "DinkusKit store starter",
+    "description": "Neutral managed-product availability proof",
+    "author": "DinkusKit contributors"
+  },
+  "collections": [
+    {
+      "slug": "pages",
+      "label": "Pages",
+      "labelSingular": "Page",
+      "supports": ["drafts", "revisions"],
+      "fields": [
+        {
+          "slug": "title",
+          "label": "Title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "content",
+          "label": "Content",
+          "type": "portableText"
+        }
+      ]
+    }
+  ],
+  "content": {
+    "pages": [
+      {
+        "id": "home",
+        "slug": "home",
+        "status": "published",
+        "data": {
+          "title": "DinkusKit Store Starter",
+          "content": [
+            {
+              "_type": "dinkus.page-hero",
+              "_key": "store-hero",
+              "eyebrow": "Blocks + Commerce + Inventory",
+              "headline": "A storefront that proves its sources",
+              "deck": "CMS composition and transactional stock truth meet on one neutral product surface.",
+              "primaryLabel": "Inspect the managed product",
+              "primaryHref": "#managed-product"
+            },
+            {
+              "_type": "dinkus.fact-rail",
+              "_key": "store-facts",
+              "ariaLabel": "Storefront proof facts",
+              "facts": [
+                {
+                  "_key": "fact-content",
+                  "label": "Composition",
+                  "value": "EmDash + Blocks"
+                },
+                {
+                  "_key": "fact-catalog",
+                  "label": "Catalog",
+                  "value": "Dinkus Commerce"
+                },
+                {
+                  "_key": "fact-stock",
+                  "label": "Stock truth",
+                  "value": "Dinkus Inventory"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
