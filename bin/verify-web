@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="${1:-quick}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+if [[ "$MODE" != "quick" && "$MODE" != "full" ]]; then
+  echo "usage: bin/verify-web [quick|full]" >&2
+  exit 2
+fi
+
+pnpm prepare:sources
+pnpm exec astro check
+pnpm exec vitest run
+node --test tests/workflows/*.test.mjs
+node scripts/check-features.mjs
+node scripts/check-worktree-text.mjs
+git diff --check
+
+if [[ "$MODE" == "full" ]]; then
+  pnpm exec astro build
+  pnpm exec playwright test
+fi
+
+echo "verify-web: ${MODE} passed"

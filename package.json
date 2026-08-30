@@ -1,0 +1,57 @@
+{
+  "name": "@dinkuskit/template-store",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Store starter and integration proof for EmDash, DinkusKit Blocks, Commerce, and Inventory",
+  "engines": {
+    "node": ">=22.12.0 <23"
+  },
+  "packageManager": "pnpm@11.9.0",
+  "emdash": {
+    "seed": "seed/seed.json"
+  },
+  "dinkuskit": {
+    "sourcePins": {
+      "commerce": {
+        "repository": "https://github.com/dinkuskit/commerce.git",
+        "commit": "9fd24c6a13a4a4d332109e2d4541b05ec5f83786"
+      }
+    }
+  },
+  "scripts": {
+    "prepare:sources": "node scripts/prepare-source-deps.mjs",
+    "predev": "pnpm prepare:sources",
+    "dev": "astro dev",
+    "prebuild": "pnpm prepare:sources",
+    "build": "astro build",
+    "pretypecheck": "pnpm prepare:sources",
+    "typecheck": "astro check",
+    "pretest": "pnpm prepare:sources",
+    "test": "vitest run",
+    "pretest:e2e": "pnpm prepare:sources",
+    "test:e2e": "playwright test",
+    "audit:features": "node scripts/check-features.mjs",
+    "verify:quick": "bin/verify-web quick",
+    "verify:full": "bin/verify-web full",
+    "verify": "bin/verify-web full"
+  },
+  "dependencies": {
+    "@astrojs/node": "11.0.2",
+    "@astrojs/react": "6.0.1",
+    "@dinkuskit/blocks": "github:dinkuskit/blocks#82a31183cc06ae0fc5b4829f5a8875753ecde10a",
+    "@dinkuskit/inventory": "github:dinkuskit/inventory#d735b180b3f4ed911667586f5131ff1727e46546",
+    "astro": "7.1.3",
+    "better-sqlite3": "12.11.1",
+    "emdash": "0.35.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.9",
+    "@playwright/test": "1.61.1",
+    "@types/node": "26.1.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
+  }
+}
