@@ -7,7 +7,7 @@
     "confirmed_at": "2026-08-29T17:29:57+00:00",
     "domain": "Blocks, Commerce, and Inventory storefront availability vertical",
     "started_at": "2026-08-29T17:29:56+00:00",
-    "status": "confirmed",
+    "status": "inspected",
     "summary": "Build the managed-product availability vertical in dinkuskit/template-store only: a neutral Astro/EmDash storefront composed with Blocks and wired through the current public Commerce and Inventory contracts, with change-and-restore browser proof. Preserve SmokyClub as reference-only and exclude cart, checkout, payments, shipping, deploy, publish, merge, and production mutation."
   },
   "decisions": [
@@ -78,14 +78,21 @@
           "result": "clean",
           "reviewed_at": "2026-08-30T18:22:59+00:00",
           "source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T18:26:10+00:00",
+          "source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5"
         }
       ],
-      "review_ref": ".grilltrack/proof/review-f132dfb712351ef7a956d0d13b1379d136d67b2d/PROOF.md",
+      "review_ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
       "review_result": "clean",
-      "review_source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d",
+      "review_source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5",
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-08-30T18:22:59+00:00",
+      "updated_at": "2026-08-30T18:26:10+00:00",
       "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#accepted-decisions"
     },
     {
@@ -203,14 +210,21 @@
           "result": "findings",
           "reviewed_at": "2026-08-30T18:22:59+00:00",
           "source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T18:26:10+00:00",
+          "source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5"
         }
       ],
-      "review_ref": null,
-      "review_result": null,
-      "review_source_identity": null,
+      "review_ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+      "review_result": "clean",
+      "review_source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5",
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-08-30T18:25:05+00:00",
+      "updated_at": "2026-08-30T18:26:10+00:00",
       "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
     },
     {
@@ -328,14 +342,21 @@
           "result": "findings",
           "reviewed_at": "2026-08-30T18:22:59+00:00",
           "source_identity": "git:f132dfb712351ef7a956d0d13b1379d136d67b2d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+          "result": "clean",
+          "reviewed_at": "2026-08-30T18:26:10+00:00",
+          "source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5"
         }
       ],
-      "review_ref": null,
-      "review_result": null,
-      "review_source_identity": null,
+      "review_ref": ".grilltrack/proof/review-92e840f41604e2ed8b9c079ee686939c72e43ce5/PROOF.md",
+      "review_result": "clean",
+      "review_source_identity": "git:92e840f41604e2ed8b9c079ee686939c72e43ce5",
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-08-30T18:25:05+00:00",
+      "updated_at": "2026-08-30T18:26:10+00:00",
       "verification_ref": ".grilltrack/proof/managed-product-availability-20260829/PROOF.md#verification"
     }
   ],
@@ -353,10 +374,17 @@
     "resumed_at": "2026-08-30T18:20:10+00:00"
   },
   "pause": null,
-  "recommendation": null,
+  "recommendation": {
+    "alternatives": [
+      "Extend this track with price and sellability behavior before closeout."
+    ],
+    "reason": "Blocks, Commerce, and Inventory now have exact-source UI and verifier proof; payment and shipping are a distinct architecture decision already captured in Commerce discussion 13.",
+    "recommended": "Close this proven availability slice, then open a dedicated Commerce payment-and-shipping provider-boundary grill.",
+    "recorded_at": "2026-08-30T18:27:06+00:00"
+  },
   "schema_version": "grilltrack/v0.1",
   "status": "active",
   "title": "DinkusKit template-store managed product availability",
   "track_id": "gt-20260829172956-305950",
-  "updated_at": "2026-08-30T18:25:05+00:00"
+  "updated_at": "2026-08-30T18:27:06+00:00"
 }
