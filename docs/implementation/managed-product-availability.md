@@ -1,9 +1,11 @@
 # Managed product availability implementation plan
 
-Status: implemented and locally verified; exact-source review history recorded
-Baseline: `93c6991af4b433877d5bf252e059822e45562662`
+Status: Commerce #14 consumer alignment implemented and locally verified;
+exact-source review requires an authorized delivery commit
+Baseline: `4bc9122b67f580b6ef7564bfbe81f8785aab52a0`
 GrillTrack decisions: `template-store-role-001`,
-`managed-product-vertical-002`, `xapi568-proof-003`
+`managed-product-vertical-002`, `xapi568-proof-003`,
+`payment-foundation-alignment-004`
 
 ## Responsibility boundary
 
@@ -12,6 +14,9 @@ of existing package contracts:
 
 - retrieve the neutral EmDash product-page composition;
 - create or replay one Commerce catalog item;
+- create or replay Commerce's store-level Inventory configuration;
+- invoke Commerce's official Configure Inventory action with only the catalog
+  item identity;
 - adapt Commerce's provider port to Inventory's managed-SKU command;
 - establish one disposable proof location and opening balance;
 - read Inventory availability for the Commerce-linked Inventory SKU;
@@ -27,7 +32,7 @@ authoring.
 | Package | Exact source | Consumer status |
 | --- | --- | --- |
 | `@dinkuskit/blocks` | `82a31183cc06ae0fc5b4829f5a8875753ecde10a` | exact merged source pin |
-| `@dinkuskit/commerce` | prepared source checkout at `9fd24c6a13a4a4d332109e2d4541b05ec5f83786` | exact merged pilot source pin; ignored checkout bypasses the empty pre-release `dist/` package |
+| `@dinkuskit/commerce` | prepared source checkout at `530348c07769a010b0fa4ef24604292a4254eda0` | exact Commerce #14 source pin; ignored checkout bypasses the empty pre-release `dist/` package |
 | `@dinkuskit/inventory` | `d735b180b3f4ed911667586f5131ff1727e46546` | provisional exact PR #14 source pin for ordinary adjustment |
 | `emdash` | `0.35.0` | exact released CMS baseline |
 
@@ -86,17 +91,23 @@ creates a Commerce-local quantity or falls back around Inventory.
 
 ```text
 neutral EmDash composition
+  -> Commerce store Inventory configuration (permanent site identity + binding)
+  -> Inventory proof location
   -> Commerce catalog create/replay (managed, setup-required)
-  -> one atomic Commerce registration claim
+  -> Commerce Configure Inventory (catalogItemId only)
+  -> one atomic Commerce registration claim from server-owned state
   -> Inventory sku.register (registered or exact existing identity)
   -> Commerce active Inventory SKU link
-  -> Inventory location + opening balance
+  -> Inventory opening balance
   -> Inventory authoritative availability read
   -> storefront render
 ```
 
 - Bootstrap is idempotent. Repeating it returns the same catalog item, managed
   SKU, location, and opening-balance result.
+- The Configure Inventory input contains only the Commerce catalog item ID.
+  Site, provider, pool, location, SKU, title, and operation identity come from
+  Commerce-owned configuration and canonical records.
 - Exactly one Inventory SKU identity backs the Commerce product.
 - Every stock mutation is an Inventory command with a stable command ID,
   expected version, immutable receipt, and system principal.
