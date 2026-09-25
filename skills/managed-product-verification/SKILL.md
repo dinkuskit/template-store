@@ -1,13 +1,13 @@
 ---
 name: managed-product-verification
-description: Prove the template-store Blocks, Commerce, and Inventory managed-product availability vertical.
+description: Prove the template-store Blocks, Commerce, and Inventory managed-product availability vertical and unmanaged manual sellability.
 ---
 
-# Managed product verification
+# Storefront availability verification
 
 Use this project-local skill when changing the store shell, CMS block
-composition, Commerce catalog/managed-SKU wiring, Inventory adapter, stock
-presentation, or proof route.
+composition, Commerce catalog/managed-SKU wiring, unmanaged manual
+availability, Inventory adapter, stock presentation, or proof routes.
 
 ## Commands
 
@@ -30,13 +30,19 @@ The full verifier must show:
   `dinkus-inventory-sku-demo`;
 - availability sequence `8 -> 5 -> 8` with monotonically increasing Inventory
   versions;
+- Commerce SKU `DINKUS-DEMO-UNMANAGED` with manual availability
+  `in-stock -> out-of-stock -> available-on-backorder -> in-stock` and no
+  quantity;
 - readable hero-action contrast and no page or fact-rail horizontal overflow
   in desktop or mobile Chromium;
-- initial, changed, restored screenshots and JSON assertions under ignored
-  `runs/managed-product-availability-20260829/browser/`.
+- managed screenshots under ignored
+  `runs/managed-product-availability-20260829/browser/`;
+- unmanaged admin and public screenshots under ignored
+  `runs/unmanaged-product-sellability-20260925/browser/`.
 
-The `/api/proof/stock` endpoint must return `404` unless
-`DINKUS_PROOF_MODE=1`. It is not a production mutation surface.
+The `/api/proof/stock` and `/api/proof/unmanaged-availability` endpoints must
+return `404` unless `DINKUS_PROOF_MODE=1`. They are not production mutation
+surfaces.
 
 ## Failure handling
 

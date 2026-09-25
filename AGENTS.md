@@ -17,8 +17,8 @@ Assume every committed byte is immediately public.
   together in a neutral storefront. It does not own those packages' domain
   rules.
 - EmDash owns human-authored composition and merchandising content. Commerce
-  owns catalog identity and managed-stock state. Inventory owns stock identity,
-  quantities, locations, mutations, and receipts.
+  owns catalog identity, managed-stock state, and unmanaged manual availability.
+  Inventory owns stock identity, quantities, locations, mutations, and receipts.
 - Pre-release Dinkus dependencies stay pinned to exact commits. Source-entry
   aliases are temporary dogfood mechanics, not release compatibility claims.
 - The local proof adapter supplies disposable storage mechanics only. It is not
@@ -43,9 +43,9 @@ Assume every committed byte is immediately public.
 ## Required checks
 
 Run `pnpm verify` before closeout. Browser proof must exercise desktop Chromium
-and a mobile viewport, observe the initial stock value, apply one Inventory
-adjustment, observe the changed value, restore it, and observe the restored
-value.
+and a mobile viewport, observe the managed `8 -> 5 -> 8` Inventory sequence,
+and observe unmanaged manual availability cycle through in-stock, out-of-stock,
+and available-on-backorder without showing a quantity.
 
 ## Gates
 

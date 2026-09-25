@@ -21,7 +21,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   await page.goto("/");
   await expect(page.locator('[data-dinkus-block="page-hero"]')).toBeVisible();
   await expect(page.locator('[data-dinkus-block="fact-rail"]')).toBeVisible();
-  const heroAction = page.locator(".dinkus-page-hero__action");
+  const heroAction = page.locator(".dinkus-page-hero__action").first();
   await expect(heroAction).toHaveText("Inspect the managed product");
   await expect(heroAction).toHaveCSS("color", "rgb(255, 254, 251)");
   await expect(heroAction).toHaveCSS("background-color", "rgb(23, 32, 51)");
