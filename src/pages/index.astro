@@ -4,6 +4,8 @@ import { PortableText } from "emdash/ui";
 
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
 import { managedProductAvailabilityRuntime } from "../features/managed-product-availability/index.js";
+import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
+import { unmanagedProductSellabilityRuntime } from "../features/unmanaged-product-sellability/index.js";
 import {
   STORE_DESCRIPTION,
   STORE_TITLE,
@@ -12,7 +14,10 @@ import "../features/store-shell/global.css";
 
 const { entry: page } = await getEmDashEntry("pages", "home");
 const content = page?.data.content as PortableTextBlock[] | undefined;
-const availability = await managedProductAvailabilityRuntime.read();
+const [availability, unmanaged] = await Promise.all([
+  managedProductAvailabilityRuntime.read(),
+  unmanagedProductSellabilityRuntime.read(),
+]);
 ---
 
 <!doctype html>
@@ -42,6 +47,7 @@ const availability = await managedProductAvailabilityRuntime.read();
         )
       }
       <ManagedProductAvailability availability={availability} />
+      <UnmanagedProductSellability availability={unmanaged} />
     </main>
     <footer class="store-footer">
       Transactional facts remain in Commerce and Inventory; EmDash owns the

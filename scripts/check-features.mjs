@@ -12,12 +12,13 @@ const expectedPins = {
     "github:dinkuskit/inventory#d735b180b3f4ed911667586f5131ff1727e46546",
 };
 const expectedCommerceCommit =
-  "530348c07769a010b0fa4ef24604292a4254eda0";
+  "8ca3e5dd14264df6db21bf4bee778158b0357bd2";
 
 const failures = [];
 for (const feature of [
   "dinkus.store-shell",
   "dinkus.managed-product-availability",
+  "dinkus.unmanaged-product-sellability",
 ]) {
   if (!featureMap.includes(`\`${feature}\``)) {
     failures.push(`FEATURE_MAP.md is missing ${feature}`);
@@ -49,9 +50,34 @@ if (managedProductRuntime.includes("startManagedSkuRegistration")) {
     "managed-product runtime must not bypass Configure Inventory with startManagedSkuRegistration",
   );
 }
+const unmanagedProductRuntime = readFileSync(
+  resolve(root, "src/features/unmanaged-product-sellability/runtime.ts"),
+  "utf8",
+);
+for (const officialAction of [
+  "resolveStorefrontAvailability",
+  "setCatalogItemManualAvailability",
+]) {
+  if (!unmanagedProductRuntime.includes(officialAction)) {
+    failures.push(`unmanaged-product runtime must use ${officialAction}`);
+  }
+}
+if (unmanagedProductRuntime.includes("@dinkuskit/inventory")) {
+  failures.push("unmanaged-product runtime must not contact Inventory");
+}
+if (
+  !featureMap.includes("How to reach") ||
+  !featureMap.includes("[data-unmanaged-product]") ||
+  !featureMap.includes("[data-stock-value]")
+) {
+  failures.push(
+    "FEATURE_MAP.md must include storefront driver rows for managed 8-5-8 and unmanaged manual availability",
+  );
+}
 for (const path of [
   "src/features/store-shell/index.ts",
   "src/features/managed-product-availability/index.ts",
+  "src/features/unmanaged-product-sellability/index.ts",
   "bin/verify-web",
   "scripts/check-worktree-text.mjs",
   "skills/managed-product-verification/SKILL.md",

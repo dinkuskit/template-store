@@ -13,6 +13,10 @@
     --store-muted: #5b6474;
     --store-stock: #d8f2df;
     --store-stock-ink: #143a23;
+    --store-alert: #fde8e8;
+    --store-alert-ink: #7f1d1d;
+    --store-backorder: #f8ecd3;
+    --store-backorder-ink: #6b3f08;
     --dinkus-action-background: #172033;
     --dinkus-action-color: #fffefb;
   }

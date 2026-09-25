@@ -3,7 +3,7 @@
   "version": "1",
   "meta": {
     "name": "DinkusKit store starter",
-    "description": "Neutral managed-product availability proof",
+    "description": "Neutral managed and unmanaged product availability proof",
     "author": "DinkusKit contributors"
   },
   "collections": [
@@ -43,7 +43,9 @@
               "headline": "A storefront that proves its sources",
               "deck": "CMS composition and transactional stock truth meet on one neutral product surface.",
               "primaryLabel": "Inspect the managed product",
-              "primaryHref": "#managed-product"
+              "primaryHref": "#managed-product",
+              "secondaryLabel": "Inspect unmanaged sellability",
+              "secondaryHref": "#unmanaged-product"
             },
             {
               "_type": "dinkus.fact-rail",
@@ -63,7 +65,7 @@
                 {
                   "_key": "fact-stock",
                   "label": "Stock truth",
-                  "value": "Dinkus Inventory"
+                  "value": "Inventory + manual"
                 }
               ]
             }

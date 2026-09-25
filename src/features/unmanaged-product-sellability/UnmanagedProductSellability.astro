@@ -1,0 +1,211 @@
+---
+import type { UnmanagedProductSellability } from "./types.js";
+
+interface Props {
+  availability: UnmanagedProductSellability;
+}
+
+const { availability } = Astro.props;
+const { product, storefront, provenance } = availability;
+const statusLabel = {
+  "in-stock": "In stock",
+  "out-of-stock": "Out of stock",
+  "available-on-backorder": "Available on backorder",
+  "availability-unavailable": "Availability unavailable",
+  "low-stock": "Low stock",
+}[storefront.status];
+const sellableLabel = storefront.sellable ? "Yes" : "No";
+---
+
+<section
+  id="unmanaged-product"
+  class:list={[
+    "unmanaged-product",
+    `unmanaged-product--${storefront.status}`,
+  ]}
+  aria-labelledby="unmanaged-product-title"
+  data-unmanaged-product
+  data-availability-status={storefront.status}
+  data-sellable={storefront.sellable ? "true" : "false"}
+>
+  <div class="unmanaged-product__intro">
+    <p class="unmanaged-product__eyebrow">Unmanaged product · local proof</p>
+    <h2 id="unmanaged-product-title">{product.name}</h2>
+    <p>
+      Commerce owns this product identity and its manual availability. Inventory
+      is not consulted. The storefront never shows a quantity for unmanaged
+      products.
+    </p>
+  </div>
+
+  <div
+    class="unmanaged-product__status"
+    role="status"
+    aria-live="polite"
+  >
+    <span class="unmanaged-product__status-label">Manual availability</span>
+    <strong data-availability-label>{statusLabel}</strong>
+    <span data-sellable-label>Sellable: {sellableLabel}</span>
+  </div>
+
+  <dl class="unmanaged-product__facts">
+    <div>
+      <dt>Commerce SKU</dt>
+      <dd data-unmanaged-sku>{product.sku}</dd>
+    </div>
+    <div>
+      <dt>Stock authority</dt>
+      <dd data-stock-mode>{product.stockMode}</dd>
+    </div>
+    <div>
+      <dt>Storefront status</dt>
+      <dd data-storefront-status>{storefront.status}</dd>
+    </div>
+    <div>
+      <dt>Sellable</dt>
+      <dd data-storefront-sellable>{sellableLabel}</dd>
+    </div>
+    <div>
+      <dt>Quantity shown</dt>
+      <dd data-quantity-shown>never</dd>
+    </div>
+    <div>
+      <dt>Commerce state</dt>
+      <dd>{product.state}</dd>
+    </div>
+  </dl>
+
+  <details class="unmanaged-product__provenance">
+    <summary>Exact package provenance</summary>
+    <dl>
+      <div><dt>Blocks</dt><dd><code>{provenance.blocks}</code></dd></div>
+      <div><dt>Commerce</dt><dd><code>{provenance.commerce}</code></dd></div>
+      <div><dt>Inventory</dt><dd><code>{provenance.inventory}</code></dd></div>
+    </dl>
+  </details>
+</section>
+
+<style>
+  .unmanaged-product {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(12rem, 0.6fr);
+    gap: clamp(1.5rem, 4vw, 3rem);
+    width: min(70rem, calc(100% - 2rem));
+    margin: 3rem auto;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid var(--store-line);
+    border-radius: 1rem;
+    background: var(--store-surface);
+    box-shadow: 0 1rem 3rem rgb(15 23 42 / 8%);
+  }
+
+  .unmanaged-product__eyebrow,
+  .unmanaged-product__status-label {
+    margin: 0 0 0.5rem;
+    color: var(--store-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .unmanaged-product h2 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1;
+  }
+
+  .unmanaged-product__intro > p:last-child {
+    max-width: 42rem;
+    color: var(--store-muted);
+    line-height: 1.7;
+  }
+
+  .unmanaged-product__status {
+    align-self: start;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    color: var(--store-stock-ink);
+    background: var(--store-stock);
+  }
+
+  .unmanaged-product--out-of-stock .unmanaged-product__status,
+  .unmanaged-product--availability-unavailable .unmanaged-product__status {
+    color: var(--store-alert-ink);
+    background: var(--store-alert);
+  }
+
+  .unmanaged-product--available-on-backorder .unmanaged-product__status {
+    color: var(--store-backorder-ink);
+    background: var(--store-backorder);
+  }
+
+  .unmanaged-product__status strong {
+    display: block;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    line-height: 1.1;
+  }
+
+  .unmanaged-product__facts,
+  .unmanaged-product__provenance {
+    grid-column: 1 / -1;
+  }
+
+  .unmanaged-product__facts,
+  .unmanaged-product__provenance dl {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--store-line);
+    border-radius: 0.75rem;
+    background: var(--store-line);
+  }
+
+  .unmanaged-product__facts div,
+  .unmanaged-product__provenance dl div {
+    min-width: 0;
+    padding: 1rem;
+    background: var(--store-surface);
+  }
+
+  dt {
+    color: var(--store-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0.35rem 0 0;
+    overflow-wrap: anywhere;
+    font-weight: 650;
+  }
+
+  .unmanaged-product__provenance summary {
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .unmanaged-product__provenance dl {
+    margin-top: 1rem;
+  }
+
+  code {
+    font-size: 0.72rem;
+  }
+
+  @media (max-width: 44rem) {
+    .unmanaged-product {
+      grid-template-columns: 1fr;
+      margin-block: 1.5rem;
+    }
+
+    .unmanaged-product__facts,
+    .unmanaged-product__provenance dl {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

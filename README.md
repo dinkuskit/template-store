@@ -13,11 +13,16 @@ EmDash composition -> Dinkus Blocks
                     -> Commerce catalog + managed SKU
                     -> Inventory registration + stock truth
                     -> storefront availability
+                    -> Commerce unmanaged catalog + manual availability
+                    -> storefront sellability without quantity
 ```
 
-The browser verifier observes an opening quantity of eight, applies a real
-Inventory adjustment to five, then restores eight. Price, cart, checkout,
-payments, shipping, deployment, and production persistence are not claimed yet.
+The browser verifier observes an opening managed quantity of eight, applies a
+real Inventory adjustment to five, then restores eight. It also observes the
+unmanaged product default to In stock, then Out of stock, Available on
+backorder, and back to In stock, with no quantity. Price, cart, checkout,
+payments, shipping, deployment, persisted Manage Stock toggle, and production
+persistence are not claimed yet.
 
 ## Development
 
@@ -33,7 +38,9 @@ The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build`,
 and the verifiers prepare Commerce's exact source in an ignored checkout, then
 resolve Commerce and Inventory through their package-root source entries because
 neither has an installable release yet. See
-[`docs/implementation/managed-product-availability.md`](docs/implementation/managed-product-availability.md).
+[`docs/implementation/managed-product-availability.md`](docs/implementation/managed-product-availability.md)
+and
+[`docs/implementation/unmanaged-product-sellability.md`](docs/implementation/unmanaged-product-sellability.md).
 
 The intended eventual starter command remains:
 
