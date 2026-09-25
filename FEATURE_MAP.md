@@ -33,7 +33,7 @@ through an `index.ts` entry.
   the Commerce catalog item identity.
 - Unmanaged storefront reads go through `resolveStorefrontAvailability`. Manual
   availability writes go through `setCatalogItemManualAvailability`.
-- Named order reservations and stock transfers exist on the Inventory pin.
-  This playground does not consume them.
+- Named order reservations, packed holds, and stock transfers exist on the
+  Inventory pin. This playground does not consume them.
 - Cart, checkout, payments, shipping, deployment, persisted Manage Stock
   toggle, and package publication are outside this map.
