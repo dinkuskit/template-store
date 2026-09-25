@@ -33,7 +33,7 @@ authoring.
 | --- | --- | --- |
 | `@dinkuskit/blocks` | `82a31183cc06ae0fc5b4829f5a8875753ecde10a` | exact merged source pin |
 | `@dinkuskit/commerce` | prepared source checkout at `b9e432b1869bae09e394f5d631aa97b6949bf2fd` | exact Commerce #18 source pin; ignored checkout bypasses the empty pre-release `dist/` package |
-| `@dinkuskit/inventory` | `d735b180b3f4ed911667586f5131ff1727e46546` | provisional exact PR #14 source pin for ordinary adjustment |
+| `@dinkuskit/inventory` | `ef3cffab144269713ea7e5593547384e820ac99a` | exact merged main pin (inventory #21, emdash@0.40.1); named reservations unused here |
 | `emdash` | `0.40.1` | exact released CMS baseline |
 
 Commerce and Inventory are private `0.0.0` source packages without complete

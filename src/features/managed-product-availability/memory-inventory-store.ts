@@ -16,10 +16,22 @@ import type {
   OpeningBalanceCommit,
   ReadManagedSkuQuery,
   ReadSkuActiveLocationSnapshotQuery,
+  ReadStockTransferInput,
+  ReservationRecord,
   SkuLocationKey,
+  StockReservationCommit,
+  StockTransferCommit,
+  StockTransferRecord,
   StoredCommandResult,
   StoredOpeningBalanceConfirmation,
 } from "@dinkuskit/inventory";
+
+type ListStockTransfersQuery = Parameters<
+  InventoryStore["listStockTransfers"]
+>[0];
+type StoredStockTransferListPage = Awaited<
+  ReturnType<InventoryStore["listStockTransfers"]>
+>;
 
 type StockAdjustmentCommit = Parameters<
   InventoryTransaction["commitStockAdjustment"]
@@ -30,6 +42,7 @@ type StockAdjustmentConfirmation = Exclude<
 >;
 
 type StoreState = {
+  activeReservationIdsByOrderLineKey: Map<string, string>;
   balances: Map<string, BalanceRecord>;
   commands: Map<string, StoredCommandResult>;
   confirmations: Map<string, StoredOpeningBalanceConfirmation>;
@@ -38,10 +51,14 @@ type StoreState = {
   managedSkuIdsByVisibleSku: Map<string, string>;
   receiptCommandIds: Map<string, string>;
   receipts: Map<string, InventoryReceiptV2>;
+  reservations: Map<string, ReservationRecord>;
+  transferIdsByReferenceKey: Map<string, string>;
+  transfers: Map<string, StockTransferRecord>;
 };
 
 function emptyState(): StoreState {
   return {
+    activeReservationIdsByOrderLineKey: new Map(),
     balances: new Map(),
     commands: new Map(),
     confirmations: new Map(),
@@ -50,6 +67,9 @@ function emptyState(): StoreState {
     managedSkuIdsByVisibleSku: new Map(),
     receiptCommandIds: new Map(),
     receipts: new Map(),
+    reservations: new Map(),
+    transferIdsByReferenceKey: new Map(),
+    transfers: new Map(),
   };
 }
 
@@ -61,6 +81,9 @@ function cloneMap<T>(source: Map<string, T>): Map<string, T> {
 
 function cloneState(source: StoreState): StoreState {
   return {
+    activeReservationIdsByOrderLineKey: new Map(
+      source.activeReservationIdsByOrderLineKey,
+    ),
     balances: cloneMap(source.balances),
     commands: cloneMap(source.commands),
     confirmations: cloneMap(source.confirmations),
@@ -69,6 +92,9 @@ function cloneState(source: StoreState): StoreState {
     managedSkuIdsByVisibleSku: new Map(source.managedSkuIdsByVisibleSku),
     receiptCommandIds: new Map(source.receiptCommandIds),
     receipts: cloneMap(source.receipts),
+    reservations: cloneMap(source.reservations),
+    transferIdsByReferenceKey: new Map(source.transferIdsByReferenceKey),
+    transfers: cloneMap(source.transfers),
   };
 }
 
@@ -86,6 +112,38 @@ function managedSkuKey(poolId: string, inventorySkuId: string): string {
 
 function visibleSkuKey(poolId: string, sku: string): string {
   return `${poolId}\u0000${sku}`;
+}
+
+function transferKey(poolId: string, transferId: string): string {
+  return `${poolId}\u0000${transferId}`;
+}
+
+function transferReferenceKey(poolId: string, referenceKey: string): string {
+  return `${poolId}\u0000${referenceKey}`;
+}
+
+function reservationKey(poolId: string, reservationId: string): string {
+  return `${poolId}\u0000${reservationId}`;
+}
+
+function reservationOrderLineStoreKey(
+  poolId: string,
+  orderLineKey: string,
+): string {
+  return `${poolId}\u0000${orderLineKey}`;
+}
+
+function transferSortDate(transfer: StockTransferRecord): string | null {
+  switch (transfer.status) {
+    case "created":
+      return transfer.expectedDispatchDate;
+    case "in_transit":
+      return transfer.expectedArrivalDate;
+    case "received":
+      return transfer.receivedDate;
+    case "canceled":
+      return transfer.canceledAt;
+  }
 }
 
 function receiptLocationIds(
@@ -137,6 +195,40 @@ class MemoryInventoryTransaction implements InventoryTransaction {
       : this.getManagedSku(inventorySkuId);
   }
 
+  getStockTransfer(transferId: string): StockTransferRecord | null {
+    const transfer = this.state.transfers.get(
+      transferKey(this.poolId, transferId),
+    );
+    return transfer === undefined ? null : structuredClone(transfer);
+  }
+
+  getStockTransferByReferenceKey(
+    referenceKey: string,
+  ): StockTransferRecord | null {
+    const transferId = this.state.transferIdsByReferenceKey.get(
+      transferReferenceKey(this.poolId, referenceKey),
+    );
+    return transferId === undefined ? null : this.getStockTransfer(transferId);
+  }
+
+  getReservation(reservationId: string): ReservationRecord | null {
+    const reservation = this.state.reservations.get(
+      reservationKey(this.poolId, reservationId),
+    );
+    return reservation === undefined ? null : structuredClone(reservation);
+  }
+
+  getActiveReservationByOrderLineKey(
+    orderLineKey: string,
+  ): ReservationRecord | null {
+    const reservationId = this.state.activeReservationIdsByOrderLineKey.get(
+      reservationOrderLineStoreKey(this.poolId, orderLineKey),
+    );
+    return reservationId === undefined
+      ? null
+      : this.getReservation(reservationId);
+  }
+
   getLocation(locationId: string): LocationRecord | null {
     const location = this.state.locations.get(
       locationKey(this.poolId, locationId),
@@ -160,12 +252,21 @@ class MemoryInventoryTransaction implements InventoryTransaction {
         (balance) =>
           balance.poolId === this.poolId &&
           balance.locationId === locationId &&
-          (balance.onHand.value !== "0" || balance.reserved.value !== "0"),
+          (balance.onHand.value !== "0" ||
+            balance.reserved.value !== "0" ||
+            balance.outgoingTransferCommitted.value !== "0" ||
+            balance.expected.value !== "0" ||
+            balance.inTransit.value !== "0"),
       )
       .map((balance) => ({
         skuId: balance.skuId,
         onHand: structuredClone(balance.onHand),
         reserved: structuredClone(balance.reserved),
+        outgoingTransferCommitted: structuredClone(
+          balance.outgoingTransferCommitted,
+        ),
+        expected: structuredClone(balance.expected),
+        inTransit: structuredClone(balance.inTransit),
       }));
   }
 
@@ -300,6 +401,114 @@ class MemoryInventoryTransaction implements InventoryTransaction {
     });
   }
 
+  commitStockTransfer(input: StockTransferCommit): void {
+    this.assertPool(input.transfer.poolId);
+    for (const change of input.balances) {
+      this.assertPool(change.balance.poolId);
+      const key = balanceKey(change.balance);
+      const current = this.state.balances.get(key) ?? null;
+      if (change.previous === null) {
+        if (current !== null) {
+          throw new Error("Stock-transfer opening balance already exists.");
+        }
+      } else if (
+        current === null ||
+        current.version !== change.previous.version
+      ) {
+        throw new Error("Stock-transfer balance version drifted during commit.");
+      }
+      this.state.balances.set(key, structuredClone(change.balance));
+    }
+    const idKey = transferKey(
+      input.transfer.poolId,
+      input.transfer.transferId,
+    );
+    const currentTransfer = this.state.transfers.get(idKey) ?? null;
+    if (input.previous === null) {
+      if (currentTransfer !== null) {
+        throw new Error("Stock transfer already exists.");
+      }
+    } else if (
+      currentTransfer === null ||
+      currentTransfer.version !== input.previous.version
+    ) {
+      throw new Error("Stock-transfer version drifted during commit.");
+    }
+    this.state.transfers.set(idKey, structuredClone(input.transfer));
+    this.state.transferIdsByReferenceKey.set(
+      transferReferenceKey(input.transfer.poolId, input.referenceKey),
+      input.transfer.transferId,
+    );
+    this.state.receipts.set(
+      input.receipt.receiptId,
+      structuredClone(input.receipt),
+    );
+    this.state.receiptCommandIds.set(
+      input.receipt.receiptId,
+      input.commandId,
+    );
+    this.storeCommandResult({
+      commandId: input.commandId,
+      commandDigest: input.commandDigest,
+      result: input.result,
+    });
+  }
+
+  commitStockReservation(input: StockReservationCommit): void {
+    this.assertPool(input.reservation.poolId);
+    this.assertPool(input.balance.poolId);
+    const balanceId = balanceKey(input.balance);
+    const currentBalance = this.state.balances.get(balanceId);
+    if (
+      currentBalance === undefined ||
+      currentBalance.version !== input.previousBalance.version
+    ) {
+      throw new Error("Reservation balance version drifted during commit.");
+    }
+    this.state.balances.set(balanceId, structuredClone(input.balance));
+    const idKey = reservationKey(
+      input.reservation.poolId,
+      input.reservation.reservationId,
+    );
+    const currentReservation = this.state.reservations.get(idKey) ?? null;
+    if (input.previous === null) {
+      if (currentReservation !== null) {
+        throw new Error("Reservation already exists.");
+      }
+    } else if (
+      currentReservation === null ||
+      currentReservation.version !== input.previous.version
+    ) {
+      throw new Error("Reservation version drifted during commit.");
+    }
+    this.state.reservations.set(idKey, structuredClone(input.reservation));
+    const lineKey = reservationOrderLineStoreKey(
+      input.reservation.poolId,
+      input.orderLineKey,
+    );
+    if (input.reservation.status === "active") {
+      this.state.activeReservationIdsByOrderLineKey.set(
+        lineKey,
+        input.reservation.reservationId,
+      );
+    } else {
+      this.state.activeReservationIdsByOrderLineKey.delete(lineKey);
+    }
+    this.state.receipts.set(
+      input.receipt.receiptId,
+      structuredClone(input.receipt),
+    );
+    this.state.receiptCommandIds.set(
+      input.receipt.receiptId,
+      input.commandId,
+    );
+    this.storeCommandResult({
+      commandId: input.commandId,
+      commandDigest: input.commandDigest,
+      result: input.result,
+    });
+  }
+
   private storeReceiptAndCommand(
     receipt: InventoryStockReceiptV2,
     input: Readonly<{
@@ -356,6 +565,106 @@ export class MemoryInventoryStore implements InventoryStore {
       managedSkuKey(query.poolId, query.skuId),
     );
     return sku === undefined ? null : structuredClone(sku);
+  }
+
+  async readStockTransfer(
+    query: ReadStockTransferInput,
+  ): Promise<StockTransferRecord | null> {
+    await this.tail;
+    const transfer = this.state.transfers.get(
+      transferKey(query.poolId, query.transferId),
+    );
+    return transfer === undefined ? null : structuredClone(transfer);
+  }
+
+  async listStockTransfers(
+    query: ListStockTransfersQuery,
+  ): Promise<StoredStockTransferListPage> {
+    await this.tail;
+    let selectedLocation: LocationRecord | null = null;
+    if (query.locationId !== undefined) {
+      selectedLocation =
+        this.state.locations.get(
+          locationKey(query.poolId, query.locationId),
+        ) ?? null;
+      if (selectedLocation === null || selectedLocation.status !== "active") {
+        return { selectedLocation, rows: [] };
+      }
+    }
+    const statuses =
+      query.view === "open"
+        ? new Set(["created", "in_transit"])
+        : new Set(["received", "canceled"]);
+    const direction = query.view === "open" ? 1 : -1;
+    const rows = [...this.state.transfers.values()]
+      .filter(
+        (transfer) =>
+          transfer.poolId === query.poolId && statuses.has(transfer.status),
+      )
+      .filter((transfer) => {
+        if (query.locationId === undefined) {
+          const origin = this.state.locations.get(
+            locationKey(transfer.poolId, transfer.originLocationId),
+          );
+          const destination = this.state.locations.get(
+            locationKey(transfer.poolId, transfer.destinationLocationId),
+          );
+          return (
+            origin === undefined ||
+            destination === undefined ||
+            origin.status === "active" ||
+            destination.status === "active"
+          );
+        }
+        return (
+          transfer.originLocationId === query.locationId ||
+          transfer.destinationLocationId === query.locationId
+        );
+      })
+      .map((transfer) => {
+        const origin = this.state.locations.get(
+          locationKey(transfer.poolId, transfer.originLocationId),
+        );
+        const destination = this.state.locations.get(
+          locationKey(transfer.poolId, transfer.destinationLocationId),
+        );
+        if (origin === undefined || destination === undefined) {
+          return null;
+        }
+        return {
+          transfer: structuredClone(transfer),
+          origin: structuredClone(origin),
+          destination: structuredClone(destination),
+          position: {
+            sortDate: transferSortDate(transfer) ?? "",
+            updatedAt: transfer.updatedAt,
+            transferId: transfer.transferId,
+          },
+        };
+      })
+      .filter(
+        (row): row is NonNullable<typeof row> => row !== null,
+      )
+      .filter((row) => {
+        if (query.after === undefined) {
+          return true;
+        }
+        const compared =
+          row.position.sortDate.localeCompare(query.after.sortDate) *
+            direction ||
+          query.after.updatedAt.localeCompare(row.position.updatedAt) ||
+          row.position.transferId.localeCompare(query.after.transferId);
+        return compared > 0;
+      })
+      .sort(
+        (left, right) =>
+          left.position.sortDate.localeCompare(right.position.sortDate) *
+            direction ||
+          right.position.updatedAt.localeCompare(left.position.updatedAt) ||
+          left.position.transferId.localeCompare(right.position.transferId),
+      )
+      .slice(0, query.limit);
+    return { selectedLocation, rows };
   }
 
   async readSkuActiveLocationSnapshot(

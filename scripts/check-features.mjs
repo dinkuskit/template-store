@@ -9,7 +9,7 @@ const expectedPins = {
   "@dinkuskit/blocks":
     "github:dinkuskit/blocks#82a31183cc06ae0fc5b4829f5a8875753ecde10a",
   "@dinkuskit/inventory":
-    "github:dinkuskit/inventory#d735b180b3f4ed911667586f5131ff1727e46546",
+    "github:dinkuskit/inventory#ef3cffab144269713ea7e5593547384e820ac99a",
 };
 const expectedCommerceCommit =
   "b9e432b1869bae09e394f5d631aa97b6949bf2fd";
