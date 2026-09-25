@@ -12,7 +12,7 @@ const expectedPins = {
     "github:dinkuskit/inventory#d735b180b3f4ed911667586f5131ff1727e46546",
 };
 const expectedCommerceCommit =
-  "8ca3e5dd14264df6db21bf4bee778158b0357bd2";
+  "b9e432b1869bae09e394f5d631aa97b6949bf2fd";
 
 const failures = [];
 for (const feature of [
