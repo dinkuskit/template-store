@@ -47,7 +47,8 @@ test("merchandise is editable in EmDash and visible in the classic catalog", asy
   const illustrations = page.locator("[data-merch-catalog] .merch-card__visual img");
   await expect(illustrations).toHaveCount(5);
   for (const image of await illustrations.all()) {
-    expect(await image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+    await image.scrollIntoViewIfNeeded();
+    await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
   }
   await expect(page.locator("[data-merch-source=preview] a")).toHaveCount(3);
   await page.getByRole("navigation", { name: "Merchandise collections" }).getByRole("link", { name: "Tees" }).click();

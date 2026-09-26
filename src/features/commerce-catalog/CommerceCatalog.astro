@@ -1,0 +1,20 @@
+---
+import { commerceProductPath, availabilityLabels, type PublicCommerceProduct } from "./index.js";
+interface Props { products: PublicCommerceProduct[]; unavailable?: boolean; }
+const { products, unavailable = false } = Astro.props;
+---
+<section class="shop-catalog" aria-labelledby="shop-title" data-commerce-catalog>
+  <h2 id="shop-title">Shop</h2>
+  {unavailable ? <p role="alert">The product catalog is temporarily unavailable.</p> : products.length === 0 ? <p data-commerce-empty>No products are listed yet.</p> : <div class="shop-grid">
+    {products.map(product => <article data-commerce-product={product.id}>
+      <h3><a href={commerceProductPath(product.id)}>{product.name}</a></h3>
+      <p class="price">{product.price.saleText ? <><s data-regular-price>{product.price.regularText}</s><strong data-sale-price>{product.price.saleText}</strong></> : <strong data-regular-price>{product.price.regularText}</strong>}</p>
+      <p data-commerce-availability={product.availability.status}>{availabilityLabels[product.availability.status]}</p>
+      <a href={commerceProductPath(product.id)}>View product</a>
+    </article>)}
+  </div>}
+  <p class="notice">Product browsing is available. Checkout is not available yet.</p>
+</section>
+<style>
+.shop-catalog{width:min(70rem,calc(100% - 2rem));margin:3rem auto}.shop-catalog h2{font-size:clamp(2.5rem,5vw,4.5rem);letter-spacing:-.05em;margin:0 0 1.5rem}.shop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.shop-grid article{min-width:0;overflow-wrap:anywhere;padding:1.5rem;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface)}h3{font-size:1.5rem;margin:0 0 1.5rem}a{color:inherit;text-underline-offset:.2em}.price{display:flex;gap:.65rem;flex-wrap:wrap;font-size:1.4rem}s,.notice{color:var(--store-muted)}.notice{line-height:1.5}@media(max-width:45rem){.shop-grid{grid-template-columns:1fr}}
+</style>

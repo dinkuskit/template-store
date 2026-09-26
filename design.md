@@ -11,6 +11,17 @@ one storefront surface. The first audience is DinkusKit maintainers and early
 adopters evaluating the stack, not shoppers on a production store. The classic
 merch-catalog first slice provides collection navigation and a product grid.
 
+## Merchant catalog
+
+The Shop above the separate integration demonstrations is driven by persisted
+Commerce Products. Name/SKU and Regular/Sale are operated in native EmDash
+Products admin. Missing Regular hides both listing and detail; Sale strikes
+Regular. Render truthful Commerce availability without inventing quantity.
+The catalog may be empty. No purchase button or checkout is implied. Preserve
+the existing neutral visual language, keyboard links, and narrow-screen fit.
+Commerce and Inventory launch side by side; separating the current Inventory
+demonstration does not defer Inventory from launch.
+
 ## Confirmed constraints
 
 - Show each connected product name and truthful current availability prominently

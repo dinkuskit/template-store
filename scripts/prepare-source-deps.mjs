@@ -7,7 +7,7 @@ const root = resolve(import.meta.dirname, "..");
 const sourceRoot = resolve(root, ".artifacts/source-deps");
 const commerceRoot = resolve(sourceRoot, "commerce");
 const repository = "https://github.com/dinkuskit/commerce.git";
-const commit = "3f20fe96d5b3104c4b599e669d18f54fd8ab2587";
+const commit = "81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06";
 
 function git(args, cwd = root, allowFailure = false) {
   const result = spawnSync("git", args, {

@@ -10,6 +10,22 @@ through an `index.ts` entry.
 | `dinkus.managed-product-availability` | Commerce catalog identity, official Configure Inventory orchestration, Inventory registration/opening/read/adjust composition, proof adapter, proof-only HTTP action, and storefront availability panel | `src/features/managed-product-availability/`; `src/pages/api/proof/stock.ts` | `src/features/managed-product-availability/index.ts` | `@dinkuskit/commerce` package root; `@dinkuskit/inventory` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 | `dinkus.unmanaged-product-sellability` | Unmanaged Commerce catalog identity, isolated manual availability, unified storefront resolver, proof-only HTTP action, and storefront sellability panel that never contacts Inventory or shows quantity | `src/features/unmanaged-product-sellability/`; `src/pages/api/proof/unmanaged-availability.ts` | `src/features/unmanaged-product-sellability/index.ts` | `@dinkuskit/commerce` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 
+## Merchant catalog
+
+| Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dinkus.commerce-catalog` | Persisted native Commerce Products admin consumption, public listing and detail, Regular/Sale and availability read composition | `src/features/commerce-catalog/`; `src/pages/shop/`; `tests/e2e/commerce-catalog.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce public root; EmDash public runtime/repository APIs | `bin/verify-web quick` | `bin/verify-web full` | local integration |
+
+| Journey | How to reach | Proof action | Observable success |
+| --- | --- | --- | --- |
+| Merchant admin to real catalog | EmDash Products at `/_emdash/admin/plugins/dinkus-commerce/products`; public `/` Shop and `/shop/<Commerce ID>` | Add name/SKU, save Regular, save lower Sale, reject malformed Regular, reload admin, clear prices. Separate anonymous page and authenticated public Edit context; desktop/mobile. | No Regular means no public card and detail 404, but admin retains product. Regular lists it; Sale strikes Regular. Invalid edit leaves public price unchanged. Commerce availability has no invented quantity. Public Edit hydrates without changing catalog authority. |
+
+Commerce and Inventory are crucial side-by-side launch components. The existing
+seeded merchandise and stock panels below Shop are explicitly separate integration
+demonstrations, not persisted merchant products. No seed import is needed to add
+Commerce Products to an initialized starter; preserve its edited CMS content.
+See [operator and compatibility boundaries](docs/implementation/commerce-catalog.md).
+
 ## Storefront drivers
 
 | Journey | How to reach | Proof action | Observable success |
@@ -56,10 +72,10 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
   availability writes go through `setCatalogItemManualAvailability`.
 - Public home renders a product panel only when Commerce `listable` is true.
   Unpriced drafts remain in the catalog and in EmDash admin; they do not appear
-  on `/`. Regular and optional Sale display uses Commerce Money. Visual admin
-  Regular/Sale boxes are outside this map.
+  on `/`. Regular and optional Sale display uses Commerce Money. Native Products admin
+  Regular/Sale boxes operate the separate persisted merchant catalog above.
 - Named order reservations, packed holds, and stock transfers exist on the
   Inventory pin. This playground does not consume them.
 - Cart, checkout, payments, shipping, deployment, persisted Manage Stock
-  toggle, visual EmDash Regular/Sale admin fields, and package publication are
+  toggle, visual stock-status/Store-hide controls, and package publication are
   outside this map.

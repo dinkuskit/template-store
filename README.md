@@ -3,7 +3,20 @@
 The public integration and dogfood storefront for EmDash, DinkusKit Blocks,
 Commerce, and Inventory.
 
-## Current proof
+Org direction: [Vision](https://github.com/dinkuskit/.github/blob/main/VISION.md)
+and [Roadmap](https://github.com/dinkuskit/.github/blob/main/ROADMAP.md).
+
+## Merchant catalog
+
+EmDash **Products** now drives the real Shop on `/`: add a name and SKU, save
+Regular to list it, optionally save Sale, or clear prices to hide it publicly
+while retaining it in admin. Product details live at `/shop/<Commerce ID>`.
+See [operator steps and upgrade boundaries](docs/implementation/commerce-catalog.md).
+Commerce and Inventory are crucial side-by-side launch components. Existing
+seeded merchandise and Inventory proofs are separate integration demonstrations,
+not merchant products. No checkout or production-readiness claim is made.
+
+## Separate integration demonstrations
 
 The classic catalog first slice adds EmDash-managed merchandise entries and
 collection navigation for tees, hoodies, and hats, with collection and individual product pages. The hero and product grid are
@@ -33,8 +46,8 @@ The two connected Commerce identities, Regular/Sale prices, and availability are
 owned by Commerce/Inventory, not by page content. Connected catalog cards and
 product pages show Commerce prices only when Regular exists. The unpriced Commerce
 draft stays off the public home; editorial preview entries remain explicitly
-non-purchasable and have no invented prices. Visual Regular/Sale admin boxes,
-cart, checkout, payments, shipping, deployment, persisted Manage Stock toggle,
+non-purchasable and have no invented prices. For these separate demo identities, merchant admin editing is not connected.
+Cart, checkout, payments, shipping, deployment, persisted Manage Stock toggle,
 and production persistence are not claimed yet.
 
 The seed also includes one EmDash section, Home opener (`home-opener`). It is a

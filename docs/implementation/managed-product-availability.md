@@ -32,7 +32,7 @@ authoring.
 | Package | Exact source | Consumer status |
 | --- | --- | --- |
 | `@dinkuskit/blocks` | `fe03bfac91798ac0b411b952fe23c26afefbf570` | exact merged main pin (blocks #52–53, emdash@0.41.0) |
-| `@dinkuskit/commerce` | prepared source checkout at `3f20fe96d5b3104c4b599e669d18f54fd8ab2587` | exact Commerce #18 source pin; ignored checkout bypasses the empty pre-release `dist/` package |
+| `@dinkuskit/commerce` | prepared source checkout at `81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06` | exact landed Products admin source pin; ignored checkout bypasses the empty pre-release `dist/` package |
 | `@dinkuskit/inventory` | `5889c7d59398376da51ac400d5c1f1214aba2c6b` | exact merged main pin (inventory #25–29); reservation lifecycle remains unused here |
 | `emdash` | `0.41.0` | exact released CMS baseline |
 

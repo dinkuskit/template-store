@@ -1,0 +1,30 @@
+---
+import { readCommerceCatalog, availabilityLabels } from "../../features/commerce-catalog/index.js";
+import { STORE_TITLE } from "../../features/store-shell/index.js";
+import "../../features/store-shell/global.css";
+let unavailable = false;
+const products = await readCommerceCatalog().catch(() => { unavailable = true; return []; });
+const product = products.find(item => item.id === Astro.params.id);
+if (unavailable) Astro.response.status = 503;
+else if (!product) Astro.response.status = 404;
+---
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><title>{product?.name ?? "Product unavailable"} | {STORE_TITLE}</title></head>
+<body>
+<header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a></header>
+<main class="shop-detail">
+<a href="/#shop-title">← Back to shop</a>
+{product ? <article data-commerce-product={product.id}>
+<h1>{product.name}</h1>
+<p>SKU: {product.sku}</p>
+<p class="price">{product.price.saleText ? <><s data-regular-price>{product.price.regularText}</s><strong data-sale-price>{product.price.saleText}</strong></> : <strong data-regular-price>{product.price.regularText}</strong>}</p>
+<p data-commerce-availability={product.availability.status}>{availabilityLabels[product.availability.status]}</p>
+<p>Checkout is not available yet.</p>
+</article> : <><h1>{unavailable ? "Catalog temporarily unavailable" : "Product not found"}</h1><p>{unavailable ? "Please try again later." : "This product is not publicly listed."}</p></>}
+</main>
+</body>
+</html>
+<style>
+.shop-detail{width:min(70rem,calc(100% - 2rem));margin:3rem auto;min-height:65vh;overflow-wrap:anywhere}h1{font-size:clamp(2.5rem,6vw,5rem);letter-spacing:-.05em}.price{display:flex;gap:.75rem;flex-wrap:wrap;font-size:1.75rem}s{color:var(--store-muted)}a{color:inherit;text-underline-offset:.2em}
+</style>

@@ -2,6 +2,8 @@
 import { getEmDashCollection, getEmDashEntry, type PortableTextBlock } from "emdash";
 import { PortableText } from "emdash/ui";
 
+import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
+import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
 import { buildMerchCollections, publicMerchCollections } from "../features/store-shell/merch-catalog.js";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
@@ -21,6 +23,8 @@ const [availability, unmanaged, merchandise] = await Promise.all([
   unmanagedProductSellabilityRuntime.read(),
   getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" }),
 ]);
+let catalogUnavailable = false;
+const products = await readCommerceCatalog().catch(() => { catalogUnavailable = true; return []; });
 const collections = publicMerchCollections(buildMerchCollections(merchandise.entries), availability.price.listable, unmanaged.price.listable);
 ---
 
@@ -50,9 +54,14 @@ const collections = publicMerchCollections(buildMerchCollections(merchandise.ent
           </section>
         )
       }
+      <CommerceCatalog products={products} unavailable={catalogUnavailable} />
+      <section aria-label="Separate integration demonstrations" data-integration-demos>
+      <h2 class="demo-heading">Integration demonstrations</h2>
+      <p class="demo-heading">These seeded examples are separate from the merchant catalog above.</p>
       <MerchCatalog collections={collections} managed={availability} unmanaged={unmanaged} />
       {availability.price.listable && <ManagedProductAvailability availability={availability} />}
       {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
+      </section>
     </main>
     <footer class="store-footer">
       Transactional facts remain in Commerce and Inventory; EmDash owns the

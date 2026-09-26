@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import node from "@astrojs/node";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
+import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 import { dinkusBlocks } from "@dinkuskit/blocks";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
@@ -29,12 +30,13 @@ export default defineConfig({
         directory: uploadsDirectory,
         baseUrl: "/_emdash/api/media/file",
       }),
-      plugins: [dinkusBlocks()],
+      plugins: [dinkusBlocks(), dinkusCommerce()],
     }),
   ],
   vite: {
     resolve: {
       alias: {
+        "@dinkuskit/commerce/admin": fileURLToPath(new URL("./.artifacts/source-deps/commerce/src/admin/index.ts", import.meta.url)),
         "@dinkuskit/commerce": commerceEntry,
         "@dinkuskit/inventory": inventoryEntry,
       },

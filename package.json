@@ -15,7 +15,7 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "commit": "3f20fe96d5b3104c4b599e669d18f54fd8ab2587"
+        "commit": "81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06"
       }
     }
   },
