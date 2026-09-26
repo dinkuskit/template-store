@@ -19,9 +19,8 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   expect(setupResponse.ok()).toBe(true);
 
   await page.goto("/");
-  await expect(page.locator('[data-dinkus-block="page-hero"]')).toBeVisible();
-  await expect(page.locator('[data-dinkus-block="fact-rail"]')).toBeVisible();
-  const heroAction = page.locator(".dinkus-page-hero__action").first();
+  await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");
+  const heroAction = page.locator(".home-opener__primary");
   await expect(heroAction).toHaveText("Shop the collection");
   await expect(heroAction).toHaveCSS("color", "rgb(255, 254, 251)");
   await expect(heroAction).toHaveCSS("background-color", "rgb(23, 32, 51)");
@@ -97,7 +96,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
   const factRailOverflow = await page
-    .locator('[data-dinkus-block="fact-rail"]')
+    .locator(".home-opener__facts")
     .evaluate((element) => element.scrollWidth > element.clientWidth);
   expect(horizontalOverflow).toBe(false);
   expect(factRailOverflow).toBe(false);
@@ -113,7 +112,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
     `${JSON.stringify(
       {
         project,
-        blocks: ["dinkus.page-hero", "dinkus.fact-rail"],
+        blocks: ["home_opener"],
         commerceSku: "DINKUS-DEMO-001",
         inventorySku: "dinkus-inventory-sku-demo",
         sequence: ["8", "5", "8"],

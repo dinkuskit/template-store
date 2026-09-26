@@ -1,0 +1,42 @@
+---
+import { getEmDashCollection, isSafeHref, sanitizeHref } from "emdash";
+import type { BlockComponentProps, BlockValue } from "emdash/ui";
+
+const { value } = Astro.props as BlockComponentProps<BlockValue & { source?: string; limit?: number }>;
+const source = typeof value.source === "string" && /^[a-z][a-z0-9_-]{0,62}$/u.test(value.source) ? value.source : "";
+const requestedLimit = Number.isInteger(value.limit) ? Number(value.limit) : 1;
+const limit = Math.max(1, Math.min(24, requestedLimit));
+const result = source ? await getEmDashCollection(source, { status: "published", limit }) : { entries: [] };
+const records = result.entries as Array<{ data?: unknown }>;
+function textField(record: Record<string, unknown>, key: string): string {
+  return typeof record[key] === "string" ? record[key] as string : "";
+}
+function imageValue(raw: unknown): { src: string; alt: string } | null {
+  const record = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : null;
+  const media = record?.$media && typeof record.$media === "object" ? record.$media as Record<string, unknown> : null;
+  const source = typeof raw === "string" ? raw : record?.src ?? record?.url ?? media?.url;
+  if (typeof source !== "string" || !isSafeHref(source) || /^(mailto:|tel:)/iu.test(source)) return null;
+  const alt = typeof record?.alt === "string" ? record.alt : "";
+  return { src: source, alt };
+}
+const cards = records.flatMap((entry) => {
+  if (!entry.data || typeof entry.data !== "object" || Array.isArray(entry.data)) return [];
+  const data = entry.data as Record<string, unknown>;
+  const title = textField(data, "title");
+  const text = textField(data, "text");
+  const image = imageValue(data.image);
+  const link = textField(data, "link");
+  const href = isSafeHref(link) ? sanitizeHref(link) : null;
+  return [{ title, text, image, href }];
+});
+---
+<section class="blocks-query-card" data-dinkus-block="query-card" aria-label="Published editorial records">
+  {cards.map((card) => <article class="blocks-query-card__item">
+    {card.image && <img src={card.image.src} alt={card.image.alt || card.title} loading="lazy" />}
+    <h2>{card.href ? <a href={card.href}>{card.title}</a> : card.title}</h2>
+    {card.text && <p>{card.text}</p>}
+  </article>)}
+</section>
+<style>
+  .blocks-query-card{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem;margin:2rem 0}.blocks-query-card__item{padding:1rem;border:1px solid var(--store-line);border-radius:.75rem;background:var(--store-surface)}.blocks-query-card img{display:block;width:100%;max-height:16rem;object-fit:cover}.blocks-query-card h2{font-size:1.25rem}.blocks-query-card a{color:inherit;text-underline-offset:.2em}.blocks-query-card p{color:var(--store-muted);line-height:1.55}
+</style>

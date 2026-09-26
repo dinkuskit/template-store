@@ -21,12 +21,50 @@ export interface Merchandise {
   terms?: Record<string, TaxonomyTerm[]>;
 }
 
+export interface PageLayoutHomeOpenerV1Block {
+  _type: "home_opener";
+  _version: 1;
+  _key: string;
+  "eyebrow"?: string | null;
+  "headline": string;
+  "deck"?: string | null;
+  "primary_label"?: string | null;
+  "primary_href"?: string | null;
+  "secondary_label"?: string | null;
+  "secondary_href"?: string | null;
+  "facts"?: { "label": string; "value": string }[] | null;
+}
+
+export type PageLayoutHomeOpenerBlock = PageLayoutHomeOpenerV1Block;
+
+export interface PageLayoutRichTextV1Block {
+  _type: "rich_text";
+  _version: 1;
+  _key: string;
+  "content"?: PortableTextBlock[] | null;
+}
+
+export type PageLayoutRichTextBlock = PageLayoutRichTextV1Block;
+
+export interface PageLayoutQueryCardV1Block {
+  _type: "query_card";
+  _version: 1;
+  _key: string;
+  "source": string;
+  "limit": number;
+}
+
+export type PageLayoutQueryCardBlock = PageLayoutQueryCardV1Block;
+
+export type PageLayoutBlock = PageLayoutHomeOpenerBlock | PageLayoutRichTextBlock | PageLayoutQueryCardBlock;
+
 export interface Page {
   id: string;
   slug: string | null;
   status: string;
   title: string;
   content?: PortableTextBlock[];
+  layout?: PageLayoutBlock[];
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date | null;

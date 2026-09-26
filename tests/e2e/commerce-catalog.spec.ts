@@ -78,7 +78,7 @@ test("merchant product prices drive public listing and survive an admin reload",
   await context.addCookies([{ name: "emdash-edit-mode", value: "true", url: new URL(page.url()).origin }]);
   const editPage = await context.newPage();
   await editPage.goto("/");
-  await expect(editPage.locator(".emdash-inline-editor")).toBeVisible();
+  await expect(editPage.getByRole("checkbox", { name: "Edit mode" })).toBeChecked();
   await expect(editPage.locator(`[data-commerce-product="${id}"] [data-sale-price]`)).toHaveText("$18.00");
   await editPage.screenshot({ path: resolve(root, "public-edit.png"), fullPage: true, animations: "disabled" });
   await editPage.close();

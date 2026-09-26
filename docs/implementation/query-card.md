@@ -1,8 +1,9 @@
 # Query card: current editorial records on a page
 
-The current Blocks pin already registers `dinkus.query-card` with EmDash.
-No new renderer, route, seeded collection, or package is needed here. The starter
-proves the existing integration, not a second implementation of Blocks.
+This document records the existing Portable Text `dinkus.query-card` plugin
+integration. The first-class `query_card` page-layout block is a separate
+site-owned renderer; see [the blocks transition](upstream-blocks-transition.md).
+Both remain supported during migration.
 
 ## Shop-owner operation
 

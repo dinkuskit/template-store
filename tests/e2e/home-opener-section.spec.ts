@@ -218,6 +218,19 @@ test("home opener section copies, edits apart from the library, publishes, and r
   try {
     await openHomeEditor(adminPage);
     const originalHome = await readHomeEntry(adminPage);
+    if (Array.isArray(originalHome.data.layout) && originalHome.data.layout.length > 0) {
+      const legacy = await adminPage.request.put(
+        `/_emdash/api/content/pages/${originalHome.id}?locale=en`,
+        { headers: { "X-EmDash-Request": "1" }, data: { data: { ...originalHome.data, layout: [] } } },
+      );
+      expect(legacy.ok(), await legacy.text()).toBe(true);
+      const publishedLegacy = await adminPage.request.post(
+        `/_emdash/api/content/pages/${originalHome.id}/publish?locale=en`,
+        { headers: { "X-EmDash-Request": "1" } },
+      );
+      expect(publishedLegacy.ok(), await publishedLegacy.text()).toBe(true);
+      await adminPage.reload();
+    }
     await expect(pluginBlocks(adminPage, "Page Hero")).toHaveCount(1);
     await expect(pluginBlocks(adminPage, "Fact Rail")).toHaveCount(1);
 
@@ -256,8 +269,8 @@ test("home opener section copies, edits apart from the library, publishes, and r
     }).toPass({ timeout: 20_000 });
     await expect(page.getByRole("heading", { name: libraryHeadline })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: originalHeadline })).toBeVisible();
-    await expect(page.locator('[data-dinkus-block="page-hero"]')).toHaveCount(1);
-    await expect(page.locator('[data-dinkus-block="fact-rail"]')).toHaveCount(1);
+    await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText(originalHeadline);
+    await expect(page.locator('.home-opener__facts')).toBeVisible();
     const horizontalOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
     );
