@@ -1,0 +1,90 @@
+---
+import type { ManagedProductAvailability } from "../managed-product-availability/types.js";
+import type { UnmanagedProductSellability } from "../unmanaged-product-sellability/types.js";
+import { categoryAnchor, collectionPath, productPath, type MerchCollection } from "./merch-catalog.js";
+
+interface Props {
+  collections: readonly MerchCollection[];
+  managed: ManagedProductAvailability;
+  unmanaged: UnmanagedProductSellability;
+  collectionOnly?: boolean;
+}
+const { collections, managed, unmanaged, collectionOnly = false } = Astro.props;
+const manualLabel: Record<string, string> = {
+  "in-stock": "In stock",
+  "out-of-stock": "Out of stock",
+  "available-on-backorder": "Available on backorder",
+  "availability-unavailable": "Availability unavailable",
+  "low-stock": "Low stock",
+};
+---
+<section class="merch-catalog" aria-labelledby={collectionOnly ? undefined : "catalog-title"} aria-label={collectionOnly ? "Collection products" : undefined} data-merch-catalog>
+  {!collectionOnly && <div class="catalog-heading">
+    <div>
+      <p class="catalog-kicker">The collection</p>
+      <h2 id="catalog-title">Merchandise</h2>
+      <p>Browse the essentials. Availability comes from Commerce and Inventory where connected; previews cannot be purchased.</p>
+    </div>
+    <span class="catalog-count">{collections.reduce((total, group) => total + group.items.length, 0)} styles</span>
+  </div>}
+  {!collectionOnly && <nav class="collection-nav" aria-label="Merchandise collections" data-collection-nav>
+    {collections.map((collection) => <a href={collectionPath(collection.name)}>{collection.name}</a>)}
+  </nav>}
+  {collections.length === 0 ? (
+    <p class="catalog-empty" role="status">No merchandise is published. Add items in EmDash admin to populate this catalog.</p>
+  ) : collections.map((collection) => (
+    <section class="collection" id={categoryAnchor(collection.name)} aria-label={`${collection.name} collection`} data-collection={collection.name}>
+      {!collectionOnly && <div class="collection-heading"><h3><a href={collectionPath(collection.name)}>{collection.name}</a></h3><span>{collection.items.length} {collection.items.length === 1 ? "style" : "styles"}</span></div>}
+      <div class="merch-grid">
+        {collection.items.map((item) => {
+          const source = item.availabilitySource;
+          const status = source === "managed"
+            ? `${managed.inventory.available} available`
+            : source === "unmanaged"
+              ? manualLabel[unmanaged.storefront.status]
+              : "Preview only · not purchasable";
+          const destination = productPath(item.id)!;
+          return <article class="merch-card" data-merch-item={item.id} data-merch-source={source}>
+            <div class={`merch-card__visual merch-card__visual--${item.illustration}`}><img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} loading="lazy" width="640" height="480" /></div>
+            <div class="merch-card__body">
+              <p class="merch-card__category">{item.category}</p>
+              {collectionOnly ? <h2>{item.title}</h2> : <h4>{item.title}</h4>}
+              <p class="merch-card__description">{item.description}</p>
+              {source === "managed" && <p class="merch-card__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
+              {source === "unmanaged" && <p class="merch-card__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
+              <p class="merch-card__status" data-merch-status>{status}</p>
+              <a href={destination} aria-label={`View ${item.title} details`}>View details <span aria-hidden="true">↗</span></a>
+              {source !== "preview" && <a class="merch-card__availability" href={source === "managed" ? "/#managed-product" : "/#unmanaged-product"} aria-label={`View availability for ${item.title}`}>View availability</a>}
+            </div>
+          </article>;
+        })}
+      </div>
+    </section>
+  ))}
+</section>
+<style>
+  .merch-catalog{width:min(70rem,calc(100% - 2rem));margin:4rem auto 2rem}
+  .catalog-heading,.collection-heading{display:flex;align-items:end;justify-content:space-between;gap:1rem}
+  .catalog-heading{padding-bottom:1.5rem;border-bottom:1px solid var(--store-line)}
+  .catalog-kicker,.merch-card__category{margin:0 0 .5rem;color:var(--store-muted);font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  .catalog-heading h2{margin:0;font-size:clamp(2.3rem,5vw,4.5rem);letter-spacing:-.05em;line-height:1}
+  .catalog-heading p:last-child{max-width:40rem;color:var(--store-muted);line-height:1.6}
+  .catalog-count,.collection-heading span{color:var(--store-muted);white-space:nowrap}
+  .collection-nav{display:flex;flex-wrap:wrap;gap:.6rem;padding:1.2rem 0 2rem}
+  .collection-nav a{padding:.65rem 1.1rem;border:1px solid var(--store-line);border-radius:99rem;color:inherit;text-decoration:none;font-weight:700;background:var(--store-surface)}
+  .collection-nav a:hover{background:#e9e6dc}
+  .collection{scroll-margin-top:1.5rem;margin:0 0 3.5rem}
+  .collection-heading{margin-bottom:1rem}.collection-heading a{color:inherit;text-decoration-thickness:1px;text-underline-offset:.2em}.collection-heading h3{margin:0;font-size:1.7rem;letter-spacing:-.03em}
+  .merch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+  .merch-card{min-width:0;overflow:hidden;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface)}
+  .merch-card__visual{aspect-ratio:4/3;background:#e9e8df;overflow:hidden}
+  .merch-card__visual--hoodie{background:#dce2df}.merch-card__visual--cap{background:#e6ddd1}.merch-card__visual--beanie{background:#e2e1d6}
+  .merch-card__visual img{display:block;width:100%;height:100%;object-fit:cover}
+  .merch-card__body{padding:1.3rem}.merch-card h4,.merch-card h2{margin:0;font-size:1.4rem;line-height:1.15}.merch-card__description{min-height:3.5rem;color:var(--store-muted);line-height:1.5}
+  .merch-card__price{display:flex;gap:.5rem;align-items:baseline;margin:1rem 0 0}.merch-card__price s{color:var(--store-muted)}
+  .merch-card__status{font-weight:800}.merch-card a{display:inline-block;margin-top:.2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
+  .merch-card__availability{margin-left:1rem}.merch-card__preview{display:block;color:var(--store-muted);font-size:.85rem}
+  .catalog-empty{padding:2rem;border:1px dashed var(--store-line)}
+  @media(max-width:48rem){.merch-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:35rem){.catalog-heading{display:block}.merch-grid{grid-template-columns:1fr}.merch-card__description{min-height:0}}
+</style>

@@ -3,7 +3,7 @@
   "version": "1",
   "meta": {
     "name": "DinkusKit store starter",
-    "description": "Neutral managed and unmanaged product availability proof",
+    "description": "Neutral classic merchandise catalog with managed and unmanaged availability proof",
     "author": "DinkusKit contributors"
   },
   "collections": [
@@ -11,7 +11,10 @@
       "slug": "pages",
       "label": "Pages",
       "labelSingular": "Page",
-      "supports": ["drafts", "revisions"],
+      "supports": [
+        "drafts",
+        "revisions"
+      ],
       "fields": [
         {
           "slug": "title",
@@ -23,6 +26,40 @@
           "slug": "content",
           "label": "Content",
           "type": "portableText"
+        }
+      ]
+    },
+    {
+      "slug": "merchandise",
+      "label": "Merchandise",
+      "labelSingular": "Merch item",
+      "supports": [
+        "drafts",
+        "revisions"
+      ],
+      "fields": [
+        {
+          "slug": "title",
+          "label": "Display title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "category",
+          "label": "Collection name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "description",
+          "label": "Short description",
+          "type": "string"
+        },
+        {
+          "slug": "visual_label",
+          "label": "Illustration style (TEE, HOODIE, CAP, or BEANIE)",
+          "type": "string",
+          "required": true
         }
       ]
     }
@@ -39,13 +76,13 @@
             {
               "_type": "dinkus.page-hero",
               "_key": "store-hero",
-              "eyebrow": "Blocks + Commerce + Inventory",
-              "headline": "A storefront that proves its sources",
-              "deck": "CMS composition and transactional stock truth meet on one neutral product surface.",
-              "primaryLabel": "Inspect the managed product",
-              "primaryHref": "#managed-product",
-              "secondaryLabel": "Inspect unmanaged sellability",
-              "secondaryHref": "#unmanaged-product"
+              "eyebrow": "A classic merch catalog",
+              "headline": "Everyday essentials, clearly presented",
+              "deck": "Explore tees, hoodies, and hats. Two connected styles show real availability; the rest are previews, not products for sale.",
+              "primaryLabel": "Shop the collection",
+              "primaryHref": "#catalog-title",
+              "secondaryLabel": "See availability proof",
+              "secondaryHref": "#managed-product"
             },
             {
               "_type": "dinkus.fact-rail",
@@ -70,6 +107,63 @@
               ]
             }
           ]
+        }
+      }
+    ],
+    "merchandise": [
+      {
+        "id": "everyday-tee",
+        "slug": "everyday-tee",
+        "status": "published",
+        "data": {
+          "title": "Everyday Tee",
+          "category": "Tees",
+          "description": "A clean, versatile tee for the everyday rotation.",
+          "visual_label": "TEE"
+        }
+      },
+      {
+        "id": "boxy-tee-preview",
+        "slug": "boxy-tee-preview",
+        "status": "published",
+        "data": {
+          "title": "Boxy Tee",
+          "category": "Tees",
+          "description": "An easy silhouette with a relaxed feel.",
+          "visual_label": "TEE"
+        }
+      },
+      {
+        "id": "pullover-hoodie-preview",
+        "slug": "pullover-hoodie-preview",
+        "status": "published",
+        "data": {
+          "title": "Pullover Hoodie",
+          "category": "Hoodies",
+          "description": "A comfortable layer for cooler days.",
+          "visual_label": "HOODIE"
+        }
+      },
+      {
+        "id": "canvas-cap",
+        "slug": "canvas-cap",
+        "status": "published",
+        "data": {
+          "title": "Canvas Cap",
+          "category": "Hats",
+          "description": "A simple finishing touch for casual days.",
+          "visual_label": "CAP"
+        }
+      },
+      {
+        "id": "ribbed-beanie-preview",
+        "slug": "ribbed-beanie-preview",
+        "status": "published",
+        "data": {
+          "title": "Ribbed Beanie",
+          "category": "Hats",
+          "description": "A soft, close-fitting cold-weather staple.",
+          "visual_label": "BEANIE"
         }
       }
     ]

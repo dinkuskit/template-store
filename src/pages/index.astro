@@ -1,7 +1,9 @@
 ---
-import { getEmDashEntry, type PortableTextBlock } from "emdash";
+import { getEmDashCollection, getEmDashEntry, type PortableTextBlock } from "emdash";
 import { PortableText } from "emdash/ui";
 
+import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
+import { buildMerchCollections, publicMerchCollections } from "../features/store-shell/merch-catalog.js";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
 import { managedProductAvailabilityRuntime } from "../features/managed-product-availability/index.js";
 import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
@@ -14,10 +16,12 @@ import "../features/store-shell/global.css";
 
 const { entry: page } = await getEmDashEntry("pages", "home");
 const content = page?.data.content as PortableTextBlock[] | undefined;
-const [availability, unmanaged] = await Promise.all([
+const [availability, unmanaged, merchandise] = await Promise.all([
   managedProductAvailabilityRuntime.read(),
   unmanagedProductSellabilityRuntime.read(),
+  getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" }),
 ]);
+const collections = publicMerchCollections(buildMerchCollections(merchandise.entries), availability.price.listable, unmanaged.price.listable);
 ---
 
 <!doctype html>
@@ -46,16 +50,9 @@ const [availability, unmanaged] = await Promise.all([
           </section>
         )
       }
-      {
-        availability.price.listable ? (
-          <ManagedProductAvailability availability={availability} />
-        ) : null
-      }
-      {
-        unmanaged.storefront.listable ? (
-          <UnmanagedProductSellability availability={unmanaged} />
-        ) : null
-      }
+      <MerchCatalog collections={collections} managed={availability} unmanaged={unmanaged} />
+      {availability.price.listable && <ManagedProductAvailability availability={availability} />}
+      {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
     </main>
     <footer class="store-footer">
       Transactional facts remain in Commerce and Inventory; EmDash owns the

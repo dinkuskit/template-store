@@ -22,10 +22,14 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   await expect(page.locator('[data-dinkus-block="page-hero"]')).toBeVisible();
   await expect(page.locator('[data-dinkus-block="fact-rail"]')).toBeVisible();
   const heroAction = page.locator(".dinkus-page-hero__action").first();
-  await expect(heroAction).toHaveText("Inspect the managed product");
+  await expect(heroAction).toHaveText("Shop the collection");
   await expect(heroAction).toHaveCSS("color", "rgb(255, 254, 251)");
   await expect(heroAction).toHaveCSS("background-color", "rgb(23, 32, 51)");
   await expect(page.locator("[data-cms-composition]")).toBeVisible();
+  await expect(page.locator("[data-collection-nav] a")).toHaveText(["Hats", "Hoodies", "Tees"]);
+  await expect(page.locator("[data-merch-item=everyday-tee] [data-merch-status]")).toHaveText("8 available");
+  await expect(page.locator("[data-merch-item=pullover-hoodie-preview] [data-merch-status]")).toHaveText("Preview only · not purchasable");
+  await expect(page.locator("[data-merch-source=preview] a")).toHaveCount(3);
   await expect(page.locator("[data-commerce-sku]")).toHaveText(
     "DINKUS-DEMO-001",
   );
@@ -57,6 +61,11 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   expect(changedResponse.ok()).toBe(true);
   await page.reload();
   await expect(page.locator("[data-stock-value]")).toHaveText("5");
+  await expect(page.locator("[data-merch-item=everyday-tee] [data-merch-status]")).toHaveText("5 available");
+  await page.getByRole("link", { name: "View Everyday Tee details" }).click();
+  await expect(page.locator("[data-product-status]")).toHaveText("5 available");
+  await page.screenshot({ path: resolve(screenshotRoot, "product-changed.png"), fullPage: true });
+  await page.goto("/");
   const changedVersion = await page
     .locator("[data-managed-product]")
     .getAttribute("data-stock-version");
@@ -75,6 +84,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   expect(restoredResponse.ok()).toBe(true);
   await page.reload();
   await expect(page.locator("[data-stock-value]")).toHaveText("8");
+  await expect(page.locator("[data-merch-item=everyday-tee] [data-merch-status]")).toHaveText("8 available");
   const restoredVersion = await page
     .locator("[data-managed-product]")
     .getAttribute("data-stock-version");

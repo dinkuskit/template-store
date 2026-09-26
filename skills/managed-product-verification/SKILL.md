@@ -26,6 +26,8 @@ acceptance.
 The full verifier must show:
 
 - real `dinkus.page-hero` and `dinkus.fact-rail` block roots;
+- EmDash Merchandise-backed Tees, Hoodies, and Hats navigation and a responsive
+  grid whose preview cards are plainly non-purchasable;
 - Commerce SKU `DINKUS-DEMO-001` linked to Inventory identity
   `dinkus-inventory-sku-demo`;
 - availability sequence `8 -> 5 -> 8` with monotonically increasing Inventory

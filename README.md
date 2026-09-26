@@ -5,8 +5,13 @@ Commerce, and Inventory.
 
 ## Current proof
 
-The first vertical is deliberately smaller than checkout. One neutral product
-page proves:
+The classic catalog first slice adds EmDash-managed merchandise entries and
+collection navigation for tees, hoodies, and hats, with collection and individual product pages. The hero and product grid are
+neutral; preview cards say they are not purchasable. Two connected styles carry
+real availability in compact summaries below the grid; card availability links jump to those
+summaries, while detail links open product pages, and technical facts remain available in expandable details. Other
+styles are editorial previews. The underlying
+availability vertical remains deliberately smaller than checkout:
 
 ```text
 EmDash composition -> Dinkus Blocks
@@ -20,11 +25,17 @@ EmDash composition -> Dinkus Blocks
 The browser verifier observes an opening managed quantity of eight, applies a
 real Inventory adjustment to five, then restores eight. It also observes the
 unmanaged product default to In stock, then Out of stock, Available on
-backorder, and back to In stock, with no quantity. Public home shows Regular
-`$12.00` (Sale strikes Regular). An unpriced draft stays in EmDash admin and
-off `/`. Visual Regular/Sale admin boxes, cart, checkout, payments, shipping,
-deployment, persisted Manage Stock toggle, and production persistence are not
-claimed yet.
+backorder, and back to In stock, with no quantity. Edit the hero in EmDash Pages → home, and edit names, collection names,
+descriptions, and illustration styles in Merchandise. Connected status is reserved
+for the exact seeded Everyday Tee and Canvas Cap entry IDs; all other entries
+are non-purchasable previews.
+The two connected Commerce identities, Regular/Sale prices, and availability are
+owned by Commerce/Inventory, not by page content. Connected catalog cards and
+product pages show Commerce prices only when Regular exists. The unpriced Commerce
+draft stays off the public home; editorial preview entries remain explicitly
+non-purchasable and have no invented prices. Visual Regular/Sale admin boxes,
+cart, checkout, payments, shipping, deployment, persisted Manage Stock toggle,
+and production persistence are not claimed yet.
 
 ## Development
 

@@ -13,7 +13,7 @@ const child = spawn(
     "--host",
     "127.0.0.1",
     "--port",
-    "4321",
+    process.env.DINKUS_E2E_PORT ?? "4321",
     "--ignore-lock",
   ],
   {

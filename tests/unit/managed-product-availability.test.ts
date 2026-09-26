@@ -10,7 +10,7 @@ describe("managed product availability", () => {
 
     const initial = await runtime.read();
     expect(initial.product).toMatchObject({
-      name: "Dinkus Field Kit",
+      name: "Everyday Tee",
       sku: "DINKUS-DEMO-001",
       state: "draft",
     });

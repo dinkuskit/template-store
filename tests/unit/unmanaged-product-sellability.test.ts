@@ -15,7 +15,7 @@ describe("unmanaged product sellability", () => {
     const initial = await runtime.read();
     expect(initial.product).toMatchObject({
       itemId: UNMANAGED_PRODUCT_ITEM_ID,
-      name: "Dinkus Field Notes",
+      name: "Canvas Cap",
       sku: UNMANAGED_PRODUCT_SKU,
       state: "draft",
       stockMode: "unmanaged",

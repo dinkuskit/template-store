@@ -5,7 +5,7 @@ import type {
 import type { PublicPriceView } from "../store-shell/index.js";
 
 export const UNMANAGED_PRODUCT_ITEM_ID = "dinkus-template-unmanaged-product";
-export const UNMANAGED_PRODUCT_NAME = "Dinkus Field Notes";
+export const UNMANAGED_PRODUCT_NAME = "Canvas Cap";
 export const UNMANAGED_PRODUCT_SKU = "DINKUS-DEMO-UNMANAGED";
 export const UNPRICED_PRODUCT_ITEM_ID = "dinkus-template-unpriced-product";
 export const UNPRICED_PRODUCT_NAME = "Dinkus Unpriced Draft";
