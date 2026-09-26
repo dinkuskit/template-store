@@ -60,9 +60,9 @@ describe("managed product availability", () => {
       version: "3",
     });
     expect(restored.provenance).toEqual({
-      blocks: "d3a73eea94c8d9a7d4b6609cc5e2f71134520ae5",
+      blocks: "fe03bfac91798ac0b411b952fe23c26afefbf570",
       commerce: "3f20fe96d5b3104c4b599e669d18f54fd8ab2587",
-      inventory: "4f1bdfc85964fc41fe466336784af62261384679",
+      inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
     });
   });
 
