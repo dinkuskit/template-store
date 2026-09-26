@@ -25,6 +25,15 @@ through an `index.ts` entry.
 | Unmanaged manual availability | Open `/` after EmDash setup. Public panel `#unmanaged-product` / `[data-unmanaged-product]`. A human reaches the same product from admin by editing the page-hero secondary CTA on Pages `home` without a code change. Manual status itself is Commerce-owned (`catalog-items/set-manual-availability`); the playground POST is the local stand-in until Commerce ships visual admin UI. | POST `/api/proof/unmanaged-availability` with `{ catalogItemId: "dinkus-template-unmanaged-product", status }` cycling `out-of-stock` → `available-on-backorder` → `in-stock`. Proof mode only. | `[data-unmanaged-sku]` is `DINKUS-DEMO-UNMANAGED`. Default `[data-availability-status]=in-stock` and `[data-sellable]=true` with `[data-quantity-shown]=never` and no `[data-stock-value]` inside the panel. Status then becomes `out-of-stock` / not sellable, `available-on-backorder` / sellable, then `in-stock` / sellable. Quantity remains absent. Admin before/after screenshots of Pages `home` stay operable. |
 | Public Regular / Sale and unpriced hide | Open `/` after EmDash setup. Public panels `[data-managed-product]` and `[data-unmanaged-product]`. Admin Pages `home` remains operable. | Observe public prices. No POST. Proof mode not required. | Managed `[data-regular-price]` is `$12.00` with no sale. Unmanaged `[data-regular-price]` is `$12.00` struck through and `[data-sale-price]` is `$10.00`. `DINKUS-DEMO-UNPRICED` is absent on `/`. Admin Pages `home` still opens. |
 
+### Query card editorial list
+
+| Journey | How to reach | Proof action | Observable success |
+| --- | --- | --- | --- |
+| Current editorial records | Create a collection with title, text, image URL, and link fields in EmDash admin; open Pages home and insert `/query` → Query Card with that Source and Limit. | `tests/e2e/query-card.spec.ts` drives real admin insertion and publication, adds a published record and a draft through authenticated APIs, and reloads a separate anonymous public page on desktop/mobile. | One card becomes two without republishing the page; image, title, text, and safe link render; draft stays absent. Admin lists the draft; public Edit mode hydrates the plugin placeholder. Original Home is restored. `bin/verify-web full` owns the proof. |
+
+See [operator steps and proof boundaries](docs/implementation/query-card.md).
+No seed collection, new route, price, stock, cart, filters, or pagination is added.
+
 ## Boundary rules
 
 - No template file imports a Dinkus package feature internal. Pre-release

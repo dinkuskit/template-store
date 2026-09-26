@@ -74,6 +74,13 @@ pnpm exec emdash seed --database=.artifacts/dev/content.db --uploads-dir=.artifa
 
 Restart and confirm Sections shows Home opener. Do not use `update`.
 
+## Editorial query cards
+
+A shop owner can insert Query Card from the Pages editor to list published
+records from one collection. New published records appear on reload; drafts
+stay off the page. See [the admin steps and desktop/mobile proof](docs/implementation/query-card.md).
+This does not replace product routes or add shopping controls.
+
 ## Development
 
 Requires Node `22.23.2` or another compatible Node 22 release and pnpm 11.

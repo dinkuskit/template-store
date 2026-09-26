@@ -50,6 +50,10 @@ on the verified real page.
 - EmDash Merchandise entries render grouped catalog cards; category names link
   to collection pages, and every card links to its product page. The card status reads the connected runtime or
   says preview only; it never stores an editorial stock quantity.
+- A shop owner may insert Query Card in Pages home to list current published
+  editorial records from one collection: image, title, text, and safe link.
+  Adding a published record updates the list without republishing the page.
+  Drafts stay private. This does not replace product or collection routes.
 - Dinkus Blocks render CMS composition through their documented classes,
   attributes, and theme tokens.
 - Card View availability links target focusable, visibly highlighted summaries.
