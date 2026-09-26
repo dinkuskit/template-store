@@ -37,6 +37,25 @@ non-purchasable and have no invented prices. Visual Regular/Sale admin boxes,
 cart, checkout, payments, shipping, deployment, persisted Manage Stock toggle,
 and production persistence are not claimed yet.
 
+## Upgrade an initialized local starter
+
+A database initialized before the Merchandise collection was added does **not**
+automatically receive that collection when the source or seed file changes. Stop
+the dev server, back up the existing SQLite database, then apply the new seed
+with conflict handling set to `skip`:
+
+```bash
+sqlite3 .artifacts/dev/content.db ".backup .artifacts/dev/pre-merchandise-backup.db"
+pnpm exec emdash seed --database=.artifacts/dev/content.db --on-conflict=skip seed/seed.json
+```
+
+Use the actual SQLite path if `DINKUS_TEMPLATE_DB_URL` differs from the local
+default. `skip` preserves existing Pages, including edits, while adding the
+missing Merchandise collection and starter entries; do not use `update` to
+replace edited content. Restart the server and check Pages → home and
+Merchandise in the EmDash admin before using the catalog. This is a local
+starter migration, not a production deploy or a data migration for live stores.
+
 ## Development
 
 Requires Node `22.23.2` or another compatible Node 22 release and pnpm 11.
