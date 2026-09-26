@@ -32,6 +32,19 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
   const item = (await current.json()).data.item as { id: string; data: Record<string, unknown> };
   const original = structuredClone(item.data);
   const originalContent = original.content;
+  const orphanFactRail = {
+    _type: "dinkus.fact-rail",
+    _key: "standalone-facts",
+    facts: [{ _key: "fact", label: "Hours", value: "Open" }],
+  };
+  const orphanPreview = execFileSync(process.execPath, [resolve("scripts/migrate-home-layout.mjs")], {
+    input: JSON.stringify({ data: { item: { id: "standalone-facts-home", data: { content: [orphanFactRail] } } } }),
+    encoding: "utf8",
+  });
+  const orphanLayout = (JSON.parse(orphanPreview) as { layout: Array<Record<string, unknown>> }).layout;
+  expect(orphanLayout).toEqual([
+    { _type: "rich_text", _version: 1, _key: "legacy-rich-0", content: [orphanFactRail] },
+  ]);
   const originalLayout = original.layout as Array<Record<string, unknown>>;
   expect(Array.isArray(originalContent)).toBe(true);
   const legacyHero = (originalContent as Array<Record<string, unknown>>).find((block) => block._type === "dinkus.page-hero");

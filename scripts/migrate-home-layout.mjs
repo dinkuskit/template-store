@@ -34,8 +34,7 @@ function convert(content) {
         facts: Array.isArray(facts) ? facts.map(({ label, value }) => ({ label, value })) : [],
       });
     } else if (node._type === "dinkus.fact-rail") {
-      flushText();
-      layout.push({ _type: "home_opener", _version: 1, _key: node._key || `legacy-facts-${layout.length}`, headline: "", facts: Array.isArray(node.facts) ? node.facts.map(({ label, value }) => ({ label, value })) : [] });
+      pendingText.push(node);
     } else if (node._type === "dinkus.query-card") {
       flushText();
       const parsed = Number(node.limit);

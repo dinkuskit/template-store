@@ -52,7 +52,8 @@ entry. It groups ordinary Portable Text nodes into
 `home_opener`, and maps a Dinkus Query Card into the local `query_card`. It
 preserves the original `content`, existing layout is never overwritten, and a
 second apply is a no-op. Unknown/ordinary Portable Text is retained verbatim in
-`rich_text` blocks.
+`rich_text` blocks. Standalone or reordered fact rails stay Portable Text-compatible;
+they do not become opener cards with empty headings.
 
 For an authenticated local dev session, use the guarded API mode only after a
 verified backup:
