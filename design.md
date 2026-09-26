@@ -34,11 +34,12 @@ demonstration does not defer Inventory from launch.
 - Let a human edit the hero and merchandise titles, collection names, descriptions,
   and visual labels in EmDash admin. Preview cards explicitly say they cannot be
   purchased, and contain no purchase links.
-- Ship one seeded Home opener section: a page hero followed by a fact rail, with
-  neutral copy and no prices or stock. `/section` copies those blocks into a page.
-  The public home stays the ordinary Pages `home` content. Later library edits do
-  not change copies already inserted. Do not live-render the section with
-  `getSection()`.
+- Ship a seeded first-class Home opener block in Pages `layout`, with neutral
+  copy and no prices or stock. Each inserted/duplicated card owns independent
+  field values; there is no implicit `/section` insertion into the blocks field.
+  Keep legacy Portable Text and its `/section` content renderable during
+  migration. The site migration explicitly copies old compositions and never
+  overwrites an already-populated `layout`.
 - Give each published collection and product a browsable page with catalog/collection back links. Unpublished or missing paths return 404. Product pages use current Commerce/Inventory availability for the two exact connected IDs; previews explicitly remain non-purchasable.
 - Use neutral tees, hoodies, and hats; no site-specific branding or invented
   price, cart, checkout, shipping, coupons, bundles, or payment affordances.
@@ -61,10 +62,14 @@ on the verified real page.
 - EmDash Merchandise entries render grouped catalog cards; category names link
   to collection pages, and every card links to its product page. The card status reads the connected runtime or
   says preview only; it never stores an editorial stock quantity.
-- A shop owner may insert Query Card in Pages home to list current published
-  editorial records from one collection: image, title, text, and safe link.
-  Adding a published record updates the list without republishing the page.
-  Drafts stay private. This does not replace product or collection routes.
+- A shop owner may add a first-class Query Card to Pages `layout` to list up to
+  24 current published editorial records from one collection: image, title,
+  text, and safe link. Adding a published record updates the list without
+  republishing the page. Drafts stay private. This does not replace product or
+  collection routes or add filters, pagination, price, stock, or cart.
+- Existing Portable Text continues to render through its original renderer when
+  no first-class `layout` has been migrated. A page's populated `layout` takes
+  precedence; the previous `content` field is retained as a rollback source.
 - Dinkus Blocks render CMS composition through their documented classes,
   attributes, and theme tokens.
 - Card View availability links target focusable, visibly highlighted summaries.

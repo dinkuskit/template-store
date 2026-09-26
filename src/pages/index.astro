@@ -1,6 +1,7 @@
 ---
-import { getEmDashCollection, getEmDashEntry, type PortableTextBlock } from "emdash";
-import { PortableText } from "emdash/ui";
+import { getEmDashEntry, getEmDashCollection, type PortableTextBlock } from "emdash";
+import { Blocks, PortableText, type BlockValue } from "emdash/ui";
+import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
 
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
@@ -17,7 +18,9 @@ import {
 import "../features/store-shell/global.css";
 
 const { entry: page } = await getEmDashEntry("pages", "home");
-const content = page?.data.content as PortableTextBlock[] | undefined;
+const pageData = page ? page.data as (typeof page.data & { layout?: BlockValue[] }) : undefined;
+const layout = pageData?.layout;
+const content = pageData?.content as PortableTextBlock[] | undefined;
 const [availability, unmanaged, merchandise] = await Promise.all([
   managedProductAvailabilityRuntime.read(),
   unmanagedProductSellabilityRuntime.read(),
@@ -43,8 +46,12 @@ const collections = publicMerchCollections(buildMerchCollections(merchandise.ent
     </header>
     <main>
       {
-        content ? (
-          <div class="cms-composition" data-cms-composition>
+        layout?.length ? (
+          <div class="cms-composition" data-cms-composition data-layout="blocks">
+            <Blocks value={layout} components={pageLayoutComponents} />
+          </div>
+        ) : content?.length ? (
+          <div class="cms-composition" data-cms-composition data-layout="portable-text">
             <PortableText value={content} />
           </div>
         ) : (

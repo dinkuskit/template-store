@@ -26,6 +26,19 @@
           "slug": "content",
           "label": "Content",
           "type": "portableText"
+        },
+        {
+          "slug": "layout",
+          "label": "Layout",
+          "type": "blocks",
+          "validation": {
+            "allowedTypes": [
+              "home_opener",
+              "rich_text",
+              "query_card"
+            ],
+            "maxItems": 50
+          }
         }
       ]
     },
@@ -69,7 +82,15 @@
       "slug": "home-opener",
       "title": "Home opener",
       "description": "Copied page opener: one hero, then a short fact rail. Later edits to this library section do not change copies already inserted.",
-      "keywords": ["home", "opener", "homepage", "hero", "welcome", "introduction", "facts"],
+      "keywords": [
+        "home",
+        "opener",
+        "homepage",
+        "hero",
+        "welcome",
+        "introduction",
+        "facts"
+      ],
       "source": "theme",
       "content": [
         {
@@ -78,10 +99,10 @@
           "eyebrow": "Start here",
           "headline": "Welcome to the shop",
           "deck": "A short introduction the shop owner can rewrite.",
-          "primaryLabel": "Browse the shop",
-          "primaryHref": "#catalog-title",
-          "secondaryLabel": "Read the notes",
-          "secondaryHref": "#home-opener-notes"
+          "primary_label": "Browse the shop",
+          "primary_href": "#catalog-title",
+          "secondary_label": "Read the notes",
+          "secondary_href": "#home-opener-notes"
         },
         {
           "_type": "dinkus.fact-rail",
@@ -123,10 +144,10 @@
               "eyebrow": "A classic merch catalog",
               "headline": "Everyday essentials, clearly presented",
               "deck": "Explore tees, hoodies, and hats. Two connected styles show real availability; the rest are previews, not products for sale.",
-              "primaryLabel": "Shop the collection",
-              "primaryHref": "#catalog-title",
-              "secondaryLabel": "See availability proof",
-              "secondaryHref": "#managed-product"
+              "primary_label": "Shop the collection",
+              "primary_href": "#catalog-title",
+              "secondary_label": "See availability proof",
+              "secondary_href": "#managed-product"
             },
             {
               "_type": "dinkus.fact-rail",
@@ -145,6 +166,34 @@
                 },
                 {
                   "_key": "fact-stock",
+                  "label": "Stock truth",
+                  "value": "Inventory + manual"
+                }
+              ]
+            }
+          ],
+          "layout": [
+            {
+              "_type": "home_opener",
+              "_version": 1,
+              "_key": "store-home-opener",
+              "eyebrow": "A classic merch catalog",
+              "headline": "Everyday essentials, clearly presented",
+              "deck": "Explore tees, hoodies, and hats. Two connected styles show real availability; the rest are previews, not products for sale.",
+              "primary_label": "Shop the collection",
+              "primary_href": "#catalog-title",
+              "secondary_label": "See availability proof",
+              "secondary_href": "#managed-product",
+              "facts": [
+                {
+                  "label": "Composition",
+                  "value": "EmDash + Blocks"
+                },
+                {
+                  "label": "Catalog",
+                  "value": "Dinkus Commerce"
+                },
+                {
                   "label": "Stock truth",
                   "value": "Inventory + manual"
                 }
@@ -211,5 +260,124 @@
         }
       }
     ]
-  }
+  },
+  "blockTypes": [
+    {
+      "slug": "home_opener",
+      "label": "Home opener",
+      "category": "Layout",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "eyebrow",
+              "label": "Eyebrow",
+              "type": "string"
+            },
+            {
+              "slug": "headline",
+              "label": "Headline",
+              "type": "string",
+              "required": true
+            },
+            {
+              "slug": "deck",
+              "label": "Introduction",
+              "type": "text"
+            },
+            {
+              "slug": "primary_label",
+              "label": "Primary link label",
+              "type": "string"
+            },
+            {
+              "slug": "primary_href",
+              "label": "Primary link URL",
+              "type": "string"
+            },
+            {
+              "slug": "secondary_label",
+              "label": "Secondary link label",
+              "type": "string"
+            },
+            {
+              "slug": "secondary_href",
+              "label": "Secondary link URL",
+              "type": "string"
+            },
+            {
+              "slug": "facts",
+              "label": "Facts",
+              "type": "repeater",
+              "validation": {
+                "subFields": [
+                  {
+                    "slug": "label",
+                    "label": "Label",
+                    "type": "string",
+                    "required": true
+                  },
+                  {
+                    "slug": "value",
+                    "label": "Value",
+                    "type": "string",
+                    "required": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rich_text",
+      "label": "Rich text",
+      "category": "Content",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "content",
+              "label": "Content",
+              "type": "portableText"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "query_card",
+      "label": "Query card",
+      "category": "Content",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "source",
+              "label": "Source collection slug",
+              "type": "string",
+              "required": true
+            },
+            {
+              "slug": "limit",
+              "label": "Maximum published records",
+              "type": "integer",
+              "required": true,
+              "validation": {
+                "min": 1,
+                "max": 24
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }

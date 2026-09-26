@@ -24,6 +24,15 @@ test("shop owner inserts a query card and published records update without page 
   const originalResponse = await admin.request.get("/_emdash/api/content/pages/home");
   expect(originalResponse.ok()).toBe(true);
   const original = (await originalResponse.json()).data.item;
+  if (Array.isArray(original.data.layout) && original.data.layout.length > 0) {
+    const legacy = await admin.request.put(`/_emdash/api/content/pages/${original.id}?locale=en`, {
+      headers, data: { data: { ...original.data, layout: [] } },
+    });
+    expect(legacy.ok(), await legacy.text()).toBe(true);
+    const publishedLegacy = await admin.request.post(`/_emdash/api/content/pages/${original.id}/publish?locale=en`, { headers });
+    expect(publishedLegacy.ok(), await publishedLegacy.text()).toBe(true);
+    await admin.reload();
+  }
   const schema = await admin.request.post("/_emdash/api/schema/collections", {
     headers, data: { slug: source, label: "Shop notices", labelSingular: "Shop notice", supports: ["drafts", "revisions"] },
   });

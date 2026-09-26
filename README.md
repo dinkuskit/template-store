@@ -89,10 +89,12 @@ Restart and confirm Sections shows Home opener. Do not use `update`.
 
 ## Editorial query cards
 
-A shop owner can insert Query Card from the Pages editor to list published
-records from one collection. New published records appear on reload; drafts
-stay off the page. See [the admin steps and desktop/mobile proof](docs/implementation/query-card.md).
-This does not replace product routes or add shopping controls.
+A shop owner can add a versioned Query Card to Pages `layout` to list at most
+24 published records from one collection. New published records appear on
+reload; drafts stay off the page. It renders only title, text, image, and a safe
+link. It adds no filters, pagination, price, stock, or cart controls. Existing
+Dinkus Portable Text Query Cards continue rendering on unmigrated content. See
+[the admin steps and proof](docs/implementation/upstream-blocks-transition.md).
 
 ## Development
 
