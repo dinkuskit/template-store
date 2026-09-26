@@ -7,7 +7,7 @@ const featureMap = readFileSync(resolve(root, "FEATURE_MAP.md"), "utf8");
 const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const expectedPins = {
   "@dinkuskit/blocks":
-    "github:dinkuskit/blocks#f197c8108de244c47d651ec16cb1f4d25b15736f",
+    "github:dinkuskit/blocks#d3a73eea94c8d9a7d4b6609cc5e2f71134520ae5",
   "@dinkuskit/inventory":
     "github:dinkuskit/inventory#4f1bdfc85964fc41fe466336784af62261384679",
 };
