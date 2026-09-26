@@ -144,10 +144,10 @@
               "eyebrow": "A classic merch catalog",
               "headline": "Everyday essentials, clearly presented",
               "deck": "Explore tees, hoodies, and hats. Two connected styles show real availability; the rest are previews, not products for sale.",
-              "primary_label": "Shop the collection",
-              "primary_href": "#catalog-title",
-              "secondary_label": "See availability proof",
-              "secondary_href": "#managed-product"
+              "primaryLabel": "Shop the collection",
+              "primaryHref": "#catalog-title",
+              "secondaryLabel": "See availability proof",
+              "secondaryHref": "#managed-product"
             },
             {
               "_type": "dinkus.fact-rail",

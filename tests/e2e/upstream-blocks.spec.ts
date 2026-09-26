@@ -34,6 +34,8 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
   const originalContent = original.content;
   const originalLayout = original.layout as Array<Record<string, unknown>>;
   expect(Array.isArray(originalContent)).toBe(true);
+  const legacyHero = (originalContent as Array<Record<string, unknown>>).find((block) => block._type === "dinkus.page-hero");
+  expect(legacyHero).toMatchObject({ primaryLabel: "Shop the collection", primaryHref: "#catalog-title", secondaryLabel: "See availability proof", secondaryHref: "#managed-product" });
   expect(originalLayout[0]?._type).toBe("home_opener");
 
   const duplicateButton = admin.getByRole("button", { name: "Duplicate block" });
@@ -166,9 +168,13 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
     expect(migrationPublished.ok(), await migrationPublished.text()).toBe(true);
     const migrated = (await (await admin.request.get(`/_emdash/api/content/pages/${item.id}`)).json()).data.item.data as Record<string, unknown>;
     expect(migrated.content).toEqual(originalContent);
-    expect((migrated.layout as Array<Record<string, unknown>>)[0]?._type).toBe("home_opener");
+    const migratedLayout = migrated.layout as Array<Record<string, unknown>>;
+    expect(migratedLayout[0]?._type).toBe("home_opener");
+    expect(migratedLayout[0]).toMatchObject({ primary_label: "Shop the collection", primary_href: "#catalog-title", secondary_label: "See availability proof", secondary_href: "#managed-product" });
     await page.goto("/");
     await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");
+    await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#catalog-title");
+    await expect(page.locator('.home-opener__actions a[href="#managed-product"]')).toHaveText("See availability proof");
 
     await writeFile(resolve(evidence, "revision-assertions.json"), JSON.stringify({
       revisionRetainedBlocks: true,

@@ -29,8 +29,8 @@ function convert(content) {
       layout.push({
         _type: "home_opener", _version: 1, _key: node._key || `legacy-opener-${layout.length}`,
         eyebrow: node.eyebrow, headline: node.headline, deck: node.deck,
-        primary_label: node.primary_label, primary_href: node.primary_href,
-        secondary_label: node.secondary_label, secondary_href: node.secondary_href,
+        primary_label: node.primary_label ?? node.primaryLabel, primary_href: node.primary_href ?? node.primaryHref,
+        secondary_label: node.secondary_label ?? node.secondaryLabel, secondary_href: node.secondary_href ?? node.secondaryHref,
         facts: Array.isArray(facts) ? facts.map(({ label, value }) => ({ label, value })) : [],
       });
     } else if (node._type === "dinkus.fact-rail") {
