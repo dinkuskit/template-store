@@ -39,7 +39,7 @@
   "dependencies": {
     "@astrojs/node": "11.0.2",
     "@astrojs/react": "6.0.1",
-    "@dinkuskit/blocks": "github:dinkuskit/blocks#f197c8108de244c47d651ec16cb1f4d25b15736f",
+    "@dinkuskit/blocks": "github:dinkuskit/blocks#d3a73eea94c8d9a7d4b6609cc5e2f71134520ae5",
     "@dinkuskit/inventory": "github:dinkuskit/inventory#4f1bdfc85964fc41fe466336784af62261384679",
     "astro": "7.1.3",
     "better-sqlite3": "12.11.1",
