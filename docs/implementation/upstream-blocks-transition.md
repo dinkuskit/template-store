@@ -68,9 +68,11 @@ The script requires the exact Home ID confirmation, refuses to replace a
 non-empty layout, updates only the existing entry's `layout` while retaining
 `content`, and verifies both fields after save. For a dry run, pipe the JSON response from
 `/_emdash/api/content/pages/home` into the script without `--apply`; it prints
-proposed `layout` JSON and performs no writes. The cookie is only read from the environment and never printed. This
-operator workflow is for a throwaway/local starter; it is not a live-site or
-production migration authorization.
+proposed `layout` JSON and performs no writes. The cookie is only read from the environment and never printed. Apply mode
+rejects non-loopback, HTTPS, path/query-bearing, and credential-bearing URLs;
+API fetches also refuse redirects. This operator workflow is for a
+throwaway/local starter; it is not a live-site or production migration
+authorization.
 
 ## Revision, rollback, and mixed-runtime boundary
 

@@ -45,6 +45,11 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
   expect(orphanLayout).toEqual([
     { _type: "rich_text", _version: 1, _key: "legacy-rich-0", content: [orphanFactRail] },
   ]);
+  expect(() => execFileSync(
+    process.execPath,
+    [resolve("scripts/migrate-home-layout.mjs"), "--apply", "--base-url=https://example.invalid"],
+    { encoding: "utf8", env: {} },
+  )).toThrow(/loopback HTTP base URL|loopback URLs/u);
   const originalLayout = original.layout as Array<Record<string, unknown>>;
   expect(Array.isArray(originalContent)).toBe(true);
   const legacyHero = (originalContent as Array<Record<string, unknown>>).find((block) => block._type === "dinkus.page-hero");
