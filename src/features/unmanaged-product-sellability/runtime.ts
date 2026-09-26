@@ -2,24 +2,32 @@ import {
   CatalogError,
   StorefrontAvailabilityError,
   createCatalogItem,
+  resolveCatalogItemPrice,
   resolveStorefrontAvailability,
   setCatalogItemManualAvailability,
+  setCatalogItemRegularPrice,
+  setCatalogItemSalePrice,
   type CatalogItemRecord,
   type StorefrontAvailabilityResolverStorage,
 } from "@dinkuskit/commerce";
 
+import { presentStorefrontPrice } from "../store-shell/index.js";
 import { UnmanagedProductSellabilityError } from "./errors.js";
 import {
   createMemoryAvailabilitySettingsStorage,
   createMemoryBackorderPolicyStorage,
   createMemoryCatalogStorage,
   createMemoryManualAvailabilityStorage,
+  createMemoryPriceStorage,
   createUnusedConfigurationStorage,
 } from "./memory-storage.js";
 import {
   UNMANAGED_PRODUCT_ITEM_ID,
   UNMANAGED_PRODUCT_NAME,
   UNMANAGED_PRODUCT_SKU,
+  UNPRICED_PRODUCT_ITEM_ID,
+  UNPRICED_PRODUCT_NAME,
+  UNPRICED_PRODUCT_SKU,
   type UnmanagedAvailabilityProof,
   type UnmanagedProductSellability,
   type UnmanagedProductSellabilityRuntime,
@@ -27,7 +35,7 @@ import {
 
 const PROVENANCE = {
   blocks: "f197c8108de244c47d651ec16cb1f4d25b15736f",
-  commerce: "b9e432b1869bae09e394f5d631aa97b6949bf2fd",
+  commerce: "3f20fe96d5b3104c4b599e669d18f54fd8ab2587",
   inventory: "4f1bdfc85964fc41fe466336784af62261384679",
 } as const;
 
@@ -71,10 +79,11 @@ function rethrow(error: unknown): never {
   throw error;
 }
 
-function present(
+async function present(
   item: CatalogItemRecord,
   storefront: UnmanagedProductSellability["storefront"],
-): UnmanagedProductSellability {
+  prices: StorefrontAvailabilityResolverStorage["prices"],
+): Promise<UnmanagedProductSellability> {
   if (item.stockManagement.mode !== "unmanaged") {
     throw new UnmanagedProductSellabilityError(
       "CATALOG_REJECTED",
@@ -87,6 +96,9 @@ function present(
       "Unmanaged storefront availability must never expose a quantity.",
     );
   }
+  const price = presentStorefrontPrice(
+    await resolveCatalogItemPrice(prices, item.itemId),
+  );
   return {
     product: {
       itemId: item.itemId,
@@ -96,6 +108,7 @@ function present(
       stockMode: "unmanaged",
     },
     storefront,
+    price,
     provenance: PROVENANCE,
   };
 }
@@ -103,9 +116,11 @@ function present(
 export function createUnmanagedProductSellabilityRuntime(): UnmanagedProductSellabilityRuntime {
   const catalog = createMemoryCatalogStorage();
   const manualAvailability = createMemoryManualAvailabilityStorage();
+  const prices = createMemoryPriceStorage();
   const storage: StorefrontAvailabilityResolverStorage = {
     catalog,
     manualAvailability,
+    prices,
     backorderPolicies: createMemoryBackorderPolicyStorage(),
     configurations: createUnusedConfigurationStorage(),
     settings: createMemoryAvailabilitySettingsStorage(),
@@ -135,6 +150,33 @@ export function createUnmanagedProductSellabilityRuntime(): UnmanagedProductSell
           now,
         },
       );
+      await setCatalogItemRegularPrice(
+        { catalog, prices },
+        {
+          catalogItemId: result.item.itemId,
+          amount: { currency: "USD", minor: "1200" },
+        },
+      );
+      await setCatalogItemSalePrice(
+        { catalog, prices },
+        {
+          catalogItemId: result.item.itemId,
+          amount: { currency: "USD", minor: "1000" },
+        },
+      );
+      await createCatalogItem(
+        catalog,
+        {
+          commandId: "template-store-unpriced-catalog-v1",
+          manageStock: false,
+          name: UNPRICED_PRODUCT_NAME,
+          sku: UNPRICED_PRODUCT_SKU,
+        },
+        {
+          createId: () => UNPRICED_PRODUCT_ITEM_ID,
+          now,
+        },
+      );
       return result.item;
     } catch (error) {
       rethrow(error);
@@ -146,16 +188,34 @@ export function createUnmanagedProductSellabilityRuntime(): UnmanagedProductSell
     return bootstrapPromise;
   }
 
-  async function readAvailability(): Promise<UnmanagedProductSellability> {
-    const item = await ensureBootstrap();
+  async function readItem(
+    catalogItemId: string,
+  ): Promise<UnmanagedProductSellability> {
+    const item = await catalog.get(catalogItemId);
+    if (!item || item.recordKind !== "catalog-item") {
+      throw new UnmanagedProductSellabilityError(
+        "CATALOG_REJECTED",
+        "The unmanaged proof product is missing.",
+      );
+    }
     try {
       const storefront = await resolveStorefrontAvailability(storage, {
         catalogItemId: item.itemId,
       });
-      return present(item, storefront);
+      return present(item, storefront, prices);
     } catch (error) {
       rethrow(error);
     }
+  }
+
+  async function readAvailability(): Promise<UnmanagedProductSellability> {
+    await ensureBootstrap();
+    return readItem(UNMANAGED_PRODUCT_ITEM_ID);
+  }
+
+  async function readUnpricedDraft(): Promise<UnmanagedProductSellability> {
+    await ensureBootstrap();
+    return readItem(UNPRICED_PRODUCT_ITEM_ID);
   }
 
   async function executeAvailability(
@@ -176,6 +236,7 @@ export function createUnmanagedProductSellabilityRuntime(): UnmanagedProductSell
 
   return {
     read: readAvailability,
+    readUnpricedDraft,
     setAvailability(input) {
       const run = mutationTail.then(() => executeAvailability(input));
       mutationTail = run.then(

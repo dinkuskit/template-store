@@ -10,6 +10,9 @@ export {
   UNMANAGED_PRODUCT_ITEM_ID,
   UNMANAGED_PRODUCT_NAME,
   UNMANAGED_PRODUCT_SKU,
+  UNPRICED_PRODUCT_ITEM_ID,
+  UNPRICED_PRODUCT_NAME,
+  UNPRICED_PRODUCT_SKU,
 } from "./types.js";
 export type {
   UnmanagedAvailabilityProof,

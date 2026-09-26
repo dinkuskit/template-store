@@ -6,7 +6,7 @@ interface Props {
 }
 
 const { availability } = Astro.props;
-const { product, storefront, provenance } = availability;
+const { product, storefront, price, provenance } = availability;
 const statusLabel = {
   "in-stock": "In stock",
   "out-of-stock": "Out of stock",
@@ -27,10 +27,27 @@ const sellableLabel = storefront.sellable ? "Yes" : "No";
   data-unmanaged-product
   data-availability-status={storefront.status}
   data-sellable={storefront.sellable ? "true" : "false"}
+  data-listable={price.listable ? "true" : "false"}
 >
   <div class="unmanaged-product__intro">
     <p class="unmanaged-product__eyebrow">Unmanaged product · local proof</p>
     <h2 id="unmanaged-product-title">{product.name}</h2>
+    {
+      price.listable && price.regularText ? (
+        <p class="unmanaged-product__price" data-product-price>
+          {
+            price.saleText ? (
+              <>
+                <s data-regular-price>{price.regularText}</s>
+                <strong data-sale-price>{price.saleText}</strong>
+              </>
+            ) : (
+              <strong data-regular-price>{price.regularText}</strong>
+            )
+          }
+        </p>
+      ) : null
+    }
     <p>
       Commerce owns this product identity and its manual availability. Inventory
       is not consulted. The storefront never shows a quantity for unmanaged
@@ -113,6 +130,17 @@ const sellableLabel = storefront.sellable ? "Yes" : "No";
     margin: 0;
     font-size: clamp(2rem, 5vw, 3.5rem);
     line-height: 1;
+  }
+
+  .unmanaged-product__price {
+    margin: 0.75rem 0 0;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 700;
+  }
+
+  .unmanaged-product__price s {
+    margin-right: 0.6rem;
+    color: var(--store-muted);
   }
 
   .unmanaged-product__intro > p:last-child {

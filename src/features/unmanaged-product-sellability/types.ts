@@ -2,10 +2,14 @@ import type {
   CatalogManualAvailabilityStatus,
   StorefrontAvailabilityResult,
 } from "@dinkuskit/commerce";
+import type { PublicPriceView } from "../store-shell/index.js";
 
 export const UNMANAGED_PRODUCT_ITEM_ID = "dinkus-template-unmanaged-product";
 export const UNMANAGED_PRODUCT_NAME = "Dinkus Field Notes";
 export const UNMANAGED_PRODUCT_SKU = "DINKUS-DEMO-UNMANAGED";
+export const UNPRICED_PRODUCT_ITEM_ID = "dinkus-template-unpriced-product";
+export const UNPRICED_PRODUCT_NAME = "Dinkus Unpriced Draft";
+export const UNPRICED_PRODUCT_SKU = "DINKUS-DEMO-UNPRICED";
 
 export type UnmanagedManualAvailabilityStatus = CatalogManualAvailabilityStatus;
 
@@ -23,6 +27,7 @@ export type UnmanagedProductSellability = Readonly<{
     stockMode: "unmanaged";
   }>;
   storefront: StorefrontAvailabilityResult;
+  price: PublicPriceView;
   provenance: Readonly<{
     blocks: string;
     commerce: string;
@@ -32,6 +37,7 @@ export type UnmanagedProductSellability = Readonly<{
 
 export interface UnmanagedProductSellabilityRuntime {
   read(): Promise<UnmanagedProductSellability>;
+  readUnpricedDraft(): Promise<UnmanagedProductSellability>;
   setAvailability(
     input: UnmanagedAvailabilityProof,
   ): Promise<UnmanagedProductSellability>;

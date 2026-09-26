@@ -20,9 +20,11 @@ EmDash composition -> Dinkus Blocks
 The browser verifier observes an opening managed quantity of eight, applies a
 real Inventory adjustment to five, then restores eight. It also observes the
 unmanaged product default to In stock, then Out of stock, Available on
-backorder, and back to In stock, with no quantity. Price, cart, checkout,
-payments, shipping, deployment, persisted Manage Stock toggle, and production
-persistence are not claimed yet.
+backorder, and back to In stock, with no quantity. Public home shows Regular
+`$12.00` (Sale strikes Regular). An unpriced draft stays in EmDash admin and
+off `/`. Visual Regular/Sale admin boxes, cart, checkout, payments, shipping,
+deployment, persisted Manage Stock toggle, and production persistence are not
+claimed yet.
 
 ## Development
 

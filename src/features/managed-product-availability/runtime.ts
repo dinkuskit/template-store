@@ -2,6 +2,8 @@ import {
   configureCatalogItemInventory,
   createCatalogItem,
   createStoreInventoryConfiguration,
+  resolveCatalogItemPrice,
+  setCatalogItemRegularPrice,
   type CatalogItemRecord,
   type ManagedSkuRegistration,
   type ManagedStockManagement,
@@ -24,6 +26,7 @@ import {
   type CommandPrincipal,
 } from "@dinkuskit/inventory";
 
+import { presentStorefrontPrice } from "../store-shell/index.js";
 import { ManagedProductAvailabilityError } from "./errors.js";
 import { createMemoryCommerceStorage } from "./memory-catalog-storage.js";
 import { MemoryInventoryStore } from "./memory-inventory-store.js";
@@ -45,7 +48,7 @@ const OPENING_QUANTITY = "8";
 
 const PROVENANCE = {
   blocks: "f197c8108de244c47d651ec16cb1f4d25b15736f",
-  commerce: "b9e432b1869bae09e394f5d631aa97b6949bf2fd",
+  commerce: "3f20fe96d5b3104c4b599e669d18f54fd8ab2587",
   inventory: "4f1bdfc85964fc41fe466336784af62261384679",
 } as const;
 
@@ -233,6 +236,13 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
       },
     );
     const catalogItem = catalogResult.item;
+    await setCatalogItemRegularPrice(
+      { catalog: catalogStorage, prices: commerceStorage.prices },
+      {
+        catalogItemId: catalogItem.itemId,
+        amount: { currency: "USD", minor: "1200" },
+      },
+    );
     stockManagement = catalogItem.stockManagement as ManagedStockManagement;
     const registrationResult = await configureCatalogItemInventory(
       commerceStorage,
@@ -336,6 +346,12 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
       );
     }
 
+    const price = presentStorefrontPrice(
+      await resolveCatalogItemPrice(
+        commerceStorage.prices,
+        state.catalogItem.itemId,
+      ),
+    );
     return {
       product: {
         itemId: state.catalogItem.itemId,
@@ -343,6 +359,7 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
         sku: state.catalogItem.sku,
         state: state.catalogItem.state,
       },
+      price,
       inventory: {
         inventorySkuId: state.inventorySkuId,
         poolId: state.poolId,

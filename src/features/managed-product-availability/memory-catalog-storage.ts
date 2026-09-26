@@ -2,6 +2,8 @@ import {
   catalogUniqueIndexName,
   managedSkuRegistrationClaimUniqueIndexName,
   storeInventoryConfigurationUniqueIndexName,
+  type CatalogPriceRecord,
+  type CatalogPriceStorage,
   type CatalogStorage,
   type CatalogStorageRecord,
   type ConfigureInventoryCatalogStorage,
@@ -182,8 +184,28 @@ function createMemoryClaimStorage(): ConfigureInventoryClaimStorage {
   };
 }
 
+export function createMemoryPriceStorage(): CatalogPriceStorage {
+  const records = new Map<string, CatalogPriceRecord>();
+
+  return {
+    async get(id) {
+      const record = records.get(id);
+      return record === undefined ? null : structuredClone(record);
+    },
+
+    async put(id, data) {
+      records.set(id, structuredClone(data));
+    },
+
+    async delete(id) {
+      return records.delete(id);
+    },
+  };
+}
+
 export interface MemoryCommerceStorage {
   catalog: MemoryCatalogStorage;
+  prices: CatalogPriceStorage;
   configurations: StoreInventoryConfigurationStorage;
   claims: ConfigureInventoryClaimStorage;
 }
@@ -191,6 +213,7 @@ export interface MemoryCommerceStorage {
 export function createMemoryCommerceStorage(): MemoryCommerceStorage {
   return {
     catalog: createMemoryCatalogStorage(),
+    prices: createMemoryPriceStorage(),
     configurations: createMemoryConfigurationStorage(),
     claims: createMemoryClaimStorage(),
   };

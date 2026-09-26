@@ -6,7 +6,7 @@ interface Props {
 }
 
 const { availability } = Astro.props;
-const { product, inventory, provenance } = availability;
+const { product, price, inventory, provenance } = availability;
 ---
 
 <section
@@ -16,10 +16,27 @@ const { product, inventory, provenance } = availability;
   data-managed-product
   data-stock-available={inventory.available}
   data-stock-version={inventory.version}
+  data-listable={price.listable ? "true" : "false"}
 >
   <div class="managed-product__intro">
     <p class="managed-product__eyebrow">Managed product · local proof</p>
     <h2 id="managed-product-title">{product.name}</h2>
+    {
+      price.listable && price.regularText ? (
+        <p class="managed-product__price" data-product-price>
+          {
+            price.saleText ? (
+              <>
+                <s data-regular-price>{price.regularText}</s>
+                <strong data-sale-price>{price.saleText}</strong>
+              </>
+            ) : (
+              <strong data-regular-price>{price.regularText}</strong>
+            )
+          }
+        </p>
+      ) : null
+    }
     <p>
       Commerce owns this product identity. Inventory owns the quantity shown
       beside it. No copied or fallback stock value exists in the storefront.
@@ -97,6 +114,17 @@ const { product, inventory, provenance } = availability;
     margin: 0;
     font-size: clamp(2rem, 5vw, 3.5rem);
     line-height: 1;
+  }
+
+  .managed-product__price {
+    margin: 0.75rem 0 0;
+    font-size: clamp(1.4rem, 3vw, 2rem);
+    font-weight: 700;
+  }
+
+  .managed-product__price s {
+    margin-right: 0.6rem;
+    color: var(--store-muted);
   }
 
   .managed-product__intro > p:last-child {

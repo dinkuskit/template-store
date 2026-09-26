@@ -67,6 +67,13 @@ test("admin composition and public unmanaged availability stay operable", async 
   await expect(page.locator("[data-availability-label]")).toHaveText("In stock");
   await expect(page.locator("[data-quantity-shown]")).toHaveText("never");
   await expect(
+    page.locator("[data-unmanaged-product] [data-regular-price]"),
+  ).toHaveText("$12.00");
+  await expect(
+    page.locator("[data-unmanaged-product] [data-sale-price]"),
+  ).toHaveText("$10.00");
+  await expect(page.getByText("DINKUS-DEMO-UNPRICED")).toHaveCount(0);
+  await expect(
     page.locator("[data-unmanaged-product] [data-stock-value]"),
   ).toHaveCount(0);
   await page.screenshot({

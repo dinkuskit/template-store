@@ -14,6 +14,11 @@ describe("managed product availability", () => {
       sku: "DINKUS-DEMO-001",
       state: "draft",
     });
+    expect(initial.price).toEqual({
+      listable: true,
+      regularText: "$12.00",
+      saleText: null,
+    });
     expect(initial.inventory).toMatchObject({
       inventorySkuId: "dinkus-inventory-sku-demo",
       onHand: "8",
@@ -56,7 +61,7 @@ describe("managed product availability", () => {
     });
     expect(restored.provenance).toEqual({
       blocks: "f197c8108de244c47d651ec16cb1f4d25b15736f",
-      commerce: "b9e432b1869bae09e394f5d631aa97b6949bf2fd",
+      commerce: "3f20fe96d5b3104c4b599e669d18f54fd8ab2587",
       inventory: "4f1bdfc85964fc41fe466336784af62261384679",
     });
   });
