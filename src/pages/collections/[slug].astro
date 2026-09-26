@@ -1,0 +1,48 @@
+---
+import { getEmDashCollection } from "emdash";
+import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
+import { buildMerchCollections, publicMerchCollections, collectionPath } from "../../features/store-shell/merch-catalog.js";
+import { managedProductAvailabilityRuntime } from "../../features/managed-product-availability/index.js";
+import { unmanagedProductSellabilityRuntime } from "../../features/unmanaged-product-sellability/index.js";
+import { STORE_TITLE } from "../../features/store-shell/index.js";
+import "../../features/store-shell/global.css";
+
+const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
+const [managed, unmanaged] = await Promise.all([
+  managedProductAvailabilityRuntime.read(),
+  unmanagedProductSellabilityRuntime.read(),
+]);
+const collection = publicMerchCollections(buildMerchCollections(merchandise.entries), managed.price.listable, unmanaged.price.listable).find((group) => collectionPath(group.name) === Astro.url.pathname);
+if (!collection) Astro.response.status = 404;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={collection ? `Explore ${collection.name} in the DinkusKit merchandise catalog.` : "Collection not found."} />
+    <title>{collection ? `${collection.name} | ${STORE_TITLE}` : `Collection not found | ${STORE_TITLE}`}</title>
+  </head>
+  <body>
+    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><span class="store-header__status">Local integration proof</span></header>
+    <main class="browse-page">
+      <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">{collection?.name ?? "Not found"}</span></nav>
+      {collection && managed && unmanaged ? (
+        <>
+          <h1 class="browse-title">{collection.name}</h1>
+          <p class="browse-intro">Explore the {collection.name.toLowerCase()} collection. Connected availability is live; previews cannot be purchased.</p>
+          <MerchCatalog collections={[collection]} managed={managed} unmanaged={unmanaged} collectionOnly />
+        </>
+      ) : <><h1>Collection not found</h1><p>This collection is not published or does not exist.</p><a href="/">Return to catalog</a></>}
+    </main>
+    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce and Inventory.</footer>
+  </body>
+</html>
+<style>
+  .browse-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}
+  .browse-breadcrumb{display:flex;flex-wrap:wrap;gap:.7rem;padding:2rem 0;color:var(--store-muted)}
+  .browse-breadcrumb a{color:inherit;text-underline-offset:.2em}
+  .browse-title{font-size:clamp(2.4rem,6vw,5rem);line-height:1;margin:.5rem 0}
+  .browse-intro{max-width:45rem;line-height:1.6;color:var(--store-muted)}
+  .browse-page :global(.merch-catalog){width:100%;margin:2rem 0}
+</style>

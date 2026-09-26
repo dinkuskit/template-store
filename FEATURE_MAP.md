@@ -6,11 +6,17 @@ through an `index.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.store-shell` | Neutral Astro/EmDash shell, CMS composition, document metadata, and shared page frame | `src/features/store-shell/`; `src/pages/index.astro`; `src/live.config.ts`; `seed/` | `src/features/store-shell/index.ts` | EmDash; `@dinkuskit/blocks`; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
+| `dinkus.store-shell` | Neutral Astro/EmDash shell, CMS hero, merchandise catalog, collection and product browse pages, document metadata, and shared page frame | `src/features/store-shell/`; `src/pages/index.astro`; `src/pages/collections/`; `src/pages/products/`; `src/live.config.ts`; `seed/` | `src/features/store-shell/index.ts` | EmDash; `@dinkuskit/blocks`; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 | `dinkus.managed-product-availability` | Commerce catalog identity, official Configure Inventory orchestration, Inventory registration/opening/read/adjust composition, proof adapter, proof-only HTTP action, and storefront availability panel | `src/features/managed-product-availability/`; `src/pages/api/proof/stock.ts` | `src/features/managed-product-availability/index.ts` | `@dinkuskit/commerce` package root; `@dinkuskit/inventory` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 | `dinkus.unmanaged-product-sellability` | Unmanaged Commerce catalog identity, isolated manual availability, unified storefront resolver, proof-only HTTP action, and storefront sellability panel that never contacts Inventory or shows quantity | `src/features/unmanaged-product-sellability/`; `src/pages/api/proof/unmanaged-availability.ts` | `src/features/unmanaged-product-sellability/index.ts` | `@dinkuskit/commerce` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 
 ## Storefront drivers
+
+| Journey | How to reach | Proof action | Observable success |
+| --- | --- | --- | --- |
+| Classic merchandise catalog | Open `/` after EmDash setup. Edit hero in Pages `home`; edit merchandise entries in EmDash Merchandise. | Inspect `data-collection-nav` and `data-merch-catalog` on desktop and mobile; follow collection and product detail links and back links; follow each connected card's View availability link and open its native details by keyboard. | Tees, Hoodies, and Hats group CMS entries. Connected Everyday Tee and Canvas Cap cards lead to compact, focused summaries with live status; technical authority, IDs, and provenance remain in details. Preview cards and product pages state `Preview only · not purchasable`, have no purchase link, and show no price. Missing or draft product/collection routes return 404. |
+
+### Availability proof drivers
 
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |
@@ -22,6 +28,10 @@ through an `index.ts` entry.
 
 - No template file imports a Dinkus package feature internal. Pre-release
   aliases terminate at package-root `src/index.ts` only.
+- Merchandise titles, categories, descriptions, and visual labels come from EmDash
+  `merchandise` entries. Only exact demo entry IDs `everyday-tee` and
+  `canvas-cap` bind to connected proof products; all other IDs are previews.
+  CMS fields cannot assert Commerce or Inventory authority.
 - CMS content and transactional facts remain separate authorities even when one
   storefront page presents both.
 - The proof adapter stays inside `managed-product-availability` and is never

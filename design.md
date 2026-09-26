@@ -1,27 +1,31 @@
 # DinkusKit Store Starter design contract
 
-Updated: 2026-09-26
+Updated: 2026-09-25
 Canonical path: `design.md`
 
 ## Product intent
 
 Provide a neutral, legible proving ground where a store builder can see EmDash
-composition, Dinkus Blocks, Commerce identity, Commerce Regular/Sale, and
-Inventory truth operating on one storefront surface. The first audience is
-DinkusKit maintainers and early adopters evaluating the stack, not shoppers on
-a production store.
+composition, Dinkus Blocks, Commerce identity, and Inventory truth operating on
+one storefront surface. The first audience is DinkusKit maintainers and early
+adopters evaluating the stack, not shoppers on a production store. The classic
+merch-catalog first slice provides collection navigation and a product grid.
 
 ## Confirmed constraints
 
-- Show the managed product name, visible SKU, Regular price, Inventory
-  location, available quantity, and exact package provenance. Do not imply
-  checkout exists.
-- Show the unmanaged product name, visible SKU, Regular price, optional Sale
-  that strikes Regular, and Commerce manual availability status without a
-  quantity, Inventory identity, or checkout.
-- Keep a product with Regular unset off the public home. EmDash admin Pages
-  `home` stays operable.
+- Show each connected product name and truthful current availability prominently
+  in a compact summary below the grid, with Commerce Regular/Sale prices when listable, without implying checkout.
+  Put SKU, Inventory identity/location/version, sellability/mode, authority
+  explanation, and exact package provenance in keyboard-operable native details.
+  Unmanaged availability never shows a quantity or Inventory identity.
+- Keep unpriced Commerce products off the public home. Preserve EmDash admin editing.
 - Distinguish CMS-authored merchandising from transactional Inventory facts.
+- Let a human edit the hero and merchandise titles, collection names, descriptions,
+  and visual labels in EmDash admin. Preview cards explicitly say they cannot be
+  purchased, and contain no purchase links.
+- Give each published collection and product a browsable page with catalog/collection back links. Unpublished or missing paths return 404. Product pages use current Commerce/Inventory availability for the two exact connected IDs; previews explicitly remain non-purchasable.
+- Use neutral tees, hoodies, and hats; no site-specific branding or invented
+  price, cart, checkout, shipping, coupons, bundles, or payment affordances.
 - Preserve semantic headings, keyboard navigation, visible focus, sufficient
   contrast, and useful status text without relying on color alone.
 - Fit narrow mobile and desktop Chromium viewports without horizontal overflow.
@@ -30,22 +34,23 @@ a production store.
 
 ## Unresolved visual language
 
-Color, typography, spacing scale, shape, elevation, imagery, iconography,
-motion, and final product-page composition remain unresolved. The first
-implementation is a neutral functional scaffold and must not be treated as the
-template's selected design system. A later GrillTrack visual cycle will present
-exactly five materially distinct candidates on the verified real page.
+The first slice uses a restrained warm-neutral catalog scaffold, text-only
+merchandise visual placeholders, and a responsive three-to-one-column grid.
+Photography, final typography, and the selected design system remain unresolved;
+a later GrillTrack visual cycle will present five materially distinct candidates
+on the verified real page.
 
 ## Component contract
 
+- EmDash Merchandise entries render grouped catalog cards; category names link
+  to collection pages, and every card links to its product page. The card status reads the connected runtime or
+  says preview only; it never stores an editorial stock quantity.
 - Dinkus Blocks render CMS composition through their documented classes,
   attributes, and theme tokens.
-- The managed-product panel exposes Regular, a labelled stock status,
-  machine-readable `data-*` hooks for proof, upstream provenance, and a
-  fail-closed error state.
-- The unmanaged-product panel exposes Regular, optional Sale, a labelled
-  manual availability status, sellability, machine-readable `data-*` hooks for
-  proof, and never a quantity.
+- Card View availability links target focusable, visibly highlighted summaries.
+  Both summaries retain their machine-readable `data-*` proof hooks; native
+  details keep the technical facts and provenance available without dominating
+  the shopper-facing page. The managed read remains fail-closed.
 - Loading and mutation controls are not required in the first server-rendered
   slice. Browser proof reloads after each command.
 
@@ -53,7 +58,5 @@ exactly five materially distinct candidates on the verified real page.
 
 `bin/verify-web full` must build the real Astro project and run desktop and
 mobile browser acceptance through the complete managed `8 -> 5 -> 8` stock
-sequence, the unmanaged manual-availability sequence, Regular `$12.00` on both
-priced panels, unmanaged Sale `$10.00`, and the unpriced SKU absent from `/`.
-Curated screenshots and the exact assertion record belong in the current proof
-packet.
+sequence and the unmanaged manual-availability sequence. Curated screenshots
+and the exact assertion record belong in the current proof packet.

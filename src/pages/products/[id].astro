@@ -1,0 +1,70 @@
+---
+import { getEmDashCollection } from "emdash";
+import { buildMerchCollections, publicMerchCollections, collectionPath, productPath } from "../../features/store-shell/merch-catalog.js";
+import { managedProductAvailabilityRuntime } from "../../features/managed-product-availability/index.js";
+import { unmanagedProductSellabilityRuntime } from "../../features/unmanaged-product-sellability/index.js";
+import { STORE_TITLE } from "../../features/store-shell/index.js";
+import "../../features/store-shell/global.css";
+
+const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
+const [managedAvailability, unmanagedAvailability] = await Promise.all([managedProductAvailabilityRuntime.read(), unmanagedProductSellabilityRuntime.read()]);
+const collections = publicMerchCollections(buildMerchCollections(merchandise.entries), managedAvailability.price.listable, unmanagedAvailability.price.listable);
+const collection = collections.find((group) => group.items.some((candidate) => productPath(candidate.id) === Astro.url.pathname));
+const item = collection?.items.find((candidate) => productPath(candidate.id) === Astro.url.pathname);
+if (!item) Astro.response.status = 404;
+const managed = item?.availabilitySource === "managed" ? managedAvailability : null;
+const unmanaged = item?.availabilitySource === "unmanaged" ? unmanagedAvailability : null;
+const status = managed ? `${managed.inventory.available} available` : unmanaged ? ({
+  "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
+  "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
+} as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={item?.description ?? "Product not found."} />
+    <title>{item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
+  </head>
+  <body>
+    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><span class="store-header__status">Local integration proof</span></header>
+    <main class="product-page">
+      <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{collection && <><a href={collectionPath(collection.name)}>{collection.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{item?.title ?? "Not found"}</span></nav>
+      {item && collection ? (
+        <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
+          <div class={`product-detail__visual product-detail__visual--${item.illustration}`}><img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" /></div>
+          <div class="product-detail__body">
+            <p class="product-detail__eyebrow">{collection.name}</p>
+            <h1>{item.title}</h1>
+            <p class="product-detail__description">{item.description}</p>
+            {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
+            {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
+            <p class="product-detail__status" data-product-status data-availability-status={unmanaged?.storefront.status}>{status}</p>
+            {item.availabilitySource === "preview" ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            <a class="product-detail__back" href={collectionPath(collection.name)}>← Back to {collection.name}</a>
+          </div>
+        </article>
+      ) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
+    </main>
+    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce and Inventory.</footer>
+  </body>
+</html>
+<style>
+  .product-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}
+  .browse-breadcrumb{display:flex;flex-wrap:wrap;gap:.7rem;padding:2rem 0;color:var(--store-muted)}
+  .browse-breadcrumb a{color:inherit;text-underline-offset:.2em}
+  .product-detail{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(1.5rem,5vw,5rem);align-items:center;margin:1rem 0 5rem}
+  .product-detail__visual{min-width:0;aspect-ratio:4/3;overflow:hidden;border-radius:1rem;background:#e9e8df}
+  .product-detail__visual--hoodie{background:#dce2df}.product-detail__visual--cap{background:#e6ddd1}.product-detail__visual--beanie{background:#e2e1d6}
+  .product-detail__visual img{display:block;width:100%;height:100%;object-fit:cover}
+  .product-detail__body{min-width:0;overflow-wrap:anywhere}
+  .product-detail__eyebrow{color:var(--store-muted);font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  h1{font-size:clamp(2.5rem,6vw,5.5rem);line-height:1;letter-spacing:-.05em;margin:.4rem 0 1.5rem}
+  .product-detail__description{font-size:clamp(1.05rem,2vw,1.3rem);line-height:1.6}
+  .product-detail__price{display:flex;gap:.7rem;align-items:baseline;font-size:1.5rem}.product-detail__price s{color:var(--store-muted)}
+  .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
+  .product-detail__notice{line-height:1.5;color:var(--store-muted)}
+  .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
+  @media(max-width:40rem){.product-detail{grid-template-columns:1fr;gap:1.5rem}}
+</style>

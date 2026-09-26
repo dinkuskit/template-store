@@ -6,207 +6,74 @@ interface Props {
 }
 
 const { availability } = Astro.props;
-const { product, price, inventory, provenance } = availability;
+const { product, inventory, provenance } = availability;
 ---
 
 <section
   id="managed-product"
   class="managed-product"
+  tabindex="-1"
   aria-labelledby="managed-product-title"
   data-managed-product
   data-stock-available={inventory.available}
   data-stock-version={inventory.version}
-  data-listable={price.listable ? "true" : "false"}
 >
-  <div class="managed-product__intro">
-    <p class="managed-product__eyebrow">Managed product · local proof</p>
-    <h2 id="managed-product-title">{product.name}</h2>
-    {
-      price.listable && price.regularText ? (
-        <p class="managed-product__price" data-product-price>
-          {
-            price.saleText ? (
-              <>
-                <s data-regular-price>{price.regularText}</s>
-                <strong data-sale-price>{price.saleText}</strong>
-              </>
-            ) : (
-              <strong data-regular-price>{price.regularText}</strong>
-            )
-          }
-        </p>
-      ) : null
-    }
-    <p>
-      Commerce owns this product identity. Inventory owns the quantity shown
-      beside it. No copied or fallback stock value exists in the storefront.
+  <div class="managed-product__summary">
+    <div>
+      <p class="managed-product__eyebrow">Current availability</p>
+      <h2 id="managed-product-title">{product.name}</h2>
+      {availability.price.listable && availability.price.regularText && <p class="managed-product__price" data-product-price>
+        {availability.price.saleText ? <><s data-regular-price>{availability.price.regularText}</s> <strong data-sale-price>{availability.price.saleText}</strong></> : <strong data-regular-price>{availability.price.regularText}</strong>}
+      </p>}
+    </div>
+    <p class="managed-product__stock" role="status" aria-live="polite">
+      <strong data-stock-value>{inventory.available}</strong>
+      <span>{inventory.unit} available now</span>
     </p>
   </div>
 
-  <div class="managed-product__stock" role="status" aria-live="polite">
-    <span class="managed-product__stock-label">Available now</span>
-    <strong data-stock-value>{inventory.available}</strong>
-    <span>{inventory.unit}</span>
-  </div>
-
-  <dl class="managed-product__facts">
-    <div>
-      <dt>Commerce SKU</dt>
-      <dd data-commerce-sku>{product.sku}</dd>
-    </div>
-    <div>
-      <dt>Inventory identity</dt>
-      <dd data-inventory-sku>{inventory.inventorySkuId}</dd>
-    </div>
-    <div>
-      <dt>Proof location</dt>
-      <dd data-inventory-location>{inventory.locationId}</dd>
-    </div>
-    <div>
-      <dt>On hand / reserved</dt>
-      <dd>{inventory.onHand} / {inventory.reserved}</dd>
-    </div>
-    <div>
-      <dt>Inventory version</dt>
-      <dd data-inventory-version>{inventory.version}</dd>
-    </div>
-    <div>
-      <dt>Commerce state</dt>
-      <dd>{product.state}</dd>
-    </div>
-  </dl>
-
-  <details class="managed-product__provenance">
-    <summary>Exact package provenance</summary>
-    <dl>
-      <div><dt>Blocks</dt><dd><code>{provenance.blocks}</code></dd></div>
-      <div><dt>Commerce</dt><dd><code>{provenance.commerce}</code></dd></div>
-      <div><dt>Inventory</dt><dd><code>{provenance.inventory}</code></dd></div>
+  <details class="managed-product__details">
+    <summary>Product and stock details</summary>
+    <p>Commerce owns this product identity. Inventory owns the quantity shown here; the storefront has no copied or fallback stock value.</p>
+    <dl class="managed-product__facts">
+      <div><dt>Commerce SKU</dt><dd data-commerce-sku>{product.sku}</dd></div>
+      <div><dt>Inventory identity</dt><dd data-inventory-sku>{inventory.inventorySkuId}</dd></div>
+      <div><dt>Inventory location</dt><dd data-inventory-location>{inventory.locationId}</dd></div>
+      <div><dt>On hand / reserved</dt><dd>{inventory.onHand} / {inventory.reserved}</dd></div>
+      <div><dt>Inventory version</dt><dd data-inventory-version>{inventory.version}</dd></div>
+      <div><dt>Commerce state</dt><dd>{product.state}</dd></div>
     </dl>
+    <div class="managed-product__provenance">
+      <h3>Exact package provenance</h3>
+      <dl>
+        <div><dt>Blocks</dt><dd><code>{provenance.blocks}</code></dd></div>
+        <div><dt>Commerce</dt><dd><code>{provenance.commerce}</code></dd></div>
+        <div><dt>Inventory</dt><dd><code>{provenance.inventory}</code></dd></div>
+      </dl>
+    </div>
   </details>
 </section>
 
 <style>
-  .managed-product {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(12rem, 0.6fr);
-    gap: clamp(1.5rem, 4vw, 3rem);
-    width: min(70rem, calc(100% - 2rem));
-    margin: 3rem auto;
-    padding: clamp(1.5rem, 4vw, 3rem);
-    border: 1px solid var(--store-line);
-    border-radius: 1rem;
-    background: var(--store-surface);
-    box-shadow: 0 1rem 3rem rgb(15 23 42 / 8%);
-  }
-
-  .managed-product__eyebrow,
-  .managed-product__stock-label {
-    margin: 0 0 0.5rem;
-    color: var(--store-muted);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .managed-product h2 {
-    margin: 0;
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    line-height: 1;
-  }
-
-  .managed-product__price {
-    margin: 0.75rem 0 0;
-    font-size: clamp(1.4rem, 3vw, 2rem);
-    font-weight: 700;
-  }
-
-  .managed-product__price s {
-    margin-right: 0.6rem;
-    color: var(--store-muted);
-  }
-
-  .managed-product__intro > p:last-child {
-    max-width: 42rem;
-    color: var(--store-muted);
-    line-height: 1.7;
-  }
-
-  .managed-product__stock {
-    align-self: start;
-    padding: 1.25rem;
-    border-radius: 0.75rem;
-    color: var(--store-stock-ink);
-    background: var(--store-stock);
-  }
-
-  .managed-product__stock strong {
-    display: block;
-    font-size: clamp(3rem, 10vw, 5rem);
-    line-height: 0.95;
-  }
-
-  .managed-product__facts,
-  .managed-product__provenance {
-    grid-column: 1 / -1;
-  }
-
-  .managed-product__facts,
-  .managed-product__provenance dl {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-    margin: 0;
-    overflow: hidden;
-    border: 1px solid var(--store-line);
-    border-radius: 0.75rem;
-    background: var(--store-line);
-  }
-
-  .managed-product__facts div,
-  .managed-product__provenance dl div {
-    min-width: 0;
-    padding: 1rem;
-    background: var(--store-surface);
-  }
-
-  dt {
-    color: var(--store-muted);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  dd {
-    margin: 0.35rem 0 0;
-    overflow-wrap: anywhere;
-    font-weight: 650;
-  }
-
-  .managed-product__provenance summary {
-    cursor: pointer;
-    font-weight: 700;
-  }
-
-  .managed-product__provenance dl {
-    margin-top: 1rem;
-  }
-
-  code {
-    font-size: 0.72rem;
-  }
-
-  @media (max-width: 44rem) {
-    .managed-product {
-      grid-template-columns: 1fr;
-      margin-block: 1.5rem;
-    }
-
-    .managed-product__facts,
-    .managed-product__provenance dl {
-      grid-template-columns: 1fr;
-    }
-  }
+  .managed-product{width:min(70rem,calc(100% - 2rem));margin:1rem auto;padding:clamp(1rem,2.5vw,1.5rem);border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface);scroll-margin-top:1rem}
+  .managed-product:target{outline:3px solid #215cc8;outline-offset:3px}
+  .managed-product__summary{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+  .managed-product__eyebrow{margin:0 0 .35rem;color:var(--store-muted);font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+  .managed-product h2{margin:0;font-size:clamp(1.35rem,3vw,2rem);line-height:1.15}
+  .managed-product__stock{display:flex;align-items:baseline;gap:.35rem;flex-wrap:wrap;margin:0;padding:.7rem 1rem;border-radius:.6rem;color:var(--store-stock-ink);background:var(--store-stock);font-weight:700}
+  .managed-product__stock strong{font-size:1.65rem;line-height:1}
+  .managed-product__price{display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap;margin:.6rem 0 0;font-size:1.2rem}
+  .managed-product__price s{color:var(--store-muted)}
+  .managed-product__details{margin-top:.9rem;border-top:1px solid var(--store-line);padding-top:.75rem}
+  .managed-product__details summary{width:fit-content;cursor:pointer;font-weight:700;text-decoration:underline;text-underline-offset:.2em}
+  .managed-product__details>p{max-width:55rem;color:var(--store-muted);line-height:1.5}
+  .managed-product__facts,.managed-product__provenance dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem;margin:0}
+  .managed-product__facts div,.managed-product__provenance dl div{min-width:0}
+  .managed-product dt{color:var(--store-muted);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .managed-product dd{margin:.2rem 0 0;overflow-wrap:anywhere;font-weight:650}
+  .managed-product__provenance{margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--store-line)}
+  .managed-product__provenance h3{margin:0 0 .7rem;font-size:.9rem}
+  .managed-product code{font-size:.75rem}
+  @media(max-width:44rem){.managed-product__summary{align-items:flex-start;flex-direction:column}.managed-product__facts,.managed-product__provenance dl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:25rem){.managed-product__facts,.managed-product__provenance dl{grid-template-columns:1fr}}
 </style>
