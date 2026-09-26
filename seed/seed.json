@@ -64,6 +64,50 @@
       ]
     }
   ],
+  "sections": [
+    {
+      "slug": "home-opener",
+      "title": "Home opener",
+      "description": "Copied page opener: one hero, then a short fact rail. Later edits to this library section do not change copies already inserted.",
+      "keywords": ["home", "opener", "homepage", "hero", "welcome", "introduction", "facts"],
+      "source": "theme",
+      "content": [
+        {
+          "_type": "dinkus.page-hero",
+          "_key": "home-opener-hero",
+          "eyebrow": "Start here",
+          "headline": "Welcome to the shop",
+          "deck": "A short introduction the shop owner can rewrite.",
+          "primaryLabel": "Browse the shop",
+          "primaryHref": "#catalog-title",
+          "secondaryLabel": "Read the notes",
+          "secondaryHref": "#home-opener-notes"
+        },
+        {
+          "_type": "dinkus.fact-rail",
+          "_key": "home-opener-facts",
+          "ariaLabel": "Shop opener facts",
+          "facts": [
+            {
+              "_key": "home-opener-fact-hours",
+              "label": "Hours",
+              "value": "Posted by the shop"
+            },
+            {
+              "_key": "home-opener-fact-visit",
+              "label": "Visit",
+              "value": "Come in or order ahead"
+            },
+            {
+              "_key": "home-opener-fact-notes",
+              "label": "Notes",
+              "value": "Rewrite this rail"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "content": {
     "pages": [
       {

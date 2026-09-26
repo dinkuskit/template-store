@@ -1,6 +1,6 @@
 # DinkusKit Store Starter design contract
 
-Updated: 2026-09-25
+Updated: 2026-09-26
 Canonical path: `design.md`
 
 ## Product intent
@@ -23,6 +23,11 @@ merch-catalog first slice provides collection navigation and a product grid.
 - Let a human edit the hero and merchandise titles, collection names, descriptions,
   and visual labels in EmDash admin. Preview cards explicitly say they cannot be
   purchased, and contain no purchase links.
+- Ship one seeded Home opener section: a page hero followed by a fact rail, with
+  neutral copy and no prices or stock. `/section` copies those blocks into a page.
+  The public home stays the ordinary Pages `home` content. Later library edits do
+  not change copies already inserted. Do not live-render the section with
+  `getSection()`.
 - Give each published collection and product a browsable page with catalog/collection back links. Unpublished or missing paths return 404. Product pages use current Commerce/Inventory availability for the two exact connected IDs; previews explicitly remain non-purchasable.
 - Use neutral tees, hoodies, and hats; no site-specific branding or invented
   price, cart, checkout, shipping, coupons, bundles, or payment affordances.
