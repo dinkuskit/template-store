@@ -10,10 +10,14 @@ const proofRoot = resolve("runs/home-opener-section-20260926/browser");
 
 async function dismissWelcome(page: Page): Promise<void> {
   const welcome = page.getByRole("dialog", { name: /Welcome to EmDash/ });
-  await expect(page.getByRole("button", { name: "Get Started" })).toBeVisible({
-    timeout: 30_000,
-  });
-  await page.getByRole("button", { name: "Get Started" }).click();
+  try {
+    await expect(page.getByRole("button", { name: "Get Started" })).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.getByRole("button", { name: "Get Started" }).click();
+  } catch {
+    await expect(welcome).toHaveCount(0);
+  }
   await expect(welcome).toHaveCount(0);
 }
 
