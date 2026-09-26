@@ -10,13 +10,11 @@ const proofRoot = resolve("runs/home-opener-section-20260926/browser");
 
 async function dismissWelcome(page: Page): Promise<void> {
   const welcome = page.getByRole("dialog", { name: /Welcome to EmDash/ });
-  try {
-    await expect(welcome).toBeVisible({ timeout: 5_000 });
-    await page.getByRole("button", { name: "Get Started" }).click();
-    await expect(welcome).toHaveCount(0);
-  } catch {
-    await expect(welcome).toHaveCount(0);
-  }
+  await expect(page.getByRole("button", { name: "Get Started" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("button", { name: "Get Started" }).click();
+  await expect(welcome).toHaveCount(0);
 }
 
 async function openHomeEditor(page: Page): Promise<void> {

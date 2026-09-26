@@ -2,9 +2,9 @@ allowBuilds:
   better-sqlite3: true
   esbuild: true
 minimumReleaseAgeExclude:
-  - '@emdash-cms/admin@0.40.1'
-  - '@emdash-cms/auth@0.40.1'
-  - '@emdash-cms/blocks@0.40.1'
-  - '@emdash-cms/gutenberg-to-portable-text@0.40.1'
-  - emdash@0.40.1
+  - '@emdash-cms/admin@0.41.0'
+  - '@emdash-cms/auth@0.41.0'
+  - '@emdash-cms/blocks@0.41.0'
+  - '@emdash-cms/gutenberg-to-portable-text@0.41.0'
+  - emdash@0.41.0
 packages: []

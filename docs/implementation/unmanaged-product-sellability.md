@@ -28,10 +28,10 @@ proof route is the local playground stand-in until Commerce ships admin UI.
 
 | Package | Exact source | Consumer status |
 | --- | --- | --- |
-| `@dinkuskit/blocks` | `d3a73eea94c8d9a7d4b6609cc5e2f71134520ae5` | exact merged main pin (blocks #51, emdash@0.40.1) |
+| `@dinkuskit/blocks` | `fe03bfac91798ac0b411b952fe23c26afefbf570` | exact merged main pin (blocks #52–53, emdash@0.41.0) |
 | `@dinkuskit/commerce` | prepared source checkout at `3f20fe96d5b3104c4b599e669d18f54fd8ab2587` | exact Commerce #18 source pin |
-| `@dinkuskit/inventory` | `4f1bdfc85964fc41fe466336784af62261384679` | unused by this feature |
-| `emdash` | `0.40.1` | exact released CMS baseline |
+| `@dinkuskit/inventory` | `5889c7d59398376da51ac400d5c1f1214aba2c6b` | unused by this feature |
+| `emdash` | `0.41.0` | exact released CMS baseline |
 
 ## Public feature contract
 

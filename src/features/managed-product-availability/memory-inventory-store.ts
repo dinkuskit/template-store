@@ -486,7 +486,8 @@ class MemoryInventoryTransaction implements InventoryTransaction {
       input.reservation.poolId,
       input.orderLineKey,
     );
-    if (input.reservation.status === "active") {
+    if (input.reservation.status === "not_shipped" ||
+        input.reservation.status === "partially_packed") {
       this.state.activeReservationIdsByOrderLineKey.set(
         lineKey,
         input.reservation.reservationId,
@@ -502,6 +503,46 @@ class MemoryInventoryTransaction implements InventoryTransaction {
       input.receipt.receiptId,
       input.commandId,
     );
+    this.storeCommandResult({
+      commandId: input.commandId,
+      commandDigest: input.commandDigest,
+      result: input.result,
+    });
+  }
+
+  commitStockReservationBatch(
+    input: Parameters<InventoryTransaction["commitStockReservationBatch"]>[0],
+  ): void {
+    for (const entry of input.balances) {
+      this.assertPool(entry.balance.poolId);
+      const key = balanceKey(entry.balance);
+      const current = this.state.balances.get(key);
+      if (current === undefined || current.version !== entry.previous.version) {
+        throw new Error("Reservation balance version drifted during commit.");
+      }
+      this.state.balances.set(key, structuredClone(entry.balance));
+    }
+    for (const entry of input.reservations) {
+      this.assertPool(entry.reservation.poolId);
+      const key = reservationKey(entry.reservation.poolId, entry.reservation.reservationId);
+      const current = this.state.reservations.get(key);
+      if (current === undefined || current.version !== entry.previous.version) {
+        throw new Error("Reservation version drifted during commit.");
+      }
+      this.state.reservations.set(key, structuredClone(entry.reservation));
+      const lineKey = reservationOrderLineStoreKey(entry.reservation.poolId, entry.orderLineKey);
+      if (entry.reservation.status === "not_shipped" ||
+          entry.reservation.status === "partially_packed") {
+        this.state.activeReservationIdsByOrderLineKey.set(lineKey, entry.reservation.reservationId);
+      } else {
+        this.state.activeReservationIdsByOrderLineKey.delete(lineKey);
+      }
+    }
+    if (this.state.receipts.has(input.receipt.receiptId)) {
+      throw new Error("Receipt identity already exists.");
+    }
+    this.state.receipts.set(input.receipt.receiptId, structuredClone(input.receipt));
+    this.state.receiptCommandIds.set(input.receipt.receiptId, input.commandId);
     this.storeCommandResult({
       commandId: input.commandId,
       commandDigest: input.commandDigest,

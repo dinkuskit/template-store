@@ -31,10 +31,10 @@ authoring.
 
 | Package | Exact source | Consumer status |
 | --- | --- | --- |
-| `@dinkuskit/blocks` | `d3a73eea94c8d9a7d4b6609cc5e2f71134520ae5` | exact merged main pin (blocks #51, emdash@0.40.1) |
+| `@dinkuskit/blocks` | `fe03bfac91798ac0b411b952fe23c26afefbf570` | exact merged main pin (blocks #52–53, emdash@0.41.0) |
 | `@dinkuskit/commerce` | prepared source checkout at `3f20fe96d5b3104c4b599e669d18f54fd8ab2587` | exact Commerce #18 source pin; ignored checkout bypasses the empty pre-release `dist/` package |
-| `@dinkuskit/inventory` | `4f1bdfc85964fc41fe466336784af62261384679` | exact merged main pin (inventory #22); named reservations and pack unused here |
-| `emdash` | `0.40.1` | exact released CMS baseline |
+| `@dinkuskit/inventory` | `5889c7d59398376da51ac400d5c1f1214aba2c6b` | exact merged main pin (inventory #25–29); reservation lifecycle remains unused here |
+| `emdash` | `0.41.0` | exact released CMS baseline |
 
 Commerce and Inventory are private `0.0.0` source packages without complete
 installable release entries. Commerce's manifest packages only `dist/`, which
