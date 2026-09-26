@@ -1,5 +1,43 @@
 {
-  "closeout": null,
+  "closeout": {
+    "closed_at": "2026-09-26T02:55:14+00:00",
+    "confirmed_by": "user",
+    "deferred_decisions": [],
+    "proof_refs": [
+      "file:.grilltrack/proof/unpriced-public-home-closeout.md"
+    ],
+    "reason": "User asked to close this public-home track and not start the admin grill yet.",
+    "reviews": [
+      {
+        "classifications": [],
+        "decision_id": "listable-home-001",
+        "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+        "result": "clean",
+        "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+      },
+      {
+        "classifications": [],
+        "decision_id": "listable-home-price-display-002",
+        "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+        "result": "clean",
+        "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+      },
+      {
+        "classifications": [],
+        "decision_id": "listable-home-admin-fields-003",
+        "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+        "result": "clean",
+        "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+      }
+    ],
+    "summary": "Public home hides unpriced drafts and shows Regular/Sale. Admin Regular/Sale boxes stay parked. Merge of template-store #11 remains human-gated.",
+    "superseded_decisions": [],
+    "verified_decisions": [
+      "listable-home-001",
+      "listable-home-price-display-002",
+      "listable-home-admin-fields-003"
+    ]
+  },
   "created_at": "2026-09-26T02:21:38+00:00",
   "current_focus": {
     "cadence": "sequential",
@@ -7,7 +45,7 @@
     "confirmed_at": "2026-09-26T02:39:42+00:00",
     "domain": "unpriced bags stay off the public home",
     "started_at": "2026-09-26T02:21:38+00:00",
-    "status": "inspected",
+    "status": "closed",
     "summary": "Public home only: pin Commerce to 3f20fe9. Clerk still sees an unpriced product in EmDash admin. Customer does not see it on the website. Priced bags show Regular; Sale strikes Regular and shows Sale. No admin Regular/Sale boxes. Cart, checkout, payments stay later. Verify with bin/verify-web full, public vs admin Playwright."
   },
   "decisions": [
@@ -264,8 +302,8 @@
     "recorded_at": "2026-09-26T02:49:08+00:00"
   },
   "schema_version": "grilltrack/v0.1",
-  "status": "active",
+  "status": "closed",
   "title": "Unpriced products stay off the dogfood home",
   "track_id": "gt-20260926022138-947c39",
-  "updated_at": "2026-09-26T02:49:23+00:00"
+  "updated_at": "2026-09-26T02:55:14+00:00"
 }
