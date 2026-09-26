@@ -62,7 +62,7 @@ test("shop owner inserts a query card and published records update without page 
     await expect(dialog).toBeVisible();
     await dialog.locator("label", { hasText: "Source" }).locator("xpath=following-sibling::input[1]").fill(source);
     await dialog.locator("label", { hasText: "Limit" }).locator("xpath=following-sibling::input[1]").fill("6");
-    await admin.screenshot({ path: resolve(root, "admin-insert.png"), fullPage: true });
+    await admin.screenshot({ path: resolve(root, "admin-insert.png"), fullPage: true, animations: "disabled" });
     const saved = admin.waitForResponse(r => r.request().method() === "PUT" && r.url().includes("/content/pages/") && (r.request().postData() ?? "").includes("dinkus.query-card"));
     await dialog.getByRole("button", { name: "Insert", exact: true }).click();
     expect((await saved).ok()).toBe(true);
@@ -79,7 +79,7 @@ test("shop owner inserts a query card and published records update without page 
     await expect(cards.locator("img")).toHaveAttribute("src", "/merch/cap.svg");
     expect(await cards.locator("img").evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
     await expect(page.getByText("Draft notice stays private")).toHaveCount(0);
-    await page.screenshot({ path: resolve(root, "public-before.png"), fullPage: true });
+    await page.screenshot({ path: resolve(root, "public-before.png"), fullPage: true, animations: "disabled" });
     await addRecord("added", "New shop notice appears", true);
     await page.reload();
     await expect(cards.locator("article")).toHaveCount(2);
@@ -87,16 +87,16 @@ test("shop owner inserts a query card and published records update without page 
     await expect(page.getByText("Draft notice stays private")).toHaveCount(0);
     await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
-    await page.screenshot({ path: resolve(root, "public-after.png"), fullPage: true });
+    await page.screenshot({ path: resolve(root, "public-after.png"), fullPage: true, animations: "disabled" });
     await admin.goto("/_emdash/admin/content/" + source);
     await expect(admin.getByText("New shop notice appears", { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(admin.getByText("Draft notice stays private", { exact: true })).toBeVisible();
-    await admin.screenshot({ path: resolve(root, "admin-records.png"), fullPage: true });
+    await admin.screenshot({ path: resolve(root, "admin-records.png"), fullPage: true, animations: "disabled" });
     await context.addCookies([{ name: "emdash-edit-mode", value: "true", url: testInfo.project.use.baseURL ?? "http://127.0.0.1:" + (process.env.DINKUS_E2E_PORT ?? "4321") }]);
     await admin.goto("/");
     await expect(admin.locator(".emdash-inline-editor")).toBeVisible({ timeout: 30_000 });
     await expect(admin.locator(".emdash-plugin-block-placeholder").filter({ hasText: "dinkus.query-card" })).toBeVisible();
-    await admin.screenshot({ path: resolve(root, "public-edit-mode.png"), fullPage: true });
+    await admin.screenshot({ path: resolve(root, "public-edit-mode.png"), fullPage: true, animations: "disabled" });
     await writeFile(resolve(root, "assertions.json"), JSON.stringify({ source, publishedBefore: 1, publishedAfter: 2, draftExcluded: true, imageLoaded: true, safeLink: true, publicEditMode: "plugin placeholder; edit in admin", pageRepublishedAfterRecordAdd: false }, null, 2) + String.fromCharCode(10));
   } finally {
     const restored = await admin.request.put("/_emdash/api/content/pages/" + original.id + "?locale=en", { headers, data: { data: original.data } });
