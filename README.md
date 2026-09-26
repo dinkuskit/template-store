@@ -3,6 +3,9 @@
 The public integration and dogfood storefront for EmDash, DinkusKit Blocks,
 Commerce, and Inventory.
 
+Org direction: [Vision](https://github.com/dinkuskit/.github/blob/main/VISION.md)
+and [Roadmap](https://github.com/dinkuskit/.github/blob/main/ROADMAP.md).
+
 ## Merchant catalog
 
 EmDash **Products** now drives the real Shop on `/`: add a name and SKU, save
