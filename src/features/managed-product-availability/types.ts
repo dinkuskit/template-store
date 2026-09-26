@@ -1,3 +1,5 @@
+import type { PublicPriceView } from "../store-shell/index.js";
+
 export type ManagedProductAvailability = Readonly<{
   product: Readonly<{
     itemId: string;
@@ -5,6 +7,7 @@ export type ManagedProductAvailability = Readonly<{
     sku: string;
     state: "draft";
   }>;
+  price: PublicPriceView;
   inventory: Readonly<{
     inventorySkuId: string;
     poolId: string;

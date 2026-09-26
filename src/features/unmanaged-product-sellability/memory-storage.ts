@@ -5,6 +5,8 @@ import {
   type CatalogItemReadStorage,
   type CatalogManualAvailabilityRecord,
   type CatalogManualAvailabilityStorage,
+  type CatalogPriceRecord,
+  type CatalogPriceStorage,
   type CatalogStorage,
   type CatalogStorageRecord,
   type StorefrontAvailabilitySettingsRecord,
@@ -76,6 +78,25 @@ export function createMemoryCatalogStorage(): MemoryUnmanagedCatalogStorage {
         .slice(0, limit)
         .map(([id, data]) => ({ id, data: structuredClone(data) }));
       return { items, hasMore: false };
+    },
+  };
+}
+
+export function createMemoryPriceStorage(): CatalogPriceStorage {
+  const records = new Map<string, CatalogPriceRecord>();
+
+  return {
+    async get(id) {
+      const record = records.get(id);
+      return record === undefined ? null : structuredClone(record);
+    },
+
+    async put(id, data) {
+      records.set(id, structuredClone(data));
+    },
+
+    async delete(id) {
+      return records.delete(id);
     },
   };
 }

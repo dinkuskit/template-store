@@ -1,173 +1,68 @@
 {
-  "closeout": null,
-  "created_at": "2026-08-30T19:00:23+00:00",
+  "closeout": {
+    "closed_at": "2026-09-26T02:55:14+00:00",
+    "confirmed_by": "user",
+    "deferred_decisions": [],
+    "proof_refs": [
+      "file:.grilltrack/proof/unpriced-public-home-closeout.md"
+    ],
+    "reason": "User asked to close this public-home track and not start the admin grill yet.",
+    "reviews": [
+      {
+        "classifications": [],
+        "decision_id": "listable-home-001",
+        "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+        "result": "clean",
+        "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+      },
+      {
+        "classifications": [],
+        "decision_id": "listable-home-price-display-002",
+        "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+        "result": "clean",
+        "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+      },
+      {
+        "classifications": [],
+        "decision_id": "listable-home-admin-fields-003",
+        "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+        "result": "clean",
+        "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+      }
+    ],
+    "summary": "Public home hides unpriced drafts and shows Regular/Sale. Admin Regular/Sale boxes stay parked. Merge of template-store #11 remains human-gated.",
+    "superseded_decisions": [],
+    "verified_decisions": [
+      "listable-home-001",
+      "listable-home-price-display-002",
+      "listable-home-admin-fields-003"
+    ]
+  },
+  "created_at": "2026-09-26T02:21:38+00:00",
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-08-30T19:29:13+00:00",
-    "domain": "official payment-provider plugin contract",
-    "started_at": "2026-08-30T19:18:06+00:00",
-    "status": "inspected",
-    "summary": "Before implementing checkout or the official payment plugin, align template-store to Commerce 530348c (#14): use Commerce-owned store Inventory configuration and configureCatalogItemInventory with browser input limited to catalogItemId, retain the existing memory layer only as disposable provider/storage proof infrastructure, preserve the neutral Blocks/Commerce/Inventory storefront and shipping deferral, and verify the unchanged desktop/mobile 8-to-5-to-8 stock flow."
+    "confirmed_at": "2026-09-26T02:39:42+00:00",
+    "domain": "unpriced bags stay off the public home",
+    "started_at": "2026-09-26T02:21:38+00:00",
+    "status": "closed",
+    "summary": "Public home only: pin Commerce to 3f20fe9. Clerk still sees an unpriced product in EmDash admin. Customer does not see it on the website. Priced bags show Regular; Sale strikes Regular and shows Sale. No admin Regular/Sale boxes. Cart, checkout, payments stay later. Verify with bin/verify-web full, public vs admin Playwright."
   },
   "decisions": [
     {
-      "baseline_ref": "git:4bc9122b67f580b6ef7564bfbe81f8785aab52a0",
+      "baseline_ref": "git:c12b2d9bac456f468a14dc414075dff94c74cb95",
       "candidate_refs": [],
-      "choice": "Use a hybrid reference-core model. Commerce owns checkout/order orchestration plus separate payment and shipping provider contracts under one shared descriptor, compatibility, capability, and health envelope. Deterministic non-production providers support local and CI proof. Every production payment processor or shipping-service connection is an installable provider plugin rather than vendor code embedded in Commerce core.",
-      "context_ref": "github:dinkuskit/commerce/discussions/13;git:dinkuskit/commerce@530348c07769a010b0fa4ef24604292a4254eda0",
-      "created_at": "2026-08-30T19:08:12+00:00",
+      "choice": "EmDash admin still shows a product with Regular unset. The public website does not. Woo keeps unpriced products in the shop as not purchasable; this store stays on the stronger lock: no Regular, not on the website.",
+      "context_ref": "github:dinkuskit/commerce@3f20fe96d5b3104c4b599e669d18f54fd8ab2587;decision:price-missing-002;decision:price-clear-regular-007",
+      "created_at": "2026-09-26T02:21:53+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [],
-      "domain": "payment and shipping extension topology",
+      "domain": "unpriced bags stay off the public home",
       "history": [
         {
-          "at": "2026-08-30T19:08:12+00:00",
-          "choice": "Use a hybrid reference-core model. Commerce owns checkout/order orchestration plus separate payment and shipping provider contracts under one shared descriptor, compatibility, capability, and health envelope. Deterministic non-production providers support local and CI proof. Every production payment processor or shipping-service connection is an installable provider plugin rather than vendor code embedded in Commerce core.",
-          "from": "proposed",
-          "implementation_ref": null,
-          "note": "user accepted the scoped decision",
-          "repair_required": false,
-          "review_classifications": [],
-          "review_ref": null,
-          "review_result": null,
-          "review_source_identity": null,
-          "to": "locked",
-          "verification_ref": null
-        }
-      ],
-      "id": "provider-extension-topology-001",
-      "implementation_ref": null,
-      "question": "How should concrete payment processors and shipping services connect to DinkusKit Commerce?",
-      "rationale": "This keeps a freshly scaffolded template demonstrable without credentials, preserves fail-closed provider behavior, and isolates vendor APIs, credentials, webhooks, and release churn from Commerce core.",
-      "repair_required": false,
-      "review_classifications": [],
-      "review_history": [],
-      "review_ref": null,
-      "review_result": null,
-      "review_source_identity": null,
-      "status": "locked",
-      "superseded_by": null,
-      "updated_at": "2026-08-30T19:08:12+00:00",
-      "verification_ref": null
-    },
-    {
-      "baseline_ref": "git:4bc9122b67f580b6ef7564bfbe81f8785aab52a0",
-      "candidate_refs": [],
-      "choice": "DinkusKit maintains exactly one official payment-provider plugin and one official shipping-provider plugin as separate installable packages conforming to Commerce contracts. Commerce core still ships no production vendor implementation. Deterministic non-production providers remain available for local and CI proof, and additional production integrations may be supplied by the community or store owners.",
-      "context_ref": "github:dinkuskit/commerce/discussions/13",
-      "created_at": "2026-08-30T19:10:23+00:00",
-      "deferred_reason": null,
-      "delivery_ref": null,
-      "dependencies": [
-        "provider-extension-topology-001"
-      ],
-      "domain": "payment and shipping extension topology",
-      "history": [
-        {
-          "at": "2026-08-30T19:10:23+00:00",
-          "choice": "DinkusKit maintains exactly one official payment-provider plugin and one official shipping-provider plugin as separate installable packages conforming to Commerce contracts. Commerce core still ships no production vendor implementation. Deterministic non-production providers remain available for local and CI proof, and additional production integrations may be supplied by the community or store owners.",
-          "from": "proposed",
-          "implementation_ref": null,
-          "note": "user accepted the scoped decision",
-          "repair_required": false,
-          "review_classifications": [],
-          "review_ref": null,
-          "review_result": null,
-          "review_source_identity": null,
-          "to": "locked",
-          "verification_ref": null
-        }
-      ],
-      "id": "official-provider-baseline-002",
-      "implementation_ref": null,
-      "question": "How many production provider plugins should DinkusKit itself maintain as the supported starter path?",
-      "rationale": "One official plugin in each category gives scaffolded stores a supported end-to-end production path while bounding DinkusKit maintenance and keeping vendor-specific APIs, credentials, webhooks, and release cadence outside Commerce core.",
-      "repair_required": false,
-      "review_classifications": [],
-      "review_history": [],
-      "review_ref": null,
-      "review_result": null,
-      "review_source_identity": null,
-      "status": "locked",
-      "superseded_by": null,
-      "updated_at": "2026-08-30T19:10:23+00:00",
-      "verification_ref": null
-    },
-    {
-      "baseline_ref": "git:4bc9122b67f580b6ef7564bfbe81f8785aab52a0",
-      "candidate_refs": [],
-      "choice": "No shipping provider category or vendor is selected in this cycle. Preserve multi-carrier platform, direct-carrier, and manual-fulfillment paths as unresolved candidates until prior integration lessons and current provider behavior are researched.",
-      "context_ref": "github:dinkuskit/commerce/discussions/13",
-      "created_at": "2026-08-30T19:13:46+00:00",
-      "deferred_reason": "Deferred until Bobby resumes shipping research starting with the existing Katana integration with ShipTheory and Pitney Bowes.",
-      "delivery_ref": null,
-      "dependencies": [
-        "official-provider-baseline-002"
-      ],
-      "domain": "payment and shipping extension topology",
-      "history": [
-        {
-          "at": "2026-08-30T19:13:46+00:00",
-          "choice": "No shipping provider category or vendor is selected in this cycle. Preserve multi-carrier platform, direct-carrier, and manual-fulfillment paths as unresolved candidates until prior integration lessons and current provider behavior are researched.",
-          "from": "proposed",
-          "implementation_ref": null,
-          "note": "Deferred by the owner pending recovery or reconstruction of prior integration lessons and fresh comparison of aggregator, direct-carrier, and manual-fulfillment boundaries. No vendor choice is implied.",
-          "repair_required": false,
-          "review_classifications": [],
-          "review_ref": null,
-          "review_result": null,
-          "review_source_identity": null,
-          "to": "deferred",
-          "verification_ref": null
-        },
-        {
-          "at": "2026-08-30T19:18:01+00:00",
-          "choice": "No shipping provider category or vendor is selected in this cycle. Preserve multi-carrier platform, direct-carrier, and manual-fulfillment paths as unresolved candidates until prior integration lessons and current provider behavior are researched.",
-          "from": "deferred",
-          "implementation_ref": null,
-          "note": "Deferred until Bobby resumes shipping research starting with the existing Katana integration with ShipTheory and Pitney Bowes.",
-          "repair_required": false,
-          "review_classifications": [],
-          "review_ref": null,
-          "review_result": null,
-          "review_source_identity": null,
-          "to": "deferred",
-          "verification_ref": null
-        }
-      ],
-      "id": "official-shipping-provider-selection-003",
-      "implementation_ref": null,
-      "question": "What provider category and concrete service should the one official DinkusKit shipping plugin target?",
-      "rationale": "The owner wants additional thought and evidence before establishing the supported shipping boundary; choosing now would turn incomplete recollection into product policy.",
-      "repair_required": false,
-      "review_classifications": [],
-      "review_history": [],
-      "review_ref": null,
-      "review_result": null,
-      "review_source_identity": null,
-      "status": "deferred",
-      "superseded_by": null,
-      "updated_at": "2026-08-30T19:18:01+00:00",
-      "verification_ref": null
-    },
-    {
-      "baseline_ref": "git:4bc9122b67f580b6ef7564bfbe81f8785aab52a0",
-      "candidate_refs": [],
-      "choice": "Treat Commerce #14 alignment as a payment-foundation prerequisite. Repin template-store from Commerce 9fd24c6 (#12) to 530348c (#14), replace its direct startManagedSkuRegistration bootstrap with createStoreInventoryConfiguration plus configureCatalogItemInventory, and keep the disposable memory layer only as the local provider and storage adapter. Reprove the existing desktop/mobile 8-to-5-to-8 availability flow before adding checkout or payment behavior.",
-      "context_ref": "github:dinkuskit/template-store/pull/3;github:dinkuskit/commerce/pull/14;git:dinkuskit/commerce@530348c07769a010b0fa4ef24604292a4254eda0",
-      "created_at": "2026-08-30T19:19:43+00:00",
-      "deferred_reason": null,
-      "delivery_ref": null,
-      "dependencies": [
-        "official-provider-baseline-002"
-      ],
-      "domain": "official payment-provider plugin contract",
-      "history": [
-        {
-          "at": "2026-08-30T19:29:09+00:00",
-          "choice": "Treat Commerce #14 alignment as a payment-foundation prerequisite. Repin template-store from Commerce 9fd24c6 (#12) to 530348c (#14), replace its direct startManagedSkuRegistration bootstrap with createStoreInventoryConfiguration plus configureCatalogItemInventory, and keep the disposable memory layer only as the local provider and storage adapter. Reprove the existing desktop/mobile 8-to-5-to-8 availability flow before adding checkout or payment behavior.",
+          "at": "2026-09-26T02:27:46+00:00",
+          "choice": "Give the two proof bags a Regular so they stay on the home. Any bag without Regular stays off the public home. Do not print TBA or $0 for a missing price.",
           "from": "proposed",
           "implementation_ref": null,
           "note": "user accepted the scoped decision",
@@ -180,8 +75,8 @@
           "verification_ref": null
         },
         {
-          "at": "2026-08-30T19:34:29+00:00",
-          "choice": "Treat Commerce #14 alignment as a payment-foundation prerequisite. Repin template-store from Commerce 9fd24c6 (#12) to 530348c (#14), replace its direct startManagedSkuRegistration bootstrap with createStoreInventoryConfiguration plus configureCatalogItemInventory, and keep the disposable memory layer only as the local provider and storage adapter. Reprove the existing desktop/mobile 8-to-5-to-8 availability flow before adding checkout or payment behavior.",
+          "at": "2026-09-26T02:48:42+00:00",
+          "choice": "EmDash admin still shows a product with Regular unset. The public website does not. Woo keeps unpriced products in the shop as not purchasable; this store stays on the stronger lock: no Regular, not on the website.",
           "from": "locked",
           "implementation_ref": null,
           "note": "bounded implementation recorded",
@@ -194,10 +89,10 @@
           "verification_ref": null
         },
         {
-          "at": "2026-08-30T19:34:33+00:00",
-          "choice": "Treat Commerce #14 alignment as a payment-foundation prerequisite. Repin template-store from Commerce 9fd24c6 (#12) to 530348c (#14), replace its direct startManagedSkuRegistration bootstrap with createStoreInventoryConfiguration plus configureCatalogItemInventory, and keep the disposable memory layer only as the local provider and storage adapter. Reprove the existing desktop/mobile 8-to-5-to-8 availability flow before adding checkout or payment behavior.",
+          "at": "2026-09-26T02:48:42+00:00",
+          "choice": "EmDash admin still shows a product with Regular unset. The public website does not. Woo keeps unpriced products in the shop as not purchasable; this store stays on the stronger lock: no Regular, not on the website.",
           "from": "implemented",
-          "implementation_ref": ".grilltrack/proof/payment-foundation-alignment-20260830/PROOF.md#implementation",
+          "implementation_ref": "file:docs/implementation/unpriced-public-home.md",
           "note": "verification recorded in cumulative context",
           "repair_required": false,
           "review_classifications": [],
@@ -208,50 +103,207 @@
           "verification_ref": null
         }
       ],
-      "id": "payment-foundation-alignment-004",
-      "implementation_ref": ".grilltrack/proof/payment-foundation-alignment-20260830/PROOF.md#implementation",
-      "question": "What consumer baseline must template-store prove before the official payment-provider contract is implemented?",
-      "rationale": "PR #3 proves the lower-level registration contract, but it predates the official Configure Inventory action and still lets the consumer assemble site, pool, location, claim, and registration flow itself. Repairing that drift first prevents the payment proof from being built on a storefront integration pattern Commerce has already superseded.",
+      "id": "listable-home-001",
+      "implementation_ref": "file:docs/implementation/unpriced-public-home.md",
+      "question": "The public home currently shows two demo bags with no Regular. After Commerce hides unpriced bags, what should a shop owner see on that home?",
+      "rationale": "User-owned: clerk must still open the bag in admin to set Regular. Woo admin always lists the product; catalog visibility is separate from is_purchasable (empty price). Public hide was already locked in commerce price-missing-002 / price-clear-regular-007.",
       "repair_required": false,
       "review_classifications": [],
-      "review_history": [],
-      "review_ref": null,
-      "review_result": null,
-      "review_source_identity": null,
+      "review_history": [
+        {
+          "classifications": [],
+          "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+          "result": "clean",
+          "reviewed_at": "2026-09-26T02:49:22+00:00",
+          "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+        }
+      ],
+      "review_ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+      "review_result": "clean",
+      "review_source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1",
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-08-30T19:34:33+00:00",
-      "verification_ref": ".grilltrack/proof/payment-foundation-alignment-20260830/PROOF.md#full-verification"
+      "updated_at": "2026-09-26T02:49:22+00:00",
+      "verification_ref": "file:docs/implementation/unpriced-public-home.md"
+    },
+    {
+      "baseline_ref": "git:c12b2d9bac456f468a14dc414075dff94c74cb95",
+      "candidate_refs": [],
+      "choice": "Show Regular as $12. If Sale is set, strike through Regular and show Sale.",
+      "context_ref": "woo:html-product-data-general.php;decision:price-regular-sale-003",
+      "created_at": "2026-09-26T02:27:56+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "listable-home-001"
+      ],
+      "domain": "unpriced bags stay off the public home",
+      "history": [
+        {
+          "at": "2026-09-26T02:30:11+00:00",
+          "choice": "Show Regular. If Sale is set and lower, show both. Do not invent TBA. Unpriced bags stay off the public home.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-26T02:48:42+00:00",
+          "choice": "Show Regular as $12. If Sale is set, strike through Regular and show Sale.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-26T02:48:42+00:00",
+          "choice": "Show Regular as $12. If Sale is set, strike through Regular and show Sale.",
+          "from": "implemented",
+          "implementation_ref": "file:docs/implementation/unpriced-public-home.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "listable-home-price-display-002",
+      "implementation_ref": "file:docs/implementation/unpriced-public-home.md",
+      "question": "A bag has Regular 12.00. What should a customer see on the public home this slice?",
+      "rationale": "User-owned: customer sees the list price; a sale is a visible discount, not a silent swap. Matches Woo shop strikethrough of Regular when Sale is active.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [],
+          "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+          "result": "clean",
+          "reviewed_at": "2026-09-26T02:49:23+00:00",
+          "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+        }
+      ],
+      "review_ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+      "review_result": "clean",
+      "review_source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1",
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-09-26T02:49:23+00:00",
+      "verification_ref": "file:docs/implementation/unpriced-public-home.md"
+    },
+    {
+      "baseline_ref": "git:c12b2d9bac456f468a14dc414075dff94c74cb95",
+      "candidate_refs": [],
+      "choice": "Public home only this slice. The next grill is dedicated to all things admin, including Regular and Sale boxes. Clerk still sees an unpriced product in admin; they cannot type the price there yet.",
+      "context_ref": "github:dinkuskit/template-store/pull/5;decision:listable-home-001",
+      "created_at": "2026-09-26T02:30:18+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "listable-home-price-display-002"
+      ],
+      "domain": "unpriced bags stay off the public home",
+      "history": [
+        {
+          "at": "2026-09-26T02:33:19+00:00",
+          "choice": "Public website only this slice. Clerk still sees the unpriced product in admin. Regular and Sale fields in EmDash admin stay next. Same pattern as unmanaged status: Commerce owns the write; visual admin comes later.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-26T02:48:42+00:00",
+          "choice": "Public home only this slice. The next grill is dedicated to all things admin, including Regular and Sale boxes. Clerk still sees an unpriced product in admin; they cannot type the price there yet.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-26T02:48:42+00:00",
+          "choice": "Public home only this slice. The next grill is dedicated to all things admin, including Regular and Sale boxes. Clerk still sees an unpriced product in admin; they cannot type the price there yet.",
+          "from": "implemented",
+          "implementation_ref": "file:docs/implementation/unpriced-public-home.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "listable-home-admin-fields-003",
+      "implementation_ref": "file:docs/implementation/unpriced-public-home.md",
+      "question": "This slice: can the clerk type Regular and Sale on the product in EmDash admin, or only the public website shows a price Commerce already stored?",
+      "rationale": "User-owned: admin is its own grill. This slice is the customer website. Matches unmanaged catch-up: public behavior first, visual admin later.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [],
+          "ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+          "result": "clean",
+          "reviewed_at": "2026-09-26T02:49:23+00:00",
+          "source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1"
+        }
+      ],
+      "review_ref": "file:docs/implementation/REVIEW-unpriced-public-home.md",
+      "review_result": "clean",
+      "review_source_identity": "sha256:aa461becfed21e06db0cc5f565988783871e22dd937f3bcee77dd43a03560ff1",
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-09-26T02:49:23+00:00",
+      "verification_ref": "file:docs/implementation/unpriced-public-home.md"
     }
   ],
   "last_activation": {
-    "at": "2026-08-30T19:42:54+00:00",
+    "at": "2026-09-26T02:21:38+00:00",
     "mechanism": "implicit"
   },
-  "last_pause": {
-    "artifact_refs": [
-      ".grilltrack/proof/payment-foundation-alignment-20260830/PROOF.md",
-      "runs/managed-product-availability-20260829/browser/"
-    ],
-    "next_safe_action": "After Bobby authorizes a local commit, commit this bounded template-store alignment, rerun the full verifier against the exact SHA, perform standards and source-intent review, adjudicate findings, then resume the server-owned checkout snapshot and Stripe payment-attempt grill.",
-    "paused_at": "2026-08-30T19:36:32+00:00",
-    "reason": "Commerce #14 consumer alignment is implemented and fully verified locally; exact-source review requires a separately authorized local commit.",
-    "resumed_at": "2026-08-30T19:42:54+00:00"
-  },
+  "last_pause": null,
   "pause": null,
-  "predecessor_track_id": "gt-20260829172956-305950",
+  "predecessor_track_id": "gt-20260830190023-11b4b5",
   "recommendation": {
     "alternatives": [
-      "Implement Commerce price and sellability first, then return to the payment contract with a real authoritative total.",
-      "Extend template-store proof through the authenticated Configure Inventory route before starting checkout work."
+      "A clerk can turn Manage Stock on or off after the product exists.",
+      "Checkout takes the last bag off the available pile so a second customer cannot also buy it."
     ],
-    "reason": "The consumer now follows Commerce #14, but current Commerce still has no price, cart, checkout, order, receipt, or payment implementation. The plugin boundary must begin from server-owned Commerce state and must not accept browser-authored totals.",
-    "recommended": "Define the minimum server-owned checkout snapshot and payment-attempt lifecycle that Commerce will pass to the official Stripe plugin, including authoritative amount, currency, order identity, idempotency, redirect/next-action output, and webhook reconciliation states.",
-    "recorded_at": "2026-08-30T19:36:27+00:00"
+    "reason": "This slice was public home only. Bobby already named the next grill as dedicated to all things admin.",
+    "recommended": "A clerk can type Regular and Sale on a product in EmDash admin.",
+    "recorded_at": "2026-09-26T02:49:08+00:00"
   },
   "schema_version": "grilltrack/v0.1",
-  "status": "active",
-  "title": "DinkusKit Commerce payment and shipping provider boundary",
-  "track_id": "gt-20260830190023-11b4b5",
-  "updated_at": "2026-08-30T19:42:54+00:00"
+  "status": "closed",
+  "title": "Unpriced products stay off the dogfood home",
+  "track_id": "gt-20260926022138-947c39",
+  "updated_at": "2026-09-26T02:55:14+00:00"
 }

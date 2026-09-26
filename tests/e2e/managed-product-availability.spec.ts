@@ -33,6 +33,12 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
     "dinkus-inventory-sku-demo",
   );
   await expect(page.locator("[data-stock-value]")).toHaveText("8");
+  await expect(
+    page.locator("[data-managed-product] [data-regular-price]"),
+  ).toHaveText("$12.00");
+  await expect(
+    page.locator("[data-managed-product] [data-sale-price]"),
+  ).toHaveCount(0);
   const initialVersion = await page
     .locator("[data-managed-product]")
     .getAttribute("data-stock-version");

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   UNMANAGED_PRODUCT_ITEM_ID,
   UNMANAGED_PRODUCT_SKU,
+  UNPRICED_PRODUCT_ITEM_ID,
+  UNPRICED_PRODUCT_SKU,
   createUnmanagedProductSellabilityRuntime,
 } from "../../src/features/unmanaged-product-sellability/index.js";
 
@@ -23,6 +25,12 @@ describe("unmanaged product sellability", () => {
       catalogItemId: UNMANAGED_PRODUCT_ITEM_ID,
       status: "in-stock",
       sellable: true,
+      listable: true,
+    });
+    expect(initial.price).toEqual({
+      listable: true,
+      regularText: "$12.00",
+      saleText: "$10.00",
     });
     expect(initial.storefront).not.toHaveProperty("displayQuantity");
 
@@ -62,9 +70,25 @@ describe("unmanaged product sellability", () => {
     });
     expect(restored.provenance).toEqual({
       blocks: "f197c8108de244c47d651ec16cb1f4d25b15736f",
-      commerce: "b9e432b1869bae09e394f5d631aa97b6949bf2fd",
+      commerce: "3f20fe96d5b3104c4b599e669d18f54fd8ab2587",
       inventory: "4f1bdfc85964fc41fe466336784af62261384679",
     });
+  });
+
+  it("keeps an unpriced draft off the public home", async () => {
+    const runtime = createUnmanagedProductSellabilityRuntime();
+    const draft = await runtime.readUnpricedDraft();
+    expect(draft.product).toMatchObject({
+      itemId: UNPRICED_PRODUCT_ITEM_ID,
+      sku: UNPRICED_PRODUCT_SKU,
+      stockMode: "unmanaged",
+    });
+    expect(draft.storefront).toMatchObject({
+      catalogItemId: UNPRICED_PRODUCT_ITEM_ID,
+      listable: false,
+      sellable: false,
+    });
+    expect(draft.price.listable).toBe(false);
   });
 
   it("fails closed when the proof targets another catalog item or status", async () => {

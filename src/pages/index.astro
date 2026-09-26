@@ -46,8 +46,16 @@ const [availability, unmanaged] = await Promise.all([
           </section>
         )
       }
-      <ManagedProductAvailability availability={availability} />
-      <UnmanagedProductSellability availability={unmanaged} />
+      {
+        availability.price.listable ? (
+          <ManagedProductAvailability availability={availability} />
+        ) : null
+      }
+      {
+        unmanaged.storefront.listable ? (
+          <UnmanagedProductSellability availability={unmanaged} />
+        ) : null
+      }
     </main>
     <footer class="store-footer">
       Transactional facts remain in Commerce and Inventory; EmDash owns the
