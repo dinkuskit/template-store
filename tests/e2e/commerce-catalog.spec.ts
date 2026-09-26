@@ -66,7 +66,7 @@ test("merchant product prices drive public listing and survive an admin reload",
   await admin.getByRole("button", { name, exact: true }).click();
   await expect(admin.getByLabel("Sale", { exact: true })).toHaveValue("18.00");
   const statusRoute = "/_emdash/api/plugins/dinkus-commerce/catalog-items/set-manual-availability";
-  const denied = await request.post(statusRoute, { data: { catalogItemId: id, status: "out-of-stock" }, headers: { "X-EmDash-Request": "1" } });
+  const denied = await page.request.post(statusRoute, { data: { catalogItemId: id, status: "out-of-stock" }, headers: { "X-EmDash-Request": "1" } });
   expect([401, 403]).toContain(denied.status());
   for (const status of ["out-of-stock", "available-on-backorder", "in-stock"]) {
     const changed = await admin.request.post(statusRoute, { data: { catalogItemId: id, status }, headers: { "X-EmDash-Request": "1" } });
