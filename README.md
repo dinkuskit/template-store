@@ -37,6 +37,11 @@ non-purchasable and have no invented prices. Visual Regular/Sale admin boxes,
 cart, checkout, payments, shipping, deployment, persisted Manage Stock toggle,
 and production persistence are not claimed yet.
 
+The seed also includes one EmDash section, Home opener (`home-opener`). It is a
+copied composition of the existing page hero and fact rail. The public home page
+stays the ordinary Pages `home` content and does not call `getSection()`. A shop
+owner inserts the section with `/section`, then owns that copy.
+
 ## Upgrade an initialized local starter
 
 A database initialized before the Merchandise collection was added does **not**
@@ -55,6 +60,19 @@ missing Merchandise collection and starter entries; do not use `update` to
 replace edited content. Restart the server and check Pages → home and
 Merchandise in the EmDash admin before using the catalog. This is a local
 starter migration, not a production deploy or a data migration for live stores.
+
+The same limit applies to the Home opener section. A database initialized before
+that section was added does not gain it when the seed file changes, and a fresh
+install verifier does not answer the upgrade. It is not a new collection. Stop
+the server, back up the database, then apply the seed with `skip` so existing
+page edits stay and the missing section is created:
+
+```bash
+sqlite3 .artifacts/dev/content.db ".backup .artifacts/dev/pre-home-opener-backup.db"
+pnpm exec emdash seed --database=.artifacts/dev/content.db --uploads-dir=.artifacts/dev/uploads --on-conflict=skip seed/seed.json
+```
+
+Restart and confirm Sections shows Home opener. Do not use `update`.
 
 ## Development
 
