@@ -102,3 +102,5 @@
     }
   }
 }
+
+.demo-heading{width:min(70rem,calc(100% - 2rem));margin:1.5rem auto}

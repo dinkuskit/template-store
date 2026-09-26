@@ -2,7 +2,7 @@
 
 Status: template-store catch-up to Commerce #16 implemented locally
 Baseline: `35ac1f272476e3094cecaa30124a5699c53d5a8c`
-Commerce source: `3f20fe96d5b3104c4b599e669d18f54fd8ab2587`
+Commerce source: `81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06`
 
 ## Responsibility boundary
 
@@ -29,7 +29,7 @@ proof route is the local playground stand-in until Commerce ships admin UI.
 | Package | Exact source | Consumer status |
 | --- | --- | --- |
 | `@dinkuskit/blocks` | `fe03bfac91798ac0b411b952fe23c26afefbf570` | exact merged main pin (blocks #52–53, emdash@0.41.0) |
-| `@dinkuskit/commerce` | prepared source checkout at `3f20fe96d5b3104c4b599e669d18f54fd8ab2587` | exact Commerce #18 source pin |
+| `@dinkuskit/commerce` | prepared source checkout at `81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06` | exact landed Products admin source pin |
 | `@dinkuskit/inventory` | `5889c7d59398376da51ac400d5c1f1214aba2c6b` | unused by this feature |
 | `emdash` | `0.41.0` | exact released CMS baseline |
 
