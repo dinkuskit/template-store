@@ -2,7 +2,9 @@
 
 This map is the repository contract for bounded template work. Features own
 their implementation, tests, and public entry. Cross-feature access goes
-through an `index.ts` entry.
+through its declared public entry. `index.ts` is the default. The guest cart
+keeps a pure browser entry there and exposes its server-rendered Astro
+components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -19,6 +21,7 @@ through an `index.ts` entry.
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |
 | Merchant admin to real catalog | EmDash Products at `/_emdash/admin/plugins/dinkus-commerce/products`; public `/` Shop and `/shop/<Commerce ID>` | Add name/SKU, save Regular, save lower Sale, reject malformed Regular, reload admin, clear prices. Separate anonymous page and authenticated public Edit context; desktop/mobile. | No Regular means no public card and detail 404, but admin retains product. Regular lists it; Sale strikes Regular. Invalid edit leaves public price unchanged. Commerce availability has no invented quantity. Public Edit hydrates without changing catalog authority. |
+| Guest cart presentation | Header Cart on storefront pages; `/cart`; add-to-cart on persisted Shop products only | Create a priced in-stock Commerce product, add it, change quantity, reload, remove to empty, inject malformed storage, change the product to out-of-stock then unpriced, open `/cart?success=1`. Desktop and mobile. | Only sellable priced Shop products can be added. Preview merchandise has no add-to-cart. Browser storage holds version, IDs, and quantities only. `/cart` shows current Commerce name/price/sellability. Missing, unpriced, or unsellable lines keep a readable reason and cannot checkout. Snapshot failure keeps intent and offers retry. Checkout stays disabled with `Checkout unavailable`. A forged success query never confirms a purchase. |
 
 Shipping v1 has Inventory off and uses persisted unmanaged Commerce Products.
 The existing seeded merchandise and stock panels are explicit development
@@ -28,6 +31,20 @@ management Coming soon control belongs to the exact paired Commerce artifact.
 Final pairing is pending the Commerce owner's immutable artifact handoff. No seed import is needed to add
 Commerce Products to an initialized starter; preserve its edited CMS content.
 See [operator and compatibility boundaries](docs/implementation/commerce-catalog.md).
+
+## Authorized guest cart
+
+| Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dinkus.guest-cart` | Validated browser identity/quantity intent cache, cart editing and Commerce snapshot presentation; inactive checkout until upstream guest mount | `src/features/guest-cart/`; `src/pages/cart.astro`; `src/pages/api/guest-cart/snapshot.ts`; `tests/unit/guest-cart.test.ts`; `tests/e2e/guest-cart.spec.ts` | `src/features/guest-cart/index.ts`; UI through `src/features/guest-cart/ui.ts` | Commerce catalog public entry; store-shell public entry | `bin/verify-web quick` | `bin/verify-web full` | candidate; checkout contract pending |
+
+Issue #20 supersedes the earlier catalog-only no-cart exclusion for this bounded
+shopper feature. Cart persistence is untrusted identity/quantity intent, never
+price, stock, checkout or order authority. Current catalog prices/sellability
+are read through the existing Commerce consumer. Guest capability, frozen
+attempts, hosted handoff and durable paid-order return states depend on Commerce
+issue #32 and exact artifact/mount proof. No browser URL establishes payment.
+No synthetic provider, registry release or Stripe proof is claimed here.
 
 ## Default inventory-off profile
 
@@ -89,7 +106,7 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
   Regular/Sale boxes operate the separate persisted merchant catalog above.
 - Named order reservations, packed holds, and stock transfers exist on the
   Inventory pin. This playground does not consume them.
-- Cart, checkout, payments, shipping and package publication remain upstream
+- Authoritative cart checkout, payments, shipping and package publication remain upstream
   delivery gates outside this preparation slice; catalog proof alone cannot
   establish v1 readiness. Inventory is not a shipping v1 gate. Deployment is
   planned separately and requires explicit approval.

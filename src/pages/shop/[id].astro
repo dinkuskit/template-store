@@ -1,5 +1,6 @@
 ---
 import { readCommerceCatalog, availabilityLabels } from "../../features/commerce-catalog/index.js";
+import { AddToCart, GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 let unavailable = false;
@@ -13,7 +14,7 @@ const profile = readStorefrontProfile();
 <html lang="en">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><title>{product?.name ?? "Product unavailable"} | {STORE_TITLE}</title></head>
 <body data-storefront-profile={profile}>
-<header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a></header>
+<header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><GuestCartNav /></nav></header>
 <main class="shop-detail">
 <a href="/#commerce-catalog">← Back to shop</a>
 {product ? <article data-commerce-product={product.id}>
@@ -21,6 +22,7 @@ const profile = readStorefrontProfile();
 <p>SKU: {product.sku}</p>
 <p class="price">{product.price.saleText ? <><s data-regular-price>{product.price.regularText}</s><strong data-sale-price>{product.price.saleText}</strong></> : <strong data-regular-price>{product.price.regularText}</strong>}</p>
 <p data-commerce-availability={product.availability.status}>{availabilityLabels[product.availability.status]}</p>
+<AddToCart product={product} />
 <p>Checkout is not available yet.</p>
 </article> : <><h1>{unavailable ? "Catalog temporarily unavailable" : "Product not found"}</h1><p>{unavailable ? "Please try again later." : "This product is not publicly listed."}</p></>}
 </main>

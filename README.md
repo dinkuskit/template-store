@@ -16,7 +16,7 @@ while retaining it in admin. Product details live at `/shop/<Commerce ID>`.
 See [operator steps and upgrade boundaries](docs/implementation/commerce-catalog.md).
 The default storefront has Inventory off. Existing seeded merchandise and
 Inventory proof run only in the explicit development integration profile,
-not as merchant products. Checkout and production readiness remain release gates.
+not as merchant products. The authorized guest-cart extension adds browser identity/quantity intent and current Commerce presentation. Checkout and production readiness remain release gates.
 
 ## Separate integration demonstrations
 

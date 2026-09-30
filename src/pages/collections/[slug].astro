@@ -1,6 +1,7 @@
 ---
 import { getEmDashCollection } from "emdash";
 import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
+import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, collectionPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
@@ -20,7 +21,7 @@ const unmanaged = demonstrations?.unmanaged;
     <title>{collection ? `${collection.name} | ${STORE_TITLE}` : `Collection not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><span class="store-header__status">Local integration proof</span></header>
+    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><span class="store-header__status">Local integration proof</span><GuestCartNav /></nav></header>
     <main class="browse-page">
       <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">{collection?.name ?? "Not found"}</span></nav>
       {collection ? (

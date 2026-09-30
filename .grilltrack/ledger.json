@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-09-30T17:21:32+00:00",
-    "domain": "approved inventory-off v1 template profile and pairing",
-    "started_at": "2026-09-30T16:40:44+00:00",
+    "confirmed_at": "2026-09-30T17:54:10+00:00",
+    "domain": "authorized guest cart presentation and Commerce handoff",
+    "started_at": "2026-09-30T17:54:10+00:00",
     "status": "confirmed",
-    "summary": "Already-authorized bounded source-pilot preparation: Inventory off default, exact legacy pins retained, full managed regression preserved, fresh seed truthful, registry/native seams and merchant setup/deployment gates documented. Overall released pair and hosted safe purchase remain unverified upstream requirements."
+    "summary": "Already authorized in issue20: preserve the current visual language and EmDash content, implement cart presentation via ACP, verify independently, commit/push focused PR. Server handoff and durable return states remain pending issue32; no deploy/release/merge/credentials/live payment authorization."
   },
   "decisions": [
     {
@@ -258,14 +258,82 @@
       "superseded_by": null,
       "updated_at": "2026-09-30T17:44:32+00:00",
       "verification_ref": "file:.grilltrack/proof/v1-profile-20260930/PROOF.md"
+    },
+    {
+      "baseline_ref": "git:3f3aaebc81f33be32d4d2f98b7321c4cd154ba01",
+      "candidate_refs": [],
+      "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/20;https://github.com/dinkuskit/commerce/issues/32",
+      "created_at": "2026-09-30T17:54:10+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized guest cart presentation and Commerce handoff",
+      "history": [
+        {
+          "at": "2026-09-30T17:54:10+00:00",
+          "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T18:51:38+00:00",
+          "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T18:51:38+00:00",
+          "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/guest-cart/index.ts;file:docs/implementation/guest-cart.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "guest-cart-005",
+      "implementation_ref": "file:src/features/guest-cart/index.ts;file:docs/implementation/guest-cart.md",
+      "question": "What shopper work can proceed before the Commerce guest mount?",
+      "rationale": "Explicit authorized issue20 continuation. Historical no-cart/no-checkout catalog scope is superseded only for this bounded shopper feature; price, Inventory, payment and order authority remain upstream.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-09-30T18:51:38+00:00",
+      "verification_ref": "file:.grilltrack/proof/guest-cart-20260930/PROOF.md"
     }
   ],
   "last_activation": {
-    "at": "2026-09-30T16:39:54+00:00",
+    "at": "2026-09-30T17:54:10+00:00",
     "mechanism": "implicit"
   },
-  "last_pause": null,
-  "pause": {
+  "last_pause": {
     "artifact_refs": [
       ".grilltrack/proof/v1-profile-20260930/PROOF.md",
       "docs/v1-pairing.md",
@@ -273,13 +341,15 @@
     ],
     "next_safe_action": "Coordinator reviews immutable candidate; sole source owner may continue already-authorized issue20 guest cart presentation in a separate worktree without editing this candidate.",
     "paused_at": "2026-09-30T17:44:32+00:00",
-    "reason": "Bounded native source-profile candidate verified and ready for focused PR. Registry artifact/mount, Blocks compatibility, purchase/order/shipping and independent frozen-head review remain gates."
+    "reason": "Bounded native source-profile candidate verified and ready for focused PR. Registry artifact/mount, Blocks compatibility, purchase/order/shipping and independent frozen-head review remain gates.",
+    "resumed_at": "2026-09-30T17:54:10+00:00"
   },
+  "pause": null,
   "predecessor_track_id": "gt-20260926022138-947c39",
   "recommendation": null,
   "schema_version": "grilltrack/v0.1",
-  "status": "paused",
+  "status": "active",
   "title": "Inventory-off v1 template and exact Commerce pairing",
   "track_id": "gt-20260930163954-43d0a5",
-  "updated_at": "2026-09-30T17:44:32+00:00"
+  "updated_at": "2026-09-30T18:51:38+00:00"
 }

@@ -1,0 +1,41 @@
+---
+import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON } from "./index.js";
+---
+<section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart>
+  <h1 id="guest-cart-title">Cart</h1>
+  <p data-guest-cart-status role="status" hidden></p>
+  <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
+  <div data-guest-cart-lines></div>
+  <div class="guest-cart-checkout">
+    <button type="button" data-guest-cart-checkout disabled>{GUEST_CHECKOUT_LABEL}</button>
+    <p data-guest-cart-checkout-reason>{GUEST_CHECKOUT_REASON}</p>
+    <button type="button" data-guest-cart-retry>Retry catalog update</button>
+  </div>
+</section>
+<style>
+  .guest-cart{width:min(70rem,calc(100% - 2rem));margin:3rem auto;min-height:65vh;overflow-wrap:anywhere}
+  h1{font-size:clamp(2.5rem,6vw,5rem);letter-spacing:-.05em;margin:0 0 1.5rem}
+  [data-guest-cart-status],[data-guest-cart-empty],[data-guest-cart-checkout-reason]{color:var(--store-muted);line-height:1.5}
+  [data-guest-cart-status][role="alert"]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
+  [data-guest-cart-lines]{display:grid;gap:1rem;margin:1.5rem 0}
+  .guest-cart-checkout{margin-top:2rem}
+  .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800}
+  [data-guest-cart-checkout]:disabled{color:var(--store-muted);cursor:not-allowed}
+  .guest-cart :global([data-guest-cart-line]){padding:1.5rem;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface);min-width:0;overflow-wrap:anywhere}
+  .guest-cart :global([data-guest-cart-line] h2){font-size:1.5rem;margin:0 0 1rem}
+  .guest-cart :global(.price){display:flex;gap:.65rem;flex-wrap:wrap;font-size:1.4rem}
+  .guest-cart :global(s){color:var(--store-muted)}
+  .guest-cart :global([data-guest-cart-line-reason]){color:var(--store-muted);line-height:1.5}
+  .guest-cart :global(.guest-cart-qty){display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:1rem 0;min-width:0}
+  .guest-cart :global([data-guest-cart-qty]){width:4.5rem;max-width:100%;padding:.45rem .55rem;border:1px solid var(--store-line);border-radius:.4rem;font:inherit;background:var(--store-surface)}
+  .guest-cart :global([data-guest-cart-remove]){padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
+  .guest-cart :global([data-guest-cart-qty]:focus-visible),
+  .guest-cart :global([data-guest-cart-remove]:focus-visible),
+  .guest-cart :global([data-guest-cart-retry]:focus-visible),
+  .guest-cart :global([data-guest-cart-empty]:focus-visible){outline:3px solid #215cc8;outline-offset:3px}
+  @media(max-width:45rem){.guest-cart :global([data-guest-cart-line]),.guest-cart :global(.guest-cart-qty){min-width:0}}
+</style>
+<script>
+  import { hydrateGuestCartPage } from "./guest-cart-client.ts";
+  hydrateGuestCartPage();
+</script>

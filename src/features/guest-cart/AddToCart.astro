@@ -1,0 +1,26 @@
+---
+import { canAddCommerceProductToCart } from "./index.js";
+import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
+
+interface Props {
+  product: PublicCommerceProduct;
+}
+
+const { product } = Astro.props;
+const allowed = canAddCommerceProductToCart(product);
+---
+{allowed ? (
+  <div class="guest-cart-add">
+    <button type="button" data-add-to-cart={product.id}>Add to cart</button>
+    <p data-add-to-cart-status hidden role="status"></p>
+  </div>
+) : null}
+<style>
+  .guest-cart-add{margin-top:1rem}
+  .guest-cart-add button{padding:.7rem 1rem;border:0;border-radius:.4rem;background:var(--dinkus-action-background);color:var(--dinkus-action-color);font:inherit;font-weight:800;cursor:pointer}
+  .guest-cart-add p{margin:.6rem 0 0;color:var(--store-muted)}
+</style>
+<script>
+  import { hydrateGuestCartControls } from "./guest-cart-client.ts";
+  hydrateGuestCartControls();
+</script>

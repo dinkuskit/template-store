@@ -1,5 +1,6 @@
 ---
 import { getEmDashCollection } from "emdash";
+import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, collectionPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
@@ -24,7 +25,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
     <title>{item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><span class="store-header__status">Local integration proof</span></header>
+    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><span class="store-header__status">Local integration proof</span><GuestCartNav /></nav></header>
     <main class="product-page">
       <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{collection && <><a href={collectionPath(collection.name)}>{collection.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{item?.title ?? "Not found"}</span></nav>
       {item && collection ? (

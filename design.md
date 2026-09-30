@@ -17,7 +17,7 @@ The Shop above the separate integration demonstrations is driven by persisted
 Commerce Products. Name/SKU and Regular/Sale are operated in native EmDash
 Products admin. Missing Regular hides both listing and detail; Sale strikes
 Regular. Render truthful Commerce availability without inventing quantity.
-The catalog may be empty. No purchase button or checkout is implied. Preserve
+The catalog may be empty. The earlier catalog-only scope is superseded for the authorized guest-cart slice below; checkout remains unavailable until the exact Commerce guest runtime is paired. Preserve
 the existing neutral visual language, keyboard links, and narrow-screen fit.
 The approved shipping v1 profile has Inventory off. Managed demonstrations
 remain explicit development proof. Default shopper pages consume the persisted
@@ -45,7 +45,7 @@ Coming soon stock management; preserve existing managed data/fail-closed reads.
   overwrites an already-populated `layout`.
 - Give each published collection and product a browsable page with catalog/collection back links. Unpublished or missing paths return 404. Product pages use current Commerce/Inventory availability for the two exact connected IDs; previews explicitly remain non-purchasable.
 - Use neutral tees, hoodies, and hats; no site-specific branding or invented
-  price, cart, checkout, shipping, coupons, bundles, or payment affordances.
+  price, shipping, coupons, bundles, or payment authority. The authorized guest cart uses Commerce product reads and identity/quantity intent only.
 - Preserve semantic headings, keyboard navigation, visible focus, sufficient
   contrast, and useful status text without relying on color alone.
 - Fit narrow mobile and desktop Chromium viewports without horizontal overflow.
@@ -89,3 +89,18 @@ mobile acceptance for the default unmanaged profile, plus the explicit
 development profile through the complete managed `8 -> 5 -> 8` stock
 sequence and the unmanaged manual-availability sequence. Curated screenshots
 and the exact assertion record belong in the current proof packet.
+
+## Authorized guest cart extension
+
+Issue #20 authorizes a neutral guest cart within the existing warm-neutral
+visual language: add, positive integer quantity changes, remove, empty state,
+validated browser persistence and recoverable errors on desktop/mobile. EmDash
+composition remains untouched. Browser contents are untrusted intent/cache;
+current Commerce catalog reads supply price and sellability for presentation.
+The template must not establish its own pricing, stock, checkout or order
+backend. The initial cart candidate keeps checkout disabled until Commerce
+issue #32 supplies the supported guest capability/status mount and immutable
+artifact. Return URL claims never establish a confirmed purchase. Later actual
+integration must preserve frozen attempts and clear only the purchased cart
+after Commerce durable paid-order confirmation. Synthetic UI proof is not
+Stripe test-mode or released registry-pair proof.
