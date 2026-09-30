@@ -231,10 +231,9 @@ test("home opener section copies, edits apart from the library, publishes, and r
       expect(publishedLegacy.ok(), await publishedLegacy.text()).toBe(true);
       await adminPage.reload();
     }
-    // A cold CI admin bundle can hydrate after the default five-second wait.
     // Require the original blocks before starting the editing round trip.
-    await expect(pluginBlocks(adminPage, "Page Hero")).toHaveCount(1, { timeout: 30_000 });
-    await expect(pluginBlocks(adminPage, "Fact Rail")).toHaveCount(1, { timeout: 30_000 });
+    await expect(pluginBlocks(adminPage, "Page Hero")).toHaveCount(1);
+    await expect(pluginBlocks(adminPage, "Fact Rail")).toHaveCount(1);
 
     await insertHomeOpener(adminPage);
     await adminPage.screenshot({
