@@ -54,6 +54,8 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: store-browser-error-context-${{ github.run_id }}
-          path: test-results/playwright/**/error-context.md
+          path: |
+            test-results/playwright/**/error-context.md
+            test-results/playwright/**/home-editor-fixture-state.json
           if-no-files-found: ignore
           retention-days: 3

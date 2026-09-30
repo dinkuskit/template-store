@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
@@ -280,6 +280,28 @@ test("home opener section copies, edits apart from the library, publishes, and r
       fullPage: true,
     });
     await libraryHeadlineUnchanged(adminPage);
+  } catch (error) {
+    // Retain fixture structure before closing the admin page. Never capture
+    // cookies, headers, traces, or account/auth fields in CI diagnostics.
+    try {
+      const home = await readHomeEntry(adminPage);
+      const types = (value: unknown) => Array.isArray(value)
+        ? value.map((block) => block?._type ?? null)
+        : typeof value;
+      const snapshot = {
+        contentTypes: types(home.data.content),
+        layoutTypes: types(home.data.layout),
+        editorText: await adminPage.locator(".ProseMirror").innerText(),
+        blockLabels: await adminPage.locator(
+          ".ProseMirror [data-node-view-wrapper] .text-sm.font-medium",
+        ).allTextContents(),
+      };
+      await writeFile(testInfo.outputPath("home-editor-fixture-state.json"),
+        JSON.stringify(snapshot, null, 2) + "\n");
+    } catch {
+      // Diagnostic failure must not replace the original assertion failure.
+    }
+    throw error;
   } finally {
     await adminContext.close();
   }

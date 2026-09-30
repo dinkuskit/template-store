@@ -7,6 +7,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
+  // A failed stateful editor test can corrupt the shared disposable fixture.
+  // Passing CI still exercises every test; failures stop before cascades.
+  maxFailures: process.env.CI ? 1 : 0,
   reporter: [["line"]],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
