@@ -49,3 +49,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm verify
+      - name: Capture browser failure context
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: store-browser-error-context-${{ github.run_id }}
+          path: test-results/playwright/**/error-context.md
+          if-no-files-found: ignore
+          retention-days: 3
