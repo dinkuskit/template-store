@@ -1,7 +1,7 @@
 # Independent guest cart presentation proof
 
-Status: bounded cart presentation verified. Exact source review identity is
-recorded after the source commit. Repository `dinkuskit/template-store`, branch
+Status: bounded cart presentation verified; qualified local source review
+bound to `git:cbf1bfc2000284da97891951d3657cb8ec4ec086`. Repository `dinkuskit/template-store`, branch
 `codex/template-store-guest-cart-20260930`, base frozen profile PR21 head
 `3f3aaebc81f33be32d4d2f98b7321c4cd154ba01`. This is EmDash 0.41.0 native
 source-pilot evidence; checkout and released registry pairing remain pending.
