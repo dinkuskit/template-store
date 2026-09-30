@@ -62,8 +62,7 @@ test("shop owner inserts a query card and published records update without page 
     await addRecord("draft", "Draft notice stays private", false);
     const editor = admin.locator(".ProseMirror");
     await editor.click();
-    await admin.keyboard.press("Control+a");
-    await admin.keyboard.press("ArrowRight");
+    await admin.keyboard.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
     await admin.keyboard.press("Enter");
     await admin.keyboard.type("/query");
     await admin.getByText("A list of current records from one collection", { exact: true }).click();
@@ -81,6 +80,7 @@ test("shop owner inserts a query card and published records update without page 
     await admin.getByRole("dialog", { name: "Publish changes?" }).getByRole("button", { name: "Publish changes", exact: true }).click();
     expect((await published).ok()).toBe(true);
     await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Everyday essentials, clearly presented" })).toBeVisible();
     const cards = page.locator('[data-dinkus-block="query-card"]');
     await expect(cards.locator("article")).toHaveCount(1);
     await expect(cards.getByRole("link", { name: "First shop notice" })).toHaveAttribute("href", "/products/canvas-cap");

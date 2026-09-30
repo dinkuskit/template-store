@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
@@ -43,8 +43,8 @@ async function insertHomeOpener(page: Page): Promise<void> {
   const editor = page.locator(".ProseMirror");
   await editor.scrollIntoViewIfNeeded();
   await editor.click();
-  await page.keyboard.press("Control+a");
-  await page.keyboard.press("ArrowRight");
+  // Ctrl+A selects the whole document on Linux; Enter can replace its blocks.
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/section");
   const command = page.getByText("Insert a reusable section", { exact: true });
@@ -231,6 +231,7 @@ test("home opener section copies, edits apart from the library, publishes, and r
       expect(publishedLegacy.ok(), await publishedLegacy.text()).toBe(true);
       await adminPage.reload();
     }
+    // Require the original blocks before starting the editing round trip.
     await expect(pluginBlocks(adminPage, "Page Hero")).toHaveCount(1);
     await expect(pluginBlocks(adminPage, "Fact Rail")).toHaveCount(1);
 
@@ -280,6 +281,28 @@ test("home opener section copies, edits apart from the library, publishes, and r
       fullPage: true,
     });
     await libraryHeadlineUnchanged(adminPage);
+  } catch (error) {
+    // Retain fixture structure before closing the admin page. Never capture
+    // cookies, headers, traces, or account/auth fields in CI diagnostics.
+    try {
+      const home = await readHomeEntry(adminPage);
+      const types = (value: unknown) => Array.isArray(value)
+        ? value.map((block) => block?._type ?? null)
+        : typeof value;
+      const snapshot = {
+        contentTypes: types(home.data.content),
+        layoutTypes: types(home.data.layout),
+        editorText: await adminPage.locator(".ProseMirror").innerText(),
+        blockLabels: await adminPage.locator(
+          ".ProseMirror [data-node-view-wrapper] .text-sm.font-medium",
+        ).allTextContents(),
+      };
+      await writeFile(testInfo.outputPath("home-editor-fixture-state.json"),
+        JSON.stringify(snapshot, null, 2) + "\n");
+    } catch {
+      // Diagnostic failure must not replace the original assertion failure.
+    }
+    throw error;
   } finally {
     await adminContext.close();
   }
