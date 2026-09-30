@@ -1,11 +1,11 @@
 import type { APIRoute } from "astro";
 
+import { isProofMutationEnabled } from "../../../features/store-shell/index.js";
+import { UnmanagedProductSellabilityError } from "../../../features/unmanaged-product-sellability/errors.js";
 import {
   UNMANAGED_PRODUCT_ITEM_ID,
-  UnmanagedProductSellabilityError,
-  unmanagedProductSellabilityRuntime,
   type UnmanagedAvailabilityProof,
-} from "../../../features/unmanaged-product-sellability/index.js";
+} from "../../../features/unmanaged-product-sellability/types.js";
 
 export const prerender = false;
 
@@ -24,7 +24,7 @@ function isAvailabilityProof(value: unknown): value is UnmanagedAvailabilityProo
 }
 
 export const POST: APIRoute = async ({ request }) => {
-  if (process.env.DINKUS_PROOF_MODE !== "1") {
+  if (!isProofMutationEnabled()) {
     return new Response("Not found", { status: 404 });
   }
 
@@ -38,6 +38,9 @@ export const POST: APIRoute = async ({ request }) => {
     return Response.json({ error: "invalid_availability" }, { status: 400 });
   }
 
+  const { unmanagedProductSellabilityRuntime } = await import(
+    "../../../features/unmanaged-product-sellability/index.js"
+  );
   try {
     const availability = await unmanagedProductSellabilityRuntime.setAvailability(
       body,

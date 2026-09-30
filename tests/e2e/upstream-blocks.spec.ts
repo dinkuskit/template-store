@@ -53,7 +53,7 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
   const originalLayout = original.layout as Array<Record<string, unknown>>;
   expect(Array.isArray(originalContent)).toBe(true);
   const legacyHero = (originalContent as Array<Record<string, unknown>>).find((block) => block._type === "dinkus.page-hero");
-  expect(legacyHero).toMatchObject({ primaryLabel: "Shop the collection", primaryHref: "#catalog-title", secondaryLabel: "See availability proof", secondaryHref: "#managed-product" });
+  expect(legacyHero).toMatchObject({ primaryLabel: "Shop the collection", primaryHref: "#commerce-catalog", secondaryLabel: "View products", secondaryHref: "#commerce-catalog" });
   expect(originalLayout[0]?._type).toBe("home_opener");
 
   const duplicateButton = admin.getByRole("button", { name: "Duplicate block" });
@@ -188,11 +188,11 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
     expect(migrated.content).toEqual(originalContent);
     const migratedLayout = migrated.layout as Array<Record<string, unknown>>;
     expect(migratedLayout[0]?._type).toBe("home_opener");
-    expect(migratedLayout[0]).toMatchObject({ primary_label: "Shop the collection", primary_href: "#catalog-title", secondary_label: "See availability proof", secondary_href: "#managed-product" });
+    expect(migratedLayout[0]).toMatchObject({ primary_label: "Shop the collection", primary_href: "#commerce-catalog", secondary_label: "View products", secondary_href: "#commerce-catalog" });
     await page.goto("/");
     await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");
-    await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#catalog-title");
-    await expect(page.locator('.home-opener__actions a[href="#managed-product"]')).toHaveText("See availability proof");
+    await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#commerce-catalog");
+    await expect(page.locator('.home-opener__actions a[href="#commerce-catalog"]')).toHaveText(["Shop the collection", "View products"]);
 
     await writeFile(resolve(evidence, "revision-assertions.json"), JSON.stringify({
       revisionRetainedBlocks: true,

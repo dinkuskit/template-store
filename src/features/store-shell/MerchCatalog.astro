@@ -5,8 +5,8 @@ import { categoryAnchor, collectionPath, productPath, type MerchCollection } fro
 
 interface Props {
   collections: readonly MerchCollection[];
-  managed: ManagedProductAvailability;
-  unmanaged: UnmanagedProductSellability;
+  managed?: ManagedProductAvailability;
+  unmanaged?: UnmanagedProductSellability;
   collectionOnly?: boolean;
 }
 const { collections, managed, unmanaged, collectionOnly = false } = Astro.props;
@@ -38,9 +38,9 @@ const manualLabel: Record<string, string> = {
       <div class="merch-grid">
         {collection.items.map((item) => {
           const source = item.availabilitySource;
-          const status = source === "managed"
+          const status = source === "managed" && managed
             ? `${managed.inventory.available} available`
-            : source === "unmanaged"
+            : source === "unmanaged" && unmanaged
               ? manualLabel[unmanaged.storefront.status]
               : "Preview only · not purchasable";
           const destination = productPath(item.id)!;
@@ -50,11 +50,11 @@ const manualLabel: Record<string, string> = {
               <p class="merch-card__category">{item.category}</p>
               {collectionOnly ? <h2>{item.title}</h2> : <h4>{item.title}</h4>}
               <p class="merch-card__description">{item.description}</p>
-              {source === "managed" && <p class="merch-card__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
-              {source === "unmanaged" && <p class="merch-card__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
+              {source === "managed" && managed && <p class="merch-card__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
+              {source === "unmanaged" && unmanaged && <p class="merch-card__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
               <p class="merch-card__status" data-merch-status>{status}</p>
               <a href={destination} aria-label={`View ${item.title} details`}>View details <span aria-hidden="true">↗</span></a>
-              {source !== "preview" && <a class="merch-card__availability" href={source === "managed" ? "/#managed-product" : "/#unmanaged-product"} aria-label={`View availability for ${item.title}`}>View availability</a>}
+              {source !== "preview" && (managed || unmanaged) && <a class="merch-card__availability" href={source === "managed" ? "/#managed-product" : "/#unmanaged-product"} aria-label={`View availability for ${item.title}`}>View availability</a>}
             </div>
           </article>;
         })}

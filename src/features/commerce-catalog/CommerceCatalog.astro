@@ -3,8 +3,8 @@ import { commerceProductPath, availabilityLabels, type PublicCommerceProduct } f
 interface Props { products: PublicCommerceProduct[]; unavailable?: boolean; }
 const { products, unavailable = false } = Astro.props;
 ---
-<section class="shop-catalog" aria-labelledby="shop-title" data-commerce-catalog>
-  <h2 id="shop-title">Shop</h2>
+<section class="shop-catalog" aria-labelledby="commerce-catalog" data-commerce-catalog>
+  <h2 id="commerce-catalog">Shop</h2>
   {unavailable ? <p role="alert">The product catalog is temporarily unavailable.</p> : products.length === 0 ? <p data-commerce-empty>No products are listed yet.</p> : <div class="shop-grid">
     {products.map(product => <article data-commerce-product={product.id}>
       <h3><a href={commerceProductPath(product.id)}>{product.name}</a></h3>

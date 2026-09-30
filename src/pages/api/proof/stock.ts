@@ -1,10 +1,8 @@
 import type { APIRoute } from "astro";
 
-import {
-  ManagedProductAvailabilityError,
-  managedProductAvailabilityRuntime,
-  type StockProofAdjustment,
-} from "../../../features/managed-product-availability/index.js";
+import { isProofMutationEnabled } from "../../../features/store-shell/index.js";
+import { ManagedProductAvailabilityError } from "../../../features/managed-product-availability/errors.js";
+import type { StockProofAdjustment } from "../../../features/managed-product-availability/types.js";
 
 export const prerender = false;
 
@@ -22,7 +20,7 @@ function isProofAdjustment(value: unknown): value is StockProofAdjustment {
 }
 
 export const POST: APIRoute = async ({ request }) => {
-  if (process.env.DINKUS_PROOF_MODE !== "1") {
+  if (!isProofMutationEnabled()) {
     return new Response("Not found", { status: 404 });
   }
 
@@ -36,6 +34,9 @@ export const POST: APIRoute = async ({ request }) => {
     return Response.json({ error: "invalid_adjustment" }, { status: 400 });
   }
 
+  const { managedProductAvailabilityRuntime } = await import(
+    "../../../features/managed-product-availability/index.js"
+  );
   try {
     const availability = await managedProductAvailabilityRuntime.adjust(body);
     return Response.json({ availability });

@@ -20,10 +20,10 @@ The existing backend manual-availability contract is consumed as-is. Managed
 products without a configured provider fail closed as availability unavailable.
 No managed-stock admin or provider transport is introduced.
 
-Commerce and Inventory are crucial side-by-side launch components. The existing
-Inventory `8 → 5 → 8` demonstration remains explicitly separate from merchant
-products. Its seeded CMS merchandise and unmanaged proof are retained under
-Integration demonstrations; they are not the merchant catalog. Checkout,
+Shipping v1 uses unmanaged Commerce Products with Inventory off. The existing
+Inventory `8 → 5 → 8` demonstration remains in the explicit development profile
+and is separate from merchant products. Its seeded CMS merchandise and unmanaged
+proof remain integration demonstrations; they are not the shipping catalog. Checkout,
 payment, deployment, and production-readiness are not claimed.
 
 ## Initialized local starters
@@ -49,4 +49,4 @@ create, missing-Regular hide, Regular, Sale, invalid-price preservation, admin
 reload, anonymous detail, authenticated public Edit hydration, and price clearing
 on desktop and mobile. Existing suites retain the Inventory sequence, manual
 availability, CMS authoring, editorial query card, and preview isolation.
-Sanitized retained media is published separately to dinkus-pr-assets.
+Sanitized browser media is retained separately from product source.

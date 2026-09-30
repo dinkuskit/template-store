@@ -3,7 +3,7 @@
   "version": "1",
   "meta": {
     "name": "DinkusKit store starter",
-    "description": "Neutral classic merchandise catalog with managed and unmanaged availability proof",
+    "description": "Neutral Commerce shop starter with EmDash composition",
     "author": "DinkusKit contributors"
   },
   "collections": [
@@ -98,11 +98,11 @@
           "_key": "home-opener-hero",
           "eyebrow": "Start here",
           "headline": "Welcome to the shop",
-          "deck": "A short introduction the shop owner can rewrite.",
+          "deck": "Browse products published in Commerce. Checkout is not available yet.",
           "primary_label": "Browse the shop",
-          "primary_href": "#catalog-title",
-          "secondary_label": "Read the notes",
-          "secondary_href": "#home-opener-notes"
+          "primary_href": "#commerce-catalog",
+          "secondary_label": "View products",
+          "secondary_href": "#commerce-catalog"
         },
         {
           "_type": "dinkus.fact-rail",
@@ -143,16 +143,16 @@
               "_key": "store-hero",
               "eyebrow": "A classic merch catalog",
               "headline": "Everyday essentials, clearly presented",
-              "deck": "Explore tees, hoodies, and hats. Two connected styles show real availability; the rest are previews, not products for sale.",
+              "deck": "Browse products published in Commerce. Prices and availability come from there. Checkout is not available yet.",
               "primaryLabel": "Shop the collection",
-              "primaryHref": "#catalog-title",
-              "secondaryLabel": "See availability proof",
-              "secondaryHref": "#managed-product"
+              "primaryHref": "#commerce-catalog",
+              "secondaryLabel": "View products",
+              "secondaryHref": "#commerce-catalog"
             },
             {
               "_type": "dinkus.fact-rail",
               "_key": "store-facts",
-              "ariaLabel": "Storefront proof facts",
+              "ariaLabel": "Shop opener facts",
               "facts": [
                 {
                   "_key": "fact-content",
@@ -165,9 +165,9 @@
                   "value": "Dinkus Commerce"
                 },
                 {
-                  "_key": "fact-stock",
-                  "label": "Stock truth",
-                  "value": "Inventory + manual"
+                  "_key": "fact-checkout",
+                  "label": "Checkout",
+                  "value": "Not available yet"
                 }
               ]
             }
@@ -179,11 +179,11 @@
               "_key": "store-home-opener",
               "eyebrow": "A classic merch catalog",
               "headline": "Everyday essentials, clearly presented",
-              "deck": "Explore tees, hoodies, and hats. Two connected styles show real availability; the rest are previews, not products for sale.",
+              "deck": "Browse products published in Commerce. Prices and availability come from there. Checkout is not available yet.",
               "primary_label": "Shop the collection",
-              "primary_href": "#catalog-title",
-              "secondary_label": "See availability proof",
-              "secondary_href": "#managed-product",
+              "primary_href": "#commerce-catalog",
+              "secondary_label": "View products",
+              "secondary_href": "#commerce-catalog",
               "facts": [
                 {
                   "label": "Composition",
@@ -194,8 +194,8 @@
                   "value": "Dinkus Commerce"
                 },
                 {
-                  "label": "Stock truth",
-                  "value": "Inventory + manual"
+                  "label": "Checkout",
+                  "value": "Not available yet"
                 }
               ]
             }

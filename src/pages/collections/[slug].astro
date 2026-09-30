@@ -1,19 +1,15 @@
 ---
 import { getEmDashCollection } from "emdash";
 import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
-import { buildMerchCollections, publicMerchCollections, collectionPath } from "../../features/store-shell/merch-catalog.js";
-import { managedProductAvailabilityRuntime } from "../../features/managed-product-availability/index.js";
-import { unmanagedProductSellabilityRuntime } from "../../features/unmanaged-product-sellability/index.js";
-import { STORE_TITLE } from "../../features/store-shell/index.js";
+import { STORE_TITLE, collectionPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
 const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
-const [managed, unmanaged] = await Promise.all([
-  managedProductAvailabilityRuntime.read(),
-  unmanagedProductSellabilityRuntime.read(),
-]);
-const collection = publicMerchCollections(buildMerchCollections(merchandise.entries), managed.price.listable, unmanaged.price.listable).find((group) => collectionPath(group.name) === Astro.url.pathname);
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(merchandise.entries);
+const collection = collections.find((group) => collectionPath(group.name) === Astro.url.pathname);
 if (!collection) Astro.response.status = 404;
+const managed = demonstrations?.managed;
+const unmanaged = demonstrations?.unmanaged;
 ---
 <!doctype html>
 <html lang="en">
@@ -23,19 +19,19 @@ if (!collection) Astro.response.status = 404;
     <meta name="description" content={collection ? `Explore ${collection.name} in the DinkusKit merchandise catalog.` : "Collection not found."} />
     <title>{collection ? `${collection.name} | ${STORE_TITLE}` : `Collection not found | ${STORE_TITLE}`}</title>
   </head>
-  <body>
+  <body data-storefront-profile={profile}>
     <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><span class="store-header__status">Local integration proof</span></header>
     <main class="browse-page">
       <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">{collection?.name ?? "Not found"}</span></nav>
-      {collection && managed && unmanaged ? (
+      {collection ? (
         <>
           <h1 class="browse-title">{collection.name}</h1>
-          <p class="browse-intro">Explore the {collection.name.toLowerCase()} collection. Connected availability is live; previews cannot be purchased.</p>
+          <p class="browse-intro">Explore the {collection.name.toLowerCase()} collection. {profile === "proof" ? "Connected availability is live; previews cannot be purchased." : "Editorial previews cannot be purchased."}</p>
           <MerchCatalog collections={[collection]} managed={managed} unmanaged={unmanaged} collectionOnly />
         </>
       ) : <><h1>Collection not found</h1><p>This collection is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
-    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce and Inventory.</footer>
+    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
   </body>
 </html>
 <style>

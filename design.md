@@ -1,6 +1,6 @@
 # DinkusKit Store Starter design contract
 
-Updated: 2026-09-26
+Updated: 2026-09-30
 Canonical path: `design.md`
 
 ## Product intent
@@ -19,8 +19,11 @@ Products admin. Missing Regular hides both listing and detail; Sale strikes
 Regular. Render truthful Commerce availability without inventing quantity.
 The catalog may be empty. No purchase button or checkout is implied. Preserve
 the existing neutral visual language, keyboard links, and narrow-screen fit.
-Commerce and Inventory launch side by side; separating the current Inventory
-demonstration does not defer Inventory from launch.
+The approved shipping v1 profile has Inventory off. Managed demonstrations
+remain explicit development proof. Default shopper pages consume the persisted
+Commerce catalog, authoritative prices and unmanaged manual availability, with
+no stock quantity or provider requirement. The Commerce owner supplies disabled
+Coming soon stock management; preserve existing managed data/fail-closed reads.
 
 ## Confirmed constraints
 
@@ -82,6 +85,7 @@ on the verified real page.
 ## Verification
 
 `bin/verify-web full` must build the real Astro project and run desktop and
-mobile browser acceptance through the complete managed `8 -> 5 -> 8` stock
+mobile acceptance for the default unmanaged profile, plus the explicit
+development profile through the complete managed `8 -> 5 -> 8` stock
 sequence and the unmanaged manual-availability sequence. Curated screenshots
 and the exact assertion record belong in the current proof packet.

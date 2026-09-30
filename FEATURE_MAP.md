@@ -8,7 +8,7 @@ through an `index.ts` entry.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `dinkus.store-shell` | Neutral Astro/EmDash shell, first-class page layout renderers with Portable Text fallback, copied Home opener and query card, merchandise catalog, collection and product browse pages, document metadata, and shared page frame | `src/features/store-shell/`; `src/pages/index.astro`; `src/pages/collections/`; `src/pages/products/`; `src/live.config.ts`; `seed/` | `src/features/store-shell/index.ts` | EmDash; `@dinkuskit/blocks`; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 | `dinkus.managed-product-availability` | Commerce catalog identity, official Configure Inventory orchestration, Inventory registration/opening/read/adjust composition, proof adapter, proof-only HTTP action, and storefront availability panel | `src/features/managed-product-availability/`; `src/pages/api/proof/stock.ts` | `src/features/managed-product-availability/index.ts` | `@dinkuskit/commerce` package root; `@dinkuskit/inventory` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
-| `dinkus.unmanaged-product-sellability` | Unmanaged Commerce catalog identity, isolated manual availability, unified storefront resolver, proof-only HTTP action, and storefront sellability panel that never contacts Inventory or shows quantity | `src/features/unmanaged-product-sellability/`; `src/pages/api/proof/unmanaged-availability.ts` | `src/features/unmanaged-product-sellability/index.ts` | `@dinkuskit/commerce` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
+| `dinkus.unmanaged-product-sellability` | Unmanaged Commerce catalog identity, isolated manual availability, unified storefront resolver, proof-only HTTP action, and storefront sellability panel that never contacts Inventory or shows quantity | `src/features/unmanaged-product-sellability/`; `src/pages/api/proof/unmanaged-availability.ts` | `src/features/unmanaged-product-sellability/index.ts`; pure identities through `src/features/unmanaged-product-sellability/identity/index.ts` | `@dinkuskit/commerce` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 
 ## Merchant catalog
 
@@ -20,11 +20,24 @@ through an `index.ts` entry.
 | --- | --- | --- | --- |
 | Merchant admin to real catalog | EmDash Products at `/_emdash/admin/plugins/dinkus-commerce/products`; public `/` Shop and `/shop/<Commerce ID>` | Add name/SKU, save Regular, save lower Sale, reject malformed Regular, reload admin, clear prices. Separate anonymous page and authenticated public Edit context; desktop/mobile. | No Regular means no public card and detail 404, but admin retains product. Regular lists it; Sale strikes Regular. Invalid edit leaves public price unchanged. Commerce availability has no invented quantity. Public Edit hydrates without changing catalog authority. |
 
-Commerce and Inventory are crucial side-by-side launch components. The existing
-seeded merchandise and stock panels below Shop are explicitly separate integration
-demonstrations, not persisted merchant products. No seed import is needed to add
+Shipping v1 has Inventory off and uses persisted unmanaged Commerce Products.
+The existing seeded merchandise and stock panels are explicit development
+integration demonstrations, not persisted merchant products or shipping stock.
+Preserve managed regression proof and existing fail-closed data. The stock
+management Coming soon control belongs to the exact paired Commerce artifact.
+Final pairing is pending the Commerce owner's immutable artifact handoff. No seed import is needed to add
 Commerce Products to an initialized starter; preserve its edited CMS content.
 See [operator and compatibility boundaries](docs/implementation/commerce-catalog.md).
+
+## Default inventory-off profile
+
+The default source-pilot profile is `shipping`; explicit
+`DINKUS_STOREFRONT_PROFILE=proof` selects development demonstrations.
+`tests/e2e/shipping-storefront-profile.spec.ts` covers Products create, Regular/Sale,
+manual availability, absent quantities/demonstrations, preview isolation, and
+merchant product detail on desktop/mobile. The legacy native pin does not yet
+provide the approved disabled Coming soon control or registry pair.
+`pnpm verify` keeps both this profile and all earlier managed regressions.
 
 ## Storefront drivers
 
@@ -76,6 +89,7 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
   Regular/Sale boxes operate the separate persisted merchant catalog above.
 - Named order reservations, packed holds, and stock transfers exist on the
   Inventory pin. This playground does not consume them.
-- Cart, checkout, payments, shipping, deployment, persisted Manage Stock
-  toggle, visual stock-status/Store-hide controls, and package publication are
-  outside this map.
+- Cart, checkout, payments, shipping and package publication remain upstream
+  delivery gates outside this preparation slice; catalog proof alone cannot
+  establish v1 readiness. Inventory is not a shipping v1 gate. Deployment is
+  planned separately and requires explicit approval.
