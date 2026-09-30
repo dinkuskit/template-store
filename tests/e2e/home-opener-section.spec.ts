@@ -43,8 +43,8 @@ async function insertHomeOpener(page: Page): Promise<void> {
   const editor = page.locator(".ProseMirror");
   await editor.scrollIntoViewIfNeeded();
   await editor.click();
-  await page.keyboard.press("Control+a");
-  await page.keyboard.press("ArrowRight");
+  // Ctrl+A selects the whole document on Linux; Enter can replace its blocks.
+  await page.keyboard.press(process.platform === "darwin" ? "Meta+ArrowDown" : "Control+End");
   await page.keyboard.press("Enter");
   await page.keyboard.type("/section");
   const command = page.getByText("Insert a reusable section", { exact: true });
