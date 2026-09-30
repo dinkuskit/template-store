@@ -124,6 +124,27 @@ for (const path of sourceFiles(resolve(root, "src"))) {
   }
 }
 
+for (const relative of [
+  "src/pages/index.astro",
+  "src/pages/collections/[slug].astro",
+  "src/pages/products/[id].astro",
+  "src/pages/shop/[id].astro",
+  "src/pages/api/proof/stock.ts",
+  "src/pages/api/proof/unmanaged-availability.ts",
+]) {
+  const source = readFileSync(resolve(root, relative), "utf8");
+  if (
+    /from\s+["'][^"']*(?:managed-product-availability|unmanaged-product-sellability)\/index(?:\.(?:js|ts))?["']/u.test(
+      source,
+    ) ||
+    /from\s+["']@dinkuskit\/inventory["']/u.test(source)
+  ) {
+    failures.push(
+      `${relative} must not statically import demonstration runtimes or Inventory`,
+    );
+  }
+}
+
 if (failures.length > 0) {
   for (const failure of failures) console.error(`feature audit: ${failure}`);
   process.exit(1);

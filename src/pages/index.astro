@@ -6,14 +6,12 @@ import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
-import { buildMerchCollections, publicMerchCollections } from "../features/store-shell/merch-catalog.js";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
-import { managedProductAvailabilityRuntime } from "../features/managed-product-availability/index.js";
 import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
-import { unmanagedProductSellabilityRuntime } from "../features/unmanaged-product-sellability/index.js";
 import {
   STORE_DESCRIPTION,
   STORE_TITLE,
+  loadStorefrontRouteContext,
 } from "../features/store-shell/index.js";
 import "../features/store-shell/global.css";
 
@@ -21,14 +19,12 @@ const { entry: page } = await getEmDashEntry("pages", "home");
 const pageData = page ? page.data as (typeof page.data & { layout?: BlockValue[] }) : undefined;
 const layout = pageData?.layout;
 const content = pageData?.content as PortableTextBlock[] | undefined;
-const [availability, unmanaged, merchandise] = await Promise.all([
-  managedProductAvailabilityRuntime.read(),
-  unmanagedProductSellabilityRuntime.read(),
-  getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" }),
-]);
+const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(merchandise.entries);
 let catalogUnavailable = false;
 const products = await readCommerceCatalog().catch(() => { catalogUnavailable = true; return []; });
-const collections = publicMerchCollections(buildMerchCollections(merchandise.entries), availability.price.listable, unmanaged.price.listable);
+const availability = demonstrations?.managed;
+const unmanaged = demonstrations?.unmanaged;
 ---
 
 <!doctype html>
@@ -39,7 +35,7 @@ const collections = publicMerchCollections(buildMerchCollections(merchandise.ent
     <meta name="description" content={STORE_DESCRIPTION} />
     <title>{STORE_TITLE}</title>
   </head>
-  <body>
+  <body data-storefront-profile={profile}>
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <span class="store-header__status">Local integration proof</span>
@@ -62,6 +58,7 @@ const collections = publicMerchCollections(buildMerchCollections(merchandise.ent
         )
       }
       <CommerceCatalog products={products} unavailable={catalogUnavailable} />
+      {demonstrations && availability && unmanaged && (
       <section aria-label="Separate integration demonstrations" data-integration-demos>
       <h2 class="demo-heading">Integration demonstrations</h2>
       <p class="demo-heading">These seeded examples are separate from the merchant catalog above.</p>
@@ -69,9 +66,10 @@ const collections = publicMerchCollections(buildMerchCollections(merchandise.ent
       {availability.price.listable && <ManagedProductAvailability availability={availability} />}
       {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
       </section>
+      )}
     </main>
     <footer class="store-footer">
-      Transactional facts remain in Commerce and Inventory; EmDash owns the
+      Transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}; EmDash owns the
       surrounding composition.
     </footer>
   </body>

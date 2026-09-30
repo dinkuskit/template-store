@@ -1,7 +1,9 @@
 # DinkusKit Store Starter
 
-The public integration and dogfood storefront for EmDash, DinkusKit Blocks,
-Commerce, and Inventory.
+The neutral EmDash storefront starter paired with DinkusKit Commerce. Shipping
+v1 uses authoritative Commerce prices and manual availability with Inventory off.
+The current source pilot is not a released, installable v1 pair. See
+[setup and exact pairing](docs/v1-setup.md) and [demo plan](docs/v1-demo-plan.md).
 
 Org direction: [Vision](https://github.com/dinkuskit/.github/blob/main/VISION.md)
 and [Roadmap](https://github.com/dinkuskit/.github/blob/main/ROADMAP.md).
@@ -12,13 +14,17 @@ EmDash **Products** now drives the real Shop on `/`: add a name and SKU, save
 Regular to list it, optionally save Sale, or clear prices to hide it publicly
 while retaining it in admin. Product details live at `/shop/<Commerce ID>`.
 See [operator steps and upgrade boundaries](docs/implementation/commerce-catalog.md).
-Commerce and Inventory are crucial side-by-side launch components. Existing
-seeded merchandise and Inventory proofs are separate integration demonstrations,
-not merchant products. No checkout or production-readiness claim is made.
+The default storefront has Inventory off. Existing seeded merchandise and
+Inventory proof run only in the explicit development integration profile,
+not as merchant products. Checkout and production readiness remain release gates.
 
 ## Separate integration demonstrations
 
-The classic catalog first slice adds EmDash-managed merchandise entries and
+Run `DINKUS_STOREFRONT_PROFILE=proof pnpm dev` to view the demonstrations.
+The default profile keeps them off the home and excludes connected fixture
+products from collection and product routes. This remains a native source pilot.
+
+The explicit development integration profile adds EmDash-managed merchandise entries and
 collection navigation for tees, hoodies, and hats, with collection and individual product pages. The hero and product grid are
 neutral; preview cards say they are not purchasable. Two connected styles carry
 real availability in compact summaries below the grid; card availability links jump to those
@@ -114,11 +120,10 @@ neither has an installable release yet. See
 and
 [`docs/implementation/unmanaged-product-sellability.md`](docs/implementation/unmanaged-product-sellability.md).
 
-The intended eventual starter command remains:
-
-```bash
-npm create astro -- --template dinkuskit/template-store
-```
+EmDash distributes templates as Astro projects. The released starter command
+will name an actual approved immutable TemplateStore artifact and its exact
+Commerce pair; no floating repository scaffold is a release instruction. The
+current source checkout is development-only. See [the pairing audit](docs/v1-pairing.md).
 
 Part of [DinkusKit](https://github.com/dinkuskit). Under construction,
 dogfooding in the open. MIT.

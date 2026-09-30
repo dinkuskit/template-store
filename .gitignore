@@ -10,4 +10,9 @@ playwright-report/
 .env.*
 !.env.example
 
-.grilltrack/
+.grilltrack/work/
+
+# Retain historical inputs locally; excluded from fresh public commits after audit.
+.grilltrack/archive/gt-20260829172956-305950/
+.grilltrack/proof/pr-3-terminal-closeout/
+.grilltrack/proof/unpriced-public-home-closeout.md

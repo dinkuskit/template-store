@@ -1,19 +1,15 @@
 ---
 import { getEmDashCollection } from "emdash";
-import { buildMerchCollections, publicMerchCollections, collectionPath, productPath } from "../../features/store-shell/merch-catalog.js";
-import { managedProductAvailabilityRuntime } from "../../features/managed-product-availability/index.js";
-import { unmanagedProductSellabilityRuntime } from "../../features/unmanaged-product-sellability/index.js";
-import { STORE_TITLE } from "../../features/store-shell/index.js";
+import { STORE_TITLE, collectionPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
 const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
-const [managedAvailability, unmanagedAvailability] = await Promise.all([managedProductAvailabilityRuntime.read(), unmanagedProductSellabilityRuntime.read()]);
-const collections = publicMerchCollections(buildMerchCollections(merchandise.entries), managedAvailability.price.listable, unmanagedAvailability.price.listable);
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(merchandise.entries);
 const collection = collections.find((group) => group.items.some((candidate) => productPath(candidate.id) === Astro.url.pathname));
 const item = collection?.items.find((candidate) => productPath(candidate.id) === Astro.url.pathname);
 if (!item) Astro.response.status = 404;
-const managed = item?.availabilitySource === "managed" ? managedAvailability : null;
-const unmanaged = item?.availabilitySource === "unmanaged" ? unmanagedAvailability : null;
+const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
+const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
 const status = managed ? `${managed.inventory.available} available` : unmanaged ? ({
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
@@ -27,7 +23,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
     <meta name="description" content={item?.description ?? "Product not found."} />
     <title>{item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
   </head>
-  <body>
+  <body data-storefront-profile={profile}>
     <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><span class="store-header__status">Local integration proof</span></header>
     <main class="product-page">
       <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{collection && <><a href={collectionPath(collection.name)}>{collection.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{item?.title ?? "Not found"}</span></nav>
@@ -41,13 +37,13 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={unmanaged?.storefront.status}>{status}</p>
-            {item.availabilitySource === "preview" ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            {item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             <a class="product-detail__back" href={collectionPath(collection.name)}>← Back to {collection.name}</a>
           </div>
         </article>
       ) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
-    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce and Inventory.</footer>
+    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
   </body>
 </html>
 <style>

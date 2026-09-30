@@ -1,20 +1,21 @@
 ---
 import { readCommerceCatalog, availabilityLabels } from "../../features/commerce-catalog/index.js";
-import { STORE_TITLE } from "../../features/store-shell/index.js";
+import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 let unavailable = false;
 const products = await readCommerceCatalog().catch(() => { unavailable = true; return []; });
 const product = products.find(item => item.id === Astro.params.id);
 if (unavailable) Astro.response.status = 503;
 else if (!product) Astro.response.status = 404;
+const profile = readStorefrontProfile();
 ---
 <!doctype html>
 <html lang="en">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><title>{product?.name ?? "Product unavailable"} | {STORE_TITLE}</title></head>
-<body>
+<body data-storefront-profile={profile}>
 <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a></header>
 <main class="shop-detail">
-<a href="/#shop-title">← Back to shop</a>
+<a href="/#commerce-catalog">← Back to shop</a>
 {product ? <article data-commerce-product={product.id}>
 <h1>{product.name}</h1>
 <p>SKU: {product.sku}</p>

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { UNPRICED_PRODUCT_ITEM_ID } from "../unmanaged-product-sellability/index.js";
+import { UNPRICED_PRODUCT_ITEM_ID } from "../unmanaged-product-sellability/identity/index.js";
 
 export type MerchRecord = Readonly<{
   id: string;
