@@ -1,6 +1,6 @@
 # Inventory-off profile preparation proof
 
-Status: local profile candidate verified; immutable source identity recorded at review.
+Status: local profile candidate verified; reviewed source identity `git:63716f83d786da813716af5c7db14ef0bf2fa25f`.
 This is EmDash 0.41.0 native source-pilot evidence, not a registry-installed,
 released or purchasable store claim.
 
@@ -70,3 +70,7 @@ The release track remains open. Checkout/orders/payments/shipping are upstream
 release gates; there is no verified demo URL. `docs/v1-demo-plan.md` is a plan,
 not delivery. The follow-up guest-cart scope belongs to issue 20 and depends on
 Commerce issue 32 for a supported mounted contract.
+
+The parent source-intent review accepted the repaired findings above. No remaining
+local required fix was found. Overall release findings are deferred or human-gated;
+coordinator-routed independent review of the frozen PR head remains pending.
