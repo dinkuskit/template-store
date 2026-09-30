@@ -1,4 +1,5 @@
 ---
+import { AddToCart } from "../guest-cart/ui.ts";
 import { commerceProductPath, availabilityLabels, type PublicCommerceProduct } from "./index.js";
 interface Props { products: PublicCommerceProduct[]; unavailable?: boolean; }
 const { products, unavailable = false } = Astro.props;
@@ -11,6 +12,7 @@ const { products, unavailable = false } = Astro.props;
       <p class="price">{product.price.saleText ? <><s data-regular-price>{product.price.regularText}</s><strong data-sale-price>{product.price.saleText}</strong></> : <strong data-regular-price>{product.price.regularText}</strong>}</p>
       <p data-commerce-availability={product.availability.status}>{availabilityLabels[product.availability.status]}</p>
       <a href={commerceProductPath(product.id)}>View product</a>
+      <AddToCart product={product} />
     </article>)}
   </div>}
   <p class="notice">Product browsing is available. Checkout is not available yet.</p>

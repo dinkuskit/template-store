@@ -1,0 +1,26 @@
+---
+import { GuestCart, GuestCartNav } from "../features/guest-cart/ui.ts";
+import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import "../features/store-shell/global.css";
+
+const profile = readStorefrontProfile();
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Cart | {STORE_TITLE}</title>
+  </head>
+  <body data-storefront-profile={profile}>
+    <header class="store-header">
+      <a class="store-header__mark" href="/">DinkusKit / Store</a>
+      <nav class="store-header__nav" aria-label="Store">
+        <GuestCartNav />
+      </nav>
+    </header>
+    <main>
+      <GuestCart />
+    </main>
+  </body>
+</html>

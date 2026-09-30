@@ -27,6 +27,10 @@ Assume every committed byte is immediately public.
   consume actual registry-installed Commerce through supported public surfaces;
   native registration or direct storage access is not equivalent without proof
   of matching plugin identity, storage and route authority.
+- The authorized guest-cart extension consumes Commerce authority. Browser
+  identity/quantity persistence is untrusted intent/cache, never a price, stock,
+  checkout or order backend. Guest checkout and return states depend on the
+  exact supported Commerce public mount/artifact.
 - EmDash owns human-authored composition and merchandising content. Commerce
   owns catalog identity, managed-stock state, and unmanaged manual availability.
   Inventory owns stock identity, quantities, locations, mutations, and receipts.

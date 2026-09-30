@@ -31,9 +31,20 @@ export const availabilityLabels: Record<string, string> = {
   "availability-unavailable": "Availability unavailable",
 };
 
-export async function readCommerceCatalog(): Promise<PublicCommerceProduct[]> {
+export type CommerceCatalogSnapshot =
+  | Readonly<{ id: string; found: false }>
+  | Readonly<{
+      id: string;
+      found: true;
+      name: string;
+      sku: string;
+      price: PublicPriceView;
+      availability: Readonly<{ status: string; sellable: boolean; listable: boolean }>;
+    }>;
+
+async function openCommerceCatalogStorage() {
   const db = await getDb();
-  const storage = {
+  return {
     catalog: new PluginStorageRepository<CatalogStorageRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, []),
     prices: new PluginStorageRepository<CatalogPriceRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_PRICES_COLLECTION, []),
     manualAvailability: new PluginStorageRepository<CatalogManualAvailabilityRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_MANUAL_AVAILABILITY_COLLECTION, []),
@@ -41,6 +52,10 @@ export async function readCommerceCatalog(): Promise<PublicCommerceProduct[]> {
     configurations: new PluginStorageRepository<StoreInventoryConfigurationRecord>(db, COMMERCE_PLUGIN_ID, STORE_INVENTORY_CONFIGURATIONS_COLLECTION, []),
     settings: new PluginStorageRepository<StorefrontAvailabilitySettingsRecord>(db, COMMERCE_PLUGIN_ID, STOREFRONT_AVAILABILITY_SETTINGS_COLLECTION, []),
   };
+}
+
+export async function readCommerceCatalog(): Promise<PublicCommerceProduct[]> {
+  const storage = await openCommerceCatalogStorage();
   const { products } = await listCatalogProducts(storage);
   const visible: PublicCommerceProduct[] = [];
   for (const product of products) {
@@ -51,4 +66,41 @@ export async function readCommerceCatalog(): Promise<PublicCommerceProduct[]> {
     visible.push({ id: product.catalogItemId, name: product.name, sku: product.sku, price, availability });
   }
   return visible;
+}
+
+export async function readCommerceCatalogSnapshots(
+  ids: readonly string[],
+): Promise<CommerceCatalogSnapshot[]> {
+  const storage = await openCommerceCatalogStorage();
+  const { products } = await listCatalogProducts(storage);
+  const byId = new Map(products.map((product) => [product.catalogItemId, product]));
+  const snapshots: CommerceCatalogSnapshot[] = [];
+  for (const id of ids) {
+    const product = byId.get(id);
+    if (!product) {
+      snapshots.push({ id, found: false });
+      continue;
+    }
+    const availability = await resolveStorefrontAvailability(storage, {
+      catalogItemId: product.catalogItemId,
+    });
+    const price = presentStorefrontPrice(
+      await resolveCatalogItemPrice(storage.prices, product.catalogItemId),
+    );
+    const publicName = price.listable || availability.listable ? product.name : id;
+    const publicSku = price.listable || availability.listable ? product.sku : "";
+    snapshots.push({
+      id,
+      found: true,
+      name: publicName,
+      sku: publicSku,
+      price,
+      availability: {
+        status: availability.status,
+        sellable: availability.sellable,
+        listable: availability.listable,
+      },
+    });
+  }
+  return snapshots;
 }

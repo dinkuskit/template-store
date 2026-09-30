@@ -19,6 +19,7 @@ for (const feature of [
   "dinkus.store-shell",
   "dinkus.managed-product-availability",
   "dinkus.unmanaged-product-sellability",
+  "dinkus.guest-cart",
 ]) {
   if (!featureMap.includes(`\`${feature}\``)) {
     failures.push(`FEATURE_MAP.md is missing ${feature}`);
@@ -87,6 +88,7 @@ for (const path of [
   "docs/implementation/unpriced-public-home.md",
   "src/features/managed-product-availability/index.ts",
   "src/features/unmanaged-product-sellability/index.ts",
+  "src/features/guest-cart/index.ts",
   "bin/verify-web",
   "scripts/check-worktree-text.mjs",
   "skills/managed-product-verification/SKILL.md",
@@ -129,6 +131,8 @@ for (const relative of [
   "src/pages/collections/[slug].astro",
   "src/pages/products/[id].astro",
   "src/pages/shop/[id].astro",
+  "src/pages/cart.astro",
+  "src/pages/api/guest-cart/snapshot.ts",
   "src/pages/api/proof/stock.ts",
   "src/pages/api/proof/unmanaged-availability.ts",
 ]) {

@@ -5,6 +5,7 @@ import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
 
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
+import { GuestCartNav } from "../features/guest-cart/ui.ts";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
 import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
@@ -38,7 +39,10 @@ const unmanaged = demonstrations?.unmanaged;
   <body data-storefront-profile={profile}>
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
-      <span class="store-header__status">Local integration proof</span>
+      <nav class="store-header__nav" aria-label="Store">
+        <span class="store-header__status">Local integration proof</span>
+        <GuestCartNav />
+      </nav>
     </header>
     <main>
       {
