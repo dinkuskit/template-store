@@ -405,14 +405,30 @@
       "question": "What integration is supported by the merged Commerce and Payments contracts?",
       "rationale": "Explicit bounded post-merge integration assignment carries settled issue20 and v1 pairing decisions. Facts and dependency qualification do not reopen policy.",
       "repair_required": false,
-      "review_classifications": [],
-      "review_history": [],
-      "review_ref": null,
-      "review_result": null,
-      "review_source_identity": null,
+      "review_classifications": [
+        "defer",
+        "human_gate",
+        "reject_false_positive"
+      ],
+      "review_history": [
+        {
+          "classifications": [
+            "defer",
+            "human_gate",
+            "reject_false_positive"
+          ],
+          "ref": "file:.grilltrack/proof/checkout-integration-20260930/REVIEW.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-01T02:14:29+00:00",
+          "source_identity": "git:49cea8c54774fd5064965d51dddce5087a9bf510"
+        }
+      ],
+      "review_ref": "file:.grilltrack/proof/checkout-integration-20260930/REVIEW.md",
+      "review_result": "findings",
+      "review_source_identity": "git:49cea8c54774fd5064965d51dddce5087a9bf510",
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-10-01T02:13:32+00:00",
+      "updated_at": "2026-10-01T02:14:29+00:00",
       "verification_ref": "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md"
     }
   ],
@@ -430,12 +446,21 @@
     "reason": "Independent native source-pilot cart presentation verified. Supported Commerce guest capability/status mount and immutable registry artifact pairing are not supplied; full issue20 purchase/order acceptance and independent frozen-head review remain pending.",
     "resumed_at": "2026-10-01T00:39:04+00:00"
   },
-  "pause": null,
+  "pause": {
+    "artifact_refs": [
+      "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md",
+      "file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
+      "file:.grilltrack/proof/checkout-integration-20260930/REVIEW.md"
+    ],
+    "next_safe_action": "Review this immutable Template Store candidate at the maintainer merge gate. Consume the typed bridge/wake and Registry handoff in a separately authorized owner slice; preserve approved guest recovery contracts and existing ownership.",
+    "paused_at": "2026-10-01T02:14:29+00:00",
+    "reason": "Bounded native qualification verified; authenticated Payments bridge/wake, Registry pairing and full purchase acceptance remain upstream gates. Maintainer merge approval is pending."
+  },
   "predecessor_track_id": "gt-20260926022138-947c39",
   "recommendation": null,
   "schema_version": "grilltrack/v0.1",
-  "status": "active",
+  "status": "paused",
   "title": "Inventory-off v1 template and exact Commerce pairing",
   "track_id": "gt-20260930163954-43d0a5",
-  "updated_at": "2026-10-01T02:13:32+00:00"
+  "updated_at": "2026-10-01T02:14:29+00:00"
 }
