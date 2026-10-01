@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-09-30T17:54:10+00:00",
-    "domain": "authorized guest cart presentation and Commerce handoff",
-    "started_at": "2026-09-30T17:54:10+00:00",
+    "confirmed_at": "2026-10-01T00:39:28+00:00",
+    "domain": "post-merge guest checkout host qualification",
+    "started_at": "2026-10-01T00:39:28+00:00",
     "status": "confirmed",
-    "summary": "Already authorized in issue20: preserve the current visual language and EmDash content, implement cart presentation via ACP, verify independently, commit/push focused PR. Server handoff and durable return states remain pending issue32; no deploy/release/merge/credentials/live payment authorization."
+    "summary": "The human-assigned bounded slice qualifies exact merged guest routes and Payments port on real EmDash, implements only the supported Template consumer, and produces precise executable dependency proof if blocked. Carry current 1800..1860 window, unmanaged v1, split authority and registry requirements. Commit/test reviewable output; no deploy/release/live provider/account/secrets/merge or unrelated repo writer."
   },
   "decisions": [
     {
@@ -343,37 +343,99 @@
       "superseded_by": null,
       "updated_at": "2026-09-30T18:55:23+00:00",
       "verification_ref": "file:.grilltrack/proof/guest-cart-20260930/PROOF.md"
+    },
+    {
+      "baseline_ref": "git:41a63299d575eeb9784de700c63ca628543b2d60",
+      "candidate_refs": [],
+      "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+      "context_ref": "task:post-merge-template-checkout-integration-20260930",
+      "created_at": "2026-10-01T00:39:28+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "guest-cart-005"
+      ],
+      "domain": "post-merge guest checkout host qualification",
+      "history": [
+        {
+          "at": "2026-10-01T00:39:28+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T02:13:32+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T02:13:32+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "implemented",
+          "implementation_ref": "file:astro.config.mjs;file:tests/e2e/guest-checkout-feasibility.spec.ts;file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "checkout-qualification-006",
+      "implementation_ref": "file:astro.config.mjs;file:tests/e2e/guest-checkout-feasibility.spec.ts;file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
+      "question": "What integration is supported by the merged Commerce and Payments contracts?",
+      "rationale": "Explicit bounded post-merge integration assignment carries settled issue20 and v1 pairing decisions. Facts and dependency qualification do not reopen policy.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-01T02:13:32+00:00",
+      "verification_ref": "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md"
     }
   ],
   "last_activation": {
-    "at": "2026-09-30T17:54:10+00:00",
+    "at": "2026-10-01T00:39:04+00:00",
     "mechanism": "implicit"
   },
   "last_pause": {
-    "artifact_refs": [
-      ".grilltrack/proof/v1-profile-20260930/PROOF.md",
-      "docs/v1-pairing.md",
-      "docs/v1-demo-plan.md"
-    ],
-    "next_safe_action": "Coordinator reviews immutable candidate; sole source owner may continue already-authorized issue20 guest cart presentation in a separate worktree without editing this candidate.",
-    "paused_at": "2026-09-30T17:44:32+00:00",
-    "reason": "Bounded native source-profile candidate verified and ready for focused PR. Registry artifact/mount, Blocks compatibility, purchase/order/shipping and independent frozen-head review remain gates.",
-    "resumed_at": "2026-09-30T17:54:10+00:00"
-  },
-  "pause": {
     "artifact_refs": [
       ".grilltrack/proof/guest-cart-20260930/PROOF.md",
       "docs/implementation/guest-cart.md"
     ],
     "next_safe_action": "Independent review of the frozen stacked cart candidate; then consume the Commerce issue32 owner public contract/artifact in the next authorized source slice. Preserve this source candidate.",
     "paused_at": "2026-09-30T18:55:23+00:00",
-    "reason": "Independent native source-pilot cart presentation verified. Supported Commerce guest capability/status mount and immutable registry artifact pairing are not supplied; full issue20 purchase/order acceptance and independent frozen-head review remain pending."
+    "reason": "Independent native source-pilot cart presentation verified. Supported Commerce guest capability/status mount and immutable registry artifact pairing are not supplied; full issue20 purchase/order acceptance and independent frozen-head review remain pending.",
+    "resumed_at": "2026-10-01T00:39:04+00:00"
   },
+  "pause": null,
   "predecessor_track_id": "gt-20260926022138-947c39",
   "recommendation": null,
   "schema_version": "grilltrack/v0.1",
-  "status": "paused",
+  "status": "active",
   "title": "Inventory-off v1 template and exact Commerce pairing",
   "track_id": "gt-20260930163954-43d0a5",
-  "updated_at": "2026-09-30T18:55:23+00:00"
+  "updated_at": "2026-10-01T02:13:32+00:00"
 }

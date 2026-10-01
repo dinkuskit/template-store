@@ -1,11 +1,12 @@
 # Exact pairing and release gates
 
-Audit date: 2026-09-30. Template base: `97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9`.
+Audit date: 2026-09-30. Template base: `41a63299d575eeb9784de700c63ca628543b2d60`.
 
 | Component | Current identity | Meaning |
 | --- | --- | --- |
 | TemplateStore | private package `0.0.0`; this candidate source | Development pilot, no approved release |
-| Commerce | source `81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06` | Exact legacy native Products consumer; final owner handoff pending |
+| Commerce | source `ab37cd7f362f1c37cb1d321192abbbc48a623833` | Exact merged native Products and guest checkout consumer; final owner artifact handoff pending |
+| Payments | source `636f01225417fac4fc51fd88604aeb4ba96440a1` | Inspected read-only upstream contract; no package pin or direct dependency |
 | Blocks | source `fe03bfac91798ac0b411b952fe23c26afefbf570` | Current composition dependency |
 | Inventory | source `5889c7d59398376da51ac400d5c1f1214aba2c6b` | Development managed regression only; off in shipping v1 |
 | EmDash | package `0.41.0` | Current tested pilot; 1.0 not yet qualified |
@@ -42,18 +43,19 @@ No version or release identifier is reserved by this document.
 The current template npm-pack dry run includes verifier scripts and historical
 lineage. Before distribution, establish and audit an explicit starter artifact
 file list; do not ship proof/rail tooling or credentials. A source archive digest
-of the clean Commerce pin is
-`c7b2c80c7db47e40316eebabd1e14e821bd4fa0c0648095ccabc9b3b1831f173`.
-This is source provenance only, not a registry bundle or released tarball digest.
+of the clean Commerce pin (`ab37cd7f362f1c37cb1d321192abbbc48a623833`) is
+`d6849c3a50502b4cce7ad98a96ddd7a9c8bbeef7d77e94dfd6980083137cd4f3` (verified
+via `git archive --format=tar ab37cd7f362f1c37cb1d321192abbbc48a623833`). This is source provenance only, not a
+registry bundle or released tarball digest.
 
 | Gate | Owner / required evidence | Current disposition |
 | --- | --- | --- |
-| Inventory off | Commerce disabled stock management; Template default profile | Template candidate can prove catalog boundary; final Commerce artifact pending |
+| Inventory off | Commerce disabled stock management; Template default profile | Not a blocker for this bounded native qualification (shipping v1 profile operates with Inventory off); final Commerce artifact pending |
 | Cart / checkout / orders | Commerce public API, mounted runtime, persisted authority | Final mount and tested purchase/order path pending; no template copy of these models |
-| Payment transport | Payments exact test contract and approved timing semantics | Pending; proposed provider window is not accepted by this template |
-| Shipping story | Ship owner contract: fulfillment behavior and supported merchant path | Pending; physical demo fulfillment cannot be claimed |
-| Promotions | Coupons owner | Stub; no promotion UI or discount-engine claim |
-| Bundles | Commerce / relevant owner contract | Unimplemented; no bundle affordance |
+| Payment transport | Payments exact test contract and approved timing semantics (1800..1860s window) | Approved window 1800..1860s; host transport, authenticated bridge, and durable internal wake consumer BLOCKED |
+| Shipping story | Ship owner contract: fulfillment behavior and supported merchant path | Pending; shipping/contact/tax owner paths unqualified, physical demo fulfillment cannot be claimed |
+| Promotions | Coupons owner | Basic coupons required for v1; owner public interface and accepted checkout/usage evidence pending (separate dedicated Coupons owner now working) |
+| Bundles | Commerce / relevant owner contract | Not a blocker for this bounded native qualification; unimplemented with no bundle affordance |
 | Registry pair | Commerce + Template release artifact owners | Pending artifact handoff and EmDash 1.0 install proof |
 | Blocks runtime | Blocks owner / EmDash supported renderer contract | Native pilot remains; registry-compatible delivery or approved migration required |
 | Hosted demo | Template exact working pair, isolated synthetic state | Plan only; no approved deploy or verified URL |

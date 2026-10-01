@@ -84,6 +84,7 @@ export function createMemoryCatalogStorage(): MemoryUnmanagedCatalogStorage {
 
 export function createMemoryPriceStorage(): CatalogPriceStorage {
   const records = new Map<string, CatalogPriceRecord>();
+  const revisions = new Map<string, string>();
 
   return {
     async get(id) {
@@ -91,11 +92,48 @@ export function createMemoryPriceStorage(): CatalogPriceStorage {
       return record === undefined ? null : structuredClone(record);
     },
 
+    async getVersioned(id) {
+      const record = records.get(id);
+      if (record === undefined) return null;
+      if (!revisions.has(id)) revisions.set(id, crypto.randomUUID());
+      return {
+        value: structuredClone(record),
+        revision: revisions.get(id)!,
+      };
+    },
+
+    async compareAndSet(id, expectedRevision, data) {
+      const current = records.get(id);
+      if (expectedRevision === null) {
+        if (current !== undefined) return { applied: false };
+      } else {
+        if (current === undefined || revisions.get(id) !== expectedRevision) {
+          return { applied: false };
+        }
+      }
+      records.set(id, structuredClone(data));
+      const revision = crypto.randomUUID();
+      revisions.set(id, revision);
+      return { applied: true, revision };
+    },
+
+    async compareAndDelete(id, expectedRevision) {
+      const current = records.get(id);
+      if (current === undefined || revisions.get(id) !== expectedRevision) {
+        return { applied: false };
+      }
+      records.delete(id);
+      revisions.delete(id);
+      return { applied: true };
+    },
+
     async put(id, data) {
       records.set(id, structuredClone(data));
+      revisions.set(id, crypto.randomUUID());
     },
 
     async delete(id) {
+      revisions.delete(id);
       return records.delete(id);
     },
   };

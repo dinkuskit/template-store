@@ -7,6 +7,7 @@ import {
   UNPRICED_PRODUCT_SKU,
   createUnmanagedProductSellabilityRuntime,
 } from "../../src/features/unmanaged-product-sellability/index.js";
+import { createMemoryPriceStorage } from "../../src/features/unmanaged-product-sellability/memory-storage.js";
 
 describe("unmanaged product sellability", () => {
   it("defaults to in-stock without a quantity and restores every manual status", async () => {
@@ -70,7 +71,7 @@ describe("unmanaged product sellability", () => {
     });
     expect(restored.provenance).toEqual({
       blocks: "fe03bfac91798ac0b411b952fe23c26afefbf570",
-      commerce: "81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06",
+      commerce: "ab37cd7f362f1c37cb1d321192abbbc48a623833",
       inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
     });
   });
@@ -111,5 +112,23 @@ describe("unmanaged product sellability", () => {
     ).rejects.toMatchObject({
       code: "PROOF_INPUT_INVALID",
     });
+  });
+
+  it("conforms compareAndDelete to EmDash ConditionalDeleteResult { applied: boolean }", async () => {
+    const storage = createMemoryPriceStorage();
+    const id = "price-test-conformance";
+    await storage.put(id, {
+      recordKind: "catalog-price",
+      recordId: id,
+      catalogItemId: "fixture-item",
+      regular: { currency: "USD", minor: "1200" },
+    });
+    const versioned = await storage.getVersioned(id);
+    expect(versioned).not.toBeNull();
+    const mismatch = await storage.compareAndDelete(id, "nonexistent-revision");
+    expect(mismatch).toEqual({ applied: false });
+    const matched = await storage.compareAndDelete(id, versioned!.revision);
+    expect(matched).toEqual({ applied: true });
+    expect(await storage.get(id)).toBeNull();
   });
 });

@@ -29,17 +29,17 @@ export default defineConfig({
   projects: [
     {
       name: "chromium-desktop",
-      testIgnore: /shipping-storefront-profile\.spec\.ts$|guest-cart\.spec\.ts$/,
+      testIgnore: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "chromium-mobile",
-      testIgnore: /shipping-storefront-profile\.spec\.ts$|guest-cart\.spec\.ts$/,
+      testIgnore: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
       use: { ...devices["Pixel 7"] },
     },
     {
       name: "shipping-chromium-desktop",
-      testMatch: /(?:shipping-storefront-profile|guest-cart)\.spec\.ts$/,
+      testMatch: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: `http://127.0.0.1:${shippingPort}`,
@@ -47,7 +47,7 @@ export default defineConfig({
     },
     {
       name: "shipping-chromium-mobile",
-      testMatch: /(?:shipping-storefront-profile|guest-cart)\.spec\.ts$/,
+      testMatch: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
       use: {
         ...devices["Pixel 7"],
         baseURL: `http://127.0.0.1:${shippingPort}`,

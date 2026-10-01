@@ -48,7 +48,7 @@ const OPENING_QUANTITY = "8";
 
 const PROVENANCE = {
   blocks: "fe03bfac91798ac0b411b952fe23c26afefbf570",
-  commerce: "81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06",
+  commerce: "ab37cd7f362f1c37cb1d321192abbbc48a623833",
   inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
 } as const;
 
