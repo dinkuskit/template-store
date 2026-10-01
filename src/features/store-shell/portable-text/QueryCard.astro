@@ -1,0 +1,113 @@
+---
+import { getEmDashCollection, isSafeHref, sanitizeHref } from "emdash";
+
+interface PortableTextNodeProps<T> {
+  node: T;
+  index: number;
+  isInline: boolean;
+}
+
+interface Value {
+  source?: string;
+  limit?: string | number;
+}
+
+const { node } = Astro.props as PortableTextNodeProps<Value & { _type: string }>;
+const value = node;
+const source = typeof value.source === "string" && /^[A-Za-z][A-Za-z0-9_-]{0,63}$/u.test(value.source.trim())
+  ? value.source.trim()
+  : "";
+const parsedLimit = typeof value.limit === "number" ? value.limit : Number(value.limit);
+const limit = Number.isInteger(parsedLimit) && parsedLimit >= 1 && parsedLimit <= 24 ? parsedLimit : 6;
+let result: { entries: Array<{ id: string; data?: unknown }> } = { entries: [] };
+if (source) {
+  try {
+    result = await getEmDashCollection(source, { status: "published", limit, orderBy: { created_at: "desc" } });
+  } catch {
+    result = { entries: [] };
+  }
+}
+function safeImage(value: unknown): string | null {
+  if (typeof value === "string") return isSafeHref(value) ? sanitizeHref(value) : null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const media = record.$media && typeof record.$media === "object" && !Array.isArray(record.$media)
+    ? record.$media as Record<string, unknown>
+    : null;
+  const source = record.src ?? record.url ?? media?.url;
+  return typeof source === "string" && isSafeHref(source) ? sanitizeHref(source) : null;
+}
+
+const cards = result.entries.flatMap((entry) => {
+  if (!entry.data || typeof entry.data !== "object" || Array.isArray(entry.data)) return [];
+  const data = entry.data as Record<string, unknown>;
+  const title = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "";
+  const text = typeof data.text === "string" && data.text.trim() ? data.text.trim() : "";
+  if (!title && !text) return [];
+  const link = typeof data.link === "string" && isSafeHref(data.link) ? sanitizeHref(data.link) : null;
+  const image = safeImage(data.image);
+  return [{ title, text, link, image }];
+});
+---
+{cards.length > 0 && (
+  <div class="dinkus-query-card" data-dinkus-block="query-card">
+    {cards.map((card) => (
+      <article class="dinkus-query-card__card">
+        {card.image && <img class="dinkus-query-card__image" src={card.image} alt="" />}
+        {card.title && (card.link ? <h3><a class="dinkus-query-card__link" href={card.link}>{card.title}</a></h3> : <h3>{card.title}</h3>)}
+        {card.text && <p>{card.text}</p>}
+      </article>
+    ))}
+  </div>
+)}
+
+<style>
+  @layer dinkus-blocks {
+    .dinkus-query-card {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+      gap: var(--dinkus-content-gap, 1rem);
+      margin: var(--dinkus-section-spacing, 1.5rem) 0;
+    }
+
+    .dinkus-query-card__card {
+      display: grid;
+      gap: var(--dinkus-item-gap, 0.5rem);
+      align-content: start;
+      padding: var(--dinkus-panel-padding, 1.25rem);
+      border: var(
+        --dinkus-panel-border,
+        1px solid color-mix(in srgb, currentColor 20%, transparent)
+      );
+      border-radius: var(--dinkus-panel-radius, 0.75rem);
+      background: var(
+        --dinkus-panel-surface,
+        color-mix(in srgb, currentColor 4%, transparent)
+      );
+    }
+
+    .dinkus-query-card__image {
+      width: 100%;
+      height: auto;
+      border-radius: var(--dinkus-panel-radius, 0.75rem);
+    }
+
+    h3 {
+      margin: 0;
+      font-size: var(--dinkus-title-size, 1.25rem);
+      line-height: var(--dinkus-title-line-height, 1.3);
+    }
+
+    p {
+      max-width: var(--dinkus-copy-max-width, 65ch);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .dinkus-query-card__link {
+      color: inherit;
+      font-weight: 700;
+      text-decoration: none;
+    }
+  }
+</style>

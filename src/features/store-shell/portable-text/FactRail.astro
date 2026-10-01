@@ -1,0 +1,75 @@
+---
+interface Fact {
+  label?: string;
+  value?: string;
+  icon?: string;
+}
+
+interface Value {
+  ariaLabel?: string;
+  facts?: Fact[];
+}
+
+interface PortableTextNodeProps<T> {
+  node: T;
+  index: number;
+  isInline: boolean;
+}
+
+const { node } = Astro.props as PortableTextNodeProps<Value & { _type: string }>;
+const value = node;
+const facts = (Array.isArray(value.facts) ? value.facts : []).filter(
+  (fact) => Boolean(fact && typeof fact === "object" && (fact.label || fact.value)),
+);
+---
+{facts.length > 0 && (
+  <dl class="dinkus-fact-rail" data-dinkus-block="fact-rail" tabindex="0" aria-label={value.ariaLabel || "Quick facts"}>
+    {facts.map((fact) => (
+      <div class="dinkus-fact-rail__fact" data-dinkus-icon={fact.icon || undefined}>
+        {fact.label && <dt>{fact.label}</dt>}
+        {fact.value && <dd>{fact.value}</dd>}
+      </div>
+    ))}
+  </dl>
+)}
+
+<style>
+  @layer dinkus-blocks {
+    .dinkus-fact-rail {
+      display: flex;
+      gap: var(--dinkus-content-gap, 1rem);
+      margin: var(--dinkus-section-spacing, 1.5rem) 0;
+      padding: 0.25rem;
+      overflow-x: auto;
+    }
+
+    .dinkus-fact-rail__fact {
+      flex: none;
+      min-width: 9rem;
+      padding: var(--dinkus-panel-padding, 0.75rem 1rem);
+      border: var(
+        --dinkus-panel-border,
+        1px solid color-mix(in srgb, currentColor 20%, transparent)
+      );
+      border-radius: var(--dinkus-panel-radius, 0.75rem);
+      background: var(
+        --dinkus-panel-surface,
+        color-mix(in srgb, currentColor 4%, transparent)
+      );
+    }
+
+    dt {
+      margin: 0 0 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: var(--dinkus-muted-opacity, 0.7);
+    }
+
+    dd {
+      margin: 0;
+      font-weight: 600;
+    }
+  }
+</style>

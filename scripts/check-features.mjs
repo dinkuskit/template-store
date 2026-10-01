@@ -6,8 +6,6 @@ const root = resolve(import.meta.dirname, "..");
 const featureMap = readFileSync(resolve(root, "FEATURE_MAP.md"), "utf8");
 const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const expectedPins = {
-  "@dinkuskit/blocks":
-    "github:dinkuskit/blocks#fe03bfac91798ac0b411b952fe23c26afefbf570",
   "@dinkuskit/inventory":
     "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
 };
@@ -103,6 +101,9 @@ for (const [name, expected] of Object.entries(expectedPins)) {
   if (manifest.dependencies?.[name] !== expected) {
     failures.push(`${name} must remain pinned to ${expected}`);
   }
+}
+if (JSON.stringify(manifest.dependencies ?? {}).includes("@dinkuskit/blocks")) {
+  failures.push("@dinkuskit/blocks must be absent from active dependencies");
 }
 
 function sourceFiles(directory) {

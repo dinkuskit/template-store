@@ -33,7 +33,7 @@ styles are editorial previews. The underlying
 availability vertical remains deliberately smaller than checkout:
 
 ```text
-EmDash composition -> Dinkus Blocks
+EmDash composition -> native EmDash Blocks
                     -> Commerce catalog + managed SKU
                     -> Inventory registration + stock truth
                     -> storefront availability

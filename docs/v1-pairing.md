@@ -7,9 +7,9 @@ Audit date: 2026-09-30. Template base: `41a63299d575eeb9784de700c63ca628543b2d60
 | TemplateStore | private package `0.0.0`; this candidate source | Development pilot, no approved release |
 | Commerce | source `d3f7e591ef64c63d7748fe75e746dcfe39bbb4ca` | Public canonical commit adopted as a development-pilot source alias; registry release still pending |
 | Payments | source `636f01225417fac4fc51fd88604aeb4ba96440a1` | Inspected read-only upstream contract; no package pin or direct dependency |
-| Blocks | source `fe03bfac91798ac0b411b952fe23c26afefbf570` | Current composition dependency |
+| Blocks | EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks | No `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
 | Inventory | source `5889c7d59398376da51ac400d5c1f1214aba2c6b` | Development managed regression only; off in shipping v1 |
-| EmDash | package `0.41.0` | Current tested pilot; 1.0 not yet qualified |
+| EmDash | package `1.0.1` | Actual tested package; registry-installed pair remains unqualified |
 
 EmDash themes are complete Astro projects scaffolded by create-astro. Its current
 registry installs sandboxed plugins. Native plugins instead need built package
@@ -57,18 +57,22 @@ registry bundle or released tarball digest.
 | Promotions | Coupons owner | Basic coupons required for v1; owner public interface and accepted checkout/usage evidence pending (separate dedicated Coupons owner now working) |
 | Bundles | Commerce / relevant owner contract | Not a blocker for this bounded native qualification; unimplemented with no bundle affordance |
 | Registry pair | Commerce + Template release artifact owners | Pending artifact handoff and EmDash 1.0 install proof |
-| Blocks runtime | Blocks owner / EmDash supported renderer contract | Native pilot remains; registry-compatible delivery or approved migration required |
+| Blocks runtime | Template composition / EmDash public native Blocks | Current candidate uses EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks; no `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
 | Hosted demo | Template exact working pair, isolated synthetic state | Plan only; no approved deploy or verified URL |
 
-The Blocks graph also remains a native development dependency.
-`astro.config.mjs` registers `dinkusBlocks()` alongside native Commerce; the exact
-Blocks pin exports source entries, is private `0.0.0`, and peers EmDash `0.41.0`.
-The first-class `layout` renderers in this template use EmDash public Blocks
-and collection APIs, while legacy Portable Text still depends on Dinkus block
-registration. Preserve that fallback and edited content. A registry-enabled
-Blocks artifact/supported renderer path, or a separately approved migration that
-removes the native requirement, must be qualified before shipping. No Blocks
-owner source is changed by this audit.
+Current composition uses EmDash 1.0.1 public native Blocks and collection APIs
+for first-class `layout` renderers. `astro.config.mjs` registers native
+`dinkusCommerce()` only; it does not register `@dinkuskit/blocks`. Legacy
+Portable Text uses local presentation components for retained page-hero,
+fact-rail, and query-card nodes, with local Unknown fallbacks for missing
+native and unsupported Portable Text. Preserve that fallback and edited
+content. The retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is
+historical style provenance for copied `@layer dinkus-blocks` presentation
+only. It is not an active dependency or shipping requirement. No
+`@dinkuskit/blocks` owner source is changed by this correction. Remaining
+Commerce public-mount/artifact, Payments transport, shipping, promotions,
+registry-pair, and hosted-demo gates stay with their owners and are not
+cleared here.
 
 The current seam is concrete: `astro.config.mjs` registers native `dinkusCommerce()`,
 while `src/features/commerce-catalog/index.ts` directly constructs EmDash

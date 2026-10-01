@@ -1,0 +1,8 @@
+---
+import type { BlockComponentProps, BlockValue } from "emdash/ui";
+
+const { value } = Astro.props as BlockComponentProps<BlockValue>;
+---
+<div class="store-unknown-block" role="alert" data-emdash-missing-block={value._type}>
+  This content block ({value._type}) is not available in this storefront release.
+</div>

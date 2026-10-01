@@ -1,6 +1,7 @@
 ---
 import { PortableText, type BlockComponentProps, type BlockValue } from "emdash/ui";
 import type { PortableTextBlock } from "emdash";
+import { legacyPortableTextComponents } from "../portable-text/index.js";
 const { value } = Astro.props as BlockComponentProps<BlockValue & { content?: PortableTextBlock[] }>;
 ---
-{value.content?.length ? <div class="layout-rich-text"><PortableText value={value.content} /></div> : null}
+{value.content?.length ? <div class="layout-rich-text"><PortableText value={value.content} components={legacyPortableTextComponents} /></div> : null}

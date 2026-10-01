@@ -2,6 +2,8 @@
 import { getEmDashEntry, getEmDashCollection, type PortableTextBlock } from "emdash";
 import { Blocks, PortableText, type BlockValue } from "emdash/ui";
 import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
+import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
+import UnknownBlock from "../features/store-shell/blocks/UnknownBlock.astro";
 
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
@@ -49,11 +51,15 @@ const unmanaged = demonstrations?.unmanaged;
       {
         layout?.length ? (
           <div class="cms-composition" data-cms-composition data-layout="blocks">
-            <Blocks value={layout} components={pageLayoutComponents} />
+            <Blocks
+              value={layout}
+              components={pageLayoutComponents}
+              fallback={UnknownBlock}
+            />
           </div>
         ) : content?.length ? (
           <div class="cms-composition" data-cms-composition data-layout="portable-text">
-            <PortableText value={content} />
+            <PortableText value={content} components={legacyPortableTextComponents} />
           </div>
         ) : (
           <section class="store-error" role="alert" data-content-missing>

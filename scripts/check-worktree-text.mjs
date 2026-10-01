@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const paths = execFileSync(
   "git",
@@ -12,6 +12,7 @@ const paths = execFileSync(
 const failures = [];
 
 for (const path of paths) {
+  if (!existsSync(path)) continue;
   const contents = readFileSync(path);
   if (contents.includes(0)) continue;
 

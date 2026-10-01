@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, linkSync, readFileSync, statSync, unlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 
 const args = new Set(process.argv.slice(2));
 const apply = args.has("--apply");
@@ -87,6 +89,14 @@ if (
   throw new Error("Apply mode only accepts explicit http://127.0.0.1:<port> or http://[::1]:<port> loopback URLs.");
 }
 const localBaseUrl = parsedBaseUrl.origin;
+const databasePath = process.env.DINKUS_EMDASH_DB_PATH;
+const backupPath = process.env.DINKUS_EMDASH_BACKUP_PATH;
+if (!databasePath || !backupPath) {
+  throw new Error("Apply mode requires DINKUS_EMDASH_DB_PATH and DINKUS_EMDASH_BACKUP_PATH for a verified SQLite backup.");
+}
+function sha256(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
 const cookie = process.env.DINKUS_EMDASH_SESSION_COOKIE;
 if (!cookie) throw new Error("Set DINKUS_EMDASH_SESSION_COOKIE to an authenticated session cookie; it is never printed.");
 const headers = { cookie, "X-EmDash-Request": "1", "content-type": "application/json" };
@@ -103,6 +113,32 @@ if (!layout.length) throw new Error("Conversion produced an empty layout; no cha
 console.error(JSON.stringify({ action: "ready to apply", id: item.id, legacyPortableTextBlocks: item.data.content.length, newLayoutBlocks: layout.length, preservesLegacyContent: true }, null, 2));
 const confirmation = process.env.DINKUS_EMDASH_MIGRATION_CONFIRM;
 if (confirmation !== `apply:${item.id}`) throw new Error(`Apply stopped. Set DINKUS_EMDASH_MIGRATION_CONFIRM=apply:${item.id} after taking a verified database backup.`);
+try {
+  const databaseStat = statSync(databasePath);
+  if (!databaseStat.isFile() || databaseStat.size === 0) throw new Error("database is empty or not a regular file");
+} catch (error) {
+  throw new Error(`Apply mode database path is not a verified initialized local target (${error.message}); no changes made.`);
+}
+if (existsSync(backupPath)) {
+  throw new Error(`Refusing to overwrite existing backup snapshot at ${backupPath}; no changes made.`);
+}
+const temporaryBackupPath = `${backupPath}.tmp-${process.pid}`;
+try {
+  execFileSync("sqlite3", [databasePath, `.backup '${temporaryBackupPath.replaceAll("'", "''")}'`], { stdio: "pipe" });
+  const backupStat = statSync(temporaryBackupPath);
+  if (!backupStat.isFile() || backupStat.size === 0) throw new Error("SQLite backup is empty");
+  const integrity = execFileSync("sqlite3", [temporaryBackupPath, "PRAGMA integrity_check;"], { encoding: "utf8" }).trim();
+  if (integrity !== "ok") throw new Error("SQLite backup failed integrity_check");
+  try {
+    linkSync(temporaryBackupPath, backupPath);
+  } catch (error) {
+    if (error.code === "EEXIST") throw new Error(`Refusing to overwrite existing backup snapshot at ${backupPath}`);
+    throw error;
+  }
+} finally {
+  if (existsSync(temporaryBackupPath)) unlinkSync(temporaryBackupPath);
+}
+const backupSha256 = sha256(backupPath);
 const update = await fetch(`${localBaseUrl}/_emdash/api/content/pages/${encodeURIComponent(item.id)}?locale=en`, {
   method: "PUT", headers, redirect: "error", body: JSON.stringify({ data: { ...item.data, layout } }),
 });
@@ -113,4 +149,10 @@ const after = extractItem(await verify.json());
 if (JSON.stringify(after.data.content) !== JSON.stringify(item.data.content) || JSON.stringify(after.data.layout) !== JSON.stringify(layout)) {
   throw new Error("Read-back did not match the intended update; stop and inspect the saved revision.");
 }
-console.log(JSON.stringify({ action: "applied", id: item.id, legacyContentPreserved: true, layoutBlocks: layout.length }, null, 2));
+console.log(JSON.stringify({
+  action: "applied",
+  id: item.id,
+  legacyContentPreserved: true,
+  layoutBlocks: layout.length,
+  backup: { path: backupPath, sha256: backupSha256, integrity: "ok" },
+}, null, 2));

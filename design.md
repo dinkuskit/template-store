@@ -6,7 +6,7 @@ Canonical path: `design.md`
 ## Product intent
 
 Provide a neutral, legible proving ground where a store builder can see EmDash
-composition, Dinkus Blocks, Commerce identity, and Inventory truth operating on
+composition, Commerce identity, and Inventory truth operating on
 one storefront surface. The first audience is DinkusKit maintainers and early
 adopters evaluating the stack, not shoppers on a production store. The classic
 merch-catalog first slice provides collection navigation and a product grid.
@@ -73,8 +73,8 @@ on the verified real page.
 - Existing Portable Text continues to render through its original renderer when
   no first-class `layout` has been migrated. A page's populated `layout` takes
   precedence; the previous `content` field is retained as a rollback source.
-- Dinkus Blocks render CMS composition through their documented classes,
-  attributes, and theme tokens.
+- EmDash Blocks render CMS composition through local presentation components,
+  documented classes, attributes, and theme tokens.
 - Card View availability links target focusable, visibly highlighted summaries.
   Both summaries retain their machine-readable `data-*` proof hooks; native
   details keep the technical facts and provenance available without dominating
