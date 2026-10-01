@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Store starter and integration proof for EmDash, DinkusKit Blocks, Commerce, and Inventory",
+  "description": "Store starter and integration proof for EmDash, Commerce, and Inventory",
   "engines": {
     "node": ">=22.16.0 <23"
   },
@@ -42,7 +42,6 @@
     "@astrojs/cloudflare": "14.1.7",
     "@astrojs/node": "11.0.2",
     "@astrojs/react": "6.0.1",
-    "@dinkuskit/blocks": "github:dinkuskit/blocks#fe03bfac91798ac0b411b952fe23c26afefbf570",
     "@dinkuskit/inventory": "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
     "@emdash-cms/cloudflare": "1.0.1",
     "astro": "7.1.3",

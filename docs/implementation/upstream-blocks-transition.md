@@ -1,9 +1,10 @@
 # First-class page blocks and local upgrade
 
-This starter uses EmDash **0.41.0** first-class `blocks` for page-level
+This starter uses EmDash **1.0.1** first-class `blocks` for page-level
 composition. `pages.content` remains Portable Text and is not converted
 implicitly. The homepage prefers a non-empty `pages.layout`; otherwise it keeps
-rendering the existing Portable Text renderer, including Dinkus plugin blocks.
+rendering the existing Portable Text renderer, including local compatibility
+components for the retained legacy page-hero, fact-rail, and query-card nodes.
 The existing Commerce catalog, merchandise demo, and availability panels are
 independent of this choice.
 
@@ -25,7 +26,7 @@ No filters, pagination, price, stock, or cart behavior is included. Old
 
 A fresh install seeds the first-class layout. An already-initialized database
 does not receive a new field or new seed content just because the source changes.
-EmDash 0.41.0 `seed --on-conflict=skip` creates the new versioned block types,
+EmDash 1.0.1 `seed --on-conflict=skip` creates the new versioned block types,
 but skips the existing Pages collection as a whole: it does **not** add the
 new `layout` field. Conversely, `--on-conflict=update` can update seeded page
 content, so do not run that on an operator-owned database. For an initialized
@@ -41,7 +42,7 @@ types without changing existing entries.
 using its guarded `--apply` mode.
 
 ```bash
-sqlite3 .artifacts/dev/content.db ".backup .artifacts/dev/pre-blocks-backup.db"
+sqlite3 .artifacts/dev/content.db ".backup .artifacts/dev/pre-schema-original.db"
 pnpm exec emdash seed --database=.artifacts/dev/content.db --uploads-dir=.artifacts/dev/uploads --on-conflict=skip seed/seed.json
 ```
 
@@ -59,12 +60,24 @@ For an authenticated local dev session, use the guarded API mode only after a
 verified backup:
 
 ```bash
+DINKUS_EMDASH_DB_PATH=.artifacts/dev/content.db \
+DINKUS_EMDASH_BACKUP_PATH=.artifacts/dev/apply-snapshot-20261001-<unique>.db \
 DINKUS_EMDASH_SESSION_COOKIE='<session cookie>' \
 DINKUS_EMDASH_MIGRATION_CONFIRM='apply:<home-entry-id>' \
 node scripts/migrate-home-layout.mjs --apply --base-url=http://127.0.0.1:4321
 ```
 
-The script requires the exact Home ID confirmation, refuses to replace a
+The first backup is the immutable pre-schema original used for rollback if seed
+application needs to be reversed. Apply mode creates a separate, new
+pre-apply snapshot and refuses to overwrite an existing path; use a new unique
+snapshot path for every attempt. Keep both files. To roll back, stop the local
+server, copy the verified pre-schema original (or the verified pre-apply
+snapshot) to a separate disposable database first, run `PRAGMA integrity_check`,
+then replace the local database only after that copy has the expected original
+content and revisions.
+
+The script requires the exact Home ID confirmation and verified backup paths,
+refuses to proceed unless the new snapshot passes SQLite `integrity_check`, and refuses to replace a
 non-empty layout, updates only the existing entry's `layout` while retaining
 `content`, and verifies both fields after save. For a dry run, pipe the JSON response from
 `/_emdash/api/content/pages/home` into the script without `--apply`; it prints
@@ -82,7 +95,7 @@ revision and database backup. Rollback restores the old revision's Portable
 Text and leaves the new schema field available but unused. Do not remove the
 `layout` field during rollback. Sites older than EmDash 0.39 must first deploy
 an unknown-field read-only/write-rejection-protected release to every runtime
-before adding a blocks field. This starter pin is 0.41.0. Do not mix an older
+before adding a blocks field. This starter pin is 1.0.1. Do not mix an older
 runtime that could rewrite unknown blocks JSON as text.
 
 ## Proof boundaries
@@ -91,6 +104,9 @@ runtime that could rewrite unknown blocks JSON as text.
 public rendering, and the authenticated public Edit-mode toolbar for `blocks`
 field cards. The first-class blocks remain card-edited in admin; this does not
 claim inline editing in public Edit mode. The migration proof runs against an
-initialized database separately from fresh seed proof. The legacy Dinkus Query Card test remains the owner of its
-Portable Text contract; first-class layout proof owns the new schema/renderer
+initialized database separately from fresh seed proof. A bounded production
+`dist/server` fixture proves registered missing-native and nested Portable Text
+fallback without treating Astro DEV as production. The Portable Text
+compatibility test remains the owner of its retained renderer contract;
+first-class layout proof owns the new schema/renderer
 and preservation/rollback contract.

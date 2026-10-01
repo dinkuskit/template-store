@@ -121,11 +121,28 @@
     background: #fff1f2;
   }
 
+  .store-unknown-block {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    border: 2px solid #8a5a00;
+    background: #fff8df;
+    color: #4b3200;
+  }
+
+  .store-unknown-portable-text {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-left: 3px solid #8a5a00;
+    background: #fff8df;
+    color: #4b3200;
+  }
+
   @media (max-width: 44rem) {
     .cms-composition .dinkus-fact-rail {
       grid-template-columns: 1fr;
     }
   }
+
 }
 
 .demo-heading{width:min(70rem,calc(100% - 2rem));margin:1.5rem auto}

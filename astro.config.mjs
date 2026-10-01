@@ -5,7 +5,6 @@ import node from "@astrojs/node";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
 import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
-import { dinkusBlocks } from "@dinkuskit/blocks";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
 import { d1, r2 } from "@emdash-cms/cloudflare";
@@ -55,7 +54,6 @@ export default defineConfig({
           }),
       ...(siteUrl ? { siteUrl } : {}),
       plugins: [
-        dinkusBlocks(),
         dinkusCommerce({
           enableLocalStockManagement,
           ...(siteUrl ? { siteUrl } : {}),

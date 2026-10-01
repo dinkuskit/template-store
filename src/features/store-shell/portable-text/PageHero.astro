@@ -1,0 +1,86 @@
+---
+import { sanitizeHref } from "emdash";
+
+interface PortableTextNodeProps<T> {
+  node: T;
+  index: number;
+  isInline: boolean;
+}
+
+interface Value {
+  eyebrow?: string;
+  headline?: string;
+  deck?: string;
+  primaryLabel?: string;
+  primaryHref?: string;
+  secondaryLabel?: string;
+  secondaryHref?: string;
+}
+
+const { node } = Astro.props as PortableTextNodeProps<Value & { _type: string }>;
+const value = node;
+const primaryHref = value.primaryHref ? sanitizeHref(value.primaryHref) : null;
+const secondaryHref = value.secondaryHref ? sanitizeHref(value.secondaryHref) : null;
+---
+<section class="dinkus-page-hero" data-dinkus-block="page-hero">
+  {value.eyebrow && <p class="dinkus-page-hero__eyebrow">{value.eyebrow}</p>}
+  {value.headline && <h1>{value.headline}</h1>}
+  {value.deck && <p class="dinkus-page-hero__deck">{value.deck}</p>}
+  {(value.primaryLabel && primaryHref) || (value.secondaryLabel && secondaryHref) ? (
+    <div class="dinkus-page-hero__actions">
+      {value.primaryLabel && primaryHref && <a class="dinkus-page-hero__action" href={primaryHref}>{value.primaryLabel}</a>}
+      {value.secondaryLabel && secondaryHref && <a class="dinkus-page-hero__action dinkus-page-hero__action--secondary" href={secondaryHref}>{value.secondaryLabel}</a>}
+    </div>
+  ) : null}
+</section>
+
+<style>
+  @layer dinkus-blocks {
+    .dinkus-page-hero {
+      padding: var(--dinkus-section-spacing, clamp(2rem, 6vw, 4.5rem)) 0;
+    }
+
+    .dinkus-page-hero__eyebrow {
+      margin: 0 0 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: var(--dinkus-title-size, clamp(2rem, 5vw, 3.25rem));
+      line-height: var(--dinkus-title-line-height, 1.1);
+    }
+
+    .dinkus-page-hero__deck {
+      margin: 1rem 0 0;
+      max-width: var(--dinkus-copy-max-width, 44rem);
+      font-size: 1.125rem;
+      line-height: 1.6;
+    }
+
+    .dinkus-page-hero__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--dinkus-content-gap, 0.75rem);
+      margin-top: 1.5rem;
+    }
+
+    .dinkus-page-hero__action {
+      padding: 0.75rem 1rem;
+      border-radius: var(--dinkus-action-radius, 999px);
+      background: var(--dinkus-action-background, CanvasText);
+      color: var(--dinkus-action-color, Canvas);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .dinkus-page-hero__action--secondary {
+      background: transparent;
+      color: inherit;
+      border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+    }
+  }
+</style>

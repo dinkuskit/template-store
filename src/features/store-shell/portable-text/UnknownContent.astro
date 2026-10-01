@@ -1,0 +1,13 @@
+---
+interface PortableTextNodeProps<T> {
+  node: T;
+  index: number;
+  isInline: boolean;
+}
+
+const { node } = Astro.props as PortableTextNodeProps<{ _type: string }>;
+const typeName = typeof node?._type === "string" ? node._type : "unknown";
+---
+<aside class="store-unknown-portable-text" role="status" data-emdash-unsupported-content={typeName}>
+  Unsupported editorial content ({typeName}) was preserved but cannot be rendered by this storefront release.
+</aside>

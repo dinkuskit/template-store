@@ -61,7 +61,7 @@ registry bundle or released tarball digest.
 | Hosted demo | Template exact working pair, isolated synthetic state | Plan only; no approved deploy or verified URL |
 
 The Blocks graph also remains a native development dependency.
-`astro.config.mjs` registers `dinkusBlocks()` alongside native Commerce; the exact
+`astro.config.mjs` registers native EmDash Blocks alongside native Commerce; the exact
 Blocks pin exports source entries, is private `0.0.0`, and peers EmDash `0.41.0`.
 The first-class `layout` renderers in this template use EmDash public Blocks
 and collection APIs, while legacy Portable Text still depends on Dinkus block
