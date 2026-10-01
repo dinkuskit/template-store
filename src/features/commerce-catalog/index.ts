@@ -44,10 +44,17 @@ export type CommerceCatalogSnapshot =
 
 async function openCommerceCatalogStorage() {
   const db = await getDb();
+  const manualAvailability = new PluginStorageRepository<CatalogManualAvailabilityRecord>(
+    db,
+    COMMERCE_PLUGIN_ID,
+    CATALOG_MANUAL_AVAILABILITY_COLLECTION,
+    [],
+  );
   return {
     catalog: new PluginStorageRepository<CatalogStorageRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, []),
     prices: new PluginStorageRepository<CatalogPriceRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_PRICES_COLLECTION, []),
-    manualAvailability: new PluginStorageRepository<CatalogManualAvailabilityRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_MANUAL_AVAILABILITY_COLLECTION, []),
+    availability: manualAvailability,
+    manualAvailability,
     backorderPolicies: new PluginStorageRepository<CatalogBackorderPolicyRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_BACKORDER_POLICIES_COLLECTION, []),
     configurations: new PluginStorageRepository<StoreInventoryConfigurationRecord>(db, COMMERCE_PLUGIN_ID, STORE_INVENTORY_CONFIGURATIONS_COLLECTION, []),
     settings: new PluginStorageRepository<StorefrontAvailabilitySettingsRecord>(db, COMMERCE_PLUGIN_ID, STOREFRONT_AVAILABILITY_SETTINGS_COLLECTION, []),

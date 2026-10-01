@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
 import { collectionPath } from "../../src/features/store-shell/index.js";
 
 function inventoryishUrl(url: string): boolean {
-  return /configure-inventory|@dinkuskit\/inventory|dinkuskit\.inventory|\/api\/proof\/stock/iu.test(
+  return /configure-inventory|@dinkuskit\/inventory|dinkuskit\.inventory|dinkus-inventory|\/api\/proof\/stock/iu.test(
     url,
   );
 }
@@ -43,8 +43,6 @@ test("shipping profile admin catalog reaches the storefront without Inventory", 
     await expect(admin.getByRole("dialog", { name: /Welcome to EmDash/ })).toHaveCount(0);
   }
   await expect(admin.getByRole("heading", { name: "Products", exact: true })).toBeVisible();
-  await expect(admin.getByText(/coming soon/i)).toHaveCount(0);
-  await expect(admin.getByText(/manage stock/i)).toHaveCount(0);
   await expect.poll(
     () =>
       execFileSync(
@@ -71,6 +69,13 @@ test("shipping profile admin catalog reaches the storefront without Inventory", 
   const id = (await response.json()).data.item.itemId;
   const card = page.locator(`[data-commerce-product="${id}"]`);
   await expect(admin.getByLabel("Regular", { exact: true })).toBeVisible();
+
+  // Actual stock Coming soon disabled visible control under current native entry
+  const manageStockControl = admin.getByRole("switch", { name: "Manage stock" });
+  await expect(manageStockControl).toBeVisible();
+  await expect(manageStockControl).toBeDisabled();
+  await expect(admin.getByText("Coming soon")).toBeVisible();
+
   await admin.screenshot({ path: resolve(root, "admin-products.png"), fullPage: true, animations: "disabled" });
 
   async function save(regular: string, sale: string) {
@@ -175,12 +180,12 @@ test("shipping profile admin catalog reaches the storefront without Inventory", 
       {
         project: testInfo.project.name,
         profile: "shipping",
-        commercePin: "81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06",
+        commercePin: "ab37cd7f362f1c37cb1d321192abbbc48a623833",
         managedDemos: "absent",
         quantityShown: "never",
         inventoryRequests: inventoryRequests.length,
-        comingSoon: false,
-        manageStock: false,
+        comingSoon: true,
+        manageStockDisabled: true,
         homeOpenerHref: "#commerce-catalog",
         catalogHeading: "commerce-catalog",
         staleDemoCopy: false,

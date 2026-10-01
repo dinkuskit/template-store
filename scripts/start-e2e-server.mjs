@@ -43,6 +43,7 @@ const child = spawn(
       DINKUS_STOREFRONT_PROFILE: lane,
       DINKUS_TEMPLATE_DB_URL: `file:./${relativeDir}/content.db`,
       DINKUS_TEMPLATE_UPLOADS_DIR: `./${relativeDir}/uploads`,
+      EMDASH_SITE_URL: `http://127.0.0.1:${port}`,
     },
   },
 );

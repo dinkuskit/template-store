@@ -19,6 +19,12 @@ const databaseUrl =
 const uploadsDirectory =
   process.env.DINKUS_TEMPLATE_UPLOADS_DIR ?? "./.artifacts/dev/uploads";
 
+const enableLocalStockManagement =
+  process.env.DINKUS_PROOF_MODE === "1" &&
+  process.env.DINKUS_STOREFRONT_PROFILE === "proof";
+
+const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
+
 export default defineConfig({
   output: "server",
   adapter: node({ mode: "standalone" }),
@@ -30,13 +36,25 @@ export default defineConfig({
         directory: uploadsDirectory,
         baseUrl: "/_emdash/api/media/file",
       }),
-      plugins: [dinkusBlocks(), dinkusCommerce()],
+      ...(siteUrl ? { siteUrl } : {}),
+      plugins: [
+        dinkusBlocks(),
+        dinkusCommerce({
+          enableLocalStockManagement,
+          ...(siteUrl ? { siteUrl } : {}),
+        }),
+      ],
     }),
   ],
   vite: {
     resolve: {
       alias: {
-        "@dinkuskit/commerce/admin": fileURLToPath(new URL("./.artifacts/source-deps/commerce/src/admin/index.ts", import.meta.url)),
+        "@dinkuskit/commerce/admin": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/admin/native.ts",
+            import.meta.url,
+          ),
+        ),
         "@dinkuskit/commerce": commerceEntry,
         "@dinkuskit/inventory": inventoryEntry,
       },

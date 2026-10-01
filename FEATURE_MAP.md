@@ -36,7 +36,7 @@ See [operator and compatibility boundaries](docs/implementation/commerce-catalog
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.guest-cart` | Validated browser identity/quantity intent cache, cart editing and Commerce snapshot presentation; inactive checkout until upstream guest mount | `src/features/guest-cart/`; `src/pages/cart.astro`; `src/pages/api/guest-cart/snapshot.ts`; `tests/unit/guest-cart.test.ts`; `tests/e2e/guest-cart.spec.ts` | `src/features/guest-cart/index.ts`; UI through `src/features/guest-cart/ui.ts` | Commerce catalog public entry; store-shell public entry | `bin/verify-web quick` | `bin/verify-web full` | candidate; checkout contract pending |
+| `dinkus.guest-cart` | Validated browser identity/quantity intent cache, cart editing and Commerce snapshot presentation; inactive checkout until upstream guest mount | `src/features/guest-cart/`; `src/pages/cart.astro`; `src/pages/api/guest-cart/snapshot.ts`; `tests/unit/guest-cart.test.ts`; `tests/unit/checkout-dependency-handoff.test.ts`; `tests/e2e/guest-cart.spec.ts`; `tests/e2e/guest-checkout-feasibility.spec.ts` | `src/features/guest-cart/index.ts`; UI through `src/features/guest-cart/ui.ts` | Commerce catalog public entry; store-shell public entry | `bin/verify-web quick` | `bin/verify-web full` | candidate; checkout contract pending |
 
 Issue #20 supersedes the earlier catalog-only no-cart exclusion for this bounded
 shopper feature. Cart persistence is untrusted identity/quantity intent, never
@@ -45,6 +45,7 @@ are read through the existing Commerce consumer. Guest capability, frozen
 attempts, hosted handoff and durable paid-order return states depend on Commerce
 issue #32 and exact artifact/mount proof. No browser URL establishes payment.
 No synthetic provider, registry release or Stripe proof is claimed here.
+See [.grilltrack/proof/checkout-integration-20260930/PROOF.md](.grilltrack/proof/checkout-integration-20260930/PROOF.md) and [.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md](.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md) for post-merge guest checkout failclosed feasibility qualification.
 
 ## Default inventory-off profile
 
@@ -52,8 +53,9 @@ The default source-pilot profile is `shipping`; explicit
 `DINKUS_STOREFRONT_PROFILE=proof` selects development demonstrations.
 `tests/e2e/shipping-storefront-profile.spec.ts` covers Products create, Regular/Sale,
 manual availability, absent quantities/demonstrations, preview isolation, and
-merchant product detail on desktop/mobile. The legacy native pin does not yet
-provide the approved disabled Coming soon control or registry pair.
+merchant product detail on desktop/mobile. The current Commerce pin
+`ab37cd7f362f1c37cb1d321192abbbc48a623833` provides the disabled Coming soon
+control under the native entry, while registry pairing remains pending.
 `pnpm verify` keeps both this profile and all earlier managed regressions.
 
 ## Storefront drivers

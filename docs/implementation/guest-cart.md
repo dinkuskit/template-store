@@ -8,7 +8,7 @@ integer quantities. It has no trusted price, stock, payment or order state.
 Current Commerce catalog reads supply displayed names, prices and availability.
 A catalog-read failure must be visible and recoverable while preserving intent.
 An unavailable, missing or unpriced product remains non-purchasable. This pilot
-uses the unchanged exact legacy native source pin; it does not establish
+uses exact Commerce source ab37cd7f362f1c37cb1d321192abbbc48a623833; it does not establish
 registry-installed Commerce storage or route authority.
 
 ## Contract dependency
@@ -39,7 +39,7 @@ The next integration needs actual host identity/storage/route proof and:
 The full issue remains open until those integration acceptance criteria and
 exact compatible artifact pairing are met. Inventory is not needed for the
 unmanaged v1 path. Shipping must follow its owner's actual contract; do not
-invent rates or adopt an unconfirmed payment-window change.
+invent rates. New checkout attempts use 1800..1860s; historical exact-1800 originals replay unchanged.
 
 ## Browser presentation boundaries
 

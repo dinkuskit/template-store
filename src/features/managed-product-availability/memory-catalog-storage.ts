@@ -40,6 +40,19 @@ export type MemoryCatalogStorage = CatalogStorage &
 
 export function createMemoryCatalogStorage(): MemoryCatalogStorage {
   const records = new Map<string, CatalogStorageRecord>();
+  const revisions = new Map<string, string>();
+
+  function validateUniques(id: string, data: CatalogStorageRecord): void {
+    for (const [existingId, existing] of records) {
+      if (existingId === id) continue;
+      if (existing.commandId === data.commandId) {
+        throw uniqueViolation("commandId");
+      }
+      if (existing.skuKey === data.skuKey) {
+        throw uniqueViolation("skuKey");
+      }
+    }
+  }
 
   return {
     async get(id) {
@@ -47,20 +60,40 @@ export function createMemoryCatalogStorage(): MemoryCatalogStorage {
       return record === undefined ? null : structuredClone(record);
     },
 
-    async put(id, data) {
-      for (const [existingId, existing] of records) {
-        if (existingId === id) continue;
-        if (existing.commandId === data.commandId) {
-          throw uniqueViolation("commandId");
-        }
-        if (existing.skuKey === data.skuKey) {
-          throw uniqueViolation("skuKey");
+    async getVersioned(id) {
+      const record = records.get(id);
+      if (record === undefined) return null;
+      if (!revisions.has(id)) revisions.set(id, crypto.randomUUID());
+      return {
+        value: structuredClone(record),
+        revision: revisions.get(id)!,
+      };
+    },
+
+    async compareAndSet(id, expectedRevision, data) {
+      const current = records.get(id);
+      if (expectedRevision === null) {
+        if (current !== undefined) return { applied: false };
+      } else {
+        if (current === undefined || revisions.get(id) !== expectedRevision) {
+          return { applied: false };
         }
       }
+      validateUniques(id, data);
       records.set(id, structuredClone(data));
+      const revision = crypto.randomUUID();
+      revisions.set(id, revision);
+      return { applied: true, revision };
+    },
+
+    async put(id, data) {
+      validateUniques(id, data);
+      records.set(id, structuredClone(data));
+      revisions.set(id, crypto.randomUUID());
     },
 
     async delete(id) {
+      revisions.delete(id);
       return records.delete(id);
     },
 
@@ -186,6 +219,7 @@ function createMemoryClaimStorage(): ConfigureInventoryClaimStorage {
 
 export function createMemoryPriceStorage(): CatalogPriceStorage {
   const records = new Map<string, CatalogPriceRecord>();
+  const revisions = new Map<string, string>();
 
   return {
     async get(id) {
@@ -193,11 +227,48 @@ export function createMemoryPriceStorage(): CatalogPriceStorage {
       return record === undefined ? null : structuredClone(record);
     },
 
+    async getVersioned(id) {
+      const record = records.get(id);
+      if (record === undefined) return null;
+      if (!revisions.has(id)) revisions.set(id, crypto.randomUUID());
+      return {
+        value: structuredClone(record),
+        revision: revisions.get(id)!,
+      };
+    },
+
+    async compareAndSet(id, expectedRevision, data) {
+      const current = records.get(id);
+      if (expectedRevision === null) {
+        if (current !== undefined) return { applied: false };
+      } else {
+        if (current === undefined || revisions.get(id) !== expectedRevision) {
+          return { applied: false };
+        }
+      }
+      records.set(id, structuredClone(data));
+      const revision = crypto.randomUUID();
+      revisions.set(id, revision);
+      return { applied: true, revision };
+    },
+
+    async compareAndDelete(id, expectedRevision) {
+      const current = records.get(id);
+      if (current === undefined || revisions.get(id) !== expectedRevision) {
+        return { applied: false };
+      }
+      records.delete(id);
+      revisions.delete(id);
+      return { applied: true };
+    },
+
     async put(id, data) {
       records.set(id, structuredClone(data));
+      revisions.set(id, crypto.randomUUID());
     },
 
     async delete(id) {
+      revisions.delete(id);
       return records.delete(id);
     },
   };
