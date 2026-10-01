@@ -41,6 +41,16 @@
 }
 
 @layer store-shell {
+  .store-demo-banner {
+    background: #172033;
+    color: #fffefb;
+    text-align: center;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
   .store-header {
     display: flex;
     align-items: center;

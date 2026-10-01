@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
@@ -6,8 +6,15 @@ import { dirname, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const sourceRoot = resolve(root, ".artifacts/source-deps");
 const commerceRoot = resolve(sourceRoot, "commerce");
-const repository = "https://github.com/dinkuskit/commerce.git";
-const commit = "ab37cd7f362f1c37cb1d321192abbbc48a623833";
+const manifest = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const repository = manifest.dinkuskit?.sourcePins?.commerce?.repository;
+const commit = manifest.dinkuskit?.sourcePins?.commerce?.commit;
+if (
+  repository !== "https://github.com/dinkuskit/commerce.git" ||
+  !/^[0-9a-f]{40}$/u.test(commit)
+) {
+  throw new Error("package.json Commerce source pin must be the public git repository and a full commit.");
+}
 
 function git(args, cwd = root, allowFailure = false) {
   const result = spawnSync("git", args, {

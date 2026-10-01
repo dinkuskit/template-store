@@ -1,0 +1,102 @@
+import astroHandler from "@astrojs/cloudflare/entrypoints/server";
+import { createScheduledHandler, PluginBridge } from "@emdash-cms/cloudflare/worker";
+import {
+  applySecurityHeaders,
+  evaluatePublicBoundary,
+} from "./features/security/public-boundary.js";
+
+export { PluginBridge };
+
+export interface RateLimiterBinding {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+export interface WorkerEnv {
+  RATE_LIMITER?: RateLimiterBinding;
+  DB?: unknown;
+  MEDIA?: unknown;
+  ASSETS?: { fetch(request: Request): Promise<Response> };
+  [key: string]: unknown;
+}
+
+export interface WorkerExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+  passThroughOnException(): void;
+}
+
+function createErrorResponse(
+  status: number,
+  message: string,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  const headers = new Headers({
+    "Content-Type": "application/json",
+    ...extraHeaders,
+  });
+  applySecurityHeaders(headers);
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers,
+  });
+}
+
+export default {
+  async fetch(
+    request: Request,
+    env: WorkerEnv,
+    ctx: WorkerExecutionContext,
+  ): Promise<Response> {
+    // 1. Enforce fail-closed rate limiter binding presence
+    if (!env?.RATE_LIMITER || typeof env.RATE_LIMITER.limit !== "function") {
+      return createErrorResponse(503, "Rate limiter service unavailable.");
+    }
+
+    // 2. Enforce trusted Cloudflare connecting IP only (untrusted X-Forwarded-For is rejected)
+    const clientIp = request.headers.get("cf-connecting-ip");
+    if (!clientIp || clientIp.trim() === "") {
+      return createErrorResponse(503, "Client IP identification unavailable.");
+    }
+
+    // 3. Enforce rate limiting with dedicated scoped key
+    const rateLimitKey = `demo:public:${clientIp.trim()}`;
+    try {
+      const rateLimitResult = await env.RATE_LIMITER.limit({ key: rateLimitKey });
+      if (!rateLimitResult || typeof rateLimitResult.success !== "boolean") {
+        return createErrorResponse(503, "Rate limiter malformed response.");
+      }
+      if (!rateLimitResult.success) {
+        return createErrorResponse(
+          429,
+          "Too many requests. Please try again later.",
+          { "Retry-After": "60" },
+        );
+      }
+    } catch {
+      return createErrorResponse(503, "Rate limiter failure.");
+    }
+
+    // 4. Strict route and method boundary evaluation
+    const url = new URL(request.url);
+    const check = evaluatePublicBoundary(
+      request.method,
+      url.pathname,
+      url.search,
+    );
+    if (!check.allowed) {
+      return createErrorResponse(check.status, check.reason ?? "Forbidden");
+    }
+
+    // 5. Delegate to Astro Cloudflare server handler
+    const response = await (astroHandler as { fetch(req: Request, env: unknown, ctx: unknown): Promise<Response> }).fetch(
+      request,
+      env,
+      ctx,
+    );
+
+    // 6. Enforce security response headers
+    const mutableResponse = new Response(response.body, response);
+    applySecurityHeaders(mutableResponse.headers);
+    return mutableResponse;
+  },
+  scheduled: createScheduledHandler(),
+};

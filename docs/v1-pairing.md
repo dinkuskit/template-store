@@ -5,7 +5,7 @@ Audit date: 2026-09-30. Template base: `41a63299d575eeb9784de700c63ca628543b2d60
 | Component | Current identity | Meaning |
 | --- | --- | --- |
 | TemplateStore | private package `0.0.0`; this candidate source | Development pilot, no approved release |
-| Commerce | source `ab37cd7f362f1c37cb1d321192abbbc48a623833` | Exact merged native Products and guest checkout consumer; final owner artifact handoff pending |
+| Commerce | source `d3f7e591ef64c63d7748fe75e746dcfe39bbb4ca` | Public canonical commit adopted as a development-pilot source alias; registry release still pending |
 | Payments | source `636f01225417fac4fc51fd88604aeb4ba96440a1` | Inspected read-only upstream contract; no package pin or direct dependency |
 | Blocks | source `fe03bfac91798ac0b411b952fe23c26afefbf570` | Current composition dependency |
 | Inventory | source `5889c7d59398376da51ac400d5c1f1214aba2c6b` | Development managed regression only; off in shipping v1 |
@@ -43,7 +43,7 @@ No version or release identifier is reserved by this document.
 The current template npm-pack dry run includes verifier scripts and historical
 lineage. Before distribution, establish and audit an explicit starter artifact
 file list; do not ship proof/rail tooling or credentials. A source archive digest
-of the clean Commerce pin (`ab37cd7f362f1c37cb1d321192abbbc48a623833`) is
+of the previous Commerce pin (`ab37cd7f362f1c37cb1d321192abbbc48a623833`) is
 `d6849c3a50502b4cce7ad98a96ddd7a9c8bbeef7d77e94dfd6980083137cd4f3` (verified
 via `git archive --format=tar ab37cd7f362f1c37cb1d321192abbbc48a623833`). This is source provenance only, not a
 registry bundle or released tarball digest.

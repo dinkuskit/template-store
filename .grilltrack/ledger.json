@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-01T00:39:28+00:00",
-    "domain": "post-merge guest checkout host qualification",
-    "started_at": "2026-10-01T00:39:28+00:00",
+    "confirmed_at": "2026-10-01T04:31:35+00:00",
+    "domain": "Hosted synthetic browse and guest cart demo on exact EmDash 1.0.1",
+    "started_at": "2026-10-01T04:31:34+00:00",
     "status": "confirmed",
-    "summary": "The human-assigned bounded slice qualifies exact merged guest routes and Payments port on real EmDash, implements only the supported Template consumer, and produces precise executable dependency proof if blocked. Carry current 1800..1860 window, unmanaged v1, split authority and registry requirements. Commit/test reviewable output; no deploy/release/live provider/account/secrets/merge or unrelated repo writer."
+    "summary": "Prepare and stand up demo.dinkuskit.com on exact EmDash 1.0.1 using supported durable Cloudflare adapters, isolated synthetic Commerce products and guest cart, conspicuous test labeling, blocked public administrative/mutation surfaces and bounded request/resource controls. Preserve current neutral design and no payment/notification/fulfillment bindings. Independently verify exact source consumption and review before scoped deployment. Registry, coupon host adoption and actual provider purchase remain distinct gates."
   },
   "decisions": [
     {
@@ -430,23 +430,82 @@
       "superseded_by": null,
       "updated_at": "2026-10-01T02:14:29+00:00",
       "verification_ref": "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md"
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+      "context_ref": null,
+      "created_at": "2026-10-01T04:31:34+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Hosted synthetic browse and guest cart demo on exact EmDash 1.0.1",
+      "history": [
+        {
+          "at": "2026-10-01T04:31:35+00:00",
+          "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T07:24:59+00:00",
+          "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T07:24:59+00:00",
+          "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+          "from": "implemented",
+          "implementation_ref": "file:src/worker.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "hosted-demo-007",
+      "implementation_ref": "file:src/worker.ts",
+      "question": "Which public demonstration should be stood up?",
+      "rationale": "An independently useful public browse and cart demonstration lets prospective users inspect the commerce starter while payment and released-artifact integrations remain unproved.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-01T07:24:59+00:00",
+      "verification_ref": "file:.grilltrack/proof/hosted-demo-20261001/PROOF.md"
     }
   ],
   "last_activation": {
-    "at": "2026-10-01T00:39:04+00:00",
+    "at": "2026-10-01T04:31:34+00:00",
     "mechanism": "implicit"
   },
   "last_pause": {
-    "artifact_refs": [
-      ".grilltrack/proof/guest-cart-20260930/PROOF.md",
-      "docs/implementation/guest-cart.md"
-    ],
-    "next_safe_action": "Independent review of the frozen stacked cart candidate; then consume the Commerce issue32 owner public contract/artifact in the next authorized source slice. Preserve this source candidate.",
-    "paused_at": "2026-09-30T18:55:23+00:00",
-    "reason": "Independent native source-pilot cart presentation verified. Supported Commerce guest capability/status mount and immutable registry artifact pairing are not supplied; full issue20 purchase/order acceptance and independent frozen-head review remain pending.",
-    "resumed_at": "2026-10-01T00:39:04+00:00"
-  },
-  "pause": {
     "artifact_refs": [
       "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md",
       "file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
@@ -454,13 +513,15 @@
     ],
     "next_safe_action": "Review this immutable Template Store candidate at the maintainer merge gate. Consume the typed bridge/wake and Registry handoff in a separately authorized owner slice; preserve approved guest recovery contracts and existing ownership.",
     "paused_at": "2026-10-01T02:14:29+00:00",
-    "reason": "Bounded native qualification verified; authenticated Payments bridge/wake, Registry pairing and full purchase acceptance remain upstream gates. Maintainer merge approval is pending."
+    "reason": "Bounded native qualification verified; authenticated Payments bridge/wake, Registry pairing and full purchase acceptance remain upstream gates. Maintainer merge approval is pending.",
+    "resumed_at": "2026-10-01T04:31:34+00:00"
   },
+  "pause": null,
   "predecessor_track_id": "gt-20260926022138-947c39",
   "recommendation": null,
   "schema_version": "grilltrack/v0.1",
-  "status": "paused",
+  "status": "active",
   "title": "Inventory-off v1 template and exact Commerce pairing",
   "track_id": "gt-20260930163954-43d0a5",
-  "updated_at": "2026-10-01T02:14:29+00:00"
+  "updated_at": "2026-10-01T07:24:59+00:00"
 }

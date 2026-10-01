@@ -6,6 +6,7 @@ dist/
 runs/
 test-results/
 playwright-report/
+.wrangler/
 .env
 .env.*
 !.env.example
