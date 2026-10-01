@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 
+import cloudflare from "@astrojs/cloudflare";
 import node from "@astrojs/node";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
@@ -7,6 +8,11 @@ import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 import { dinkusBlocks } from "@dinkuskit/blocks";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
+import { d1, r2 } from "@emdash-cms/cloudflare";
+
+const isCloudflare =
+  process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
+  process.env.ASTRO_ADAPTER === "cloudflare";
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
@@ -20,6 +26,7 @@ const uploadsDirectory =
   process.env.DINKUS_TEMPLATE_UPLOADS_DIR ?? "./.artifacts/dev/uploads";
 
 const enableLocalStockManagement =
+  !isCloudflare &&
   process.env.DINKUS_PROOF_MODE === "1" &&
   process.env.DINKUS_STOREFRONT_PROFILE === "proof";
 
@@ -27,15 +34,25 @@ const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
 
 export default defineConfig({
   output: "server",
-  adapter: node({ mode: "standalone" }),
+  adapter: isCloudflare
+    ? cloudflare({
+        ...(process.env.DINKUS_WRANGLER_CONFIG
+          ? { configPath: process.env.DINKUS_WRANGLER_CONFIG }
+          : {}),
+      })
+    : node({ mode: "standalone" }),
   integrations: [
     react(),
     emdash({
-      database: sqlite({ url: databaseUrl }),
-      storage: local({
-        directory: uploadsDirectory,
-        baseUrl: "/_emdash/api/media/file",
-      }),
+      database: isCloudflare
+        ? d1({ binding: "DB" })
+        : sqlite({ url: databaseUrl }),
+      storage: isCloudflare
+        ? r2({ binding: "MEDIA" })
+        : local({
+            directory: uploadsDirectory,
+            baseUrl: "/_emdash/api/media/file",
+          }),
       ...(siteUrl ? { siteUrl } : {}),
       plugins: [
         dinkusBlocks(),

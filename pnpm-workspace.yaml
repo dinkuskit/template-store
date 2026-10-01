@@ -1,10 +1,20 @@
 allowBuilds:
   better-sqlite3: true
   esbuild: true
+  workerd: true
 minimumReleaseAgeExclude:
-  - '@emdash-cms/admin@0.41.0'
-  - '@emdash-cms/auth@0.41.0'
-  - '@emdash-cms/blocks@0.41.0'
-  - '@emdash-cms/gutenberg-to-portable-text@0.41.0'
-  - emdash@0.41.0
+  - '@emdash-cms/admin@0.41.0 || 1.0.1'
+  - '@emdash-cms/auth@0.41.0 || 1.0.1'
+  - '@emdash-cms/blocks@0.41.0 || 1.0.1'
+  - '@emdash-cms/gutenberg-to-portable-text@0.41.0 || 1.0.1'
+  - emdash@0.41.0 || 1.0.1
+  - '@emdash-cms/cloudflare@1.0.1'
+  - '@cloudflare/workerd-darwin-64@1.20260930.2'
+  - '@cloudflare/workerd-darwin-arm64@1.20260930.2'
+  - '@cloudflare/workerd-linux-64@1.20260930.2'
+  - '@cloudflare/workerd-linux-arm64@1.20260930.2'
+  - '@cloudflare/workerd-windows-64@1.20260930.2'
+  - miniflare@5.20260930.0-alpha
+  - workerd@1.20260930.2
+  - wrangler@4.145.0
 packages: []

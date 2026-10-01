@@ -5,6 +5,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
+      "cloudflare:workers": fileURLToPath(
+        new URL("./tests/mocks/cloudflare-workers.ts", import.meta.url),
+      ),
       "@dinkuskit/commerce": fileURLToPath(
         new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
       ),
@@ -15,5 +18,10 @@ export default defineConfig({
   },
   test: {
     include: ["tests/unit/**/*.test.ts"],
+    server: {
+      deps: {
+        inline: ["@astrojs/cloudflare", "@emdash-cms/cloudflare"],
+      },
+    },
   },
 });

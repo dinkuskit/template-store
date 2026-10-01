@@ -54,7 +54,7 @@ The default source-pilot profile is `shipping`; explicit
 `tests/e2e/shipping-storefront-profile.spec.ts` covers Products create, Regular/Sale,
 manual availability, absent quantities/demonstrations, preview isolation, and
 merchant product detail on desktop/mobile. The current Commerce pin
-`ab37cd7f362f1c37cb1d321192abbbc48a623833` provides the disabled Coming soon
+`d3f7e591ef64c63d7748fe75e746dcfe39bbb4ca` provides the disabled Coming soon
 control under the native entry, while registry pairing remains pending.
 `pnpm verify` keeps both this profile and all earlier managed regressions.
 
