@@ -6,6 +6,9 @@
       "@dinkuskit/commerce": [
         "./.artifacts/source-deps/commerce/src/index.ts"
       ],
+      "@dinkuskit/commerce/features/checkout": [
+        "./.artifacts/source-deps/commerce/src/features/checkout/index.ts"
+      ],
       "@dinkuskit/inventory": [
         "./node_modules/@dinkuskit/inventory/src/index.ts"
       ],
@@ -21,6 +24,7 @@
   "exclude": [
     "dist",
     "node_modules",
-    "test-results"
+    "test-results",
+    "runs"
   ]
 }

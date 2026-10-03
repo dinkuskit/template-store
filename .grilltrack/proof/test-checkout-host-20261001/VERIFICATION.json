@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-03",
+  "accepted": true,
+  "records": [
+    {
+      "path": "runs/test-checkout-host-runs/20261003/VERIFY-STABLE-CANDIDATE.log",
+      "sha256": "73e6697ef0c1a636574ebb91562002c74b0b45f50779f21f220a327fc3d68d80",
+      "command": "CI=1 pnpm verify",
+      "result": "exit 0; 106 unit tests, 9 workflow tests, 17 browser checks passed; 3 expected profile skips; Astro 0 errors/0 warnings/1 existing hint; Node build passed"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261003/PARENT-FOCUSED-FINAL.log",
+      "sha256": "3512685717d7fce287f08ecab4d164ccc11fe8aad77b22bedab93ad1c2af3070",
+      "command": "pnpm exec vitest run tests/unit/checkout-host-wake-client.test.ts tests/unit/checkout-host-scheduler.test.ts",
+      "result": "exit 0; 40 passed"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261003/PACKAGED-HOST-FINAL.log",
+      "sha256": "1178d19a59a2a96f33fc22a5f296cf51a4505b478805a77e2671c26711ffd214",
+      "command": "pnpm verify:checkout-package <admitted-owner-archive>",
+      "result": "exit 0; 40 passed against freshly extracted compiled checkout export"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261003/CLEAN-PUBLIC-PREPARATION.log",
+      "sha256": "176e69b92a64afd3ddc06dfd8a1dbb534191b91f82e6a73a7b80ccf1ba14a514",
+      "command": "node scripts/prepare-source-deps.mjs in fresh preparation root",
+      "result": "exit 0; exact public Commerce source prepared without owner archive"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261003/CLOUDFLARE-BUILD.log",
+      "sha256": "be748d58dc122a943a2a679f09e275b797d7e3f07f2767a31915f60db34e48e4",
+      "command": "DINKUS_HOSTING_PROFILE=cloudflare pnpm build",
+      "result": "exit 0; Cloudflare Worker build passed"
+    },
+    {
+      "path": "runs/guest-cart/browser/shipping-chromium-desktop/assertions.json",
+      "sha256": "ed50638b61947aac721cbb9e22be0ffa1c227bbd5632312acdfa902dd5968862",
+      "result": "shipping guest cart persisted; zero Inventory requests; checkout unavailable"
+    },
+    {
+      "path": "runs/guest-cart/browser/shipping-chromium-mobile/assertions.json",
+      "sha256": "b11993dd7844de7bc8b2ccf504a2a43e1aa4277ed199c2f36975a4a32848902e",
+      "result": "shipping guest cart persisted; zero Inventory requests; checkout unavailable"
+    }
+  ],
+  "proofLimits": [
+    "synthetic HTTP and in-memory CAS host fixtures",
+    "no Registry install, hosted scheduler, real Stripe payment or persistent order proof"
+  ],
+  "visualInspection": [
+    "desktop catalog",
+    "mobile product",
+    "shipping mobile persisted cart"
+  ],
+  "warnings": "Upstream EmDash development cleanup SQLite errors and React key warnings appeared; all required assertions passed. Earlier interrupted/failed logs are retained separately and excluded."
+}

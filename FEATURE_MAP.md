@@ -47,6 +47,14 @@ issue #32 and exact artifact/mount proof. No browser URL establishes payment.
 No synthetic provider, registry release or Stripe proof is claimed here.
 See [.grilltrack/proof/checkout-integration-20260930/PROOF.md](.grilltrack/proof/checkout-integration-20260930/PROOF.md) and [.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md](.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md) for post-merge guest checkout failclosed feasibility qualification.
 
+## TEST checkout host adapter and scheduler slice
+
+| Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dinkus.test-checkout-host` | Byte-bounded Payments wake HTTP transport and trusted scheduler assembly for canonical Commerce reconciliation | `src/features/test-checkout-host/`; `src/worker.ts`; `scripts/verify-checkout-package.mjs`; `tests/unit/checkout-host-wake-client.test.ts`; `tests/unit/checkout-host-scheduler.test.ts` | `src/features/test-checkout-host/index.ts` | Exact Commerce42 source/owner artifact; Payments11 transport | `pnpm test` | `pnpm verify`; `pnpm verify:checkout-package <owner-commerce.tgz>` | source verified; installed runtime activation pending |
+
+One trusted configuration supplies canonical TEST payment lookup and wake list/ACK. Descriptor JSON cannot carry host callbacks. EmDash has plugin cron contexts, but the actual installed checkout host/storage injection remains unproved; the default Worker still runs only EmDash maintenance. No raw SQL or invented routes substitute for admission. Source aliases and fresh extracted owner-package fixtures are separate proof levels, neither a Registry install nor a real Stripe TEST purchase. See [.grilltrack/proof/test-checkout-host-20261001/PROOF.md](.grilltrack/proof/test-checkout-host-20261001/PROOF.md) and [the next runtime prerequisite](.grilltrack/proof/test-checkout-host-20261001/RUNTIME-ACTIVATION-GATE.md).
+
 ## Default inventory-off profile
 
 The default source-pilot profile is `shipping`; explicit
