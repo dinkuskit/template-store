@@ -604,6 +604,42 @@ describe("Scheduled shared trusted HTTP host", () => {
     expect(f.requests).toHaveLength(0);
   });
 
+  it.each(["/v1/existing-binding", "/v1/checkout/lookup"])(
+    "retains the original attempt and never ACKs when %s exceeds the canonical byte cap",
+    async endpoint => {
+      const f = fixture();
+      const started = await startCheckout(f.admitted, "scheduled-cart", f.cartInput);
+      let cancelled = false;
+      const calls: string[] = [];
+      const config: TrustedTestCheckoutHostConfig = { ...f.config, async fetch(input, init) {
+        const path = new URL(input).pathname; calls.push(path);
+        if (path !== endpoint) return f.config.fetch(input, init);
+        const value = path.includes("binding")
+          ? { bindingRef: TEST_BINDING_REF, providerId: "stripe", stripeAccountId: TEST_STRIPE_ACCOUNT, mode: "test", ready: true }
+          : { outcome: "paid", attemptId: started.attemptId, total: started.payment.total,
+            session: started.session, paymentId: "pi_scheduled_test" };
+        const bytes = new TextEncoder().encode(JSON.stringify(value) + " ".repeat(1024 * 1024));
+        let offset = 0;
+        return new Response(new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (offset === bytes.length) { controller.close(); return; }
+            const end = Math.min(offset + 8192, bytes.length);
+            controller.enqueue(bytes.slice(offset, end)); offset = end;
+          },
+          cancel() { cancelled = true; },
+        }));
+      } };
+      const result = await runScheduledWakeReconciliation({ config, execution: f.execution, associations: f.associations });
+      expect(result.results[0]).toMatchObject({ status: "retained" });
+      expect(cancelled).toBe(true);
+      expect(calls.some(path => path.endsWith("/ack"))).toBe(false);
+      if (endpoint.includes("binding")) expect(calls).not.toContain("/v1/checkout/lookup");
+      const stored = await f.execution.store.read("scheduled-cart");
+      expect(stored?.record.attempts).toEqual([started]);
+      expect(stored?.record.attempts[0].order).toBeUndefined();
+    },
+  );
+
   it("does not ACK a paid lookup when the canonical CAS write fails", async () => {
     const f = fixture();
     await startCheckout(f.admitted, "scheduled-cart", f.cartInput);

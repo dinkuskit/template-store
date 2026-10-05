@@ -1,0 +1,56 @@
+{
+  "date": "2026-10-05",
+  "priorTemplateHead": "537664f4595712212111a2cb60c274a64ff36081",
+  "commerceReviewedSource": "444b0505ae061c58e2f738e9f39fb0b366d50e8c",
+  "ownerArchiveSha256": "6f63abb17a8cd73bb8edaf4c83ad8ed75b4e35f98f399a4433d675e0a72d8388",
+  "records": [
+    {
+      "path": "runs/test-checkout-host-runs/20261005/CAP-BASELINE-RED.log",
+      "sha256": "139bab9213b21af977c8e8de40c2bd4a1b85ae6b04bfbac472ef2ff7047d502e",
+      "command": "focused assembled-host cap regressions against old Commerce42 alias",
+      "outcome": "expected red:12 failed/1 at-cap passed"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261005/SCHEDULED-CAP-BASELINE-RED.log",
+      "sha256": "56e976ee0fa75000cb9ea45c476793e22940c32b5ee88d7ce22538adaddb2595",
+      "command": "scheduled cap regressions against old Commerce42 alias",
+      "outcome": "expected red:2 failed"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261005/FOCUSED-GREEN.log",
+      "sha256": "535fe8d3508094f22ac2660abbae9200142136aaa3fb93f064b84ba79983ae48",
+      "command": "focused checkout-host tests at exact Commerce44 source",
+      "outcome": "exit0;55 tests passed"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261005/PACKAGED-GREEN.log",
+      "sha256": "9a95e83dc3960142e629fac0e3e0fa40d77b586deabf00dd2993da5e59ebbeb4",
+      "command": "pnpm verify:checkout-package <admitted44-owner-archive>",
+      "outcome": "exit0;55 tests passed against fresh compiled owner checkout export"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261005/CLEAN-PREPARATION.log",
+      "sha256": "d8a92724c2060b286a8332c68e4ce89232b6485817fbb7362ef7a66c6c316ff5",
+      "command": "unchanged public preparer in fresh directory",
+      "outcome": "exit0; exact reviewed44 source, no owner archive"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261005/CLOUDFLARE-BUILD.log",
+      "sha256": "c75498fc765a93cff00c606d0bb7b0938c91636cc0639a3e2e114b6647dca322",
+      "command": "DINKUS_HOSTING_PROFILE=cloudflare pnpm build",
+      "outcome": "exit0; Worker build passed"
+    },
+    {
+      "path": "runs/test-checkout-host-runs/20261005/VERIFY-FULL.log",
+      "sha256": "fafcfc03859d05c7e5ef06ddb4a63190de57063ac1449699b7122f3199013d8e",
+      "command": "CI=1 pnpm verify",
+      "outcome": "exit0;121unit/9workflow/17browser passed;3 expected skips;112Astro files0errors/0warnings/1existing hint; Node build passed"
+    }
+  ],
+  "limits": [
+    "synthetic HTTP/in-memory CAS fixtures",
+    "no installed Registry runtime or new hosted scheduler",
+    "no realStripeTESTpurchase or persistent paidorder"
+  ],
+  "warnings": "Existing upstream development SQLite cleanup errors and React key warnings appeared; required assertions passed."
+}
