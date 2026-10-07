@@ -170,6 +170,85 @@ async function runtime({ name, payments, config = null, credential = null, grant
     async restart() { await close(); await open(); }, close,
   };
 }
+
+const compiledGuestCart = join(proof, "compiled-guest-cart");
+mkdirSync(compiledGuestCart);
+writeFileSync(join(compiledGuestCart, "tsconfig.json"), JSON.stringify({
+  compilerOptions: {
+    target: "ES2022",
+    module: "NodeNext",
+    moduleResolution: "NodeNext",
+    skipLibCheck: true,
+    outDir: compiledGuestCart,
+    rootDir: join(root, "src/features/guest-cart"),
+  },
+  files: [
+    join(root, "src/features/guest-cart/checkout-protocol.ts"),
+    join(root, "src/features/guest-cart/intent.ts"),
+    join(root, "src/features/guest-cart/checkout-cart-settlement.ts"),
+  ],
+}));
+execFileSync(process.execPath, [
+  join(root, "node_modules/typescript/bin/tsc"),
+  "--project", join(compiledGuestCart, "tsconfig.json"),
+], { stdio: "pipe" });
+const compiledGuestCheckout = await import(
+  pathToFileURL(join(compiledGuestCart, "checkout-protocol.js"))
+);
+const compiledCartSettlement = await import(pathToFileURL(join(compiledGuestCart, "checkout-cart-settlement.js")));
+
+async function runCompiledBrowserProof(state) {
+  const values = new Map();
+  const browserStorage = {
+    getItem(key) { return values.get(key) ?? null; },
+    setItem(key, value) { values.set(key, value); },
+  };
+  let loseStartResponse = true;
+  const transport = {
+      async fetch(input, init) {
+        const route = new URL(input, SITE).pathname.split("/").at(-1);
+        const body = JSON.parse(String(init.body));
+        const capability = new Headers(init.headers).get("x-commerce-guest-capability") ?? undefined;
+        const actual = await state.invoke(route, body, capability);
+        if (route === "start" && loseStartResponse) {
+          loseStartResponse = false;
+          throw new DOMException("Synthetic response loss after actual Core start", "TimeoutError");
+        }
+        return Response.json({ success: true, data: actual });
+      },
+  };
+  const controller = compiledGuestCheckout.createGuestCheckoutController({
+    admitted: true,
+    storage: browserStorage,
+    transport,
+  });
+  const prepared = await controller.prepare();
+  assert.equal(prepared.failure, null);
+  assert.equal(prepared.result?.ok, true);
+  const originalIntent = {
+    version: 1,
+    lines: [{ id: "one", quantity: 1 }, { id: "two", quantity: 1 }],
+  };
+  values.set("dinkus.guest-cart.v1", JSON.stringify(originalIntent));
+  const started = await controller.start(originalIntent);
+  assert.equal(started.failure, "timeout");
+  const unknown = JSON.parse(values.get(compiledGuestCheckout.GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY));
+  assert.equal(unknown.attemptId, null);
+  assert.equal(unknown.awaitingStart, true);
+  const reloaded = compiledGuestCheckout.createGuestCheckoutController({
+    admitted: true, storage: browserStorage, transport,
+  });
+  assert.equal((await reloaded.prepare()).failure, "attempt-active");
+  assert.equal((await reloaded.start(originalIntent)).failure, "attempt-active");
+  const recovered = await reloaded.status();
+  assert.equal(recovered.failure, null);
+  assert.equal(recovered.result?.ok, true);
+  assert.equal(recovered.result?.checkout.state, "pending");
+  const retained = JSON.parse(values.get(compiledGuestCheckout.GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY));
+  assert.equal(retained.attemptId, recovered.result.checkout.attemptId);
+  assert.equal(retained.awaitingStart, undefined);
+  return { controller: reloaded, values, retained, originalIntent };
+}
 function configuration(payments, shipping) {
   return { schema: SCHEMA, enabled: true, commerceOrigin: SITE, siteId: payments.siteId, paymentsOrigin: TRANSPORT,
     bindingRef: payments.bindingRef, providerId: "stripe", stripeAccountId: "acct_syntheticfixture",
@@ -265,12 +344,60 @@ for (const scenario of [
       encryptedCredentialReads: state.counts.credentials, interceptedRequests: state.counts.transport });
   } finally { try { if (state) await state.close(); } finally { await payments.close(); } }
 }
+const browserPayments = await createImmutablePaymentsFixture({
+  worker, proof, scenario: { name: "compiled-browser-free", discount: 0, shipping: 0, total: 175 },
+  siteId: "synthetic-compiled-browser-free",
+});
+let browserState;
+let compiledBrowserProof;
+try {
+  const browserConfig = configuration(browserPayments, { configurationId: "synthetic-browser-free", revision: 1, mode: "free" });
+  browserState = await runtime({
+    name: "compiled-browser-positive",
+    payments: browserPayments,
+    config: browserConfig,
+    credential: browserPayments.token(),
+    grants: true,
+  });
+  compiledBrowserProof = await runCompiledBrowserProof(browserState);
+  await browserPayments.paidWebhook();
+  await browserState.cron();
+  const paid = await compiledBrowserProof.controller.status();
+  assert.equal(paid.failure, null);
+  assert.equal(paid.result?.ok, true);
+  assert.equal(paid.result?.checkout.state, "paid");
+  assert.ok(paid.result.checkout.order?.orderId);
+  assert.equal(await compiledCartSettlement.settleGuestCheckoutCart({
+    getItem: key => compiledBrowserProof.values.get(key) ?? null,
+    setItem: (key, value) => compiledBrowserProof.values.set(key, value),
+  }, paid.result), true);
+  assert.deepEqual(JSON.parse(compiledBrowserProof.values.get("dinkus.guest-cart.v1")).lines, []);
+  assert.equal(compiledBrowserProof.controller.canPrepareNew(), true);
+  const newPreparation = await compiledBrowserProof.controller.prepare();
+  assert.equal(newPreparation.result?.ok, true);
+  assert.notEqual(newPreparation.result.capabilityId, compiledBrowserProof.retained.capabilityId);
+  assert.equal(browserPayments.stats().creates, 1);
+} finally {
+  try { if (browserState) await browserState.close(); }
+  finally { await browserPayments.close(); }
+}
 assert.equal(hash(manifestBytes), manifestRawSha256);
 const report = { commerceSource, paymentsSource, archiveSha256, backendSha256, manifestRawSha256,
   emdashVersion: "1.0.1", miniflareVersion, runtimeId: owner,
   proof: "Immutable default Commerce backend through original EmDash workerd context/settings/storage -> immutable Payments HTTP/JWT/SQLite -> fully intercepted Stripe SDK",
   results, registryInstalled: false, localDefaultLoader: true, shippedGrantsEmpty: true, actualProviderCalls: 0,
   schedulerRegistered: false, publicCheckoutEnabled: false,
+  compiledBrowserControllerProof: {
+    ran: true,
+    scenario: "positive merchandise with free shipping; synthetic authority and provider transport",
+    originalIntentOnly: true,
+    retainedCapabilityAcrossStartAndStatus: true,
+    lostActualStartResponseRecoveredAfterReload: true,
+    onlyPurchasedCartIntentClearedAfterCanonicalPaid: true,
+    freshPreparationAfterConfirmedCleanup: true,
+    actualCommerceRuntime: true,
+    syntheticIssuerStripeNetworkClone: true,
+  },
   limits: ["Unsigned local artifacts do not prove official Registry publication, delivery or installation.",
     "Synthetic ephemeral credentials do not prove account provisioning or renewal; test-only grants are never shipped.",
     "Local bodyless connect HTTP returns 400; setup uses original Payments owner onboarding RPC.",

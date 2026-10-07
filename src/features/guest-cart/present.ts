@@ -60,9 +60,9 @@ export type GuestCartView = Readonly<{
   pending: boolean;
   snapshotError: string | null;
   storageNotice: string | null;
-  checkoutLabel: typeof GUEST_CHECKOUT_LABEL;
-  checkoutReason: typeof GUEST_CHECKOUT_REASON;
-  checkoutEnabled: false;
+  checkoutLabel: string;
+  checkoutReason: string;
+  checkoutEnabled: boolean;
 }>;
 
 const STORAGE_NOTICES: Record<GuestCartReadNotice, string> = {
@@ -124,6 +124,7 @@ export function presentGuestCart(options: {
   pending?: boolean;
   snapshotFailed?: boolean;
   storageNotice?: GuestCartReadNotice | null;
+  checkoutAdmitted?: boolean;
 }): GuestCartView {
   const byId = new Map((options.snapshots ?? []).map((snapshot) => [snapshot.id, snapshot]));
   const lines = options.intent.lines.map((line) => {
@@ -152,15 +153,22 @@ export function presentGuestCart(options: {
       reason: blocked.reason,
     };
   });
+  const checkoutEnabled = options.checkoutAdmitted === true &&
+    lines.length > 0 &&
+    !options.pending &&
+    !options.snapshotFailed &&
+    lines.every((line) => line.sellable);
   return {
     lines,
     empty: lines.length === 0,
     pending: options.pending === true,
     snapshotError: options.snapshotFailed ? snapshotErrorText() : null,
     storageNotice: storageNoticeText(options.storageNotice ?? null),
-    checkoutLabel: GUEST_CHECKOUT_LABEL,
-    checkoutReason: GUEST_CHECKOUT_REASON,
-    checkoutEnabled: false,
+    checkoutLabel: checkoutEnabled ? "Continue to secure checkout" : GUEST_CHECKOUT_LABEL,
+    checkoutReason: checkoutEnabled
+      ? "Commerce will confirm the final amount and availability."
+      : GUEST_CHECKOUT_REASON,
+    checkoutEnabled,
   };
 }
 

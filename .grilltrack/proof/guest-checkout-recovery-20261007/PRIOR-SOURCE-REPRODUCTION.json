@@ -1,0 +1,8 @@
+{
+  "source": "27c3579802bbe9251a87f9677b1b98149b6e63f7",
+  "reproduced": true,
+  "lostSuccessorResponse": true,
+  "statusRequestedOldReleasedHint": true,
+  "retryIncorrectlyEnabled": true,
+  "scope": "browser sequencing; no provider/order effects simulated"
+}
