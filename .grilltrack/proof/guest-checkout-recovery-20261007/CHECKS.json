@@ -1,0 +1,75 @@
+{
+  "node": "22.23.1",
+  "focusedTests": {
+    "files": 3,
+    "passed": 35
+  },
+  "canonicalFull": {
+    "passed": true,
+    "unit": 139,
+    "workflow": 9,
+    "browser": 19,
+    "skipped": 3
+  },
+  "finalQuick": {
+    "passed": true,
+    "unit": 139,
+    "workflow": 9
+  },
+  "finalBuild": "PASS",
+  "compiledImmutablePackageController": "PASS",
+  "registryInstalled": false,
+  "publicCheckoutEnabled": false,
+  "realProviderCalls": 0,
+  "screenshots": [
+    {
+      "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-desktop/guest-checkout-cancel-closed.png",
+      "sha256": "b40e9ac3cecbf70c891b1ff73a4260a08338c74c31e88ef7cde680c7cf3eec06",
+      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+    },
+    {
+      "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-desktop/guest-checkout-synthetic-paid.png",
+      "sha256": "896e06c0b4d2d735f45187484519fa032c49dfc37428b2837a2c59e4dfd70907",
+      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+    },
+    {
+      "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-mobile/guest-checkout-cancel-closed.png",
+      "sha256": "baf68bf53a2aae408c733f08bda8c12e255659d4acd68fee1e02e7f46df785af",
+      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+    },
+    {
+      "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-mobile/guest-checkout-synthetic-paid.png",
+      "sha256": "e1095a33ea6ae6e684accc419b4a558c5b751d5437c09a560d2972d99c409dda",
+      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+    }
+  ],
+  "logs": [
+    {
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-fixed-focused-tests.log",
+      "sha256": "0047fde83031d81b0501c4cb506fed624e299024e2bd0dee71eb16b5fea575fc"
+    },
+    {
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-full-verify.log",
+      "sha256": "b0bb37a8a65d7c8acdaafea9aac2e59b9d6897afd1382141df00edfc7daa1feb"
+    },
+    {
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-final-quick.log",
+      "sha256": "21e6ce4ffb88b79ebf55add7fea7e3969be460cb56c00b9bbdabb4ffb067c801"
+    },
+    {
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-final-registry-client-proof.log",
+      "sha256": "8bdb84d4c2c0c5c7f0135c724343218500a09edde62919afaf6d954cbab8c97e"
+    },
+    {
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-final-build.log",
+      "sha256": "c83467023b27646980cf2dfab273f607852e4077e35c5c1586f10410ffaceb4f"
+    }
+  ],
+  "stderrDisposition": [
+    "Node module-register deprecation hint; zero Astro errors/warnings",
+    "Expected negative seed and loopback migration refusals; no remote call",
+    "Existing EmDash/React list-key warnings and disposable revision-cleanup SQL diagnostics; acceptance assertions passed",
+    "Existing large client chunk warning; final build completes"
+  ],
+  "sourceIdentity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396"
+}

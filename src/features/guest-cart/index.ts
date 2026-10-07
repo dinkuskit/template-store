@@ -53,3 +53,40 @@ export type {
   GuestCartView,
 } from "./present.js";
 export { parseGuestCartSnapshotIds } from "./snapshot-ids.js";
+export {
+  COMMERCE_REGISTRY_RUNTIME_ID,
+  GUEST_CHECKOUT_CAPABILITY_HEADER,
+  GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
+  GUEST_CHECKOUT_PREPARE_ENDPOINT,
+  GUEST_CHECKOUT_PROJECTION_SCHEMA,
+  GUEST_CHECKOUT_START_ENDPOINT,
+  GUEST_CHECKOUT_STATUS_ENDPOINT,
+  callGuestCheckout,
+  checkoutCanConfirm,
+  checkoutStartIntent,
+  createGuestCheckoutController,
+  parseGuestCheckoutWireResult,
+  readGuestCheckoutRetention,
+  retainGuestCheckoutCapability,
+  strictStripeCheckoutUrl,
+  updateGuestCheckoutAttempt,
+} from "./checkout-protocol.js";
+export {
+  SUPPORTED_GUEST_CHECKOUT_ROUTES,
+  resolveGuestCheckoutAdmission,
+} from "./checkout-admission.js";
+export type {
+  GuestCheckoutAdmission,
+  RuntimeGuestCheckoutMetadata,
+  SupportedCatalogCheckoutAuthority,
+} from "./checkout-admission.js";
+export type {
+  GuestCheckoutCall,
+  GuestCheckoutCallResult,
+  GuestCheckoutController,
+  GuestCheckoutProjection,
+  GuestCheckoutRetention,
+  GuestCheckoutRetentionStorage,
+  GuestCheckoutTransport,
+  GuestCheckoutWireResult,
+} from "./checkout-protocol.js";

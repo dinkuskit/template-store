@@ -1,0 +1,113 @@
+{
+  "commerceSource": "45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef",
+  "paymentsSource": "37842220fddb10dc5294af084110cd33804715be",
+  "archiveSha256": [
+    "e0d1c88ca5cf805f3795aa61ef598f1c50c893be35fd4b41aa0ac867d554e4df",
+    "79b64463dbb7c80012bb13fca613be0954b2387ee5ec5709a4656293dd5cfa3a",
+    "bb91f476f9e8c1a67ce4aa84cd36722e1c390a4d70b21681b3cf1d7e7feb53e0"
+  ],
+  "backendSha256": "6613d122e8991a462bf16538f29a287f5d243f7fd60d163c802c63f3f39eaeaa",
+  "manifestRawSha256": "78f3e4233cc4d49c3cf66eb1666536ac44475f65f4c02e418dad257959f11b44",
+  "emdashVersion": "1.0.1",
+  "miniflareVersion": "5.20260930.0-alpha",
+  "runtimeId": "r_gshdrqaldna3r7sn",
+  "proof": "Immutable default Commerce backend through original EmDash workerd context/settings/storage -> immutable Payments HTTP/JWT/SQLite -> fully intercepted Stripe SDK",
+  "results": [
+    {
+      "scenario": "unconfigured",
+      "prepareAvailable": true,
+      "startUnavailable": true,
+      "credentials": 0,
+      "transport": 0,
+      "acknowledgments": 0,
+      "scheduler": 0,
+      "attempts": 0
+    },
+    {
+      "scenario": "disabled",
+      "prepareAvailable": true,
+      "startUnavailable": true,
+      "credentials": 0,
+      "transport": 0,
+      "acknowledgments": 0,
+      "scheduler": 0,
+      "attempts": 0
+    },
+    {
+      "scenario": "flat-nondivisible",
+      "total": 199,
+      "originalDefaultPluginContext": true,
+      "bothOwnerStoresRestarted": true,
+      "frozenShippingReplay": true,
+      "forgedReturnRemainsPending": true,
+      "canonicalOrders": 1,
+      "couponConsumed": 1,
+      "providerCreates": 1,
+      "wakeSettledBeforeAck": true,
+      "acknowledgments": 1,
+      "scheduler": 0,
+      "encryptedCredentialReads": 8,
+      "interceptedRequests": 11
+    },
+    {
+      "scenario": "configured-missing-grants",
+      "transport": 0,
+      "providerCreates": 0,
+      "unconfirmedAttempts": 1,
+      "orders": 0,
+      "acknowledgments": 0
+    },
+    {
+      "scenario": "free",
+      "total": 150,
+      "originalDefaultPluginContext": true,
+      "bothOwnerStoresRestarted": true,
+      "frozenShippingReplay": true,
+      "forgedReturnRemainsPending": true,
+      "canonicalOrders": 1,
+      "couponConsumed": 1,
+      "providerCreates": 1,
+      "wakeSettledBeforeAck": true,
+      "acknowledgments": 1,
+      "scheduler": 0,
+      "encryptedCredentialReads": 12,
+      "interceptedRequests": 11
+    },
+    {
+      "scenario": "shipping-only",
+      "total": 50,
+      "originalDefaultPluginContext": true,
+      "bothOwnerStoresRestarted": true,
+      "frozenShippingReplay": true,
+      "forgedReturnRemainsPending": true,
+      "canonicalOrders": 1,
+      "couponConsumed": 1,
+      "providerCreates": 1,
+      "wakeSettledBeforeAck": true,
+      "acknowledgments": 1,
+      "scheduler": 0,
+      "encryptedCredentialReads": 8,
+      "interceptedRequests": 11
+    }
+  ],
+  "registryInstalled": false,
+  "localDefaultLoader": true,
+  "shippedGrantsEmpty": true,
+  "actualProviderCalls": 0,
+  "schedulerRegistered": false,
+  "publicCheckoutEnabled": false,
+  "compiledBrowserControllerProof": {
+    "ran": true,
+    "scenario": "positive merchandise with free shipping; synthetic authority and provider transport",
+    "originalIntentOnly": true,
+    "retainedCapabilityAcrossStartAndStatus": true,
+    "actualCommerceRuntime": true,
+    "syntheticIssuerStripeNetworkClone": true
+  },
+  "limits": [
+    "Unsigned local artifacts do not prove official Registry publication, delivery or installation.",
+    "Synthetic ephemeral credentials do not prove account provisioning or renewal; test-only grants are never shipped.",
+    "Local bodyless connect HTTP returns 400; setup uses original Payments owner onboarding RPC.",
+    "Named cron hook invocation is not scheduler registration; deployed callbacks and real Stripe TEST remain unproved."
+  ]
+}

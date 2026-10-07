@@ -8,6 +8,10 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/",
   "/cart",
   "/cart/",
+  "/checkout/success",
+  "/checkout/success/",
+  "/checkout/cancel",
+  "/checkout/cancel/",
   "/favicon.ico",
   "/robots.txt",
   "/api/guest-cart/snapshot",
@@ -22,7 +26,10 @@ const ALLOWED_PATH_PATTERNS = [
   /^\/products\/[a-zA-Z0-9_-]+$/,
 ];
 
-function decodedForms(value: string): string[] {
+const GUEST_CHECKOUT_POST_PATH =
+  /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
+
+export function decodedForms(value: string): string[] {
   const forms = [value];
   let current = value;
   for (let pass = 0; pass < 2; pass += 1) {
@@ -32,6 +39,14 @@ function decodedForms(value: string): string[] {
     current = next;
   }
   return forms;
+}
+
+export function isExactGuestCheckoutPath(pathname: string): boolean {
+  try {
+    return decodedForms(pathname).some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
+  } catch {
+    return false;
+  }
 }
 
 function isDisallowedTraversalOrTarget(pathname: string, search: string): boolean {
@@ -104,9 +119,12 @@ export function evaluatePublicBoundary(
     }
   }
 
-  // 2. Reject mutations and non-read HTTP methods (Public host is strictly read-only GET/HEAD)
+  const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
+
+  // 2. Reject mutations and non-read HTTP methods, except the three exact
+  // Commerce guest POSTs admitted below.
   if (
-    normalizedMethod === "POST" ||
+    (normalizedMethod === "POST" && !isGuestCheckoutPost) ||
     normalizedMethod === "PUT" ||
     normalizedMethod === "PATCH" ||
     normalizedMethod === "DELETE"
@@ -118,7 +136,7 @@ export function evaluatePublicBoundary(
     };
   }
 
-  if (normalizedMethod !== "GET" && normalizedMethod !== "HEAD") {
+  if (normalizedMethod !== "GET" && normalizedMethod !== "HEAD" && !isGuestCheckoutPost) {
     return {
       allowed: false,
       status: 405,
@@ -127,6 +145,13 @@ export function evaluatePublicBoundary(
   }
 
   const decodedPath = pathForms[pathForms.length - 1] ?? pathname;
+
+  if (GUEST_CHECKOUT_POST_PATH.test(decodedPath)) {
+    if (normalizedMethod !== "POST") {
+      return { allowed: false, status: 405, reason: "Method not allowed." };
+    }
+    return { allowed: true, status: 200 };
+  }
 
   // 3. Validate the canonical decoded path against the strict route allowlist
   if (EXACT_ALLOWED_PATHS.has(decodedPath)) {

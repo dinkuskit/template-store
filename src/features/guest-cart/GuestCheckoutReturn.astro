@@ -1,0 +1,27 @@
+---
+const { kind } = Astro.props;
+const title = kind === "success" ? "Checkout return" : "Checkout canceled";
+---
+<section class="guest-checkout-return" data-guest-checkout-return aria-labelledby="guest-checkout-return-title">
+  <h1 id="guest-checkout-return-title">{title}</h1>
+  <p data-guest-checkout-return-status role="status">Checking the saved checkout status.</p>
+  <p data-guest-checkout-order hidden></p>
+  <a data-guest-checkout-retry hidden rel="noopener noreferrer">Continue to secure checkout</a>
+  <button type="button" data-guest-checkout-status-retry>Check status again</button>
+  <p><a href="/cart">Back to cart</a></p>
+</section>
+<style>
+  .guest-checkout-return{width:min(44rem,calc(100% - 2rem));margin:4rem auto;min-height:55vh}
+  h1{font-size:clamp(2.25rem,6vw,4rem);letter-spacing:-.05em}
+  p{line-height:1.6;color:var(--store-muted)}
+  [data-guest-checkout-return-status][role="alert"]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
+  a{color:inherit;font-weight:800}
+  a:focus-visible{outline:3px solid #215cc8;outline-offset:3px}
+  button{min-height:44px;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
+  button:focus-visible{outline:3px solid #215cc8;outline-offset:3px}
+  button:disabled{color:var(--store-muted);cursor:not-allowed}
+</style>
+<script>
+  import { hydrateGuestCheckoutReturn } from "./guest-cart-client.ts";
+  hydrateGuestCheckoutReturn();
+</script>

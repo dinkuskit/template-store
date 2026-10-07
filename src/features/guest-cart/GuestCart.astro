@@ -1,7 +1,14 @@
 ---
 import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON } from "./index.js";
+import type { GuestCheckoutAdmission } from "./index.js";
+
+interface Props {
+  checkoutAdmission?: GuestCheckoutAdmission | null;
+}
+
+const { checkoutAdmission = null } = Astro.props;
 ---
-<section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart>
+<section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"}>
   <h1 id="guest-cart-title">Cart</h1>
   <p data-guest-cart-status role="status" hidden></p>
   <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
@@ -10,6 +17,7 @@ import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON } from "./index.js";
     <button type="button" data-guest-cart-checkout disabled>{GUEST_CHECKOUT_LABEL}</button>
     <p data-guest-cart-checkout-reason>{GUEST_CHECKOUT_REASON}</p>
     <button type="button" data-guest-cart-retry>Retry catalog update</button>
+    <button type="button" data-guest-cart-recover hidden>Check checkout status</button>
   </div>
 </section>
 <style>

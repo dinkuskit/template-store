@@ -14,10 +14,15 @@ import {
   saveGuestCartIntent,
   setGuestCartLineQuantity,
   storageNoticeText,
+  checkoutCanConfirm,
+  createGuestCheckoutController,
+  readGuestCheckoutRetention,
+  strictStripeCheckoutUrl,
   type GuestCartCatalogSnapshot,
   type GuestCartIntent,
   type GuestCartReadNotice,
   type GuestCartView,
+  type GuestCheckoutTransport,
 } from "./index.js";
 
 const SNAPSHOT_TIMEOUT_MS = 5_000;
@@ -31,7 +36,22 @@ let session: Session = { intent: emptyGuestCartIntent(), notice: null };
 let snapshots: GuestCartCatalogSnapshot[] | null = null;
 let snapshotFailed = false;
 let pending = false;
+let pendingCheckout = false;
+let checkoutRecovery = false;
+let checkoutController: ReturnType<typeof createGuestCheckoutController> | null = null;
+let checkoutAdmitted = false;
 let mutationNotice: string | null = null;
+let checkoutMessage: string | null = null;
+let checkoutMessageError = false;
+
+function checkoutLocked(): boolean {
+  return pendingCheckout || Boolean(readGuestCheckoutRetention(checkoutStorage()) && !checkoutController?.canStart());
+}
+
+function setCheckoutMessage(message: string, isError = false): void {
+  checkoutMessage = message;
+  checkoutMessageError = isError;
+}
 
 function storage() {
   return readBrowserGuestCartStorage();
@@ -57,6 +77,7 @@ function view(): GuestCartView {
     pending,
     snapshotFailed,
     storageNotice: session.notice,
+    checkoutAdmitted,
   });
 }
 
@@ -176,6 +197,7 @@ function renderCart(root: Element): void {
   const checkout = root.querySelector("[data-guest-cart-checkout]");
   const reason = root.querySelector("[data-guest-cart-checkout-reason]");
   const retry = root.querySelector("[data-guest-cart-retry]");
+  const checkoutRecoveryButton = root.querySelector("[data-guest-cart-recover]");
   if (empty instanceof HTMLElement) {
     empty.hidden = !current.empty || Boolean(current.snapshotError);
   }
@@ -184,7 +206,7 @@ function renderCart(root: Element): void {
     else reconcileLines(lines, current);
   }
   if (checkout instanceof HTMLButtonElement) {
-    checkout.disabled = true;
+    checkout.disabled = !current.checkoutEnabled || checkoutLocked();
     checkout.textContent = current.checkoutLabel;
   }
   if (reason instanceof HTMLElement) {
@@ -193,14 +215,61 @@ function renderCart(root: Element): void {
   if (retry instanceof HTMLButtonElement) {
     retry.disabled = current.pending;
   }
+  if (checkoutRecoveryButton instanceof HTMLButtonElement) {
+    checkoutRecoveryButton.hidden = !checkoutRecovery;
+    checkoutRecoveryButton.disabled = pendingCheckout;
+  }
+  for (const control of root.querySelectorAll("[data-guest-cart-qty], [data-guest-cart-remove]")) {
+    if (control instanceof HTMLInputElement || control instanceof HTMLButtonElement) {
+      control.disabled = checkoutLocked();
+    }
+  }
   const messages = [
+    pendingCheckout ? "Checking your checkout." : checkoutMessage,
     current.storageNotice,
     mutationNotice,
     current.pending ? "Updating current product details." : null,
     current.snapshotError,
   ].filter((message): message is string => Boolean(message));
-  setStatus(root, messages[0] ?? null, Boolean(current.snapshotError || current.storageNotice || mutationNotice));
+  setStatus(root, messages[0] ?? null, checkoutMessage ? checkoutMessageError : Boolean(current.snapshotError || current.storageNotice || mutationNotice));
   renderNav();
+}
+
+function checkoutFailureText(failure: string | null): string {
+  if (failure === "timeout" || failure === "network") {
+    return "Checkout start may have reached Commerce. Check status before trying again.";
+  }
+  if (failure === "association" || failure === "attempt-active") {
+    return "This checkout is still tied to the original attempt. Check status before retrying.";
+  }
+  return "Checkout is not available yet. Try again when Commerce is available.";
+}
+
+async function recoverGuestCheckout(root: Element): Promise<void> {
+  if (!checkoutController || pendingCheckout) return;
+  pendingCheckout = true;
+  checkoutRecovery = true;
+  renderCart(root);
+  const response = await checkoutController.status();
+  pendingCheckout = false;
+  if (response.failure || !response.result) {
+    setCheckoutMessage(checkoutFailureText(response.failure), true);
+    renderCart(root);
+    return;
+  }
+  checkoutRecovery = !response.result.ok ||
+    (response.result.checkout.state !== "paid" &&
+      response.result.checkout.state !== "released-retry");
+  if (response.result.ok && checkoutCanConfirm(response.result)) {
+    setCheckoutMessage("Order confirmed.");
+  } else if (response.result.ok && response.result.checkout.state === "released-retry") {
+    setCheckoutMessage("The original attempt was released. You can try checkout again.");
+  } else if (checkoutController.canStart()) {
+    setCheckoutMessage("No checkout has started. You can continue to checkout.");
+  } else {
+    setCheckoutMessage("Checkout is still pending. Check status before trying again.");
+  }
+  renderCart(root);
 }
 
 async function refreshSnapshot(root?: Element): Promise<void> {
@@ -288,6 +357,18 @@ export function hydrateGuestCartPage(): void {
   const root = document.querySelector("[data-guest-cart]");
   if (!(root instanceof HTMLElement)) return;
   session = loadSession();
+  checkoutAdmitted = root.dataset.guestCheckoutAdmitted === "true";
+  checkoutController = createGuestCheckoutController({
+    admitted: checkoutAdmitted,
+    storage: checkoutStorage(),
+    transport: {
+      fetch: (input: string, init: RequestInit) => fetch(input, init),
+    } satisfies GuestCheckoutTransport,
+  });
+  pendingCheckout = false;
+  checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
+  checkoutMessage = checkoutRecovery ? "You have a saved checkout. Check its status before trying again." : null;
+  checkoutMessageError = false;
   snapshots = null;
   const retry = root.querySelector("[data-guest-cart-retry]");
   retry?.addEventListener("click", () => {
@@ -297,8 +378,53 @@ export function hydrateGuestCartPage(): void {
   root.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+    if (target.closest("[data-guest-cart-checkout]")) {
+      if (!checkoutController || checkoutLocked() || !view().checkoutEnabled) return;
+      const originalIntent = structuredClone(session.intent);
+      pendingCheckout = true;
+      checkoutRecovery = false;
+      checkoutMessage = null;
+      renderCart(root);
+      const preparation = readGuestCheckoutRetention(checkoutStorage())
+        ? Promise.resolve(null)
+        : checkoutController.prepare();
+      void preparation.then(async (prepared) => {
+        if (prepared && (prepared.failure || !prepared.result || !prepared.result.ok)) {
+          pendingCheckout = false;
+          checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
+          setCheckoutMessage(checkoutFailureText(prepared.failure), true);
+          renderCart(root);
+          return;
+        }
+        const started = await checkoutController!.start(originalIntent);
+        pendingCheckout = false;
+        if (started.failure || !started.result || !started.result.ok) {
+          checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
+          setCheckoutMessage(checkoutFailureText(started.failure), true);
+          renderCart(root);
+          return;
+        }
+        if (started.result.ok) {
+          const redirect = strictStripeCheckoutUrl(started.result.checkout.redirectUrl);
+          if (redirect && started.result.checkout.state === "pending") {
+            window.location.assign(redirect);
+            return;
+          }
+          checkoutRecovery = true;
+          setCheckoutMessage("Checkout is pending. Check status before trying again.");
+          renderCart(root);
+          if (started.result.checkout.state === "paid") void recoverGuestCheckout(root);
+        }
+      });
+      return;
+    }
+    if (target.closest("[data-guest-cart-recover]")) {
+      void recoverGuestCheckout(root);
+      return;
+    }
     const removeId = target.getAttribute("data-guest-cart-remove");
     if (!removeId) return;
+    if (checkoutLocked()) return;
     const result = removeGuestCartLine(session.intent, removeId);
     if (!result.accepted) {
       mutationNotice = result.reason;
@@ -313,6 +439,7 @@ export function hydrateGuestCartPage(): void {
   root.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
+    if (checkoutLocked()) return;
     const id = target.getAttribute("data-guest-cart-qty");
     if (!id) return;
     const quantity = parseGuestCartQuantityInput(target.value);
@@ -335,4 +462,80 @@ export function hydrateGuestCartPage(): void {
   }
   renderCart(root);
   void refreshSnapshot(root);
+}
+
+function checkoutStorage() {
+  try {
+    if (typeof globalThis.localStorage === "undefined") return null;
+    globalThis.localStorage.getItem("dinkus.guest-checkout.probe");
+    return globalThis.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+export function hydrateGuestCheckoutReturn(): void {
+  const root = document.querySelector("[data-guest-checkout-return]");
+  if (!(root instanceof HTMLElement)) return;
+  const status = root.querySelector("[data-guest-checkout-return-status]");
+  const order = root.querySelector("[data-guest-checkout-order]");
+  const retry = root.querySelector("[data-guest-checkout-retry]");
+  const statusRetry = root.querySelector("[data-guest-checkout-status-retry]");
+  const retention = readGuestCheckoutRetention(checkoutStorage());
+  const setMessage = (message: string, error = false) => {
+    if (!(status instanceof HTMLElement)) return;
+    status.hidden = false;
+    status.textContent = message;
+    status.setAttribute("role", error ? "alert" : "status");
+  };
+  if (!retention) {
+    setMessage("This return could not be matched to a saved checkout. No purchase was confirmed.", true);
+    if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = true;
+    return;
+  }
+  const controller = createGuestCheckoutController({
+    admitted: false,
+    storage: checkoutStorage(),
+    transport: {
+      fetch: (input: string, init: RequestInit) => fetch(input, init),
+    } satisfies GuestCheckoutTransport,
+  });
+  let checking = false;
+  const checkStatus = async () => {
+    if (checking) return;
+    checking = true;
+    if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = true;
+    if (retry instanceof HTMLAnchorElement) retry.hidden = true;
+    setMessage("Checking the saved checkout status.");
+    const { result, failure } = await controller.status();
+    checking = false;
+    if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = false;
+    if (failure || !result) {
+      setMessage("Checkout status could not be confirmed. Retry when you are back online.", true);
+      return;
+    }
+    if (result.ok && checkoutCanConfirm(result)) {
+      if (order instanceof HTMLElement) {
+        order.hidden = false;
+        order.textContent = `Order confirmed: ${result.checkout.order!.orderId}.`;
+      }
+      if (retry instanceof HTMLAnchorElement) retry.hidden = true;
+      setMessage("Order confirmed.");
+      return;
+    }
+    const redirect = result.ok ? strictStripeCheckoutUrl(result.checkout.redirectUrl) : null;
+    if (redirect && retry instanceof HTMLAnchorElement &&
+        result.ok && result.checkout.state !== "released-retry") {
+      retry.hidden = false;
+      retry.href = redirect;
+    }
+    const message = result.ok && result.checkout.state === "released-retry"
+      ? "Commerce released the original attempt. Return to the cart to start again."
+      : result.ok && result.checkout.state === "pending"
+        ? "Checkout is still pending with Commerce. Check status again before retrying."
+        : "Commerce has not confirmed a paid order. The original checkout remains protected.";
+    setMessage(message, result.ok && result.checkout.state !== "pending");
+  };
+  statusRetry?.addEventListener("click", () => void checkStatus());
+  void checkStatus();
 }
