@@ -1,0 +1,67 @@
+{
+  "commerceSource": "70419ae55c4f73354e3f0eda08b09bbc85368000",
+  "paymentsSource": "37842220fddb10dc5294af084110cd33804715be",
+  "archiveSha256": [
+    "38c1c6b59ad37db506986dc9de72fa53f601f7c66d5df53a1c39e9ca3c351730",
+    "bb91f476f9e8c1a67ce4aa84cd36722e1c390a4d70b21681b3cf1d7e7feb53e0"
+  ],
+  "miniflareVersion": "5.20260930.0-alpha",
+  "emdashVersion": "1.0.1",
+  "proof": "Template adapter with external immutable compiled Commerce package -> actual immutable Payments Worker HTTP/JWT/SQLite runtime -> official Stripe SDK with fully intercepted outbound transport -> canonical guest/wake/order/coupon APIs",
+  "results": [
+    {
+      "scenario": "flat-nondivisible",
+      "total": 199,
+      "canonicalOrders": 1,
+      "providerCreates": 1,
+      "persistedWorkerRestart": true,
+      "frozenShippingReplay": true,
+      "couponConsumed": 1,
+      "forgedReturnRemainsPending": true,
+      "wakeReconciledAndAcknowledged": true,
+      "readinessRegressionRecovery": true,
+      "wrongScopeRejectedBeforeProvider": true,
+      "bodylessConnectHttp": 400
+    },
+    {
+      "scenario": "free",
+      "total": 150,
+      "canonicalOrders": 1,
+      "providerCreates": 1,
+      "persistedWorkerRestart": true,
+      "frozenShippingReplay": true,
+      "couponConsumed": 1,
+      "forgedReturnRemainsPending": true,
+      "wakeReconciledAndAcknowledged": true,
+      "readinessRegressionRecovery": true,
+      "wrongScopeRejectedBeforeProvider": true,
+      "bodylessConnectHttp": 400
+    },
+    {
+      "scenario": "shipping-only",
+      "total": 50,
+      "canonicalOrders": 1,
+      "providerCreates": 1,
+      "persistedWorkerRestart": true,
+      "frozenShippingReplay": true,
+      "couponConsumed": 1,
+      "forgedReturnRemainsPending": true,
+      "wakeReconciledAndAcknowledged": true,
+      "readinessRegressionRecovery": true,
+      "wrongScopeRejectedBeforeProvider": true,
+      "bodylessConnectHttp": 400
+    }
+  ],
+  "actualProviderCalls": 0,
+  "credentialStoreReads": 0,
+  "registryInstalledHost": false,
+  "limits": [
+    "Uninstalled Commerce PluginContext/storage fixture",
+    "Onboarding fixture uses original Payments owner RPC: bodyless connect HTTP rejected in local Miniflare",
+    "Ephemeral synthetic JWT issuer and intercepted Stripe responses",
+    "No real Stripe account/payment, Registry installation, deployment, grants or activation"
+  ],
+  "schedulerRegistered": false,
+  "schema": "dinkuskit.commerce.checkout-pricing/v1",
+  "paymentsWorkerSha256": "77c6fe70120c962ee482760a2ad308e3f57faaf367e5bba86d74cd13b1eee548"
+}

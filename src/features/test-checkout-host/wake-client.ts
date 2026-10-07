@@ -151,7 +151,7 @@ async function readBoundedUtf8Body(
 
 /**
  * Validates and extracts an exact 5-field Commerce payment wake snapshot
- * conforming to Payments 11 public contract.
+ * conforming to the reviewed Payments12 public contract.
  * Fails closed on unexpected, missing, or malformed fields.
  */
 export function assertValidWakeSnapshot(

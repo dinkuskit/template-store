@@ -51,9 +51,15 @@ See [.grilltrack/proof/checkout-integration-20260930/PROOF.md](.grilltrack/proof
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.test-checkout-host` | Byte-bounded Payments wake HTTP transport and trusted scheduler assembly for canonical Commerce reconciliation | `src/features/test-checkout-host/`; `src/worker.ts`; `scripts/verify-checkout-package.mjs`; `tests/unit/checkout-host-wake-client.test.ts`; `tests/unit/checkout-host-scheduler.test.ts`; `tests/unit/checkout-host-payment-cap.test.ts` | `src/features/test-checkout-host/index.ts` | Exact reviewed Commerce44 source/owner artifact; Payments11 transport | `pnpm test` | `pnpm verify`; `pnpm verify:checkout-package <owner-commerce.tgz>` | successor source verified; installed runtime activation pending |
+| `dinkus.test-checkout-host` | Byte-bounded Payments wake HTTP transport and trusted scheduler assembly for canonical Commerce reconciliation | `src/features/test-checkout-host/`; `src/worker.ts`; `scripts/verify-checkout-package.mjs`; `tests/unit/checkout-host-wake-client.test.ts`; `tests/unit/checkout-host-scheduler.test.ts`; `tests/unit/checkout-host-payment-cap.test.ts` | `src/features/test-checkout-host/index.ts` | Exact reviewed Commerce48 source/owner artifact; Payments12 transport | `pnpm test` | `pnpm verify`; `pnpm verify:checkout-package <owner-commerce.tgz>` | matched source consumer; installed runtime activation pending |
 
-One trusted configuration supplies canonical TEST payment lookup and wake list/ACK. Descriptor JSON cannot carry host callbacks. EmDash has plugin cron contexts, but the actual installed checkout host/storage injection remains unproved; the default Worker still runs only EmDash maintenance. No raw SQL or invented routes substitute for admission. Source aliases and fresh extracted owner-package fixtures are separate proof levels, neither a Registry install nor a real Stripe TEST purchase. See [the current response-cap successor proof](.grilltrack/proof/test-checkout-host-response-cap-20261005/PROOF.md), [historical Commerce42 proof](.grilltrack/proof/test-checkout-host-20261001/PROOF.md) and [the next runtime prerequisite](.grilltrack/proof/test-checkout-host-20261001/RUNTIME-ACTIVATION-GATE.md).
+## Matched Commerce48 / Payments12 checkout consumer
+
+| Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dinkus.paired-checkout-consumer` | Opt-in `checkout-pricing/v1` server assembly sharing an explicit schema across trusted adapter, Commerce pricing context and resolved payment port; delegates owner/origin/capability admission and guest/wake handling to canonical installed handlers | `src/features/paired-checkout/`; `tests/unit/paired-checkout-consumer.test.ts` | `src/features/paired-checkout/index.ts` | Reviewed Commerce48 source `70419ae55c4f73354e3f0eda08b09bbc85368000`; reviewed Payments12 source `37842220fddb10dc5294af084110cd33804715be` | `pnpm test -- tests/unit/paired-checkout-consumer.test.ts` | `pnpm verify`; admitted compiled-package verifier when owner artifacts are present | compiled local pair proved with synthetic transport; Registry-installed host seam pending |
+
+One trusted configuration supplies canonical TEST payment lookup and wake list/ACK. Descriptor JSON cannot carry host callbacks. EmDash has plugin cron contexts, but the actual installed checkout host/storage injection remains unproved; the default Worker still runs only EmDash maintenance. No raw SQL or invented routes substitute for admission. Source aliases and fresh extracted owner-package fixtures are separate proof levels, neither a Registry install nor a real Stripe TEST purchase. See [the matched compiled pair proof](.grilltrack/proof/paired-checkout-20261006/PROOF.md), [the historical response-cap successor proof](.grilltrack/proof/test-checkout-host-response-cap-20261005/PROOF.md), [historical Commerce42 proof](.grilltrack/proof/test-checkout-host-20261001/PROOF.md) and [the next runtime prerequisite](.grilltrack/proof/test-checkout-host-20261001/RUNTIME-ACTIVATION-GATE.md).
 
 ## Default inventory-off profile
 
@@ -62,7 +68,7 @@ The default source-pilot profile is `shipping`; explicit
 `tests/e2e/shipping-storefront-profile.spec.ts` covers Products create, Regular/Sale,
 manual availability, absent quantities/demonstrations, preview isolation, and
 merchant product detail on desktop/mobile. The current Commerce pin
-`444b0505ae061c58e2f738e9f39fb0b366d50e8c` preserves the disabled Coming soon
+`70419ae55c4f73354e3f0eda08b09bbc85368000` preserves the disabled Coming soon
 control under the native entry, while registry pairing remains pending.
 `pnpm verify` keeps both this profile and all earlier managed regressions.
 

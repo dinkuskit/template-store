@@ -6,8 +6,8 @@ Current Commerce source identity updated 2026-10-06 to match the template manife
 | Component | Current identity | Meaning |
 | --- | --- | --- |
 | TemplateStore | private package `0.0.0`; this candidate source | Development pilot, no approved release |
-| Commerce | source `444b0505ae061c58e2f738e9f39fb0b366d50e8c` | Exact pre-release source adopted as a development-pilot source alias; registry release still pending |
-| Payments | source `636f01225417fac4fc51fd88604aeb4ba96440a1` | Inspected read-only upstream contract; no package pin or direct dependency |
+| Commerce | reviewed source `70419ae55c4f73354e3f0eda08b09bbc85368000`; merged `ad84fe07c6dda1c493cc68a72c4f49cb6e179653` | Exact Commerce48 source contract adopted for the bounded pricing/checkout consumer; immutable compiled/registry artifacts remain local admission inputs |
+| Payments | reviewed source `37842220fddb10dc5294af084110cd33804715be`; merged `1d7b5521f9986df7b7f92866b43cf7814826d607` | Payments12 consumer contract adopted at source level; the provider Worker remains a private local intercepted transport |
 | Blocks | EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks | No `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
 | Inventory | source `5889c7d59398376da51ac400d5c1f1214aba2c6b` | Development managed regression only; off in shipping v1 |
 | EmDash | package `1.0.1` | Actual tested package; registry-installed pair remains unqualified |

@@ -26,7 +26,7 @@ const VALID_WAKE = {
   wokeAt: 1727800000000,
 };
 
-describe("Payments 11 Wake Snapshot Validation Contract", () => {
+describe("Payments12 Wake Snapshot Validation Contract", () => {
   it("validates exact 5-field wake snapshot", () => {
     const validated = assertValidWakeSnapshot(VALID_WAKE, "stripe-test-binding");
     expect(validated).toEqual(VALID_WAKE);

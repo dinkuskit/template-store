@@ -4,8 +4,8 @@ import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "n
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
-const commit = "444b0505ae061c58e2f738e9f39fb0b366d50e8c";
-const digest = "6f63abb17a8cd73bb8edaf4c83ad8ed75b4e35f98f399a4433d675e0a72d8388";
+const commit = "70419ae55c4f73354e3f0eda08b09bbc85368000";
+const digest = "38c1c6b59ad37db506986dc9de72fa53f601f7c66d5df53a1c39e9ca3c351730";
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 if (process.argv.length !== 3) throw new Error("Usage: pnpm verify:checkout-package <owner-commerce.tgz>");
 if (manifest.dinkuskit.sourcePins.commerce.commit !== commit) {
