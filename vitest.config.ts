@@ -8,6 +8,9 @@ export default defineConfig({
       "cloudflare:workers": fileURLToPath(
         new URL("./tests/mocks/cloudflare-workers.ts", import.meta.url),
       ),
+      "@dinkuskit/commerce/features/checkout": fileURLToPath(
+        new URL("./.artifacts/source-deps/commerce/src/features/checkout/index.ts", import.meta.url),
+      ),
       "@dinkuskit/commerce": fileURLToPath(
         new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
       ),

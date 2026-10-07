@@ -1,11 +1,12 @@
 # Exact pairing and release gates
 
-Audit date: 2026-09-30. Template base: `41a63299d575eeb9784de700c63ca628543b2d60`.
+Original pairing audit: 2026-09-30. Template base at that audit: `41a63299d575eeb9784de700c63ca628543b2d60`.
+Current Commerce source identity updated 2026-10-06 to match the template manifest.
 
 | Component | Current identity | Meaning |
 | --- | --- | --- |
 | TemplateStore | private package `0.0.0`; this candidate source | Development pilot, no approved release |
-| Commerce | source `d3f7e591ef64c63d7748fe75e746dcfe39bbb4ca` | Public canonical commit adopted as a development-pilot source alias; registry release still pending |
+| Commerce | source `444b0505ae061c58e2f738e9f39fb0b366d50e8c` | Exact pre-release source adopted as a development-pilot source alias; registry release still pending |
 | Payments | source `636f01225417fac4fc51fd88604aeb4ba96440a1` | Inspected read-only upstream contract; no package pin or direct dependency |
 | Blocks | EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks | No `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
 | Inventory | source `5889c7d59398376da51ac400d5c1f1214aba2c6b` | Development managed regression only; off in shipping v1 |

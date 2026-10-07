@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-01T10:03:41+00:00",
-    "domain": "Retire @dinkuskit/blocks and preserve native EmDash 1.0.1 composition",
-    "started_at": "2026-10-01T10:03:38+00:00",
+    "confirmed_at": "2026-10-03T19:58:40+00:00",
+    "domain": "Trusted TEST checkout host and wake scheduler source",
+    "started_at": "2026-10-03T19:58:39+00:00",
     "status": "confirmed",
-    "summary": "Direct coordinator-verified human decision: EmDash owns blocks; retire @dinkuskit/blocks entirely from active Template dependency/runtime/build/audit/lockfile, reuse merged PR18 upstream blocks transition, preserve current appearance/content behavior with local presentation components for retained PortableText, failclosed migration with backup verification, and keep Commerce/EmDash pins unchanged."
+    "summary": "Previously approved TEST checkout continuation: exact Commerce42 and Payments11 inputs, trusted wake HTTP client, shared canonical host/scheduler assembly, source/package verification and honest installed-runtime gate. No activation, release, merge or deployment by implication."
   },
   "decisions": [
     {
@@ -568,6 +568,131 @@
       "superseded_by": null,
       "updated_at": "2026-10-01T13:22:20+00:00",
       "verification_ref": "file:.grilltrack/proof/retire-dinkus-blocks-20261001/PROOF.md"
+    },
+    {
+      "baseline_ref": "git:bd997144517242e0a70596e15de20bbfc3314df8",
+      "candidate_refs": [],
+      "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+      "context_ref": "approved:test-checkout-host-20261001",
+      "created_at": "2026-10-03T19:58:40+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "checkout-qualification-006"
+      ],
+      "domain": "Trusted TEST checkout host and wake scheduler source",
+      "history": [
+        {
+          "at": "2026-10-03T19:58:40+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-03T19:58:40+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-03T20:21:05+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/test-checkout-host/;file:src/worker.ts;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-scheduler.test.ts;file:tests/unit/checkout-host-wake-client.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-05T16:04:51+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "verified",
+          "implementation_ref": "file:src/features/test-checkout-host/;file:src/worker.ts;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-scheduler.test.ts;file:tests/unit/checkout-host-wake-client.test.ts",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-20261001/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-05T16:04:51+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:src/features/test-checkout-host/;file:src/worker.ts;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-scheduler.test.ts;file:tests/unit/checkout-host-wake-client.test.ts",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": ".grilltrack/proof/test-checkout-host-response-cap-20261005/PRIOR-FINDING.md",
+          "review_result": "findings",
+          "review_source_identity": "git:537664f4595712212111a2cb60c274a64ff36081",
+          "to": "implemented",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-20261001/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-05T16:17:25+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "implemented",
+          "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-20261001/VERIFICATION.json"
+        }
+      ],
+      "id": "test-checkout-host-009",
+      "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+      "question": "How is the trusted TEST wake transport joined to canonical checkout reconciliation?",
+      "rationale": "Continue the previously approved TEST checkout integration through a bounded host source repair and explicit runtime prerequisite.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": ".grilltrack/proof/test-checkout-host-response-cap-20261005/PRIOR-FINDING.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-05T16:04:51+00:00",
+          "source_identity": "git:537664f4595712212111a2cb60c274a64ff36081"
+        }
+      ],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-05T16:17:25+00:00",
+      "verification_ref": ".grilltrack/proof/test-checkout-host-response-cap-20261005/VERIFICATION.json"
     }
   ],
   "last_activation": {
@@ -592,5 +717,5 @@
   "status": "active",
   "title": "Inventory-off v1 template and exact Commerce pairing",
   "track_id": "gt-20260930163954-43d0a5",
-  "updated_at": "2026-10-01T13:22:20+00:00"
+  "updated_at": "2026-10-05T16:17:25+00:00"
 }

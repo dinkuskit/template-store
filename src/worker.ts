@@ -1,9 +1,14 @@
 import astroHandler from "@astrojs/cloudflare/entrypoints/server";
-import { createScheduledHandler, PluginBridge } from "@emdash-cms/cloudflare/worker";
+import {
+  createScheduledHandler as createEmDashScheduledHandler,
+  PluginBridge,
+} from "@emdash-cms/cloudflare/worker";
 import {
   applySecurityHeaders,
   evaluatePublicBoundary,
 } from "./features/security/public-boundary.js";
+import type { ScheduledWakeReconciliationOptions } from "./features/test-checkout-host/index.js";
+import { runScheduledWakeReconciliation } from "./features/test-checkout-host/scheduler-driver.js";
 
 export { PluginBridge };
 
@@ -22,6 +27,37 @@ export interface WorkerEnv {
 export interface WorkerExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
+}
+
+/** ScheduledController shape verified against Workers types 5.20261003.1. */
+export interface ScheduledController {
+  readonly scheduledTime: number;
+  readonly cron: string;
+  noRetry(): void;
+}
+
+export function createScheduledHandler(
+  options?: Parameters<typeof createEmDashScheduledHandler>[0] & {
+    wakeReconciliation?: ScheduledWakeReconciliationOptions;
+  },
+) {
+  const emdashScheduled = createEmDashScheduledHandler(options);
+  const generalCron = options?.generalCron?.trim();
+  return (
+    controller: ScheduledController,
+    env: WorkerEnv,
+    ctx: WorkerExecutionContext,
+  ) => {
+    emdashScheduled(controller, env, ctx);
+    if (generalCron !== undefined && controller.cron !== generalCron) return;
+    if (options?.wakeReconciliation?.execution && options?.wakeReconciliation?.associations) {
+      ctx.waitUntil(
+        runScheduledWakeReconciliation(options.wakeReconciliation).catch(() => {
+          console.error("[scheduled] wake reconciliation failed");
+        }),
+      );
+    }
+  };
 }
 
 function createErrorResponse(

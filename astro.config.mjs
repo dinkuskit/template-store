@@ -64,6 +64,12 @@ export default defineConfig({
   vite: {
     resolve: {
       alias: {
+        "@dinkuskit/commerce/features/checkout": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/checkout/index.ts",
+            import.meta.url,
+          ),
+        ),
         "@dinkuskit/commerce/admin": fileURLToPath(
           new URL(
             "./.artifacts/source-deps/commerce/src/admin/native.ts",
