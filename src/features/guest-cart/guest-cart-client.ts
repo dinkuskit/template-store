@@ -387,6 +387,8 @@ export function hydrateGuestCartPage(): void {
     if (target.closest("[data-guest-cart-checkout]")) {
       if (!checkoutController || checkoutLocked() || !view().checkoutEnabled) return;
       const originalIntent = structuredClone(session.intent);
+      const couponInput = root.querySelector("[data-guest-cart-coupon]");
+      const couponCode = couponInput instanceof HTMLInputElement ? couponInput.value.trim() || undefined : undefined;
       pendingCheckout = true;
       checkoutRecovery = false;
       checkoutMessage = null;
@@ -401,7 +403,7 @@ export function hydrateGuestCartPage(): void {
           renderCart(root);
           return;
         }
-        const started = await checkoutController!.start(originalIntent);
+        const started = await checkoutController!.start(originalIntent, couponCode);
         pendingCheckout = false;
         if (started.failure || !started.result || !started.result.ok) {
           checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));

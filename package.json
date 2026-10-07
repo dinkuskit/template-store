@@ -15,7 +15,7 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "commit": "45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef"
+        "commit": "5ade2bd0e4480b8ec9220c7872d7445e35547a3e"
       }
     }
   },
@@ -46,9 +46,9 @@
     "@astrojs/node": "11.0.2",
     "@astrojs/react": "6.0.1",
     "@dinkuskit/inventory": "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
-    "@emdash-cms/cloudflare": "1.0.1",
+    "@emdash-cms/cloudflare": "1.2.0",
     "astro": "7.1.3",
-    "emdash": "1.0.1",
+    "emdash": "1.2.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },

@@ -12,13 +12,13 @@ function snapshotJson(body: unknown, status = 200): Response {
   });
 }
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ url, locals, request }) => {
   const ids = parseGuestCartSnapshotIds(url.searchParams.get("ids"));
   if (ids === null) {
     return snapshotJson({ error: "invalid_ids" }, 400);
   }
   try {
-    const products = projectGuestCartCatalogSnapshots(await readCommerceCatalogSnapshots(ids));
+    const products = projectGuestCartCatalogSnapshots(await readCommerceCatalogSnapshots(ids, { runtime: locals.emdash, request }));
     if (products === null) {
       return snapshotJson(
         {

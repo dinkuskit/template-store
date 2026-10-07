@@ -4,7 +4,7 @@ import { AddToCart, GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 let unavailable = false;
-const products = await readCommerceCatalog().catch(() => { unavailable = true; return []; });
+const products = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { unavailable = true; return []; });
 const product = products.find(item => item.id === Astro.params.id);
 if (unavailable) Astro.response.status = 503;
 else if (!product) Astro.response.status = 404;

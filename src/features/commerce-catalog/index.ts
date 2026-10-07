@@ -9,6 +9,7 @@ import {
   type CatalogBackorderPolicyRecord, type StoreInventoryConfigurationRecord,
   type StorefrontAvailabilitySettingsRecord, type StorefrontAvailabilityResult,
 } from "@dinkuskit/commerce";
+import { readInstalledCommerceCatalog, type InstalledCatalogContext } from "./installed.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
 
 export interface PublicCommerceProduct {
@@ -16,7 +17,7 @@ export interface PublicCommerceProduct {
   name: string;
   sku: string;
   price: PublicPriceView;
-  availability: StorefrontAvailabilityResult;
+  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
 }
 
 export function commerceProductPath(id: string): string {
@@ -61,7 +62,11 @@ async function openCommerceCatalogStorage() {
   };
 }
 
-export async function readCommerceCatalog(): Promise<PublicCommerceProduct[]> {
+export async function readCommerceCatalog(context?: InstalledCatalogContext): Promise<PublicCommerceProduct[]> {
+  if (process.env.DINKUS_CATALOG_PROFILE !== "native-development") {
+    if (!context) throw new Error("Installed catalog context unavailable");
+    return readInstalledCommerceCatalog(context);
+  }
   const storage = await openCommerceCatalogStorage();
   const { products } = await listCatalogProducts(storage);
   const visible: PublicCommerceProduct[] = [];
@@ -77,7 +82,17 @@ export async function readCommerceCatalog(): Promise<PublicCommerceProduct[]> {
 
 export async function readCommerceCatalogSnapshots(
   ids: readonly string[],
+  context?: InstalledCatalogContext,
 ): Promise<CommerceCatalogSnapshot[]> {
+  if (process.env.DINKUS_CATALOG_PROFILE !== "native-development") {
+    if (!context) throw new Error("Installed catalog context unavailable");
+    const products = await readInstalledCommerceCatalog(context);
+    const byId = new Map(products.map(product => [product.id, product]));
+    return ids.map(id => {
+      const product = byId.get(id);
+      return product ? { ...product, found: true as const } : { id, found: false as const };
+    });
+  }
   const storage = await openCommerceCatalogStorage();
   const { products } = await listCatalogProducts(storage);
   const byId = new Map(products.map((product) => [product.catalogItemId, product]));

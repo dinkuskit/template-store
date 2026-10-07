@@ -8,7 +8,7 @@ function childEnv(overrides: Record<string, string>): Record<string, string> {
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) env[key] = value;
   }
-  return { ...env, ...overrides };
+  return { ...env, DINKUS_CATALOG_PROFILE: "native-development", ...overrides };
 }
 
 export default defineConfig({
