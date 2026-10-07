@@ -10,7 +10,7 @@ const expectedPins = {
     "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
 };
 const expectedCommerceCommit =
-  "70419ae55c4f73354e3f0eda08b09bbc85368000";
+  "45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef";
 
 const failures = [];
 for (const feature of [
@@ -92,6 +92,7 @@ for (const path of [
   "src/features/test-checkout-host/index.ts",
   "src/features/paired-checkout/index.ts",
   "scripts/verify-checkout-package.mjs",
+  "scripts/verify-registry-checkout.mjs",
   "bin/verify-web",
   "scripts/check-worktree-text.mjs",
   "skills/managed-product-verification/SKILL.md",

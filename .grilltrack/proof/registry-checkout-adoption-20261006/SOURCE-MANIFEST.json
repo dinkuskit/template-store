@@ -1,0 +1,79 @@
+{
+  "schema": "template-store.source-review/v1",
+  "base": "4628089ebdf90162efaa0b422915a869274177be",
+  "scope": "Changed product source, verifier, tests, docs and dependency files; excludes ledger/proof bookkeeping. External reviews must cover the final whole PR tuple.",
+  "files": [
+    {
+      "path": "FEATURE_MAP.md",
+      "sha256": "4b2dd8ca412d096793d2842f2f3400a5d8aa11d2bc09e360e3ea0315779daa93"
+    },
+    {
+      "path": "docs/implementation/guest-cart.md",
+      "sha256": "3a9a5710fbaea8e8ad1ba981850feab674609221a31cca1b71b897f692a8516b"
+    },
+    {
+      "path": "docs/implementation/paired-checkout.md",
+      "sha256": "65f2cf6d1ebaa7e283df7ad44e757b8827f9f7bac0be5c6e8071932fddbbb92b"
+    },
+    {
+      "path": "docs/v1-pairing.md",
+      "sha256": "33eaa89e64816f34e831c11437e68f16f1246120e86cb6d6424bda54dec8a2f2"
+    },
+    {
+      "path": "package.json",
+      "sha256": "190fc2b77d309ce04e1e0550458d136e26b7ad4620bd644c895e7ab2af783afb"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "fab842c7f1de2ec2a0bd42230c625b00f48b714eb089a679617b10250526609d"
+    },
+    {
+      "path": "scripts/check-features.mjs",
+      "sha256": "5ce6a014b33a8e035305566bc2283c21fabdd24485244ebf27b1c03af9a26ad4"
+    },
+    {
+      "path": "scripts/lib/immutable-payments-fixture.mjs",
+      "sha256": "8c44fb6deb6892ef970635d099976d9aa585764dc41bae7c7808fe983b82c0fa"
+    },
+    {
+      "path": "scripts/verify-checkout-package.mjs",
+      "sha256": "7f943e0d40dd601c10e54a33abf2cfabc5dbf8a42f83723b15bd39f3607665be"
+    },
+    {
+      "path": "scripts/verify-paired-checkout.mjs",
+      "sha256": "112a323393784c7303df8b4b9270883b6f1bc5881bd015d56e1d4cc68430e8c9"
+    },
+    {
+      "path": "scripts/verify-registry-checkout.mjs",
+      "sha256": "e0ac55a372938b26f28363d52e810cc76848baa87fc9b81837f7743862634079"
+    },
+    {
+      "path": "src/features/managed-product-availability/runtime.ts",
+      "sha256": "223e228dd51791d8e790f576e14e372069a354389079d5ca7aebcf8a894f8b09"
+    },
+    {
+      "path": "src/features/paired-checkout/index.ts",
+      "sha256": "487deaf831402ecbbf553f4062bd19c92ecc0611c503108bc5c7caf76a41b3a2"
+    },
+    {
+      "path": "src/features/test-checkout-host/types.ts",
+      "sha256": "61f5f1bb6f9cbdd9874a798c483ff631e6646be541f13af388031c0084470b79"
+    },
+    {
+      "path": "src/features/unmanaged-product-sellability/runtime.ts",
+      "sha256": "40c2d3cdbae93a18fbdf9a37c92a6eaf944111a985b19c47a100668ddca57e02"
+    },
+    {
+      "path": "tests/e2e/shipping-storefront-profile.spec.ts",
+      "sha256": "3eeb902d243d6a21cd365644aadaa058dc0a12b90030a10974d627e1fb93e651"
+    },
+    {
+      "path": "tests/unit/managed-product-availability.test.ts",
+      "sha256": "f0ddba935595e826af90c65bf507afb831c81425f84a45b27b223f73c72b908f"
+    },
+    {
+      "path": "tests/unit/unmanaged-product-sellability.test.ts",
+      "sha256": "209e890b6193f8457d1a932d6ee320ef21e8f9282d2099686b8475eb36288d6c"
+    }
+  ]
+}

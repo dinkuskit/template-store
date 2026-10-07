@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-07T01:10:55+00:00",
-    "domain": "Matched compiled TEST checkout pair and installed host boundary",
-    "started_at": "2026-10-07T01:10:55+00:00",
+    "confirmed_at": "2026-10-07T03:06:01+00:00",
+    "domain": "Default Commerce Registry services and immutable paired runtime proof",
+    "started_at": "2026-10-07T03:06:01+00:00",
     "status": "confirmed",
-    "summary": "Confirmed bounded paired-checkout continuation: exact compiled Commerce48/Payments12 pricing/v1 adoption, original owner context and canonical guest/wake authority, local isolated package behavior proof, a focused reviewed source PR, and a precise remaining live-demo boundary. Existing hosted demo and credentials/grants/provider activation are not expanded."
+    "summary": "Authorized bounded exact-artifact successor: qualified default Commerce49 compiled services through original EmDash context plus Payments12 runtime; focused source/proof PR and review rails, no public checkout activation or external mutations."
   },
   "decisions": [
     {
@@ -772,6 +772,138 @@
       "superseded_by": null,
       "updated_at": "2026-10-07T01:51:16+00:00",
       "verification_ref": ".grilltrack/proof/paired-checkout-20261006/VERIFICATION.json"
+    },
+    {
+      "baseline_ref": "git:4628089ebdf90162efaa0b422915a869274177be",
+      "candidate_refs": [],
+      "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+      "context_ref": ".grilltrack/work/registry-checkout-adoption-20261006/ADMISSION.json",
+      "created_at": "2026-10-07T03:06:01+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "paired-checkout-010"
+      ],
+      "domain": "Default Commerce Registry services and immutable paired runtime proof",
+      "history": [
+        {
+          "at": "2026-10-07T03:06:01+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T03:11:25+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T03:11:25+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "implemented",
+          "implementation_ref": "file:package.json;file:src/features/paired-checkout/index.ts;file:scripts/verify-registry-checkout.mjs;file:docs/v1-pairing.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T03:32:27+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "verified",
+          "implementation_ref": "file:package.json;file:src/features/paired-checkout/index.ts;file:scripts/verify-registry-checkout.mjs;file:docs/v1-pairing.md",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/work/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T03:32:27+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:package.json;file:src/features/paired-checkout/index.ts;file:scripts/verify-registry-checkout.mjs;file:docs/v1-pairing.md",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+          "review_result": "findings",
+          "review_source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d",
+          "to": "implemented",
+          "verification_ref": ".grilltrack/work/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T03:38:08+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "implemented",
+          "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/work/registry-checkout-adoption-20261006/PROOF.md"
+        }
+      ],
+      "id": "registry-checkout-adoption-011",
+      "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+      "question": "How does Template consume the qualified default Commerce Registry checkout service assembly?",
+      "rationale": "The exact owner-qualified default service resolver removes the source assembly gap; runtime fidelity must replace injected-context fixture assumptions.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-07T03:32:27+00:00",
+          "source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T03:38:08+00:00",
+          "source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d"
+        }
+      ],
+      "review_ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+      "review_result": "clean",
+      "review_source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d",
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-07T03:38:08+00:00",
+      "verification_ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
     }
   ],
   "last_activation": {
@@ -796,5 +928,5 @@
   "status": "active",
   "title": "Inventory-off v1 template and exact Commerce pairing",
   "track_id": "gt-20260930163954-43d0a5",
-  "updated_at": "2026-10-07T01:51:16+00:00"
+  "updated_at": "2026-10-07T03:38:08+00:00"
 }
