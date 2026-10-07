@@ -214,7 +214,7 @@
     },
     {
       "path": "scripts/verify-registry-checkout.mjs",
-      "sha256": "2abcf158d0365918157d68ef5b6a9f48613001d4a1dd805f5eef4a490555e9c0"
+      "sha256": "02dc71ba15ec439f1e2460ac3e86433858f6056ae3cf20156fc45b44524173b4"
     },
     {
       "path": "scripts/write-local-wrangler.mjs",
@@ -261,16 +261,20 @@
       "sha256": "c1bc631d815c068b5d7a9586ce1e30562e8535aa8baf5f3167f0cd76ac95ec84"
     },
     {
+      "path": "src/features/guest-cart/checkout-cart-settlement.ts",
+      "sha256": "d43207319e04cd04d58fcc589b131d830a75a4a8616383af58b87605c5ef73cb"
+    },
+    {
       "path": "src/features/guest-cart/checkout-protocol.ts",
-      "sha256": "a09bffafa0c30dff68a6adcd7b1c7e7d869e4a22030b5a78fb3f046d6ce01113"
+      "sha256": "ff8c853861fe0f980a3ecc99e7e532556b1a6d398f0040cf5ed08b974329beaf"
     },
     {
       "path": "src/features/guest-cart/guest-cart-client.ts",
-      "sha256": "542d1d558192f3fb06572c9d28e23adb51f963f353a0d1f75509952c9a30fbb2"
+      "sha256": "d4fdc0f659a69237b5fd0dcb580b4fb709362440d084818bbdcfc7a633f9f895"
     },
     {
       "path": "src/features/guest-cart/index.ts",
-      "sha256": "65d05e6f9212c2e7a1ce1b612802223f022ff22e86ea4a9230536ceb470eb587"
+      "sha256": "74f2b4364765ce4dc629f094e68192d90bc47ea30cd744b13e4365e9500b527a"
     },
     {
       "path": "src/features/guest-cart/intent.ts",
@@ -510,7 +514,7 @@
     },
     {
       "path": "tests/e2e/guest-checkout-feasibility.spec.ts",
-      "sha256": "cc161dc9608a73896b9e15cec4ca647e6375c9af16413c43e3f3b0cc4afad827"
+      "sha256": "bc4cea292ecb891d9592859df08eb1fb0af7777d2f5dcb3ab5510c82708d639b"
     },
     {
       "path": "tests/e2e/home-opener-section.spec.ts",
@@ -569,8 +573,12 @@
       "sha256": "507d9e78b6ff3666eda211946baa428ab542f338ecfb766ff2eb0a345c607597"
     },
     {
+      "path": "tests/unit/guest-checkout-cart-settlement.test.ts",
+      "sha256": "900dcfe6ea02df53cb43a5ffccd3bba3036a5a0bd2baec5a85aee9db06fb4b8e"
+    },
+    {
       "path": "tests/unit/guest-checkout-recovery.test.ts",
-      "sha256": "9defcbe3ca068921e8528c4b5c1781840ea60dc998422052f4b3823f542a0000"
+      "sha256": "d98e02bcfee506dbd26024d788da1ec92b235a11e22ab0b8bff8e87726a69071"
     },
     {
       "path": "tests/unit/managed-product-availability.test.ts",

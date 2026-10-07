@@ -185,6 +185,7 @@ writeFileSync(join(compiledGuestCart, "tsconfig.json"), JSON.stringify({
   files: [
     join(root, "src/features/guest-cart/checkout-protocol.ts"),
     join(root, "src/features/guest-cart/intent.ts"),
+    join(root, "src/features/guest-cart/checkout-cart-settlement.ts"),
   ],
 }));
 execFileSync(process.execPath, [
@@ -194,6 +195,7 @@ execFileSync(process.execPath, [
 const compiledGuestCheckout = await import(
   pathToFileURL(join(compiledGuestCart, "checkout-protocol.js"))
 );
+const compiledCartSettlement = await import(pathToFileURL(join(compiledGuestCart, "checkout-cart-settlement.js")));
 
 async function runCompiledBrowserProof(state) {
   const values = new Map();
@@ -201,18 +203,24 @@ async function runCompiledBrowserProof(state) {
     getItem(key) { return values.get(key) ?? null; },
     setItem(key, value) { values.set(key, value); },
   };
-  const controller = compiledGuestCheckout.createGuestCheckoutController({
-    admitted: true,
-    storage: browserStorage,
-    transport: {
+  let loseStartResponse = true;
+  const transport = {
       async fetch(input, init) {
         const route = new URL(input, SITE).pathname.split("/").at(-1);
         const body = JSON.parse(String(init.body));
         const capability = new Headers(init.headers).get("x-commerce-guest-capability") ?? undefined;
         const actual = await state.invoke(route, body, capability);
+        if (route === "start" && loseStartResponse) {
+          loseStartResponse = false;
+          throw new DOMException("Synthetic response loss after actual Core start", "TimeoutError");
+        }
         return Response.json({ success: true, data: actual });
       },
-    },
+  };
+  const controller = compiledGuestCheckout.createGuestCheckoutController({
+    admitted: true,
+    storage: browserStorage,
+    transport,
   });
   const prepared = await controller.prepare();
   assert.equal(prepared.failure, null);
@@ -221,13 +229,25 @@ async function runCompiledBrowserProof(state) {
     version: 1,
     lines: [{ id: "one", quantity: 1 }, { id: "two", quantity: 1 }],
   };
+  values.set("dinkus.guest-cart.v1", JSON.stringify(originalIntent));
   const started = await controller.start(originalIntent);
-  assert.equal(started.failure, null);
-  assert.equal(started.result?.ok, true);
-  assert.equal(started.result?.checkout.state, "pending");
+  assert.equal(started.failure, "timeout");
+  const unknown = JSON.parse(values.get(compiledGuestCheckout.GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY));
+  assert.equal(unknown.attemptId, null);
+  assert.equal(unknown.awaitingStart, true);
+  const reloaded = compiledGuestCheckout.createGuestCheckoutController({
+    admitted: true, storage: browserStorage, transport,
+  });
+  assert.equal((await reloaded.prepare()).failure, "attempt-active");
+  assert.equal((await reloaded.start(originalIntent)).failure, "attempt-active");
+  const recovered = await reloaded.status();
+  assert.equal(recovered.failure, null);
+  assert.equal(recovered.result?.ok, true);
+  assert.equal(recovered.result?.checkout.state, "pending");
   const retained = JSON.parse(values.get(compiledGuestCheckout.GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY));
-  assert.equal(retained.attemptId, started.result.checkout.attemptId);
-  return { controller, values, retained, originalIntent };
+  assert.equal(retained.attemptId, recovered.result.checkout.attemptId);
+  assert.equal(retained.awaitingStart, undefined);
+  return { controller: reloaded, values, retained, originalIntent };
 }
 function configuration(payments, shipping) {
   return { schema: SCHEMA, enabled: true, commerceOrigin: SITE, siteId: payments.siteId, paymentsOrigin: TRANSPORT,
@@ -347,6 +367,16 @@ try {
   assert.equal(paid.result?.ok, true);
   assert.equal(paid.result?.checkout.state, "paid");
   assert.ok(paid.result.checkout.order?.orderId);
+  assert.equal(await compiledCartSettlement.settleGuestCheckoutCart({
+    getItem: key => compiledBrowserProof.values.get(key) ?? null,
+    setItem: (key, value) => compiledBrowserProof.values.set(key, value),
+  }, paid.result), true);
+  assert.deepEqual(JSON.parse(compiledBrowserProof.values.get("dinkus.guest-cart.v1")).lines, []);
+  assert.equal(compiledBrowserProof.controller.canPrepareNew(), true);
+  const newPreparation = await compiledBrowserProof.controller.prepare();
+  assert.equal(newPreparation.result?.ok, true);
+  assert.notEqual(newPreparation.result.capabilityId, compiledBrowserProof.retained.capabilityId);
+  assert.equal(browserPayments.stats().creates, 1);
 } finally {
   try { if (browserState) await browserState.close(); }
   finally { await browserPayments.close(); }
@@ -362,6 +392,9 @@ const report = { commerceSource, paymentsSource, archiveSha256, backendSha256, m
     scenario: "positive merchandise with free shipping; synthetic authority and provider transport",
     originalIntentOnly: true,
     retainedCapabilityAcrossStartAndStatus: true,
+    lostActualStartResponseRecoveredAfterReload: true,
+    onlyPurchasedCartIntentClearedAfterCanonicalPaid: true,
+    freshPreparationAfterConfirmedCleanup: true,
     actualCommerceRuntime: true,
     syntheticIssuerStripeNetworkClone: true,
   },

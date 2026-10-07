@@ -101,6 +101,9 @@
     "scenario": "positive merchandise with free shipping; synthetic authority and provider transport",
     "originalIntentOnly": true,
     "retainedCapabilityAcrossStartAndStatus": true,
+    "lostActualStartResponseRecoveredAfterReload": true,
+    "onlyPurchasedCartIntentClearedAfterCanonicalPaid": true,
+    "freshPreparationAfterConfirmedCleanup": true,
     "actualCommerceRuntime": true,
     "syntheticIssuerStripeNetworkClone": true
   },

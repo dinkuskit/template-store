@@ -18,6 +18,7 @@ import {
   createGuestCheckoutController,
   readGuestCheckoutRetention,
   strictStripeCheckoutUrl,
+  settleGuestCheckoutCart,
   type GuestCartCatalogSnapshot,
   type GuestCartIntent,
   type GuestCartReadNotice,
@@ -45,7 +46,8 @@ let checkoutMessage: string | null = null;
 let checkoutMessageError = false;
 
 function checkoutLocked(): boolean {
-  return pendingCheckout || Boolean(readGuestCheckoutRetention(checkoutStorage()) && !checkoutController?.canStart());
+  return pendingCheckout || Boolean(readGuestCheckoutRetention(checkoutStorage()) &&
+    !checkoutController?.canStart() && !checkoutController?.canPrepareNew());
 }
 
 function setCheckoutMessage(message: string, isError = false): void {
@@ -251,8 +253,8 @@ async function recoverGuestCheckout(root: Element): Promise<void> {
   checkoutRecovery = true;
   renderCart(root);
   const response = await checkoutController.status();
-  pendingCheckout = false;
   if (response.failure || !response.result) {
+    pendingCheckout = false;
     setCheckoutMessage(checkoutFailureText(response.failure), true);
     renderCart(root);
     return;
@@ -261,7 +263,10 @@ async function recoverGuestCheckout(root: Element): Promise<void> {
     (response.result.checkout.state !== "paid" &&
       response.result.checkout.state !== "released-retry");
   if (response.result.ok && checkoutCanConfirm(response.result)) {
-    setCheckoutMessage("Order confirmed.");
+    const settled = await settleGuestCheckoutCart(checkoutStorage(), response.result);
+    session = loadSession();
+    checkoutRecovery = !settled;
+    setCheckoutMessage(settled ? "Order confirmed." : "Order confirmed. Your cart could not be updated. Check status again.", !settled);
   } else if (response.result.ok && response.result.checkout.state === "released-retry") {
     setCheckoutMessage("The original attempt was released. You can try checkout again.");
   } else if (checkoutController.canStart()) {
@@ -269,6 +274,7 @@ async function recoverGuestCheckout(root: Element): Promise<void> {
   } else {
     setCheckoutMessage("Checkout is still pending. Check status before trying again.");
   }
+  pendingCheckout = false;
   renderCart(root);
 }
 
@@ -385,9 +391,8 @@ export function hydrateGuestCartPage(): void {
       checkoutRecovery = false;
       checkoutMessage = null;
       renderCart(root);
-      const preparation = readGuestCheckoutRetention(checkoutStorage())
-        ? Promise.resolve(null)
-        : checkoutController.prepare();
+      const needsPreparation = !readGuestCheckoutRetention(checkoutStorage()) || checkoutController.canPrepareNew();
+      const preparation = needsPreparation ? checkoutController.prepare() : Promise.resolve(null);
       void preparation.then(async (prepared) => {
         if (prepared && (prepared.failure || !prepared.result || !prepared.result.ok)) {
           pendingCheckout = false;
@@ -462,6 +467,7 @@ export function hydrateGuestCartPage(): void {
   }
   renderCart(root);
   void refreshSnapshot(root);
+  if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) void recoverGuestCheckout(root);
 }
 
 function checkoutStorage() {
@@ -501,6 +507,10 @@ export function hydrateGuestCheckoutReturn(): void {
     } satisfies GuestCheckoutTransport,
   });
   let checking = false;
+  const finishCheck = () => {
+    checking = false;
+    if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = false;
+  };
   const checkStatus = async () => {
     if (checking) return;
     checking = true;
@@ -508,19 +518,22 @@ export function hydrateGuestCheckoutReturn(): void {
     if (retry instanceof HTMLAnchorElement) retry.hidden = true;
     setMessage("Checking the saved checkout status.");
     const { result, failure } = await controller.status();
-    checking = false;
-    if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = false;
     if (failure || !result) {
       setMessage("Checkout status could not be confirmed. Retry when you are back online.", true);
+      finishCheck();
       return;
     }
     if (result.ok && checkoutCanConfirm(result)) {
       if (order instanceof HTMLElement) {
         order.hidden = false;
-        order.textContent = `Order confirmed: ${result.checkout.order!.orderId}.`;
+        order.textContent = `Order confirmed: ${result.checkout.order!.orderId}. Receipt: ${result.checkout.order!.receiptId}.`;
       }
       if (retry instanceof HTMLAnchorElement) retry.hidden = true;
-      setMessage("Order confirmed.");
+      const settled = await settleGuestCheckoutCart(checkoutStorage(), result);
+      session = loadSession();
+      renderNav();
+      setMessage(settled ? "Order confirmed." : "Order confirmed. Your cart could not be updated. Check status again.", !settled);
+      finishCheck();
       return;
     }
     const redirect = result.ok ? strictStripeCheckoutUrl(result.checkout.redirectUrl) : null;
@@ -535,6 +548,7 @@ export function hydrateGuestCheckoutReturn(): void {
         ? "Checkout is still pending with Commerce. Check status again before retrying."
         : "Commerce has not confirmed a paid order. The original checkout remains protected.";
     setMessage(message, result.ok && result.checkout.state !== "pending");
+    finishCheck();
   };
   statusRetry?.addEventListener("click", () => void checkStatus());
   void checkStatus();

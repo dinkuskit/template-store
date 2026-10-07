@@ -53,6 +53,7 @@ export type {
   GuestCartView,
 } from "./present.js";
 export { parseGuestCartSnapshotIds } from "./snapshot-ids.js";
+export { settleGuestCheckoutCart } from "./checkout-cart-settlement.js";
 export {
   COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_HEADER,

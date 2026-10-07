@@ -1,75 +1,67 @@
 {
   "node": "22.23.1",
   "focusedTests": {
-    "files": 3,
-    "passed": 35
+    "files": 4,
+    "passed": 40
   },
   "canonicalFull": {
     "passed": true,
-    "unit": 139,
+    "unit": 144,
     "workflow": 9,
     "browser": 19,
     "skipped": 3
   },
-  "finalQuick": {
-    "passed": true,
-    "unit": 139,
-    "workflow": 9
-  },
-  "finalBuild": "PASS",
-  "compiledImmutablePackageController": "PASS",
+  "finalBuild": "PASS within canonical full on unchanged finalsource",
+  "compiledImmutablePackageController": "PASS actual lost-start response, canonical paid cart cleanup and freshprepare; one provider creation",
   "registryInstalled": false,
   "publicCheckoutEnabled": false,
   "realProviderCalls": 0,
+  "sourceIdentity": "sha256:acf2aa8b9930d564087302785d1f07e5763b5b9bd83766b123d9cd3cc3fc6e4a",
+  "sourceFiles": 161,
   "screenshots": [
     {
       "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-desktop/guest-checkout-cancel-closed.png",
       "sha256": "b40e9ac3cecbf70c891b1ff73a4260a08338c74c31e88ef7cde680c7cf3eec06",
-      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+      "inspected": "Legible desktop/mobile confirmed order+receipt or unmatched warning; purchased cart badge cleared; no clipping; accessible retry"
     },
     {
       "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-desktop/guest-checkout-synthetic-paid.png",
-      "sha256": "896e06c0b4d2d735f45187484519fa032c49dfc37428b2837a2c59e4dfd70907",
-      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+      "sha256": "66e8fd0445a52e1f4090fa03716b8dd2b2dd1990d4ab159085b102911a0663aa",
+      "inspected": "Legible desktop/mobile confirmed order+receipt or unmatched warning; purchased cart badge cleared; no clipping; accessible retry"
     },
     {
       "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-mobile/guest-checkout-cancel-closed.png",
       "sha256": "baf68bf53a2aae408c733f08bda8c12e255659d4acd68fee1e02e7f46df785af",
-      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+      "inspected": "Legible desktop/mobile confirmed order+receipt or unmatched warning; purchased cart badge cleared; no clipping; accessible retry"
     },
     {
       "path": "runs/checkout-integration-runs/20261007/browser/shipping-chromium-mobile/guest-checkout-synthetic-paid.png",
-      "sha256": "e1095a33ea6ae6e684accc419b4a558c5b751d5437c09a560d2972d99c409dda",
-      "inspected": "Legible warm-neutral desktop/mobile return state, visible confirmation or unmatched warning; no clipping; retry at least44px; synthetic fixture disclosure in proof"
+      "sha256": "ae2678a48ad93cbdc8cba1293069282817777f9b8145453b05b5e7bb9e4abc3f",
+      "inspected": "Legible desktop/mobile confirmed order+receipt or unmatched warning; purchased cart badge cleared; no clipping; accessible retry"
     }
   ],
   "logs": [
     {
-      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-fixed-focused-tests.log",
-      "sha256": "0047fde83031d81b0501c4cb506fed624e299024e2bd0dee71eb16b5fea575fc"
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-paid-focused-tests.log",
+      "sha256": "6b056353b01fd61ca12ae0e89735c6a2b9ad9eff13306b9b4b0be7f470cc985e"
     },
     {
-      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-full-verify.log",
-      "sha256": "b0bb37a8a65d7c8acdaafea9aac2e59b9d6897afd1382141df00edfc7daa1feb"
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-paid-full-verify.log",
+      "sha256": "701b4fae0599f2905153fd3b1a63a3985a2cfc5e1b528446f941766daf0e38f1"
     },
     {
-      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-final-quick.log",
-      "sha256": "21e6ce4ffb88b79ebf55add7fea7e3969be460cb56c00b9bbdabb4ffb067c801"
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-paid-registry-client-proof.log",
+      "sha256": "0b73f32415ea66ea25d3784c42cdee91abd0d14fd5fcd7ce777062d2c873ee8c"
     },
     {
-      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-final-registry-client-proof.log",
-      "sha256": "8bdb84d4c2c0c5c7f0135c724343218500a09edde62919afaf6d954cbab8c97e"
-    },
-    {
-      "path": ".grilltrack/work/guest-checkout-recovery-20261007/parent-final-build.log",
-      "sha256": "c83467023b27646980cf2dfab273f607852e4077e35c5c1586f10410ffaceb4f"
+      "path": ".grilltrack/work/guest-checkout-recovery-20261007/prior-source-successor-reproduction.json",
+      "sha256": "6dc64cc0fd3c451a593adbb7b87b2f0bc777c087146545e6a195443ff9f8361a"
     }
   ],
   "stderrDisposition": [
     "Node module-register deprecation hint; zero Astro errors/warnings",
     "Expected negative seed and loopback migration refusals; no remote call",
     "Existing EmDash/React list-key warnings and disposable revision-cleanup SQL diagnostics; acceptance assertions passed",
-    "Existing large client chunk warning; final build completes"
-  ],
-  "sourceIdentity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396"
+    "Existing large client chunk warning; production build completes"
+  ]
 }

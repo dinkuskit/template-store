@@ -16,7 +16,7 @@ const syntheticProjection = (state: "pending" | "paid" | "released-retry", attem
   total: { currency: "USD", minor: "2400" },
   pricing: { finalTotal: { currency: "USD", minor: "2400" } },
   redirectUrl: null,
-  order: state === "paid" ? { orderId: "order:fixture", receiptId: "receipt:fixture" } : null,
+  order: state === "paid" ? { orderId: "order:fixture", receiptId: "receipt:fixture", lines: [{ catalogItemId: "fixture-shirt", quantity: 1 }] } : null,
   retryAfter: null,
   unavailable: null,
 });
@@ -77,7 +77,11 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   try {
   const page = await context.newPage();
   let statusCalls = 0;
+  let prepareCalls = 0;
+  let startCalls = 0;
+  let capabilityId = "fixture-cap-1";
   await page.addInitScript(() => {
+    if (localStorage.getItem("dinkus.guest-cart.v1")) return;
     localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
       version: 1,
       lines: [{ id: "fixture-shirt", quantity: 1 }],
@@ -105,32 +109,39 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
       }],
     }),
   }));
-  await page.route(`**${RUNTIME_PREPARE}`, async (route) => route.fulfill({
+  await page.route(`**${RUNTIME_PREPARE}`, async (route) => {
+    prepareCalls += 1;
+    capabilityId = `fixture-cap-${prepareCalls}`;
+    await route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
       success: true,
       data: {
         ok: true,
-        capabilityId: "fixture-cap",
+        capabilityId,
         capability: {
-          capabilityId: "fixture-cap",
-          capability: "fixture-cap.secret",
+          capabilityId,
+          capability: `${capabilityId}.secret`,
           retention: "json-body",
           header: "x-commerce-guest-capability",
         },
         checkout: syntheticProjection("pending", null),
       },
     }),
-  }));
-  await page.route(`**${RUNTIME_PREPARE.replace("prepare", "start")}`, async (route) => route.fulfill({
+  }); });
+  await page.route(`**${RUNTIME_PREPARE.replace("prepare", "start")}`, async (route) => {
+    startCalls += 1;
+    expect(route.request().headers()["x-commerce-guest-capability"]).toBe(`${capabilityId}.secret`);
+    expect(route.request().postDataJSON()).toEqual({ lines: [{ catalogItemId: "fixture-shirt", quantity: 1 }] });
+    await route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({
       success: true,
-      data: { ok: true, capabilityId: "fixture-cap", checkout: syntheticProjection("pending", "fixture-attempt") },
+      data: { ok: true, capabilityId, checkout: syntheticProjection("pending", `fixture-attempt-${startCalls}`) },
     }),
-  }));
+  }); });
   await page.route(`**${RUNTIME_PREPARE.replace("prepare", "status")}`, async (route) => {
     statusCalls += 1;
     const state = statusCalls > 1 ? "paid" : "pending";
@@ -139,7 +150,7 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
       contentType: "application/json",
       body: JSON.stringify({
         success: true,
-        data: { ok: true, capabilityId: "fixture-cap", checkout: syntheticProjection(state, "fixture-attempt") },
+        data: { ok: true, capabilityId, checkout: syntheticProjection(state, `fixture-attempt-${startCalls}`) },
       }),
     });
   });
@@ -159,10 +170,24 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   await expect(page.locator("[data-guest-checkout-order]")).toContainText("order:fixture");
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
   expect(statusCalls).toBe(2);
+  await expect(page.locator("[data-guest-cart-count]")).toBeHidden();
   await page.screenshot({
     path: resolve("runs/checkout-integration-runs/20261007/browser", testInfo.project.name, "guest-checkout-synthetic-paid.png"),
     fullPage: true,
     animations: "disabled",
   });
+  await page.goto("/cart");
+  await expect(page.locator("[data-guest-cart-empty]")).toBeVisible();
+  await expect(page.locator("[data-guest-cart-status]")).toContainText("Order confirmed");
+  await page.evaluate(() => localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+    version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }],
+  })));
+  await page.reload();
+  await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+  await expect(page.locator("[data-guest-cart-qty]")).toBeEnabled();
+  await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+  await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
+  expect(prepareCalls).toBe(2);
+  expect(startCalls).toBe(2);
   } finally { await context.close(); }
 });

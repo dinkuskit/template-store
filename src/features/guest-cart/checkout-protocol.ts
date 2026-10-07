@@ -1,4 +1,4 @@
-import { parseGuestCartIntent, type GuestCartIntent } from "./intent.js";
+import { parseGuestCartIntent, type GuestCartIntent, type GuestCartLine } from "./intent.js";
 
 export const GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY = "dinkus.guest-checkout.v1";
 export const GUEST_CHECKOUT_CAPABILITY_HEADER = "x-commerce-guest-capability";
@@ -23,7 +23,7 @@ export type GuestCheckoutProjection = Readonly<{
   state: "pending" | "paid" | "recoverable-failure" | "released-retry";
   attemptId: string | null;
   redirectUrl: string | null;
-  order: Readonly<{ orderId: string; receiptId: string }> | null;
+  order: Readonly<{ orderId: string; receiptId: string; lines: readonly GuestCartLine[] }> | null;
   retryAfter: string | null;
   [key: string]: unknown;
 }>;
@@ -46,6 +46,8 @@ export type GuestCheckoutRetention = Readonly<{
   capabilityId: string;
   capability: string;
   attemptId: string | null;
+  awaitingStart?: true;
+  cartSettlement?: Readonly<{ orderId: string; fingerprint: string; pending: boolean }>;
 }>;
 
 export interface GuestCheckoutRetentionStorage {
@@ -117,7 +119,11 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
     if (!isObject(value.order) ||
         !safeCanonicalValue(value.order.orderId) ||
         !safeCanonicalValue(value.order.receiptId)) return null;
-    order = { orderId: value.order.orderId, receiptId: value.order.receiptId };
+    if (!Array.isArray(value.order.lines)) return null;
+    const purchased = parseGuestCartIntent({ version: 1, lines: value.order.lines.map((line) =>
+      isObject(line) ? { id: line.catalogItemId, quantity: line.quantity } : null) });
+    if (!purchased || purchased.lines.length === 0) return null;
+    order = { orderId: value.order.orderId, receiptId: value.order.receiptId, lines: purchased.lines };
   }
   if (value.state === "paid" && !order) return null;
   if (value.state === "released-retry" &&
@@ -190,11 +196,19 @@ export function readGuestCheckoutRetention(
         !safeId(value.capabilityId) ||
         !safeToken(value.capability) ||
         !value.capability.startsWith(`${value.capabilityId}.`) ||
+        (value.awaitingStart !== undefined && typeof value.awaitingStart !== "boolean") ||
+        (value.cartSettlement !== undefined && (!isObject(value.cartSettlement) ||
+          !safeCanonicalValue(value.cartSettlement.orderId) ||
+          typeof value.cartSettlement.fingerprint !== "string" ||
+          !/^[a-f0-9]{64}$/u.test(value.cartSettlement.fingerprint) ||
+          typeof value.cartSettlement.pending !== "boolean")) ||
         (value.attemptId !== null && !safeId(value.attemptId))) return null;
     return {
       capabilityId: value.capabilityId,
       capability: value.capability,
       attemptId: value.attemptId as string | null,
+      ...(value.awaitingStart === true ? { awaitingStart: true as const } : {}),
+      ...(isObject(value.cartSettlement) ? { cartSettlement: value.cartSettlement as GuestCheckoutRetention["cartSettlement"] } : {}),
     };
   } catch {
     return null;
@@ -228,8 +242,9 @@ export function updateGuestCheckoutAttempt(
   if (!current || current.capabilityId !== result.capabilityId) return null;
   // A response without an attempt is not permission to discard a previously
   // retained recovery locator (for example, an ambiguous return).
+  const { awaitingStart: _awaitingStart, ...stable } = current;
   const next = {
-    ...current,
+    ...stable,
     attemptId: result.checkout.attemptId ?? current.attemptId,
   };
   try {
@@ -373,6 +388,7 @@ export type GuestCheckoutController = Readonly<{
   start(intent: GuestCartIntent, couponCode?: string): Promise<GuestCheckoutCallResult>;
   status(): Promise<GuestCheckoutCallResult>;
   canStart(): boolean;
+  canPrepareNew(): boolean;
 }>;
 
 export function createGuestCheckoutController(options: {
@@ -384,13 +400,17 @@ export function createGuestCheckoutController(options: {
   // capability's authoritative status before it can issue another start.
   let startAllowed = false;
   let busy = false;
+  let confirmedOrderId: string | null = null;
+  const canPrepareNew = () => !busy && confirmedOrderId !== null &&
+    readGuestCheckoutRetention(options.storage)?.cartSettlement?.orderId === confirmedOrderId &&
+    readGuestCheckoutRetention(options.storage)?.cartSettlement?.pending === false;
   const active = (): GuestCheckoutCallResult => ({ result: null, failure: "attempt-active" });
   const prepare = async (): Promise<GuestCheckoutCallResult> => {
     if (!options.admitted) return { result: null, failure: "storage-unavailable" };
     if (busy) return active();
     try {
       if (!options.storage) return { result: null, failure: "storage-unavailable" };
-      if (options.storage.getItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY) !== null) return active();
+      if (options.storage.getItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY) !== null && !canPrepareNew()) return active();
     } catch {
       return { result: null, failure: "storage-unavailable" };
     }
@@ -402,6 +422,7 @@ export function createGuestCheckoutController(options: {
         return { result: null, failure: "storage-unavailable" };
       }
       startAllowed = response.result.checkout.attemptId === null;
+      confirmedOrderId = null;
       return response;
     } finally { busy = false; }
   };
@@ -411,9 +432,10 @@ export function createGuestCheckoutController(options: {
     if (!retention) return { result: null, failure: "storage-unavailable" };
     busy = true;
     startAllowed = false;
+    confirmedOrderId = null;
     try {
       const response = await callGuestCheckout(
-        { kind: "status", ...(retention.attemptId ? { attemptId: retention.attemptId } : {}) },
+        { kind: "status", ...(!retention.awaitingStart && retention.attemptId ? { attemptId: retention.attemptId } : {}) },
         retention,
         options.transport,
       );
@@ -425,6 +447,7 @@ export function createGuestCheckoutController(options: {
         retention.attemptId === null && response.result.checkout.attemptId === null) ||
         (response.result.checkout.state === "released-retry" &&
           response.result.checkout.retryAfter === response.result.checkout.attemptId);
+      if (checkoutCanConfirm(response.result)) confirmedOrderId = response.result.checkout.order!.orderId;
       return response;
     } finally { busy = false; }
   };
@@ -432,6 +455,7 @@ export function createGuestCheckoutController(options: {
     prepare,
     status,
     canStart: () => startAllowed && !busy,
+    canPrepareNew,
     start: async (intent, couponCode) => {
       const retention = readGuestCheckoutRetention(options.storage);
       if (!options.admitted) return { result: null, failure: "storage-unavailable" };
@@ -442,6 +466,15 @@ export function createGuestCheckoutController(options: {
       startAllowed = false;
       busy = true;
       try {
+        // Persist before the request: a lost successor response must recover the
+        // capability's CURRENT attempt rather than re-query its released parent.
+        if (!options.storage) return { result: null, failure: "storage-unavailable" };
+        try {
+          options.storage.setItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY, JSON.stringify({ ...retention, awaitingStart: true }));
+          if (!readGuestCheckoutRetention(options.storage)?.awaitingStart) {
+            return { result: null, failure: "storage-unavailable" };
+          }
+        } catch { return { result: null, failure: "storage-unavailable" }; }
         const response = await callGuestCheckout(start, retention, options.transport);
         if (response.failure || !response.result || !response.result.ok) return response;
         if (!updateGuestCheckoutAttempt(options.storage, response.result)) {

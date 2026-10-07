@@ -286,6 +286,32 @@ describe("guest checkout protocol and recovery", () => {
     expect(parseGuestCheckoutWireResult(wire({ state: "released-retry", attemptId: "attempt-1", retryAfter: "attempt-2" }))).toBeNull();
   });
 
+  it("recovers a lost successor response from the current capability after reload, not the released parent hint", async () => {
+    const saved = storage();
+    saved.setItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY, JSON.stringify({ ...retention, attemptId: "attempt-1" }));
+    const first = createGuestCheckoutController({ admitted: true, storage: saved, transport: {
+      fetch: async (endpoint) => {
+        if (endpoint.endsWith("/status")) return Response.json(wire({ state: "released-retry", attemptId: "attempt-1", retryAfter: "attempt-1" }));
+        throw new DOMException("response lost", "TimeoutError");
+      },
+    } });
+    await first.status();
+    expect((await first.start({ version: 1, lines: [{ id: "item-1", quantity: 1 }] })).failure).toBe("timeout");
+    expect(readGuestCheckoutRetention(saved)).toEqual({ ...retention, attemptId: "attempt-1", awaitingStart: true });
+    let requestedBody: unknown;
+    const reloaded = createGuestCheckoutController({ admitted: true, storage: saved, transport: {
+      fetch: async (_endpoint, init) => {
+        requestedBody = JSON.parse(String(init.body));
+        return Response.json(wire({ attemptId: "attempt-2" }));
+      },
+    } });
+    expect((await reloaded.start({ version: 1, lines: [{ id: "item-1", quantity: 1 }] })).failure).toBe("attempt-active");
+    await reloaded.status();
+    expect(requestedBody).toEqual({});
+    expect(readGuestCheckoutRetention(saved)).toEqual({ ...retention, attemptId: "attempt-2" });
+    expect(reloaded.canStart()).toBe(false);
+  });
+
   it("fails closed when capability persistence fails and validates Stripe redirect authority", () => {
     const failingStorage: GuestCheckoutRetentionStorage = {
       getItem: () => null,

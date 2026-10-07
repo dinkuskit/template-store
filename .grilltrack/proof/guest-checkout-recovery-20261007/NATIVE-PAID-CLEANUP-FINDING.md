@@ -1,0 +1,9 @@
+# Paid cart cleanup: accepted native finding
+
+Native review of git:27c3579802bbe9251a87f9677b1b98149b6e63f7 published one actionable P1 finding: paid confirmation retained purchased cart intent and left cart controls locked. The three checklist items describe the same session-state defect. Accepted as required_fix; no scope or authority waiver.
+
+Public review: https://github.com/dinkuskit/template-store/pull/31#issuecomment-6038811785. Receiver37625460898; confidence0.88. CI and comprehensive OpenClaw were clean for the same earlier source, but cannot qualify the repaired revision.
+
+Repair: authoritative matched paid order lines clear only equal purchased quantities. Changed quantities and other items survive. A local fingerprint/cleanup marker prevents repeated paid callbacks from erasing later cart intent and handles interrupted browser writes; it supplies no order/payment authority. The original capability/attempt remains available for receipt reload. Returning to the cart checks authoritative status again; an explicit new purchase can prepare a fresh capability only after paid status and completed local cleanup. This repairs the locked-cart behavior while preserving canonical receipt recovery instead of deleting its only opaque association immediately.
+
+Unit coverage checks matched-only cleanup, later/changed intent preservation, unconfirmed/mismatched attempts, failed-write recovery, and fresh-authority/new-prepare gating. The compiled immutable runtime proof loses a real start response, recovers the actual attempt, settles one canonical paid order, clears purchased intent, and proves a new prepare without a second provider creation. Desktop/mobile coverage returns to the cart, observes empty purchased intent, adds new identical intent, and starts through a fresh capability.

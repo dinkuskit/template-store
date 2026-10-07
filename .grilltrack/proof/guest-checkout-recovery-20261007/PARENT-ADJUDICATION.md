@@ -8,4 +8,6 @@ Deferred owner contract: supported same-installed catalog/config authority. Publ
 
 External CI/OpenClaw/native exact-source review evidence is recorded separately after commit. No merge or activation authority is inferred from this source review.
 
-Reviewed source artifact: `sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396`. SOURCE-MANIFEST.json seals159 complete product/source files, excluding GrillTrack lineage and self-referential proof metadata. Current bounded source is locally clean after required fixes; external exact-commit review remains pending.
+Accepted native P1 paid-cart lock and parent lost-successor-response findings are repaired; references and verification are in NATIVE-PAID-CLEANUP-FINDING.md and SUCCESSOR-RECOVERY-FINDING.md. Keeping the opaque capability for receipt reload is intentional; fresh prepare is unlocked only by current authoritative paid status and completed local cleanup. No browser marker establishes a paid order.
+
+Current reviewed source artifact: `sha256:acf2aa8b9930d564087302785d1f07e5763b5b9bd83766b123d9cd3cc3fc6e4a`. SOURCE-MANIFEST.json seals161 complete product/source files, excluding lineage and self-referential proof. Local repaired source is clean; fresh exact-commit external evidence is pending.
