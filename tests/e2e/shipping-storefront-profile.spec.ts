@@ -180,7 +180,7 @@ test("shipping profile admin catalog reaches the storefront without Inventory", 
       {
         project: testInfo.project.name,
         profile: "shipping",
-        commercePin: "444b0505ae061c58e2f738e9f39fb0b366d50e8c",
+        commercePin: "70419ae55c4f73354e3f0eda08b09bbc85368000",
         managedDemos: "absent",
         quantityShown: "never",
         inventoryRequests: inventoryRequests.length,

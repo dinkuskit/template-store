@@ -1,0 +1,16 @@
+{
+  "scope": "Parent review of listed changed source/docs/tests; not external PR clearance",
+  "sourceIdentity": "sha256:412750268e0103e1b44de4420f7d18d0a762c865214b9bcf389b601041cd8540",
+  "manifest": "SOURCE-FILES.sha256",
+  "result": "clean",
+  "acceptedAndRepaired": [
+    "Schema label without matching trusted-context/port declarations",
+    "Archive-only admission without actual Payments execution"
+  ],
+  "rejected": [
+    "Missing public installed-handler export",
+    "Miniflare restart unknown_attempt as Payments webhook defect",
+    "Generic EmDash callable-injection API required"
+  ],
+  "remainingHumanGate": "Maintainer merge after CI/OpenClaw/native exact-tuple review; runtime activation remains separate"
+}

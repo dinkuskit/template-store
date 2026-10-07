@@ -1,0 +1,24 @@
+[
+  {
+    "profile": "shipping-chromium-desktop",
+    "path": "runs/guest-cart/browser/shipping-chromium-desktop/cart-forged-success.png",
+    "sha256": "2af6841f4c751a144b8243defedfe7cafc49d8c3dd77e4171e7be70bd81d9d68",
+    "bytes": 52267,
+    "inspected": true,
+    "finding": "Readable intent cart; checkout unavailable; forged success query does not display a purchase.",
+    "syntheticData": true,
+    "retainedInIgnoredRuns": true,
+    "published": false
+  },
+  {
+    "profile": "shipping-chromium-mobile",
+    "path": "runs/guest-cart/browser/shipping-chromium-mobile/cart-forged-success.png",
+    "sha256": "3a1998728d77bf6e2d61b4a7ecc908c090e7c449ea0385eaaae7ea1452d5b810",
+    "bytes": 133939,
+    "inspected": true,
+    "finding": "Readable intent cart; checkout unavailable; forged success query does not display a purchase.",
+    "syntheticData": true,
+    "retainedInIgnoredRuns": true,
+    "published": false
+  }
+]

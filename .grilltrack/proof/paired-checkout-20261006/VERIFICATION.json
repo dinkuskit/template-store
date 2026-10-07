@@ -1,0 +1,36 @@
+{
+  "full_verify": {
+    "exit": 0,
+    "unit": 125,
+    "workflow": 9,
+    "browser_pass": 17,
+    "browser_expected_skip": 3
+  },
+  "compiled_commerce_host_fixtures": {
+    "exit": 0,
+    "tests": 55
+  },
+  "actual_compiled_pair": {
+    "exit": 0,
+    "scenarios": 3
+  },
+  "typecheck": {
+    "exit": 0,
+    "errors": 0
+  },
+  "logSha256": {
+    "VERIFY-FINAL.log": "77b9f2a022c879b04b933742281b4ed6ac17c51b05491c7fac2f2772cefe0316",
+    "COMMERCE-PACKAGE-FINAL.log": "44c23a701029f8b3da77fa0ae94a1168ddb7b5aebc6774295b6b1efe8be0aff7",
+    "COMPILED-PAIR-FINAL.log": "a364d4faeef449bb145508f84b189f039cce53ee4ec2875b49bdc4ae2cac9748",
+    "TYPECHECK.log": "f12a8316c8b93b04fd5be4cbb373dbb80ef0696b6035bf3f44dcf6d58219e531"
+  },
+  "proofClasses": [
+    "Template/Commerce source-alias storefront pilot",
+    "Immutable compiled Commerce external import plus Template adapter",
+    "Actual immutable Payments Worker in local workerd, synthetic identity/provider"
+  ],
+  "registryInstalled": false,
+  "realStripePayment": false,
+  "schedulerRegistered": false,
+  "actualProviderCalls": 0
+}

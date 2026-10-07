@@ -10,7 +10,7 @@ const expectedPins = {
     "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
 };
 const expectedCommerceCommit =
-  "444b0505ae061c58e2f738e9f39fb0b366d50e8c";
+  "70419ae55c4f73354e3f0eda08b09bbc85368000";
 
 const failures = [];
 for (const feature of [
@@ -19,6 +19,7 @@ for (const feature of [
   "dinkus.unmanaged-product-sellability",
   "dinkus.guest-cart",
   "dinkus.test-checkout-host",
+  "dinkus.paired-checkout-consumer",
 ]) {
   if (!featureMap.includes(`\`${feature}\``)) {
     failures.push(`FEATURE_MAP.md is missing ${feature}`);
@@ -89,6 +90,7 @@ for (const path of [
   "src/features/unmanaged-product-sellability/index.ts",
   "src/features/guest-cart/index.ts",
   "src/features/test-checkout-host/index.ts",
+  "src/features/paired-checkout/index.ts",
   "scripts/verify-checkout-package.mjs",
   "bin/verify-web",
   "scripts/check-worktree-text.mjs",
