@@ -2,7 +2,8 @@
  * TEST Checkout Host types for Payments wake transport and Commerce reconciliation.
  *
  * Adopts canonical types from `@dinkuskit/commerce/features/checkout`
- * matching the reviewed pre-release Commerce source 70419ae55c4f73354e3f0eda08b09bbc85368000.
+ * matching the reviewed pre-release Commerce source
+ * 45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef.
  */
 
 import type {

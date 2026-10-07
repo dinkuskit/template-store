@@ -6,8 +6,8 @@ Current Commerce source identity updated 2026-10-06 to match the template manife
 | Component | Current identity | Meaning |
 | --- | --- | --- |
 | TemplateStore | private package `0.0.0`; this candidate source | Development pilot, no approved release |
-| Commerce | reviewed source `70419ae55c4f73354e3f0eda08b09bbc85368000`; merged `ad84fe07c6dda1c493cc68a72c4f49cb6e179653` | Exact Commerce48 source contract adopted for the bounded pricing/checkout consumer; immutable compiled/registry artifacts remain local admission inputs |
-| Payments | reviewed source `37842220fddb10dc5294af084110cd33804715be`; merged `1d7b5521f9986df7b7f92866b43cf7814826d607` | Payments12 consumer contract adopted at source level; the provider Worker remains a private local intercepted transport |
+| Commerce | reviewed source `45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef`; unmerged pre-release candidate; npm archive `e0d1c88ca5cf805f3795aa61ef598f1c50c893be35fd4b41aa0ac867d554e4df`, Registry archive `79b64463dbb7c80012bb13fca613be0954b2387ee5ec5709a4656293dd5cfa3a` | Exact Commerce49 default Registry service assembly adopted for bounded runtime proof; owner artifacts remain pre-release and local admission inputs |
+| Payments | reviewed source `37842220fddb10dc5294af084110cd33804715be`; merged `1d7b5521f9986df7b7f92866b43cf7814826d607` | Immutable Payments12 HTTP/JWT/SQLite Worker paired locally with intercepted issuer/provider transport |
 | Blocks | EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks | No `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
 | Inventory | source `5889c7d59398376da51ac400d5c1f1214aba2c6b` | Development managed regression only; off in shipping v1 |
 | EmDash | package `1.0.1` | Actual tested package; registry-installed pair remains unqualified |
@@ -53,11 +53,11 @@ registry bundle or released tarball digest.
 | --- | --- | --- |
 | Inventory off | Commerce disabled stock management; Template default profile | Not a blocker for this bounded native qualification (shipping v1 profile operates with Inventory off); final Commerce artifact pending |
 | Cart / checkout / orders | Commerce public API, mounted runtime, persisted authority | Final mount and tested purchase/order path pending; no template copy of these models |
-| Payment transport | Payments exact test contract and approved timing semantics (1800..1860s window) | Approved window 1800..1860s; host transport, authenticated bridge, and durable internal wake consumer BLOCKED |
+| Payment transport | Payments exact test contract and approved timing semantics (1800..1860s window) | Approved window 1800..1860s; local default workerd/Payments bridge and durable wake settlement proven with synthetic identity; installed transport and scheduler activation pending |
 | Shipping story | Ship owner contract: fulfillment behavior and supported merchant path | Pending; shipping/contact/tax owner paths unqualified, physical demo fulfillment cannot be claimed |
 | Promotions | Coupons owner | Basic coupons required for v1; owner public interface and accepted checkout/usage evidence pending (separate dedicated Coupons owner now working) |
 | Bundles | Commerce / relevant owner contract | Not a blocker for this bounded native qualification; unimplemented with no bundle affordance |
-| Registry pair | Commerce + Template release artifact owners | Pending artifact handoff and EmDash 1.0 install proof |
+| Registry pair | Commerce + Template release artifact owners | Exact qualified pre-release artifacts adopted locally; official Registry release/delivery/install proof pending |
 | Blocks runtime | Template composition / EmDash public native Blocks | Current candidate uses EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks; no `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
 | Hosted demo | Template exact working pair, isolated synthetic state | Plan only; no approved deploy or verified URL |
 

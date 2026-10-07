@@ -1,0 +1,30 @@
+{
+  "schema": "template-store.local-validation/v1",
+  "passed": true,
+  "checks": {
+    "fullStorefront": {
+      "unitTests": 125,
+      "workflowTests": 9,
+      "browserPassed": 17,
+      "browserSkipped": 3,
+      "typecheck": "pass",
+      "build": "pass",
+      "audits": "pass"
+    },
+    "immutableCommerceConsumer": {
+      "tests": 55,
+      "result": "pass"
+    },
+    "defaultWorkerdPaymentsRuntime": "pass",
+    "historicalOptInAdapterRuntime": "pass",
+    "diffWhitespace": "pass",
+    "ledgerSchema": "pass"
+  },
+  "rawLogSha256": {
+    "verify.log": "313d28018283929abb88f61ac84c9296a45b51620a7cf9bdec4d517b541a45eb",
+    "package-check.log": "7d9bc72764d8d6816b2f5ca8c3e0b9067c6adee26f9395d98e221255c016ce53",
+    "registry-checkout-final.log": "be78f27f897f152ec21d7b96ce69c69d102f345cf56968b05352ac40b54da48f",
+    "paired-checkout.log": "bac0ba9e78a9a4268080742d54c0ad69a1a2a626801f4dcd1de7806f0d9af95a"
+  },
+  "stderrDisposition": "Non-failing pinned EmDash list-key warnings and revision cleanup of deleted disposable fixture tables; intentional negative migration refusals retained. No acceptance test failed."
+}

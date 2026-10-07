@@ -8,7 +8,7 @@ integer quantities. It has no trusted price, stock, payment or order state.
 Current Commerce catalog reads supply displayed names, prices and availability.
 A catalog-read failure must be visible and recoverable while preserving intent.
 An unavailable, missing or unpriced product remains non-purchasable. This pilot
-uses the reviewed Commerce48 source 70419ae55c4f73354e3f0eda08b09bbc85368000; it does not establish
+uses the review-qualified Commerce49 source 45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef; it does not establish
 registry-installed Commerce storage or route authority.
 
 ## Contract dependency
