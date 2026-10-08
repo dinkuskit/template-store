@@ -263,7 +263,7 @@
         "data": {
           "title": "Everyday Tee",
           "collection": "tees",
-          "commerceItemId": "dinkus-template-managed-product",
+          "commerce_item_id": "dinkus-template-managed-product",
           "description": "A clean, versatile tee for the everyday rotation.",
           "visual_label": "TEE"
         }
@@ -275,7 +275,7 @@
         "data": {
           "title": "Boxy Tee",
           "collection": "tees",
-          "commerceItemId": "dinkus-template-preview-boxy-tee",
+          "commerce_item_id": "dinkus-template-preview-boxy-tee",
           "description": "An easy silhouette with a relaxed feel.",
           "visual_label": "TEE"
         }
@@ -287,7 +287,7 @@
         "data": {
           "title": "Pullover Hoodie",
           "collection": "tees",
-          "commerceItemId": "dinkus-template-preview-hoodie",
+          "commerce_item_id": "dinkus-template-preview-hoodie",
           "description": "A comfortable layer for cooler days.",
           "visual_label": "HOODIE"
         }
@@ -299,7 +299,7 @@
         "data": {
           "title": "Canvas Cap",
           "collection": "hats",
-          "commerceItemId": "dinkus-template-unmanaged-product",
+          "commerce_item_id": "dinkus-template-unmanaged-product",
           "description": "A simple finishing touch for casual days.",
           "visual_label": "CAP"
         }
@@ -311,7 +311,7 @@
         "data": {
           "title": "Ribbed Beanie",
           "collection": "hats",
-          "commerceItemId": "dinkus-template-preview-beanie",
+          "commerce_item_id": "dinkus-template-preview-beanie",
           "description": "A soft, close-fitting cold-weather staple.",
           "visual_label": "BEANIE"
         }
