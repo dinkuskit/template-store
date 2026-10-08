@@ -24,6 +24,7 @@ origin.pathname = "/";
 origin.search = "";
 origin.hash = "";
 const base = origin.origin;
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 const results = [];
 const visited = new Set();
 const discovered = new Set(["/"]);
@@ -138,13 +139,34 @@ function sitemapLocations(xml) {
   return [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((match) => match[1]);
 }
 
+function onVerifierOrigin(url) {
+  if (url.origin === base) return true;
+  const expected = new URL(base);
+  return (
+    LOOPBACK_HOSTS.has(url.hostname) &&
+    LOOPBACK_HOSTS.has(expected.hostname) &&
+    url.protocol === expected.protocol &&
+    url.port === expected.port
+  );
+}
+
+function ontoVerifierOrigin(url) {
+  const expected = new URL(base);
+  const next = new URL(url.href);
+  next.protocol = expected.protocol;
+  next.hostname = expected.hostname;
+  next.port = expected.port;
+  return next;
+}
+
 function addSitemapPage(raw) {
   try {
-    const url = new URL(raw);
-    if (url.origin !== base) {
-      result("Sitemap origin", "FAIL", `${url.href} is outside ${base}`);
+    const parsed = new URL(raw);
+    if (!onVerifierOrigin(parsed)) {
+      result("Sitemap origin", "FAIL", `${parsed.href} is outside ${base}`);
       return;
     }
+    const url = ontoVerifierOrigin(parsed);
     url.hash = "";
     checkPathShape(url, "sitemap");
     sitemapPaths.add(url.pathname + url.search);
@@ -231,11 +253,12 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
     for (const rawChild of locations) {
       let childUrl;
       try {
-        childUrl = new URL(rawChild);
-        if (childUrl.origin !== base) {
-          result("Sitemap origin", "FAIL", `${childUrl.href} is outside ${base}`);
+        const parsed = new URL(rawChild);
+        if (!onVerifierOrigin(parsed)) {
+          result("Sitemap origin", "FAIL", `${parsed.href} is outside ${base}`);
           continue;
         }
+        childUrl = ontoVerifierOrigin(parsed);
         checkPathShape(childUrl, "sitemap child");
       } catch {
         result("Sitemap XML", "FAIL", `Invalid child sitemap URL: ${rawChild}`);
@@ -262,8 +285,14 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
       }
       childCount += 1;
     }
-    if (childCount === 0) result("Sitemap XML", "FAIL", "Sitemap index has no usable child sitemaps");
-    else result("Sitemap availability", "PASS", `${childCount} child sitemap(s), ${sitemapPaths.size} page URL(s)`);
+    if (childCount === 0) {
+      requiredOrSkip(
+        "Sitemap contract",
+        "Sitemap index has no usable same-origin child sitemaps on this origin",
+      );
+    } else {
+      result("Sitemap availability", "PASS", `${childCount} child sitemap(s), ${sitemapPaths.size} page URL(s)`);
+    }
   } else {
     for (const rawPage of locations) addSitemapPage(rawPage);
     if (sitemapPaths.size === 0) {

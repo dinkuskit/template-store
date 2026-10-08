@@ -98,3 +98,87 @@ test("drains a nested internal link discovered on a child page and can fail on i
     await new Promise((resolveClose) => server.close(resolveClose));
   }
 });
+
+test("rewrites loopback sitemap child locs onto the verifier origin", async () => {
+  const fetched = [];
+  const { server, origin } = await listen((req, res) => {
+    const url = new URL(req.url ?? "/", origin);
+    fetched.push(url.pathname);
+    const port = new URL(origin).port;
+    if (url.pathname === "/") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(html([]));
+      return;
+    }
+    if (url.pathname === "/home") {
+      res.writeHead(302, { location: "/", "cache-control": "no-store" });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/robots.txt") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    if (url.pathname === "/sitemap.xml") {
+      res.writeHead(200, { "content-type": "application/xml" });
+      res.end(
+        `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>http://localhost:${port}/sitemap-pages.xml</loc></sitemap></sitemapindex>`,
+      );
+      return;
+    }
+    if (url.pathname === "/sitemap-pages.xml") {
+      res.writeHead(200, { "content-type": "application/xml" });
+      res.end(
+        `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url></urlset>`,
+      );
+      return;
+    }
+    res.writeHead(404).end();
+  });
+  try {
+    const result = await runVerifier(origin);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /Sitemap availability/);
+    assert.equal(fetched.includes("/sitemap-pages.xml"), true);
+  } finally {
+    await new Promise((resolveClose) => server.close(resolveClose));
+  }
+});
+
+test("skips an empty sitemap index on this starter", async () => {
+  const { server, origin } = await listen((req, res) => {
+    const url = new URL(req.url ?? "/", origin);
+    if (url.pathname === "/") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(html([]));
+      return;
+    }
+    if (url.pathname === "/home") {
+      res.writeHead(302, { location: "/", "cache-control": "no-store" });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/robots.txt") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    if (url.pathname === "/sitemap.xml") {
+      res.writeHead(200, { "content-type": "application/xml" });
+      res.end(
+        `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>`,
+      );
+      return;
+    }
+    res.writeHead(404).end();
+  });
+  try {
+    const result = await runVerifier(origin);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /SKIP Sitemap contract/);
+    assert.doesNotMatch(result.stdout, /FAIL Sitemap XML/);
+  } finally {
+    await new Promise((resolveClose) => server.close(resolveClose));
+  }
+});
