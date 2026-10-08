@@ -23,7 +23,8 @@ function claimPath(content: Record<string, unknown>): string {
   return slug ? `/products/${slug}` : `/products/${entryIdOf(content)}`;
 }
 
-export const productUrlPlugin = definePlugin({
+export function createPlugin() {
+  return definePlugin({
   id: "dinkus-template-product-urls",
   version: "1.0.0",
   capabilities: ["content:read", "content:publish"],
@@ -75,4 +76,5 @@ export const productUrlPlugin = definePlugin({
       await ctx.storage.claims.delete(event.id);
     },
   },
-});
+  });
+}

@@ -25,10 +25,6 @@ export interface PublicCommerceProduct {
   gallery: readonly PublicCommerceImage[];
 }
 
-export function commerceProductPath(id: string): string {
-  return `/shop/${encodeURIComponent(id)}`;
-}
-
 export const availabilityLabels: Record<string, string> = {
   "in-stock": "In stock",
   "out-of-stock": "Out of stock",

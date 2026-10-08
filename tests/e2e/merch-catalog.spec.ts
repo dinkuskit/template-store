@@ -27,7 +27,7 @@ test("products are editable in EmDash and visible in the canonical catalog", asy
   await admin.screenshot({ path: resolve(root, "admin-merch-item.png"), fullPage: true });
   await adminContext.close();
 
-  for (const missing of ["/products/not-published", "/collections/not-published"]) {
+  for (const missing of ["/products/not-published", "/categories/not-published"]) {
     const response = await page.goto(missing);
     expect(response?.status()).toBe(404);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("not found");
@@ -51,7 +51,7 @@ test("products are editable in EmDash and visible in the canonical catalog", asy
     await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
   }
   await expect(page.locator("[data-merch-source=preview] a")).toHaveCount(3);
-  await page.getByRole("navigation", { name: "Merchandise collections" }).getByRole("link", { name: "Tees" }).click();
+  await page.getByRole("navigation", { name: "Product categories" }).getByRole("link", { name: "Tees" }).click();
   await expect(page.locator("h1")).toHaveText("Tees");
   await expect(page.locator("[data-merch-item]")).toHaveCount(2);
   await expect(page.locator("[data-merch-catalog] h2")).toHaveCount(2);

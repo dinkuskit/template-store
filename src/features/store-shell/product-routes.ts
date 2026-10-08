@@ -34,7 +34,7 @@ export async function hydrateProductCollectionMembership(
       .map((collection) => collection.id) ?? [];
     return {
       ...entry,
-      data: { ...entry.data, collections: memberships },
+      data: { ...entry.data, categories: memberships },
     };
   }));
 }

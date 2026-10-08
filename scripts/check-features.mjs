@@ -135,9 +135,8 @@ for (const path of sourceFiles(resolve(root, "src"))) {
 
 for (const relative of [
   "src/pages/index.astro",
-  "src/pages/collections/[slug].astro",
+  "src/pages/categories/[slug].astro",
   "src/pages/products/[id].astro",
-  "src/pages/shop/[id].astro",
   "src/pages/cart.astro",
   "src/pages/api/guest-cart/snapshot.ts",
   "src/pages/api/proof/stock.ts",

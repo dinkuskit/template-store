@@ -2,7 +2,7 @@
 
 ## Shipping default
 
-Shop on `/` and `/shop/<Commerce ID>` consume installed Commerce
+Shop on `/` consumes installed Commerce
 `catalog/public` through EmDash public-only SSR dispatch
 (`handlePublicPluginApiRoute`). The native Commerce plugin identity is
 `dinkus-commerce`; the old registry runtime ID is legacy and is not used for

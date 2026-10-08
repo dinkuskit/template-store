@@ -328,6 +328,15 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
 const robots = await inspect("/robots.txt", "robots.txt");
 if (robots?.ok) result("Robots availability", "PASS", "/robots.txt is reachable");
 
+for (const legacyPath of ["/shop/dinkus-template-managed-product", "/collections/tees"]) {
+  const legacyResponse = await request(absoluteUrl(legacyPath));
+  if (legacyResponse.status === 404) {
+    result("Legacy product routes", "PASS", `${legacyPath} returns 404`);
+  } else {
+    result("Legacy product routes", "FAIL", `${legacyPath} returned ${legacyResponse.status}; legacy routes must be removed`);
+  }
+}
+
 await drainDiscovered();
 
 for (const path of sitemapPaths) {
@@ -343,7 +352,7 @@ for (const path of sitemapPaths) {
 if (sitemapPaths.size) {
   for (const [path, page] of pages) {
     if (!sitemapPaths.has(path)) continue;
-    if (!/^\/(?:products|collections)\//.test(path)) continue;
+    if (!/^\/(?:products|categories)\//.test(path)) continue;
     if (page.canonical.length === 1) {
       try {
         const canonical = new URL(page.canonical[0]);
@@ -370,7 +379,7 @@ if (sitemapPaths.size) {
 const productPaths = [...pages.keys()].filter((path) => path.startsWith("/products/"));
 requiredOrSkip(
   "Canonical product routes (#34)",
-  "Product canonical /products/{slug} and legacy redirects are not landed",
+  "Product/category canonical routes are not landed",
   productPaths.every((path) => !path.endsWith("/")),
 );
 result("Product JSON-LD and feed contract (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");

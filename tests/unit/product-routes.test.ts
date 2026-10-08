@@ -7,19 +7,19 @@ import {
   validProductSlug,
 } from "../../src/features/store-shell/product-routes.js";
 
-const collections = [
+const categories = [
   { id: "tees", data: { title: "Tees" } },
   { id: "hats", data: { title: "Hats" } },
 ];
 
-function product(id: string, itemId: string, collection = "tees") {
+function product(id: string, itemId: string, category = "tees") {
   return {
     id,
     data: {
       title: id,
       description: "Description",
       visual_label: "TEE",
-      collection,
+      categories: [category],
       commerce_item_id: itemId,
     },
   };
@@ -28,7 +28,7 @@ function product(id: string, itemId: string, collection = "tees") {
 describe("canonical product routes", () => {
   it("uses the editorial slug only in a flat canonical URL", () => {
     expect(canonicalProductPath("everyday-tee")).toBe("/products/everyday-tee");
-    expect(canonicalCollectionPath("tees")).toBe("/collections/tees");
+    expect(canonicalCollectionPath("tees")).toBe("/categories/tees");
     expect(validProductSlug("nested/item")).toBe(false);
     expect(validProductSlug("Everyday Tee")).toBe(false);
   });
@@ -39,7 +39,7 @@ describe("canonical product routes", () => {
       product("two", "item-1"),
       product("bad/item", "item-2"),
       product("orphan", "item-3", "unknown"),
-    ], collections);
+    ], categories);
     expect(result.products).toHaveLength(0);
     expect(result.errors).toHaveLength(4);
     expect(buildProductCollections(result.products)).toEqual([]);
@@ -57,7 +57,7 @@ describe("canonical product routes", () => {
           commerceItemId: "dinkus-template-managed-product",
         },
       },
-    ], collections);
+    ], categories);
 
     expect(result.products).toEqual([]);
     expect(result.errors).toEqual(["invalid product entry: everyday-tee"]);

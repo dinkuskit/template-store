@@ -27,7 +27,7 @@ const manualLabel: Record<string, string> = {
     </div>
     <span class="catalog-count">{collections.reduce((total, group) => total + group.items.length, 0)} styles</span>
   </div>}
-  {!collectionOnly && <nav class="collection-nav" aria-label="Merchandise collections" data-collection-nav>
+  {!collectionOnly && <nav class="collection-nav" aria-label="Product categories" data-collection-nav>
     {collections.map((collection) => <a href={categoryPath(collection.slug)}>{collection.name}</a>)}
   </nav>}
   {collections.length === 0 ? (
