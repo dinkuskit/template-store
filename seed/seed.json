@@ -144,7 +144,7 @@
           "label": "Tees",
           "collection": "categories",
           "ref": "tees"
-        },
+        }
       ]
     }
   ],
