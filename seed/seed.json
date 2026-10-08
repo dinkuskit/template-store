@@ -128,15 +128,10 @@
       "label": "Store navigation",
       "items": [
         {
-          "type": "custom",
-          "label": "Shop",
-          "url": "/#commerce-catalog"
-        },
-        {
           "type": "collection",
-          "label": "Tees",
+          "label": "Hats",
           "collection": "categories",
-          "ref": "tees"
+          "ref": "hats"
         },
         {
           "type": "collection",
@@ -146,10 +141,10 @@
         },
         {
           "type": "collection",
-          "label": "Hats",
+          "label": "Tees",
           "collection": "categories",
-          "ref": "hats"
-        }
+          "ref": "tees"
+        },
       ]
     }
   ],
