@@ -6,18 +6,18 @@ export interface SecurityPolicyCheck {
 
 const EXACT_ALLOWED_PATHS = new Set([
   "/",
+  "/home",
   "/cart",
-  "/cart/",
   "/checkout/success",
-  "/checkout/success/",
   "/checkout/cancel",
-  "/checkout/cancel/",
   "/favicon.ico",
   "/robots.txt",
+  "/sitemap.xml",
   "/api/guest-cart/snapshot",
 ]);
 
 const ALLOWED_PATH_PATTERNS = [
+  /^\/sitemap-[a-z0-9-]+\.xml$/,
   /^\/_astro\/[^\s]+$/,
   /^\/merch\/[^\s]+$/,
   /^\/_emdash\/api\/media\/file\/[^\s]+$/,
@@ -28,6 +28,11 @@ const ALLOWED_PATH_PATTERNS = [
 
 const GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
+const SLASHLESS_REDIRECTS = new Map([
+  ["/cart/", "/cart"],
+  ["/checkout/success/", "/checkout/success"],
+  ["/checkout/cancel/", "/checkout/cancel"],
+]);
 
 export function decodedForms(value: string): string[] {
   const forms = [value];
@@ -47,6 +52,10 @@ export function isExactGuestCheckoutPath(pathname: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function slashlessRedirectPath(pathname: string): string | undefined {
+  return SLASHLESS_REDIRECTS.get(pathname);
 }
 
 function isDisallowedTraversalOrTarget(pathname: string, search: string): boolean {
@@ -172,16 +181,32 @@ export function evaluatePublicBoundary(
   };
 }
 
-export const PUBLIC_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "DENY",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "X-Robots-Tag": "noindex, nofollow",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-});
+export function demoNoIndexEnabled(
+  env: Record<string, unknown> = process.env,
+): boolean {
+  const demoNoIndex = typeof env.DINKUS_DEMO_NOINDEX === "string"
+    ? env.DINKUS_DEMO_NOINDEX
+    : undefined;
+  const profile = typeof env.DINKUS_STOREFRONT_PROFILE === "string"
+    ? env.DINKUS_STOREFRONT_PROFILE
+    : undefined;
+  return demoNoIndex === "1" || profile?.trim().toLowerCase() === "proof";
+}
 
-export function applySecurityHeaders(headers: Headers): void {
-  for (const [key, value] of Object.entries(PUBLIC_SECURITY_HEADERS)) {
+export function applySecurityHeaders(
+  headers: Headers,
+  env: Record<string, unknown> = process.env,
+): void {
+  const securityHeaders: Record<string, string> = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  };
+  if (demoNoIndexEnabled(env)) {
+    securityHeaders["X-Robots-Tag"] = "noindex, nofollow";
+  }
+  for (const [key, value] of Object.entries(securityHeaders)) {
     headers.set(key, value);
   }
 }

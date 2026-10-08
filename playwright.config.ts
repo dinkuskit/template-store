@@ -21,7 +21,7 @@ export default defineConfig({
   // A failed stateful editor test can corrupt the shared disposable fixture.
   // Passing CI still exercises every test; failures stop before cascades.
   maxFailures: process.env.CI ? 1 : 0,
-  reporter: [["line"]],
+  reporter: process.env.CI ? [["github"], ["line"]] : [["line"]],
   use: {
     baseURL: `http://127.0.0.1:${proofPort}`,
     trace: "retain-on-failure",
