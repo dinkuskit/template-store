@@ -81,7 +81,7 @@ export function readProductEntries(
   const errors: string[] = [];
   const linkCounts = new Map<string, number>();
   for (const entry of entries) {
-    const link = text(entry.data, "commerce_item_id") ?? text(entry.data, "commerceItemId");
+    const link = text(entry.data, "commerce_item_id");
     if (link) linkCounts.set(link, (linkCounts.get(link) ?? 0) + 1);
   }
   const products: ProductEntry[] = [];
@@ -89,7 +89,7 @@ export function readProductEntries(
     const title = text(entry.data, "title");
     const description = text(entry.data, "description") ?? "";
     const visualLabel = text(entry.data, "visual_label");
-    const commerceItemId = text(entry.data, "commerce_item_id") ?? text(entry.data, "commerceItemId");
+    const commerceItemId = text(entry.data, "commerce_item_id");
     const collectionSlugs = (Array.isArray(entry.data.collections)
       ? entry.data.collections
       : [entry.data.collection])

@@ -63,22 +63,28 @@ owner inserts the section with `/section`, then owns that copy.
 
 ## Upgrade an initialized local starter
 
-A database initialized before the Merchandise collection was added does **not**
-automatically receive that collection when the source or seed file changes. Stop
-the dev server, back up the existing SQLite database, then apply the new seed
-with conflict handling set to `skip`:
+The #34 URL contract deliberately breaks databases initialized with the old
+`merchandise` collection. No template-store sites accept real orders, so there
+is no live-store migration path to preserve. An old database fails closed: the
+new `products` and `collections` routes have no records to publish, rather than
+silently treating old records as canonical products or crashing.
+
+For a local site, back up the database and use the easiest manual upgrade:
+reseed or re-bootstrap the site from the current `seed/seed.json`, then review
+the new Products and Collections in EmDash. Preserve any copy you need by
+exporting it first and re-entering it into the new schema; do not run an
+automatic `merchandise` → `products` migration and do not use `update` to
+replace edited content.
 
 ```bash
-sqlite3 .artifacts/dev/content.db ".backup .artifacts/dev/pre-merchandise-backup.db"
+sqlite3 .artifacts/dev/content.db ".backup .artifacts/dev/pre-canonical-products-backup.db"
 pnpm exec emdash seed --database=.artifacts/dev/content.db --on-conflict=skip seed/seed.json
 ```
 
-Use the actual SQLite path if `DINKUS_TEMPLATE_DB_URL` differs from the local
-default. `skip` preserves existing Pages, including edits, while adding the
-missing Merchandise collection and starter entries; do not use `update` to
-replace edited content. Restart the server and check Pages → home and
-Merchandise in the EmDash admin before using the catalog. This is a local
-starter migration, not a production deploy or a data migration for live stores.
+If the old database cannot be reseeded cleanly, re-bootstrap a disposable
+local site instead. Use the actual SQLite path if `DINKUS_TEMPLATE_DB_URL`
+differs from the local default. This is an intentional source-pilot breaking
+upgrade, not a production deploy or a data migration for live stores.
 
 The same limit applies to the Home opener section. A database initialized before
 that section was added does not gain it when the seed file changes, and a fresh

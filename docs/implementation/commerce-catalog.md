@@ -60,8 +60,16 @@ Checkout, payment, deployment, and production-readiness are not claimed.
 ## Initialized local starters
 
 `pnpm dev` uses the installed default. Shop is unavailable until a paired
-installed artifact exists. Do not treat an empty or unavailable Shop as a cue
-to reimport seed or replace edited Pages/Merchandise.
+installed artifact exists. The #34 `merchandise` → `products`/`collections`
+change is intentionally breaking because no template-store site accepts real
+orders. An old initialized database therefore fails closed with no canonical
+product records; it is not automatically migrated, guessed, or used as a
+fallback.
+
+For a local site, export needed copy, back up the database and uploads, then
+reseed or re-bootstrap from the current `seed/seed.json` and review Products,
+Collections, and Pages. Do not use seed `update` or claim an automatic
+`merchandise` migration. Existing live stores do not exist.
 
 Native Products create still needs `DINKUS_CATALOG_PROFILE=native-development`.
 Stop the server and back up the existing SQLite database before that upgrade.

@@ -46,7 +46,7 @@ export function buildMerchCollections(
     ) continue;
     const commerceItemId = typeof entry.data.commerce_item_id === "string"
       ? entry.data.commerce_item_id
-      : typeof entry.data.commerceItemId === "string" ? entry.data.commerceItemId : "";
+      : "";
     const item: MerchRecord = {
       id: entry.id,
       title: title.trim(),

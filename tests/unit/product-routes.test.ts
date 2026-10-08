@@ -20,7 +20,7 @@ function product(id: string, itemId: string, collection = "tees") {
       description: "Description",
       visual_label: "TEE",
       collection,
-      commerceItemId: itemId,
+      commerce_item_id: itemId,
     },
   };
 }
@@ -43,5 +43,23 @@ describe("canonical product routes", () => {
     expect(result.products).toHaveLength(0);
     expect(result.errors).toHaveLength(4);
     expect(buildProductCollections(result.products)).toEqual([]);
+  });
+
+  it("fails closed on the pre-#34 merchandise schema", () => {
+    const result = readProductEntries([
+      {
+        id: "everyday-tee",
+        data: {
+          title: "Everyday Tee",
+          description: "Description",
+          visual_label: "TEE",
+          collection: "tees",
+          commerceItemId: "dinkus-template-managed-product",
+        },
+      },
+    ], collections);
+
+    expect(result.products).toEqual([]);
+    expect(result.errors).toEqual(["invalid product entry: everyday-tee"]);
   });
 });
