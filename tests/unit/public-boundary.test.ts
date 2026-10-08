@@ -73,6 +73,9 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", `${base}/start`).status).toBe(405);
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/checkout/cancel").allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", "/cart/").status).toBe(405);
+    expect(evaluatePublicBoundary("PUT", "/checkout/success/").status).toBe(405);
+    expect(evaluatePublicBoundary("DELETE", "/checkout/cancel/").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/checkout/success").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/_emdash/api/plugins/r_other/checkout/guest/start").status).toBe(405);
     expect(evaluatePublicBoundary("POST", `${base.replace("r_", "%72_")}/start`).allowed).toBe(true);
@@ -328,6 +331,18 @@ describe("worker boundary handler", () => {
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("http://demo.dinkuskit.com/cart?from=bookmark");
     expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(astroFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-read methods on slash variants with 405", async () => {
+    astroFetch.mockClear();
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const request = new Request("http://demo.dinkuskit.com/cart/", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "198.51.100.1" },
+    });
+    const res = await worker.fetch(request, { RATE_LIMITER: limiter }, dummyCtx);
+    expect(res.status).toBe(405);
     expect(astroFetch).not.toHaveBeenCalled();
   });
 

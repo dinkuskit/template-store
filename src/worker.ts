@@ -117,7 +117,7 @@ export default {
     // 4. Strict route and method boundary evaluation
     const url = new URL(request.url);
     const slashlessPath = slashlessRedirectPath(url.pathname);
-    if (slashlessPath) {
+    if (slashlessPath && (request.method === "GET" || request.method === "HEAD")) {
       const redirectUrl = new URL(request.url);
       redirectUrl.pathname = slashlessPath;
       const response = new Response(null, {

@@ -21,7 +21,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
   const slashlessPath = slashlessRedirectPath(context.url.pathname);
-  if (slashlessPath) {
+  if (slashlessPath && (context.request.method === "GET" || context.request.method === "HEAD")) {
     const redirectUrl = new URL(context.request.url);
     redirectUrl.pathname = slashlessPath;
     const response = new Response(null, {
