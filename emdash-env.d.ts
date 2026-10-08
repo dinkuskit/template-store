@@ -5,7 +5,7 @@
 
 import type { BylineSummary, ContentBylineCredit, TaxonomyTerm, PortableTextBlock, ReferencePage } from "emdash";
 
-export interface Collection {
+export interface Category {
   id: string;
   slug: string | null;
   status: string;
@@ -88,12 +88,12 @@ export interface Product {
 }
 
 export interface ProductReferences {
-  collections: ReferencePage<Collection>;
+  categories: ReferencePage<Category>;
 }
 
 declare module "emdash" {
   interface EmDashCollections {
-    collections: Collection;
+    categories: Category;
     pages: Page;
     products: Product;
   }

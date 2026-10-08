@@ -29,6 +29,7 @@ export const productUrlPlugin = definePlugin({
   capabilities: ["content:read", "content:publish"],
   storage: {
     claims: {
+      indexes: [],
       uniqueIndexes: ["itemId"],
     },
   },
@@ -57,10 +58,10 @@ export const productUrlPlugin = definePlugin({
         } satisfies ProductClaim);
       } catch {
         const claims = await ctx.storage.claims.query();
-        const holder = claims.items.find((claim) => claim.data.itemId === itemId);
+        const holder = claims.items.find((claim) => (claim.data as ProductClaim).itemId === itemId);
         return {
           cancel: true,
-          reason: `Commerce product is already published at ${holder?.data.path ?? `/products/${entryId}`}.`,
+          reason: `Commerce product is already published at ${(holder?.data as ProductClaim | undefined)?.path ?? `/products/${entryId}`}.`,
         };
       }
     },

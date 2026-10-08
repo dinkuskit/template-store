@@ -26,6 +26,7 @@ export {
   buildMerchCollections,
   publicMerchCollections,
   categoryAnchor,
+  categoryPath,
   collectionPath,
   productPath,
   type MerchCollection,
