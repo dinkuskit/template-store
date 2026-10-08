@@ -12,6 +12,7 @@ playwright-report/
 !.env.example
 
 .grilltrack/work/
+.cursor/skills/
 
 # Retain historical inputs locally; excluded from fresh public commits after audit.
 .grilltrack/archive/gt-20260829172956-305950/
