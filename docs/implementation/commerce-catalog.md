@@ -1,52 +1,74 @@
 # Merchant catalog consumption
 
-Commerce Products is the real public catalog. Open EmDash admin → Products
-(`/_emdash/admin/plugins/dinkus-commerce/products`), add a name and SKU, then
-set Regular in dollars. Reload `/` to see the product under Shop. A lower Sale
-strikes Regular and displays Sale. Clear both price fields to remove the product
-from public listings and its `/shop/<Commerce ID>` detail page while retaining
-it in Products. An explicit zero Regular is a free listed product.
+## Shipping default
 
-Commerce owns identity, price validation, and availability. The template reads
-the same persisted plugin collections through EmDash public `getDb` and
-`PluginStorageRepository` APIs, then calls Commerce public resolvers. It does
-not copy admin data into the in-memory proof adapters. CMS merchandise cannot
-claim a Commerce identity. Server failures show an unavailable catalog, never
-invented prices or stock. No public mutation endpoint is added.
+Shop on `/` and `/shop/<Commerce ID>` consume installed Commerce
+`catalog/public` through EmDash public-only SSR dispatch
+(`handlePublicPluginApiRoute`). The Registry runtime identity is
+`r_gshdrqaldna3r7sn`. The request is a fresh public GET: no incoming cookies,
+credentials, query parameters, or shopper capability. Every opaque cursor is
+followed, including empty filtered pages. Display price is Commerce's projected
+customer price; this template does not reconstruct a Regular/Sale pair.
 
-The exact Commerce source is `81a6f571b5ad3dcc73ba6af9a89bdb438c6a8e06`.
-Products ships at that head; visual stock-status and Store hide controls do not.
-The existing backend manual-availability contract is consumed as-is. Managed
-products without a configured provider fail closed as availability unavailable.
-No managed-stock admin or provider transport is introduced.
+Without a paired installed Commerce artifact that route is absent. Shop
+fail-closes with an unavailable catalog and invents no products, prices, or
+stock. Checkout stays closed. Native EmDash Products
+(`/_emdash/admin/plugins/dinkus-commerce/products`) is not the shipping catalog
+on this default.
 
-Shipping v1 uses unmanaged Commerce Products with Inventory off. The existing
-Inventory `8 → 5 → 8` demonstration remains in the explicit development profile
-and is separate from merchant products. Its seeded CMS merchandise and unmanaged
-proof remain integration demonstrations; they are not the shipping catalog. Checkout,
-payment, deployment, and production-readiness are not claimed.
+A matching installed Commerce artifact is required before Shop can list live
+Products on the shipping profile. Historical Commerce49/Payments12 package
+fixtures keep their identities and do not qualify this pairing.
+
+## Native-development proof
+
+`DINKUS_CATALOG_PROFILE=native-development` mounts native `dinkusCommerce()` and
+reads persisted plugin collections through EmDash `getDb` /
+`PluginStorageRepository`, then Commerce public resolvers. Canonical proof
+Playwright uses that profile. Shipping Playwright deletes it so the verifier
+cannot pass on native storage while claiming the installed default.
+
+On the native-development profile only: open EmDash admin → Products, add a name
+and SKU, then set Regular in dollars. Reload `/` to see the product under Shop.
+A lower Sale strikes Regular and displays Sale. Clear both price fields to
+remove the product from public listings and its `/shop/<Commerce ID>` detail
+page while retaining it in Products. An explicit zero Regular is a free listed
+product. CMS merchandise cannot claim a Commerce identity. Server failures show
+an unavailable catalog, never invented prices or stock. No public mutation
+endpoint is added.
+
+## Pins and boundaries
+
+Exact Commerce source is `5ade2bd0e4480b8ec9220c7872d7445e35547a3e`. EmDash and
+`@emdash-cms/cloudflare` are `1.2.0`. Managed products without a configured
+provider fail closed as availability unavailable. No managed-stock admin or
+provider transport is introduced. Inventory `8 → 5 → 8` remains the explicit
+`DINKUS_STOREFRONT_PROFILE=proof` demonstration, not the shipping catalog.
+Checkout, payment, deployment, and production-readiness are not claimed.
 
 ## Initialized local starters
 
-No seed or CMS collection changes are required. Stop the server and back up
-the existing SQLite database before upgrading. Boot the new source against the
-same DB and uploads directory. EmDash registers Commerce plugin storage; the
-Node scheduler materializes the unique catalog indexes (up to one minute).
-Commerce refuses create until those indexes exist. Do not reimport the seed or
-replace edited Pages/Merchandise to enable Products. The merchant catalog starts
-empty; demo products are not silently copied into real Commerce storage.
+`pnpm dev` uses the installed default. Shop is unavailable until a paired
+installed artifact exists. Do not treat an empty or unavailable Shop as a cue
+to reimport seed or replace edited Pages/Merchandise.
 
-This is Node SQLite starter integration on EmDash 0.41.0, not a mounted
-Cloudflare compatibility claim. Commerce still declares peer 0.40.1 at this
-source; the starter verifier provides bounded 0.41 consumer evidence only.
-EmDash #2768 remains the mounted Cloudflare index-materialization blocker;
-that pilot still requires its recorded fork.
+Native Products create still needs `DINKUS_CATALOG_PROFILE=native-development`.
+Stop the server and back up the existing SQLite database before that upgrade.
+EmDash registers native Commerce plugin storage; the Node scheduler materializes
+the unique catalog indexes (up to one minute). Commerce refuses create until
+those indexes exist. The merchant catalog starts empty; demo products are not
+silently copied into Commerce storage.
 
 ## Verification
 
-`bin/verify-web full` includes `tests/e2e/commerce-catalog.spec.ts`: real Products
-create, missing-Regular hide, Regular, Sale, invalid-price preservation, admin
-reload, anonymous detail, authenticated public Edit hydration, and price clearing
-on desktop and mobile. Existing suites retain the Inventory sequence, manual
-availability, CMS authoring, editorial query card, and preview isolation.
-Sanitized browser media is retained separately from product source.
+`bin/verify-web full` shipping projects
+(`tests/e2e/shipping-storefront-profile.spec.ts`) prove the installed public
+path without a native plugin: unavailable Shop, no invented product cards, no
+add-to-cart, closed checkout, preview isolation, desktop and mobile.
+
+Native Products create, Regular/Sale, Coming soon, and guest-cart add-to-cart
+remain `tests/e2e/commerce-catalog.spec.ts` and `tests/e2e/guest-cart.spec.ts`
+on the explicit native-development proof server. Existing suites retain the
+Inventory sequence, manual availability, CMS authoring, editorial query card,
+and preview isolation. Sanitized browser media is retained separately from
+product source.

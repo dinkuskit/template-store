@@ -61,8 +61,11 @@ Run `pnpm verify` before closeout. Browser proof must exercise desktop Chromium
 and a mobile viewport. The explicit development integration profile observes the managed `8 -> 5 -> 8` Inventory sequence,
 and observe unmanaged manual availability cycle through in-stock, out-of-stock,
 and available-on-backorder without showing a quantity. The default shipping
-profile must prove the persisted Products admin-to-storefront journey without
-Inventory configuration/network or proof adapter bootstrap. Source-pilot checks
+profile must prove the installed Commerce public catalog path without a native
+plugin mount, Inventory configuration/network, or proof adapter bootstrap.
+Without a paired installed artifact the catalog fail-closes and invents no
+products. Native Products admin-to-storefront remains the explicit
+`native-development` proof profile. Source-pilot checks
 do not establish released artifact, registry, checkout, or Cloudflare readiness.
 
 ## Gates

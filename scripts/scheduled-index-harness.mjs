@@ -13,6 +13,7 @@ import { dirname, resolve } from "node:path";
 
 const COMMERCE_SKU_UNIQUE_INDEX =
   "uidx_plugin_dinkus-commerce_catalogItems_skuKey";
+const NATIVE_CATALOG_PROFILE = "native-development";
 
 const root = resolve(import.meta.dirname, "..");
 const localConfigPath = resolve(root, ".artifacts/wrangler.local.jsonc");
@@ -68,6 +69,18 @@ function freePort() {
   });
 }
 
+function cloudflareHarnessEnv() {
+  return {
+    ...process.env,
+    DINKUS_HOSTING_PROFILE: "cloudflare",
+    DINKUS_WRANGLER_CONFIG: localConfigPath,
+    // Unique catalog indexes come from native definePlugin storage. The shipping
+    // default leaves plugins empty for installed Commerce; this harness is the
+    // native demo-seed path and must remount that descriptor at build time.
+    DINKUS_CATALOG_PROFILE: NATIVE_CATALOG_PROFILE,
+  };
+}
+
 function entryExportsScheduled() {
   if (!existsSync(entryPath)) return false;
   const text = readFileSync(entryPath, "utf8");
@@ -79,15 +92,10 @@ function ensureCloudflareBuild() {
     cwd: root,
     stdio: "inherit",
   });
-  if (entryExportsScheduled()) return;
   const build = spawnSync("pnpm", ["build"], {
     cwd: root,
     stdio: "inherit",
-    env: {
-      ...process.env,
-      DINKUS_HOSTING_PROFILE: "cloudflare",
-      DINKUS_WRANGLER_CONFIG: localConfigPath,
-    },
+    env: cloudflareHarnessEnv(),
   });
   if (build.status !== 0 || !entryExportsScheduled()) {
     throw new Error(
@@ -232,7 +240,7 @@ async function main() {
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
       env: {
-        ...process.env,
+        ...cloudflareHarnessEnv(),
         WRANGLER_SEND_METRICS: "false",
       },
     },

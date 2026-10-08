@@ -17,7 +17,7 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.commerce-catalog` | Persisted native Commerce Products admin consumption, public listing and detail, Regular/Sale and availability read composition | `src/features/commerce-catalog/`; `src/pages/shop/`; `tests/e2e/commerce-catalog.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce public root; EmDash public runtime/repository APIs | `bin/verify-web quick` | `bin/verify-web full` | local integration |
+| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; explicit native-development proof retains Regular/Sale composition | `src/features/commerce-catalog/`; `src/pages/shop/`; `tests/e2e/commerce-catalog.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed |
 
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |
@@ -75,11 +75,11 @@ Commerce49 derives canonical TEST payment lookup and wake list/ACK from original
 
 The default source-pilot profile is `shipping`; explicit
 `DINKUS_STOREFRONT_PROFILE=proof` selects development demonstrations.
-`tests/e2e/shipping-storefront-profile.spec.ts` covers Products create, Regular/Sale,
-manual availability, absent quantities/demonstrations, preview isolation, and
-merchant product detail on desktop/mobile. The current Commerce pin
-`45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef` preserves the disabled Coming soon
-control under the native entry, while registry pairing remains pending.
+`tests/e2e/shipping-storefront-profile.spec.ts` covers the installed public
+catalog path with no native plugin mount: fail-closed Shop, no invented
+products, absent quantities/demonstrations, preview isolation, and closed
+checkout on desktop/mobile. Native Products create, Regular/Sale, Coming soon,
+and guest-cart add-to-cart remain `native-development` proof.
 `pnpm verify` keeps both this profile and all earlier managed regressions.
 
 ## Storefront drivers
@@ -136,3 +136,9 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
   delivery gates outside this preparation slice; catalog proof alone cannot
   establish v1 readiness. Inventory is not a shipping v1 gate. Deployment is
   planned separately and requires explicit approval.
+
+## Installed catalog consumer (2026-10-07)
+
+Default catalog reads use the exact installed `r_gshdrqaldna3r7sn` public `catalog/public` route through EmDash public-only SSR dispatch. An absent/private route or malformed projection fails closed. Every cursor is followed, including empty filtered pages. Commerce projects the customer price; Template does not reconstruct a sale comparison. Native storage reads and the native plugin registration require `DINKUS_CATALOG_PROFILE=native-development`; canonical browser fixtures set that explicit profile. Shipping installation needs the matching installed Commerce artifact.
+
+The current source pin is Commerce `5ade2bd0e4480b8ec9220c7872d7445e35547a3e`, with EmDash `1.2.0`. Existing Commerce49/Payments12 package verifiers are historical exact-artifact fixtures and intentionally refuse this new pairing. They are not proof of this candidate. The optional cart coupon passes only intent to canonical checkout; it stays disabled together with checkout until an owner-supplied configuration/readiness contract exists. Catalog or prepare success does not imply readiness.

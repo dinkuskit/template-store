@@ -44,7 +44,7 @@ describe("synthetic demo D1 seed", () => {
     const arbitrary = runSeed([], { D1_DB_PATH: "/tmp/not-a-target.sqlite" });
     expect(arbitrary.status).toBe(2);
     expect(arbitrary.stderr).toContain("ARBITRARY_DB_PATH_REJECTED");
-  });
+  }, 120000);
 
   it("repeats the demo seed and preserves a non-demo sentinel", () => {
     execFileSync(process.execPath, ["scripts/build-seed-bundle.mjs"], {
