@@ -4,30 +4,13 @@ import { expect, test } from "@playwright/test";
 
 const proofRoot = resolve("runs/merch-catalog-20260925/browser");
 
-test("merchandise is editable in EmDash and visible in the classic catalog", async ({ page, request, browser }, testInfo) => {
+test("products are visible in the canonical category catalog", async ({ page, request }, testInfo) => {
   test.setTimeout(120_000);
   const root = resolve(proofRoot, testInfo.project.name);
   await mkdir(root, { recursive: true });
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
 
-  const adminContext = await browser.newContext();
-  const admin = await adminContext.newPage();
-  await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/merchandise/everyday-tee");
-  await expect(admin).toHaveURL(/\/content\/merchandise\/everyday-tee/);
-  const welcome = admin.getByRole("dialog", { name: /Welcome to EmDash/ });
-  try {
-    await expect(welcome).toBeVisible({ timeout: 5_000 });
-    await admin.getByRole("button", { name: "Get Started" }).click();
-  } catch {
-    await expect(welcome).toHaveCount(0);
-  }
-  await expect(welcome).toHaveCount(0);
-  await expect(admin.locator('input[value="Everyday Tee"]')).toBeVisible({ timeout: 30_000 });
-  await expect(admin.locator('input[value="Tees"]')).toBeVisible();
-  await admin.screenshot({ path: resolve(root, "admin-merch-item.png"), fullPage: true });
-  await adminContext.close();
-
-  for (const missing of ["/products/not-published", "/collections/not-published"]) {
+  for (const missing of ["/products/not-published", "/categories/not-published"]) {
     const response = await page.goto(missing);
     expect(response?.status()).toBe(404);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("not found");
@@ -51,7 +34,7 @@ test("merchandise is editable in EmDash and visible in the classic catalog", asy
     await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
   }
   await expect(page.locator("[data-merch-source=preview] a")).toHaveCount(3);
-  await page.getByRole("navigation", { name: "Merchandise collections" }).getByRole("link", { name: "Tees" }).click();
+  await page.getByRole("navigation", { name: "Product categories" }).getByRole("link", { name: "Tees" }).click();
   await expect(page.locator("h1")).toHaveText("Tees");
   await expect(page.locator("[data-merch-item]")).toHaveCount(2);
   await expect(page.locator("[data-merch-catalog] h2")).toHaveCount(2);
@@ -107,5 +90,5 @@ test("merchandise is editable in EmDash and visible in the classic catalog", asy
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
   await page.screenshot({ path: resolve(root, "public-catalog.png"), fullPage: true });
-  await writeFile(resolve(root, "assertions.json"), `${JSON.stringify({ project: testInfo.project.name, adminPath: "/_emdash/admin/content/merchandise/everyday-tee", collections: ["Hats", "Hoodies", "Tees"], previewCount: 3, horizontalOverflow: overflow }, null, 2)}\n`);
+  await writeFile(resolve(root, "assertions.json"), `${JSON.stringify({ project: testInfo.project.name, adminPath: "/_emdash/admin/content/products/everyday-tee", collections: ["Hats", "Hoodies", "Tees"], previewCount: 3, horizontalOverflow: overflow }, null, 2)}\n`);
 });

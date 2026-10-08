@@ -21,19 +21,20 @@ const ALLOWED_PATH_PATTERNS = [
   /^\/_astro\/[^\s]+$/,
   /^\/merch\/[^\s]+$/,
   /^\/_emdash\/api\/media\/file\/[^\s]+$/,
-  /^\/shop\/[a-zA-Z0-9_-]+$/,
-  /^\/collections\/[a-zA-Z0-9_-]+$/,
+  /^\/categories\/[a-zA-Z0-9_-]+$/,
   /^\/products\/[a-zA-Z0-9_-]+$/,
 ];
 
 const GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
-const SLASHLESS_REDIRECTS = new Map([
-  ["/cart/", "/cart"],
-  ["/checkout/success/", "/checkout/success"],
-  ["/checkout/cancel/", "/checkout/cancel"],
-]);
+function slashlessCollectionPath(pathname: string): string | undefined {
+  if (!pathname.endsWith("/") || pathname === "/") return undefined;
+  if (/^\/(?:products|categories)\/[^/]+\/$/.test(pathname)) {
+    return pathname.slice(0, -1);
+  }
+  return undefined;
+}
 
 export function decodedForms(value: string): string[] {
   const forms = [value];
@@ -56,7 +57,7 @@ export function isExactGuestCheckoutPath(pathname: string): boolean {
 }
 
 export function slashlessRedirectPath(pathname: string): string | undefined {
-  return SLASHLESS_REDIRECTS.get(pathname);
+  return slashlessCollectionPath(pathname);
 }
 
 function isDisallowedTraversalOrTarget(pathname: string, search: string): boolean {
@@ -218,13 +219,9 @@ export function evaluatePublicBoundary(
 export function demoNoIndexEnabled(
   env: Record<string, unknown> = process.env,
 ): boolean {
-  const demoNoIndex = typeof env.DINKUS_DEMO_NOINDEX === "string"
-    ? env.DINKUS_DEMO_NOINDEX
-    : undefined;
-  const profile = typeof env.DINKUS_STOREFRONT_PROFILE === "string"
-    ? env.DINKUS_STOREFRONT_PROFILE
-    : undefined;
-  return demoNoIndex === "1" || profile?.trim().toLowerCase() === "proof";
+  // Search visibility is not access protection. A real merchant launch must
+  // explicitly opt in; demos, previews, and staging are private to crawlers.
+  return env.DINKUS_LAUNCH_INDEXABLE !== "1";
 }
 
 export function applySecurityHeaders(

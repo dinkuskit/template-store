@@ -44,9 +44,9 @@ this is a local starter scaffold, not a production-ready retail design.
 
 ## Collection and product browse slice
 
-The catalog now links to server-rendered `/collections/<name-slug>-<digest>` and
-`/products/<entry-id>` pages. Collection URL digests distinguish editorial names
-that normalize to the same slug; product URLs use immutable, URL-safe EmDash
+The catalog now links to server-rendered `/categories/<slug>` and
+`/products/<entry-id>` pages. Category content owns the stable slug; product
+URLs use immutable, URL-safe EmDash
 entry IDs rather than editable titles. Invalid IDs are omitted from the catalog.
 Both routes look up published Merchandise entries only and return 404 for
 missing or draft entries. Category names, descriptions, titles, and illustration

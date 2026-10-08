@@ -2,10 +2,11 @@
 
 ## Shipping default
 
-Shop on `/` and `/shop/<Commerce ID>` consume installed Commerce
+Shop on `/` consumes installed Commerce
 `catalog/public` through EmDash public-only SSR dispatch
-(`handlePublicPluginApiRoute`). The Registry runtime identity is
-`r_gshdrqaldna3r7sn`. The request is a fresh public GET: no incoming cookies,
+(`handlePublicPluginApiRoute`). The native Commerce plugin identity is
+`dinkus-commerce`; the old registry runtime ID is legacy and is not used for
+this catalog consumer. The request is a fresh public GET: no incoming cookies,
 credentials, query parameters, or shopper capability. Every opaque cursor is
 followed, including empty filtered pages. Display price is Commerce's projected
 customer price; this template does not reconstruct a Regular/Sale pair.
@@ -41,15 +42,16 @@ cannot pass on native storage while claiming the installed default.
 On the native-development profile only: open EmDash admin → Products, add a name
 and SKU, then set Regular in dollars. Reload `/` to see the product under Shop.
 A lower Sale strikes Regular and displays Sale. Clear both price fields to
-remove the product from public listings and its `/shop/<Commerce ID>` detail
-page while retaining it in Products. An explicit zero Regular is a free listed
+remove the product from public listings while retaining it in Products. An
+explicit zero Regular is a free listed
 product. CMS merchandise cannot claim a Commerce identity. Server failures show
 an unavailable catalog, never invented prices or stock. No public mutation
 endpoint is added.
 
 ## Pins and boundaries
 
-Exact Commerce source is `5ade2bd0e4480b8ec9220c7872d7445e35547a3e`. EmDash and
+Exact Commerce source is `938cb06cc6c0a1e7f457e514076d608219e38c65` (the merge
+commit containing Commerce #58). EmDash and
 `@emdash-cms/cloudflare` are `1.2.0`. Managed products without a configured
 provider fail closed as availability unavailable. No managed-stock admin or
 provider transport is introduced. Inventory `8 → 5 → 8` remains the explicit
@@ -59,8 +61,16 @@ Checkout, payment, deployment, and production-readiness are not claimed.
 ## Initialized local starters
 
 `pnpm dev` uses the installed default. Shop is unavailable until a paired
-installed artifact exists. Do not treat an empty or unavailable Shop as a cue
-to reimport seed or replace edited Pages/Merchandise.
+installed artifact exists. The #34 `merchandise` → `products`/`categories`
+change is intentionally breaking because no template-store site accepts real
+orders. An old initialized database therefore fails closed with no canonical
+product records; it is not automatically migrated, guessed, or used as a
+fallback.
+
+For a local site, export needed copy, back up the database and uploads, then
+reseed or re-bootstrap from the current `seed/seed.json` and review Products,
+Categories, and Pages. Do not use seed `update` or claim an automatic
+`merchandise` migration. Existing live stores do not exist.
 
 Native Products create still needs `DINKUS_CATALOG_PROFILE=native-development`.
 Stop the server and back up the existing SQLite database before that upgrade.

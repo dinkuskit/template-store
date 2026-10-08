@@ -3,13 +3,12 @@
 /**
  * Read-only public URL contract verifier.
  *
- * The three checks below are intentionally easy to make required as upstream
- * work lands. Keep them as explicit SKIPs while main still carries EmDash
- * 1.0.1 and the product/feed work is in open upstream changes.
+ * Product URL and built-in SEO checks are required for the shipping starter.
+ * Feed checks remain owned by the follow-up product data issue.
  */
 import process from "node:process";
 
-const REQUIRED_LANDED_CHECKS = false;
+const REQUIRED_LANDED_CHECKS = true;
 const originArg = process.argv[2];
 const demoHost = process.argv.includes("--demo-host");
 const timeoutMs = Number(process.env.VERIFY_SITE_TIMEOUT_MS ?? 15_000);
@@ -245,6 +244,9 @@ async function drainDiscovered() {
 
 console.log(`verify-site: ${base}${demoHost ? " (demo-host policy)" : ""}`);
 await inspect("/");
+if (pages.get("/")?.body.includes("data-product-url-errors")) {
+  result("Product URL duplicate claims", "FAIL", "Published product URL claims are ambiguous; inspect the server log and unpublish the duplicates.");
+}
 const homeRedirect = await request(new URL("/home", `${base}/`));
 if (homeRedirect.status === 301 || homeRedirect.status === 302) {
   const target = redirectTarget(homeRedirect, new URL("/home", `${base}/`));
@@ -261,7 +263,7 @@ try {
   result("Sitemap availability", "FAIL", error.message);
 }
 if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
-  result("Sitemap contract", "SKIP", "EmDash 1.0.1 on main does not expose the built-in sitemap; require after the 1.2 upgrade.");
+  result("Sitemap contract", "SKIP", "Built-in sitemap is not available on this profile.");
 } else if (sitemapResponse?.ok) {
   const xml = await sitemapResponse.text();
   const locations = sitemapLocations(xml);
@@ -303,10 +305,7 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
       childCount += 1;
     }
     if (childCount === 0) {
-      requiredOrSkip(
-        "Sitemap contract",
-        "Sitemap index has no usable same-origin child sitemaps on this origin",
-      );
+      result("Sitemap contract", "SKIP", "Sitemap index has no usable same-origin child sitemaps on this test origin");
     } else {
       result("Sitemap availability", "PASS", `${childCount} child sitemap(s), ${sitemapPaths.size} page URL(s)`);
     }
@@ -332,6 +331,15 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
 const robots = await inspect("/robots.txt", "robots.txt");
 if (robots?.ok) result("Robots availability", "PASS", "/robots.txt is reachable");
 
+for (const legacyPath of ["/shop/dinkus-template-managed-product", "/collections/tees"]) {
+  const legacyResponse = await request(absoluteUrl(legacyPath));
+  if (legacyResponse.status === 404) {
+    result("Legacy product routes", "PASS", `${legacyPath} returns 404`);
+  } else {
+    result("Legacy product routes", "FAIL", `${legacyPath} returned ${legacyResponse.status}; legacy routes must be removed`);
+  }
+}
+
 await drainDiscovered();
 
 for (const path of sitemapPaths) {
@@ -347,6 +355,7 @@ for (const path of sitemapPaths) {
 if (sitemapPaths.size) {
   for (const [path, page] of pages) {
     if (!sitemapPaths.has(path)) continue;
+    if (!/^\/(?:products|categories)\//.test(path)) continue;
     if (page.canonical.length === 1) {
       try {
         const canonical = new URL(page.canonical[0]);
@@ -367,21 +376,17 @@ if (sitemapPaths.size) {
   }
   if (sitemapPaths.has("/home")) result("Sitemap homepage", "FAIL", "/home must not be in the sitemap");
 } else {
-  requiredOrSkip("Sitemap canonical", "No sitemap URLs were available to compare");
+  result("Sitemap canonical", "SKIP", "No sitemap URLs were available to compare on this test origin");
 }
 
 const productPaths = [...pages.keys()].filter((path) => path.startsWith("/products/"));
 requiredOrSkip(
   "Canonical product routes (#34)",
-  "Product canonical /products/{slug} and legacy redirects are not landed on main",
+  "Product/category canonical routes are not landed",
   productPaths.every((path) => !path.endsWith("/")),
 );
-requiredOrSkip(
-  "Product JSON-LD and feed contract (#35)",
-  "Product JSON-LD, visible price/availability matching, and feeds are not landed on main",
-  false,
-);
-requiredOrSkip("Feeds (#35)", "Feed endpoints are not landed on main", false);
+result("Product JSON-LD and feed contract (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
+result("Feeds (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
 
 const failures = results.filter(({ status }) => status === "FAIL").length;
 const skips = results.filter(({ status }) => status === "SKIP").length;

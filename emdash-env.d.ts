@@ -3,16 +3,14 @@
 
 /// <reference types="emdash/locals" />
 
-import type { BylineSummary, ContentBylineCredit, TaxonomyTerm, PortableTextBlock } from "emdash";
+import type { BylineSummary, ContentBylineCredit, TaxonomyTerm, PortableTextBlock, ReferencePage } from "emdash";
 
-export interface Merchandise {
+export interface Category {
   id: string;
   slug: string | null;
   status: string;
   title: string;
-  category: string;
   description?: string;
-  visual_label: string;
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date | null;
@@ -73,9 +71,33 @@ export interface Page {
   terms?: Record<string, TaxonomyTerm[]>;
 }
 
+export interface Product {
+  id: string;
+  slug: string | null;
+  status: string;
+  title: string;
+  commerce_item_id?: string;
+  description?: string;
+  visual_label: string;
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt: Date | null;
+  byline?: BylineSummary | null;
+  bylines?: ContentBylineCredit[];
+  terms?: Record<string, TaxonomyTerm[]>;
+}
+
+export interface ProductReferences {
+  categories: ReferencePage<Category>;
+}
+
 declare module "emdash" {
   interface EmDashCollections {
-    merchandise: Merchandise;
+    categories: Category;
     pages: Page;
+    products: Product;
+  }
+  interface EmDashCollectionReferences {
+    products: ProductReferences;
   }
 }

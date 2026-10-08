@@ -17,6 +17,11 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
 
   const setupResponse = await request.get("/_emdash/api/setup/dev-bypass");
   expect(setupResponse.ok()).toBe(true);
+  expect((await request.get("/shop/dinkus-template-managed-product", { maxRedirects: 0 })).status()).toBe(404);
+  expect((await request.get("/collections/tees", { maxRedirects: 0 })).status()).toBe(404);
+  const canonicalProduct = await request.get("/products/everyday-tee", { maxRedirects: 0 });
+  expect(canonicalProduct.ok()).toBe(true);
+  expect(canonicalProduct.headers().location).toBeUndefined();
 
   await page.goto("/");
   await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");

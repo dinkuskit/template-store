@@ -57,13 +57,20 @@ Never expose proof mutation or dev authentication on a hosted demo.
 Back up the database and uploads before changing the pair. Keep the current data
 paths and CMS content. Do not reapply seed with update, reset the database, convert
 managed records, or copy demonstration products into persisted Commerce storage.
-Upgrade the template and Commerce as one tested pair, then check Products edits,
-price clearing, manual availability and existing managed fail-closed behavior.
-Existing Pages and section copies keep their edited copy and links. If upgrading
-from the integration pilot, review Home in EmDash Pages: update its Shop actions
-to `#commerce-catalog` and remove stale demo/Inventory claims before presenting
-the default profile. Stock demonstration links are development-only. The fresh
-seed correction does not rewrite an initialized site.
+Ryan decided that the #34 schema change is an intentional breaking upgrade:
+no template-store site accepts real orders, so there is no live-store migration
+path to preserve. An initialized database that still has `merchandise` fails
+closed under the new template: `products` and `categories` are absent, so no
+canonical product pages are published and no old record is guessed or converted.
+This is an explicit unavailable/empty catalog state, not a blank fallback or a
+startup crash.
+
+For a local site, export any copy worth keeping, back up the database and
+uploads, then reseed or re-bootstrap from the current `seed/seed.json`. Review
+Products, Collections, and Pages after setup and re-enter retained editorial
+copy in the new schema. Do not run an automatic `merchandise` → `products`
+migration, use seed `update`, or claim this procedure preserves an initialized
+site automatically. Existing sites accepting real orders do not exist.
 Source-pilot proof covers EmDash 0.41.0 only; EmDash 1.0 and the final artifact
 need a fresh clean-install and upgrade proof before release instructions exist.
 

@@ -1,15 +1,16 @@
 ---
 import type { ManagedProductAvailability } from "../managed-product-availability/index.js";
 import type { UnmanagedProductSellability } from "../unmanaged-product-sellability/index.js";
-import { categoryAnchor, collectionPath, productPath, type MerchCollection } from "./merch-catalog.js";
+import { categoryAnchor, categoryPath, productPath, type MerchCollection } from "./merch-catalog.js";
 
 interface Props {
   collections: readonly MerchCollection[];
+  menu?: { items: readonly { label: string; url: string }[] };
   managed?: ManagedProductAvailability;
   unmanaged?: UnmanagedProductSellability;
   collectionOnly?: boolean;
 }
-const { collections, managed, unmanaged, collectionOnly = false } = Astro.props;
+const { collections, menu, managed, unmanaged, collectionOnly = false } = Astro.props;
 const manualLabel: Record<string, string> = {
   "in-stock": "In stock",
   "out-of-stock": "Out of stock",
@@ -27,14 +28,14 @@ const manualLabel: Record<string, string> = {
     </div>
     <span class="catalog-count">{collections.reduce((total, group) => total + group.items.length, 0)} styles</span>
   </div>}
-  {!collectionOnly && <nav class="collection-nav" aria-label="Merchandise collections" data-collection-nav>
-    {collections.map((collection) => <a href={collectionPath(collection.name)}>{collection.name}</a>)}
+  {!collectionOnly && <nav class="collection-nav" aria-label="Product categories" data-collection-nav>
+    {(menu?.items ?? []).map((item) => <a href={item.url}>{item.label}</a>)}
   </nav>}
   {collections.length === 0 ? (
     <p class="catalog-empty" role="status">No merchandise is published. Add items in EmDash admin to populate this catalog.</p>
   ) : collections.map((collection) => (
-    <section class="collection" id={categoryAnchor(collection.name)} aria-label={`${collection.name} collection`} data-collection={collection.name}>
-      {!collectionOnly && <div class="collection-heading"><h3><a href={collectionPath(collection.name)}>{collection.name}</a></h3><span>{collection.items.length} {collection.items.length === 1 ? "style" : "styles"}</span></div>}
+    <section class="collection" id={categoryAnchor(collection.slug)} aria-label={`${collection.name} category`} data-collection={collection.name}>
+      {!collectionOnly && <div class="collection-heading"><h3><a href={categoryPath(collection.slug)}>{collection.name}</a></h3><span>{collection.items.length} {collection.items.length === 1 ? "style" : "styles"}</span></div>}
       <div class="merch-grid">
         {collection.items.map((item) => {
           const source = item.availabilitySource;

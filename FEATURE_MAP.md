@@ -8,8 +8,8 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.store-shell` | Neutral Astro/EmDash shell, first-class page layout renderers with Portable Text fallback, copied Home opener and query card, merchandise catalog, collection and product browse pages, document metadata, and shared page frame | `src/features/store-shell/`; `src/pages/index.astro`; `src/pages/collections/`; `src/pages/products/`; `src/live.config.ts`; `seed/` | `src/features/store-shell/index.ts` | EmDash; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
-| `dinkus.site-verifier` | Read-only public-origin crawler for URL status, redirects, sitemap, robots, canonical, and structured-data contract | `bin/verify-site` | `bin/verify-site <origin>` | Public EmDash routes | `bin/verify-site <local-origin>` | `bin/verify-web full` | staged; product/feed checks explicitly skipped until #34/#35 |
+| `dinkus.store-shell` | Neutral Astro/EmDash shell, first-class page layout renderers with Portable Text fallback, copied Home opener and query card, canonical slashless products/categories, Commerce-linked product resolver, document metadata, and shared page frame | `src/features/store-shell/`; `src/pages/index.astro`; `src/pages/categories/`; `src/pages/products/`; `src/live.config.ts`; `seed/` | `src/features/store-shell/index.ts` | EmDash; installed Commerce public item lookup; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | canonical URL candidate |
+| `dinkus.site-verifier` | Read-only public-origin crawler for URL status, redirects, sitemap, robots, canonical, and structured-data contract | `bin/verify-site` | `bin/verify-site <origin>` | Public EmDash routes | `bin/verify-site <local-origin>` | `bin/verify-web full` | #34 product URL checks required; #35 product data/feed checks remain skipped |
 | `dinkus.managed-product-availability` | Commerce catalog identity, official Configure Inventory orchestration, Inventory registration/opening/read/adjust composition, proof adapter, proof-only HTTP action, and storefront availability panel | `src/features/managed-product-availability/`; `src/pages/api/proof/stock.ts` | `src/features/managed-product-availability/index.ts` | `@dinkuskit/commerce` package root; `@dinkuskit/inventory` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 | `dinkus.unmanaged-product-sellability` | Unmanaged Commerce catalog identity, isolated manual availability, unified storefront resolver, proof-only HTTP action, and storefront sellability panel that never contacts Inventory or shows quantity | `src/features/unmanaged-product-sellability/`; `src/pages/api/proof/unmanaged-availability.ts` | `src/features/unmanaged-product-sellability/index.ts`; pure identities through `src/features/unmanaged-product-sellability/identity/index.ts` | `@dinkuskit/commerce` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 
@@ -17,11 +17,11 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; explicit native-development proof retains Regular/Sale composition | `src/features/commerce-catalog/`; `src/pages/shop/`; `tests/e2e/commerce-catalog.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed |
+| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; explicit native-development proof retains Regular/Sale composition | `src/features/commerce-catalog/`; `tests/e2e/commerce-catalog.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed |
 
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |
-| Merchant admin to real catalog | EmDash Products at `/_emdash/admin/plugins/dinkus-commerce/products`; public `/` Shop and `/shop/<Commerce ID>` | Add name/SKU, save Regular, save lower Sale, reject malformed Regular, reload admin, clear prices. Separate anonymous page and authenticated public Edit context; desktop/mobile. | No Regular means no public card and detail 404, but admin retains product. Regular lists it; Sale strikes Regular. Invalid edit leaves public price unchanged. Commerce availability has no invented quantity. A product with no projected image shows "No image" and no `<img>`; a projected media id renders that alt text and srcset. Add to cart still keys off the Commerce id. Public Edit hydrates without changing catalog authority. |
+| Merchant admin to real catalog | EmDash Products at `/_emdash/admin/plugins/dinkus-commerce/products`; public `/` Shop cards | Add name/SKU, save Regular, save lower Sale, reject malformed Regular, reload admin, clear prices. Separate anonymous page and authenticated public Edit context; desktop/mobile. | No Regular means no public card, but admin retains product. Regular lists it; Sale strikes Regular. Invalid edit leaves public price unchanged. Commerce availability has no invented quantity. A product with no projected image shows "No image" and no `<img>`; a projected media id renders that alt text and srcset. Add to cart still keys off the Commerce id. Public Edit hydrates without changing catalog authority. |
 | Guest cart presentation | Header Cart on storefront pages; `/cart`; add-to-cart on persisted Shop products only | Create a priced in-stock Commerce product, add it, change quantity, reload, remove to empty, inject malformed storage, change the product to out-of-stock then unpriced, open `/cart?success=1`. Desktop and mobile. | Only sellable priced Shop products can be added. Preview merchandise has no add-to-cart. Browser storage holds version, IDs, and quantities only. `/cart` shows current Commerce name/price/sellability. Missing, unpriced, or unsellable lines keep a readable reason and cannot checkout. Snapshot failure keeps intent and offers retry. Checkout stays disabled with `Checkout unavailable`. A forged success query never confirms a purchase. |
 
 Shipping v1 has Inventory off and uses persisted unmanaged Commerce Products.
@@ -33,15 +33,24 @@ Final pairing is pending the Commerce owner's immutable artifact handoff. No see
 Commerce Products to an initialized starter; preserve its edited CMS content.
 See [operator and compatibility boundaries](docs/implementation/commerce-catalog.md).
 
-## Public site verification
+## Canonical product URLs and public site verification
+
+Published products are routed only at `/products/{slug}` and categories only
+at `/categories/{slug}`. Product identity is the linked Commerce `itemId`;
+slugs are editorial URL input, never identity. Duplicate or invalid published
+links fail closed. `/shop/{id}`, legacy category digests, `/home`, and slash
+variants are redirect inputs only, and redirect responses are `302`/`no-store`
+until verified for a later `301`. Demos, previews, and staging are noindex by
+default; a real merchant store must explicitly set
+`DINKUS_LAUNCH_INDEXABLE=1`. Noindex controls search visibility, not access.
 
 Run the site verifier in order against the local server, a preview origin,
 then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD
 checks and crawls the homepage, sitemap-linked internal URLs, and nested
 internal links discovered on child pages until the queue is empty. A deployment
 is complete only after the production run passes. Checks owned by the not-yet
-landed product canonical and structured-data/feed work remain explicit `SKIP`
-results until those contracts are available.
+landed product data/feed work remains an explicit `SKIP` owned by #35; the
+canonical product/collection URL checks are required.
 
 ## Authorized guest cart
 
@@ -111,9 +120,10 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
 
 - No template file imports a Dinkus package feature internal. Pre-release
   aliases terminate at package-root `src/index.ts` only.
-- Merchandise titles, categories, descriptions, and visual labels come from EmDash
-  `merchandise` entries. Only exact demo entry IDs `everyday-tee` and
-  `canvas-cap` bind to connected proof products; all other IDs are previews.
+- Product titles, collection links, descriptions, visual labels, and slugs come
+  from EmDash `products` entries. Each published entry requires a
+  `commerceItemId`; Commerce remains authoritative for identity, price and
+  availability.
   CMS fields cannot assert Commerce or Inventory authority.
 - CMS content and transactional facts remain separate authorities even when one
   storefront page presents both.
@@ -140,6 +150,6 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
 
 ## Installed catalog consumer (2026-10-07)
 
-Default catalog reads use the exact installed `r_gshdrqaldna3r7sn` public `catalog/public` route through EmDash public-only SSR dispatch. An absent/private route or malformed projection fails closed. Every cursor is followed, including empty filtered pages. Commerce projects the customer price; Template does not reconstruct a sale comparison. Native storage reads and the native plugin registration require `DINKUS_CATALOG_PROFILE=native-development`; canonical browser fixtures set that explicit profile. Shipping installation needs the matching installed Commerce artifact.
+Default catalog reads use the exact installed native `dinkus-commerce` plugin's public `catalog/public` route through EmDash public-only SSR dispatch. The old registry runtime ID is legacy and is not used by this consumer. An absent/private route or malformed projection fails closed. Every cursor is followed, including empty filtered pages. Commerce projects the customer price; Template does not reconstruct a sale comparison. Native storage reads and the native plugin registration require `DINKUS_CATALOG_PROFILE=native-development`; canonical browser fixtures set that explicit profile. Shipping installation needs the matching installed Commerce artifact.
 
-The current source pin is Commerce `5ade2bd0e4480b8ec9220c7872d7445e35547a3e`, with EmDash `1.2.0`. Existing Commerce49/Payments12 package verifiers are historical exact-artifact fixtures and intentionally refuse this new pairing. They are not proof of this candidate. The optional cart coupon passes only intent to canonical checkout; it stays disabled together with checkout until an owner-supplied configuration/readiness contract exists. Catalog or prepare success does not imply readiness.
+The current source pin is Commerce `938cb06cc6c0a1e7f457e514076d608219e38c65`, with EmDash `1.2.0`. Existing Commerce49/Payments12 package verifiers are historical exact-artifact fixtures and intentionally refuse this new pairing. They are not proof of this candidate. The optional cart coupon passes only intent to canonical checkout; it stays disabled together with checkout until an owner-supplied configuration/readiness contract exists. Catalog or prepare success does not imply readiness.

@@ -55,11 +55,7 @@ test("merchant product prices drive public listing and survive an admin reload",
   await expect(card.locator("[data-sale-price]")).toHaveText("$18.00");
   await admin.screenshot({ path: resolve(root, "admin-sale.png"), fullPage: true, animations: "disabled" });
   await page.screenshot({ path: resolve(root, "public-sale.png"), fullPage: true, animations: "disabled" });
-  await card.getByRole("link", { name: "View product", exact: true }).click();
-  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
-  await expect(card.locator("[data-sale-price]")).toHaveText("$18.00");
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
-  await page.screenshot({ path: resolve(root, "public-product.png"), fullPage: true, animations: "disabled" });
+  await expect(card.getByRole("link")).toHaveCount(0);
   expect((await save("12.999", "18")).saved).toBe(false);
   await expect(admin.getByLabel("Regular", { exact: true })).toHaveValue("12.999");
   await page.reload();

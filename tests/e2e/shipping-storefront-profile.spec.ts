@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 import { collectionPath } from "../../src/features/store-shell/index.js";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../src/features/guest-cart/checkout-protocol.js";
+import { COMMERCE_NATIVE_PLUGIN_ID } from "../../src/features/commerce-catalog/installed.js";
 
 function inventoryishUrl(url: string): boolean {
   return /configure-inventory|@dinkuskit\/inventory|dinkuskit\.inventory|dinkus-inventory|\/api\/proof\/stock/iu.test(
@@ -32,7 +32,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   expect((await request.post("/api/proof/stock", { data: { commandId: "shipping-blocked", delta: "-3", reason: "proof-change" } })).status()).toBe(404);
 
   const installedCatalog = await request.get(
-    `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/catalog/public`,
+    `/_emdash/api/plugins/${COMMERCE_NATIVE_PLUGIN_ID}/catalog/public`,
   );
   expect(installedCatalog.ok()).toBe(false);
 
@@ -97,7 +97,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator("[data-product-status]")).toHaveText("Preview only · not purchasable");
   await expect(page.locator("[data-stock-value]")).toHaveCount(0);
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
-  expect((await page.goto("/products/everyday-tee"))?.status()).toBe(404);
+  expect((await page.goto("/products/everyday-tee"))?.status()).toBe(503);
 
   await page.goto("/");
   expect(

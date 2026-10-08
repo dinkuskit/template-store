@@ -22,7 +22,8 @@ const merchEntries = [
     id: "everyday-tee",
     data: {
       title: "Everyday Tee",
-      category: "Tees",
+      categories: ["tees"],
+      commerce_item_id: "dinkus-template-managed-product",
       description: "Soft tee",
       visual_label: "TEE",
     },
@@ -31,7 +32,8 @@ const merchEntries = [
     id: "canvas-cap",
     data: {
       title: "Canvas Cap",
-      category: "Hats",
+      categories: ["hats"],
+      commerce_item_id: "dinkus-template-unmanaged-product",
       description: "Simple cap",
       visual_label: "CAP",
     },
@@ -40,7 +42,8 @@ const merchEntries = [
     id: "boxy-tee-preview",
     data: {
       title: "Boxy Tee",
-      category: "Tees",
+      categories: ["tees"],
+      commerce_item_id: "preview",
       description: "Preview",
       visual_label: "TEE",
     },
@@ -81,9 +84,10 @@ describe("storefront profile", () => {
   });
 
   it("does not load managed or unmanaged demonstration runtimes in shipping", async () => {
-    const context = await loadStorefrontRouteContext(merchEntries, {
-      DINKUS_STOREFRONT_PROFILE: "shipping",
-    });
+    const context = await loadStorefrontRouteContext(merchEntries, [
+      { id: "tees", data: { title: "Tees" } },
+      { id: "hats", data: { title: "Hats" } },
+    ], { DINKUS_STOREFRONT_PROFILE: "shipping" });
     expect(context.profile).toBe(STOREFRONT_PROFILE_SHIPPING);
     expect(context.demonstrations).toBeNull();
     expect(await readProofDemonstrations({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBeNull();
@@ -93,9 +97,10 @@ describe("storefront profile", () => {
   });
 
   it("loads demonstration runtimes only when the proof profile is explicit", async () => {
-    const context = await loadStorefrontRouteContext(merchEntries, {
-      DINKUS_STOREFRONT_PROFILE: "proof",
-    });
+    const context = await loadStorefrontRouteContext(merchEntries, [
+      { id: "tees", data: { title: "Tees" } },
+      { id: "hats", data: { title: "Hats" } },
+    ], { DINKUS_STOREFRONT_PROFILE: "proof" });
     expect(context.profile).toBe(STOREFRONT_PROFILE_PROOF);
     expect(context.demonstrations?.managed.inventory).toMatchObject({
       available: "8",

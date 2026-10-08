@@ -16,6 +16,9 @@ const isCloudflare =
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
 );
+const productUrlEntry = fileURLToPath(
+  new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
+);
 const inventoryEntry = fileURLToPath(
   new URL("./node_modules/@dinkuskit/inventory/src/index.ts", import.meta.url),
 );
@@ -33,6 +36,7 @@ const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
 
 export default defineConfig({
   output: "server",
+  trailingSlash: "never",
   adapter: isCloudflare
     ? cloudflare({
         ...(process.env.DINKUS_WRANGLER_CONFIG
@@ -53,12 +57,19 @@ export default defineConfig({
             baseUrl: "/_emdash/api/media/file",
           }),
       ...(siteUrl ? { siteUrl } : {}),
-      plugins: process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
-        dinkusCommerce({
-          enableLocalStockManagement,
-          ...(siteUrl ? { siteUrl } : {}),
-        }),
-      ] : [],
+      plugins: [
+        {
+          id: "dinkus-template-product-urls",
+          version: "1.0.0",
+          entrypoint: productUrlEntry,
+        },
+        ...(process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
+          dinkusCommerce({
+            enableLocalStockManagement,
+            ...(siteUrl ? { siteUrl } : {}),
+          }),
+        ] : []),
+      ],
     }),
   ],
   vite: {
