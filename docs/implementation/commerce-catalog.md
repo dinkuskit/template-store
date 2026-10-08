@@ -42,8 +42,8 @@ cannot pass on native storage while claiming the installed default.
 On the native-development profile only: open EmDash admin → Products, add a name
 and SKU, then set Regular in dollars. Reload `/` to see the product under Shop.
 A lower Sale strikes Regular and displays Sale. Clear both price fields to
-remove the product from public listings and its `/shop/<Commerce ID>` detail
-page while retaining it in Products. An explicit zero Regular is a free listed
+remove the product from public listings while retaining it in Products. An
+explicit zero Regular is a free listed
 product. CMS merchandise cannot claim a Commerce identity. Server failures show
 an unavailable catalog, never invented prices or stock. No public mutation
 endpoint is added.

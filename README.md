@@ -12,7 +12,8 @@ and [Roadmap](https://github.com/dinkuskit/.github/blob/main/ROADMAP.md).
 
 EmDash **Products** now drives the real Shop on `/`: add a name and SKU, save
 Regular to list it, optionally save Sale, or clear prices to hide it publicly
-while retaining it in admin. Product details live at `/shop/<Commerce ID>`.
+while retaining it in admin. Canonical product details require a published
+EmDash Product at `/products/<slug>`; Commerce-only items have no detail URL.
 See [operator steps and upgrade boundaries](docs/implementation/commerce-catalog.md).
 The default storefront has Inventory off. Existing seeded merchandise and
 Inventory proof run only in the explicit development integration profile,
