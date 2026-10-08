@@ -23,6 +23,7 @@ const merchEntries = [
     data: {
       title: "Everyday Tee",
       category: "Tees",
+      commerceItemId: "dinkus-template-managed-product",
       description: "Soft tee",
       visual_label: "TEE",
     },
@@ -32,6 +33,7 @@ const merchEntries = [
     data: {
       title: "Canvas Cap",
       category: "Hats",
+      commerceItemId: "dinkus-template-unmanaged-product",
       description: "Simple cap",
       visual_label: "CAP",
     },
@@ -41,6 +43,7 @@ const merchEntries = [
     data: {
       title: "Boxy Tee",
       category: "Tees",
+      commerceItemId: "preview",
       description: "Preview",
       visual_label: "TEE",
     },

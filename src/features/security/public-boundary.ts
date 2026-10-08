@@ -35,6 +35,14 @@ const SLASHLESS_REDIRECTS = new Map([
   ["/checkout/cancel/", "/checkout/cancel"],
 ]);
 
+function slashlessCollectionPath(pathname: string): string | undefined {
+  if (!pathname.endsWith("/") || pathname === "/") return undefined;
+  if (/^\/(?:products|collections|shop)\/[^/]+\/$/.test(pathname)) {
+    return pathname.slice(0, -1);
+  }
+  return undefined;
+}
+
 export function decodedForms(value: string): string[] {
   const forms = [value];
   let current = value;
@@ -56,7 +64,7 @@ export function isExactGuestCheckoutPath(pathname: string): boolean {
 }
 
 export function slashlessRedirectPath(pathname: string): string | undefined {
-  return SLASHLESS_REDIRECTS.get(pathname);
+  return SLASHLESS_REDIRECTS.get(pathname) ?? slashlessCollectionPath(pathname);
 }
 
 function isDisallowedTraversalOrTarget(pathname: string, search: string): boolean {

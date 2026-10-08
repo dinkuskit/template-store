@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { UNPRICED_PRODUCT_ITEM_ID } from "../unmanaged-product-sellability/identity/index.js";
 
 export type MerchRecord = Readonly<{
@@ -16,28 +15,34 @@ export type MerchCollection = Readonly<{
   items: readonly MerchRecord[];
 }>;
 
-/** Editorial content comes from EmDash; only exact demo entry IDs carry connected availability. */
+/** Editorial content comes from EmDash; Commerce links are validated by the page resolver. */
 export function buildMerchCollections(
   entries: readonly { id: string; data: Record<string, unknown> }[],
 ): readonly MerchCollection[] {
   const groups = new Map<string, MerchRecord[]>();
   for (const entry of entries) {
     if (entry.id === UNPRICED_PRODUCT_ITEM_ID) continue; // Commerce draft is never public.
-    const { title, category, description, visual_label: visualLabel } = entry.data;
+    const { title, collection, category, description, visual_label: visualLabel } = entry.data;
+    const categoryName = typeof collection === "string"
+      ? ({ tees: "Tees", hats: "Hats" } as Record<string, string>)[collection] ?? collection
+      : category;
     if (
       typeof title !== "string" || !title.trim() ||
-      typeof category !== "string" || !category.trim() ||
+      typeof categoryName !== "string" || !categoryName.trim() ||
       (description !== undefined && typeof description !== "string") ||
       typeof visualLabel !== "string" || !visualLabel.trim() ||
       !productPath(entry.id)
     ) continue;
+    const commerceItemId = typeof entry.data.commerceItemId === "string" ? entry.data.commerceItemId : "";
     const item: MerchRecord = {
       id: entry.id,
       title: title.trim(),
-      category: category.trim(),
+      category: categoryName.trim(),
       description: typeof description === "string" ? description.trim() : "",
       visualLabel: visualLabel.trim(),
-      availabilitySource: entry.id === "everyday-tee" ? "managed" : entry.id === "canvas-cap" ? "unmanaged" : "preview",
+      availabilitySource: commerceItemId === "dinkus-template-managed-product"
+        ? "managed"
+        : commerceItemId === "dinkus-template-unmanaged-product" ? "unmanaged" : "preview",
       illustration: ((): MerchRecord["illustration"] => {
         const style = visualLabel.trim().toLowerCase();
         return style === "hoodie" || style === "cap" || style === "beanie" ? style : "tee";
@@ -54,11 +59,9 @@ export function categoryAnchor(name: string): string {
   return `collection-${name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "")}`;
 }
 
-/** The digest keeps visually similar collection names from claiming one another's route. */
 export function collectionPath(name: string): string {
   const slug = categoryAnchor(name).slice("collection-".length) || "collection";
-  const digest = createHash("sha256").update(name).digest("hex").slice(0, 12);
-  return `/collections/${slug}-${digest}`;
+  return `/collections/${slug}`;
 }
 
 /** Entry IDs, rather than editable names, are the stable product identity. */

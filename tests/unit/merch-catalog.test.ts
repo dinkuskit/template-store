@@ -4,9 +4,9 @@ import { buildMerchCollections, publicMerchCollections, categoryAnchor, collecti
 describe("CMS merchandise grouping", () => {
   it("binds live availability only to exact demo IDs, regardless of editorial claims", () => {
     const groups = buildMerchCollections([
-      { id: "everyday-tee", data: { title: "Everyday Tee", category: "Tees", description: "Soft tee", visual_label: "TEE" } },
-      { id: "canvas-cap", data: { title: "Canvas Cap", category: "Hats", description: "Simple cap", visual_label: "CAP" } },
-      { id: "impostor", data: { title: "Another Tee", category: "Tees", description: "Preview", visual_label: "HOODIE", availability_source: "managed" } },
+      { id: "everyday-tee", data: { title: "Everyday Tee", collection: "tees", commerceItemId: "dinkus-template-managed-product", category: "Tees", description: "Soft tee", visual_label: "TEE" } },
+      { id: "canvas-cap", data: { title: "Canvas Cap", collection: "hats", commerceItemId: "dinkus-template-unmanaged-product", category: "Hats", description: "Simple cap", visual_label: "CAP" } },
+      { id: "impostor", data: { title: "Another Tee", collection: "tees", commerceItemId: "preview", category: "Tees", description: "Preview", visual_label: "HOODIE", availability_source: "managed" } },
     ]);
     expect(groups[0].items[0]).toMatchObject({ id: "canvas-cap", availabilitySource: "unmanaged", illustration: "cap" });
     expect(groups[1].items[0]).toMatchObject({ id: "everyday-tee", availabilitySource: "managed", illustration: "tee" });
@@ -14,14 +14,14 @@ describe("CMS merchandise grouping", () => {
     expect(publicMerchCollections(groups, false, true).flatMap(group => group.items).map(item => item.id)).toEqual(["canvas-cap", "impostor"]);
     expect(publicMerchCollections(groups, true, false).flatMap(group => group.items).map(item => item.id)).toEqual(["everyday-tee", "impostor"]);
     expect(categoryAnchor("Everyday Hats")).toBe("collection-everyday-hats");
-    expect(collectionPath("Everyday Hats")).not.toBe(collectionPath("Everyday-Hats"));
+    expect(collectionPath("Everyday Hats")).toBe(collectionPath("Everyday-Hats"));
     expect(productPath("everyday-tee")).toBe("/products/everyday-tee");
     expect(productPath("../admin")).toBeNull();
   });
   it("keeps published entries with optional description absent and hides Commerce unpriced draft", () => {
     const groups = buildMerchCollections([
-      { id: "new-preview", data: { title: "New", category: "Tees", visual_label: "tee" } },
-      { id: "dinkus-template-unpriced-product", data: { title: "Draft", category: "Tees", visual_label: "tee" } },
+      { id: "new-preview", data: { title: "New", collection: "tees", commerceItemId: "preview", visual_label: "tee" } },
+      { id: "dinkus-template-unpriced-product", data: { title: "Draft", collection: "tees", commerceItemId: "preview", visual_label: "tee" } },
     ]);
     expect(groups[0].items).toMatchObject([{ id: "new-preview", description: "" }]);
   });

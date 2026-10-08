@@ -3,13 +3,12 @@
 /**
  * Read-only public URL contract verifier.
  *
- * The three checks below are intentionally easy to make required as upstream
- * work lands. Keep them as explicit SKIPs while main still carries EmDash
- * 1.0.1 and the product/feed work is in open upstream changes.
+ * Product URL and built-in SEO checks are required for the shipping starter.
+ * Feed checks remain owned by the follow-up product data issue.
  */
 import process from "node:process";
 
-const REQUIRED_LANDED_CHECKS = false;
+const REQUIRED_LANDED_CHECKS = true;
 const originArg = process.argv[2];
 const demoHost = process.argv.includes("--demo-host");
 const timeoutMs = Number(process.env.VERIFY_SITE_TIMEOUT_MS ?? 15_000);
@@ -261,7 +260,7 @@ try {
   result("Sitemap availability", "FAIL", error.message);
 }
 if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
-  result("Sitemap contract", "SKIP", "EmDash 1.0.1 on main does not expose the built-in sitemap; require after the 1.2 upgrade.");
+  result("Sitemap contract", "SKIP", "Built-in sitemap is not available on this profile.");
 } else if (sitemapResponse?.ok) {
   const xml = await sitemapResponse.text();
   const locations = sitemapLocations(xml);
@@ -373,15 +372,11 @@ if (sitemapPaths.size) {
 const productPaths = [...pages.keys()].filter((path) => path.startsWith("/products/"));
 requiredOrSkip(
   "Canonical product routes (#34)",
-  "Product canonical /products/{slug} and legacy redirects are not landed on main",
+  "Product canonical /products/{slug} and legacy redirects are not landed",
   productPaths.every((path) => !path.endsWith("/")),
 );
-requiredOrSkip(
-  "Product JSON-LD and feed contract (#35)",
-  "Product JSON-LD, visible price/availability matching, and feeds are not landed on main",
-  false,
-);
-requiredOrSkip("Feeds (#35)", "Feed endpoints are not landed on main", false);
+result("Product JSON-LD and feed contract (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
+result("Feeds (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
 
 const failures = results.filter(({ status }) => status === "FAIL").length;
 const skips = results.filter(({ status }) => status === "SKIP").length;

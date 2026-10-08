@@ -1,14 +1,28 @@
 ---
 import { getEmDashCollection } from "emdash";
 import { GuestCartNav } from "../../features/guest-cart/ui.ts";
+import { AddToCart } from "../../features/guest-cart/ui.ts";
+import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
+import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
 import { STORE_TITLE, collectionPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
+import { readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
 
-const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
-const { profile, demonstrations, collections } = await loadStorefrontRouteContext(merchandise.entries);
+const products = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const collectionEntries = await getEmDashCollection<"collections", Record<string, unknown>>("collections", { status: "published" });
+const productLinks = readProductEntries(products.entries, collectionEntries.entries);
+const validEntries = products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id));
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(validEntries);
 const collection = collections.find((group) => group.items.some((candidate) => productPath(candidate.id) === Astro.url.pathname));
 const item = collection?.items.find((candidate) => productPath(candidate.id) === Astro.url.pathname);
 if (!item) Astro.response.status = 404;
+const linkedProduct = item && profile === "shipping"
+  ? await readInstalledCommerceProduct(
+      (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
+      { runtime: Astro.locals.emdash, request: Astro.request },
+    ).catch(() => null)
+  : null;
+if (item && profile === "shipping" && !linkedProduct) Astro.response.status = 404;
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
 const status = managed ? `${managed.inventory.available} available` : unmanaged ? ({
@@ -22,6 +36,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={item?.description ?? "Product not found."} />
+    {item && <link rel="canonical" href={new URL(`/products/${item.id}`, Astro.site ?? Astro.url).href} />}
     <title>{item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>
@@ -31,14 +46,18 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
       <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{collection && <><a href={collectionPath(collection.name)}>{collection.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{item?.title ?? "Not found"}</span></nav>
       {item && collection ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
-          <div class={`product-detail__visual product-detail__visual--${item.illustration}`}><img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" /></div>
+            <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
+            </div>
           <div class="product-detail__body">
             <p class="product-detail__eyebrow">{collection.name}</p>
             <h1>{item.title}</h1>
             <p class="product-detail__description">{item.description}</p>
+            {linkedProduct && <p class="product-detail__price" data-product-price><strong data-regular-price>{linkedProduct.price.regularText}</strong></p>}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={unmanaged?.storefront.status}>{status}</p>
+            {linkedProduct && <AddToCart product={linkedProduct} />}
             {item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             <a class="product-detail__back" href={collectionPath(collection.name)}>← Back to {collection.name}</a>
           </div>

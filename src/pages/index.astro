@@ -16,16 +16,21 @@ import {
   STORE_TITLE,
   loadStorefrontRouteContext,
 } from "../features/store-shell/index.js";
+import { readProductEntries } from "../features/store-shell/product-routes.js";
 import "../features/store-shell/global.css";
 
 const { entry: page } = await getEmDashEntry("pages", "home");
 const pageData = page ? page.data as (typeof page.data & { layout?: BlockValue[] }) : undefined;
 const layout = pageData?.layout;
 const content = pageData?.content as PortableTextBlock[] | undefined;
-const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
-const { profile, demonstrations, collections } = await loadStorefrontRouteContext(merchandise.entries);
+const products = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const collectionEntries = await getEmDashCollection<"collections", Record<string, unknown>>("collections", { status: "published" });
+const productLinks = readProductEntries(products.entries, collectionEntries.entries);
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
+  products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
+);
 let catalogUnavailable = false;
-const products = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
+const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
 const availability = demonstrations?.managed;
 const unmanaged = demonstrations?.unmanaged;
 ---
@@ -68,7 +73,7 @@ const unmanaged = demonstrations?.unmanaged;
           </section>
         )
       }
-      <CommerceCatalog products={products} unavailable={catalogUnavailable} />
+      <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} />
       {demonstrations && availability && unmanaged && (
       <section aria-label="Separate integration demonstrations" data-integration-demos>
       <h2 class="demo-heading">Integration demonstrations</h2>

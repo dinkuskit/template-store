@@ -3,10 +3,15 @@ import { getEmDashCollection } from "emdash";
 import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
 import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, collectionPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
+import { readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
 
-const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
-const { profile, demonstrations, collections } = await loadStorefrontRouteContext(merchandise.entries);
+const products = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const collectionEntries = await getEmDashCollection<"collections", Record<string, unknown>>("collections", { status: "published" });
+const productLinks = readProductEntries(products.entries, collectionEntries.entries);
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
+  products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
+);
 const collection = collections.find((group) => collectionPath(group.name) === Astro.url.pathname);
 if (!collection) Astro.response.status = 404;
 const managed = demonstrations?.managed;
@@ -18,6 +23,7 @@ const unmanaged = demonstrations?.unmanaged;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={collection ? `Explore ${collection.name} in the DinkusKit merchandise catalog.` : "Collection not found."} />
+    {collection && <link rel="canonical" href={new URL(`/collections/${Astro.params.slug}`, Astro.site ?? Astro.url).href} />}
     <title>{collection ? `${collection.name} | ${STORE_TITLE}` : `Collection not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>

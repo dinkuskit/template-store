@@ -1,12 +1,25 @@
 ---
+import { getEmDashCollection } from "emdash";
 import { readCommerceCatalog, availabilityLabels } from "../../features/commerce-catalog/index.js";
 import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
 import { AddToCart, GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
+import { canonicalProductPath, validProductSlug } from "../../features/store-shell/product-routes.js";
+const productEntries = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const linked = productEntries.entries.find((entry) =>
+  entry.data.commerceItemId === Astro.params.id && validProductSlug(entry.id),
+);
+if (linked) {
+  const target = new URL(canonicalProductPath(linked.id), Astro.url);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: target.href, "Cache-Control": "no-store" },
+  });
+}
 let unavailable = false;
-const products = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { unavailable = true; return []; });
-const product = products.find(item => item.id === Astro.params.id);
+const catalogProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { unavailable = true; return []; });
+const product = catalogProducts.find(item => item.id === Astro.params.id);
 if (unavailable) Astro.response.status = 503;
 else if (!product) Astro.response.status = 404;
 const profile = readStorefrontProfile();

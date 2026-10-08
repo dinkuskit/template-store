@@ -8,8 +8,8 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.store-shell` | Neutral Astro/EmDash shell, first-class page layout renderers with Portable Text fallback, copied Home opener and query card, merchandise catalog, collection and product browse pages, document metadata, and shared page frame | `src/features/store-shell/`; `src/pages/index.astro`; `src/pages/collections/`; `src/pages/products/`; `src/live.config.ts`; `seed/` | `src/features/store-shell/index.ts` | EmDash; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
-| `dinkus.site-verifier` | Read-only public-origin crawler for URL status, redirects, sitemap, robots, canonical, and structured-data contract | `bin/verify-site` | `bin/verify-site <origin>` | Public EmDash routes | `bin/verify-site <local-origin>` | `bin/verify-web full` | staged; product/feed checks explicitly skipped until #34/#35 |
+| `dinkus.store-shell` | Neutral Astro/EmDash shell, first-class page layout renderers with Portable Text fallback, copied Home opener and query card, canonical slashless products/collections, Commerce-linked product resolver, document metadata, and shared page frame | `src/features/store-shell/`; `src/pages/index.astro`; `src/pages/collections/`; `src/pages/products/`; `src/live.config.ts`; `seed/` | `src/features/store-shell/index.ts` | EmDash; installed Commerce public item lookup; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | canonical URL candidate |
+| `dinkus.site-verifier` | Read-only public-origin crawler for URL status, redirects, sitemap, robots, canonical, and structured-data contract | `bin/verify-site` | `bin/verify-site <origin>` | Public EmDash routes | `bin/verify-site <local-origin>` | `bin/verify-web full` | #34 product URL checks required; #35 product data/feed checks remain skipped |
 | `dinkus.managed-product-availability` | Commerce catalog identity, official Configure Inventory orchestration, Inventory registration/opening/read/adjust composition, proof adapter, proof-only HTTP action, and storefront availability panel | `src/features/managed-product-availability/`; `src/pages/api/proof/stock.ts` | `src/features/managed-product-availability/index.ts` | `@dinkuskit/commerce` package root; `@dinkuskit/inventory` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 | `dinkus.unmanaged-product-sellability` | Unmanaged Commerce catalog identity, isolated manual availability, unified storefront resolver, proof-only HTTP action, and storefront sellability panel that never contacts Inventory or shows quantity | `src/features/unmanaged-product-sellability/`; `src/pages/api/proof/unmanaged-availability.ts` | `src/features/unmanaged-product-sellability/index.ts`; pure identities through `src/features/unmanaged-product-sellability/identity/index.ts` | `@dinkuskit/commerce` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 
@@ -33,15 +33,23 @@ Final pairing is pending the Commerce owner's immutable artifact handoff. No see
 Commerce Products to an initialized starter; preserve its edited CMS content.
 See [operator and compatibility boundaries](docs/implementation/commerce-catalog.md).
 
-## Public site verification
+## Canonical product URLs and public site verification
+
+Published products are routed only at `/products/{slug}` and collections only
+at `/collections/{slug}`. Product identity is the linked Commerce `itemId`;
+slugs are editorial URL input, never identity. Duplicate or invalid published
+links fail closed. `/shop/{id}`, legacy collection digests, `/home`, and slash
+variants are redirect inputs only, and redirect responses are `302`/`no-store`
+until verified for a later `301`. The default starter is indexable; demo-host
+noindex is explicit via `DINKUS_DEMO_NOINDEX=1` or the proof profile.
 
 Run the site verifier in order against the local server, a preview origin,
 then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD
 checks and crawls the homepage, sitemap-linked internal URLs, and nested
 internal links discovered on child pages until the queue is empty. A deployment
 is complete only after the production run passes. Checks owned by the not-yet
-landed product canonical and structured-data/feed work remain explicit `SKIP`
-results until those contracts are available.
+landed product data/feed work remains an explicit `SKIP` owned by #35; the
+canonical product/collection URL checks are required.
 
 ## Authorized guest cart
 
@@ -111,9 +119,10 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
 
 - No template file imports a Dinkus package feature internal. Pre-release
   aliases terminate at package-root `src/index.ts` only.
-- Merchandise titles, categories, descriptions, and visual labels come from EmDash
-  `merchandise` entries. Only exact demo entry IDs `everyday-tee` and
-  `canvas-cap` bind to connected proof products; all other IDs are previews.
+- Product titles, collection links, descriptions, visual labels, and slugs come
+  from EmDash `products` entries. Each published entry requires a
+  `commerceItemId`; Commerce remains authoritative for identity, price and
+  availability.
   CMS fields cannot assert Commerce or Inventory authority.
 - CMS content and transactional facts remain separate authorities even when one
   storefront page presents both.

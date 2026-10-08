@@ -43,9 +43,11 @@
       ]
     },
     {
-      "slug": "merchandise",
-      "label": "Merchandise",
-      "labelSingular": "Merch item",
+      "slug": "products",
+      "label": "Products",
+      "labelSingular": "Product",
+      "urlPattern": "/products/{slug}",
+      "seo": true,
       "supports": [
         "drafts",
         "revisions"
@@ -53,13 +55,19 @@
       "fields": [
         {
           "slug": "title",
-          "label": "Display title",
+          "label": "Product title",
           "type": "string",
           "required": true
         },
         {
-          "slug": "category",
-          "label": "Collection name",
+          "slug": "collection",
+          "label": "Collection slug",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "commerceItemId",
+          "label": "Commerce item ID",
           "type": "string",
           "required": true
         },
@@ -73,6 +81,30 @@
           "label": "Illustration style (TEE, HOODIE, CAP, or BEANIE)",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "slug": "collections",
+      "label": "Collections",
+      "labelSingular": "Collection",
+      "urlPattern": "/collections/{slug}",
+      "seo": true,
+      "supports": [
+        "drafts",
+        "revisions"
+      ],
+      "fields": [
+        {
+          "slug": "title",
+          "label": "Collection title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "description",
+          "label": "Description",
+          "type": "string"
         }
       ]
     }
@@ -203,14 +235,35 @@
         }
       }
     ],
-    "merchandise": [
+    "collections": [
+      {
+        "id": "tees",
+        "slug": "tees",
+        "status": "published",
+        "data": {
+          "title": "Tees",
+          "description": "Everyday layers for the rotation."
+        }
+      },
+      {
+        "id": "hats",
+        "slug": "hats",
+        "status": "published",
+        "data": {
+          "title": "Hats",
+          "description": "Simple finishing touches for casual days."
+        }
+      }
+    ],
+    "products": [
       {
         "id": "everyday-tee",
         "slug": "everyday-tee",
         "status": "published",
         "data": {
           "title": "Everyday Tee",
-          "category": "Tees",
+          "collection": "tees",
+          "commerceItemId": "dinkus-template-managed-product",
           "description": "A clean, versatile tee for the everyday rotation.",
           "visual_label": "TEE"
         }
@@ -221,7 +274,8 @@
         "status": "published",
         "data": {
           "title": "Boxy Tee",
-          "category": "Tees",
+          "collection": "tees",
+          "commerceItemId": "dinkus-template-preview-boxy-tee",
           "description": "An easy silhouette with a relaxed feel.",
           "visual_label": "TEE"
         }
@@ -232,7 +286,8 @@
         "status": "published",
         "data": {
           "title": "Pullover Hoodie",
-          "category": "Hoodies",
+          "collection": "tees",
+          "commerceItemId": "dinkus-template-preview-hoodie",
           "description": "A comfortable layer for cooler days.",
           "visual_label": "HOODIE"
         }
@@ -243,7 +298,8 @@
         "status": "published",
         "data": {
           "title": "Canvas Cap",
-          "category": "Hats",
+          "collection": "hats",
+          "commerceItemId": "dinkus-template-unmanaged-product",
           "description": "A simple finishing touch for casual days.",
           "visual_label": "CAP"
         }
@@ -254,7 +310,8 @@
         "status": "published",
         "data": {
           "title": "Ribbed Beanie",
-          "category": "Hats",
+          "collection": "hats",
+          "commerceItemId": "dinkus-template-preview-beanie",
           "description": "A soft, close-fitting cold-weather staple.",
           "visual_label": "BEANIE"
         }
