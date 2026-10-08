@@ -66,6 +66,29 @@ export function createPlugin() {
         };
       }
     },
+    "content:beforeSchedule": async (event, ctx) => {
+      if (event.collection !== PRODUCTS) return;
+      const entryId = entryIdOf(event.content);
+      const itemId = itemIdOf(event.content);
+      if (!entryId || !itemId || itemId.length > 1024) {
+        return {
+          cancel: true,
+          reason: "Scheduling requires a non-empty Commerce product ID of at most 1,024 characters.",
+        };
+      }
+      try {
+        await ctx.storage.claims.put(entryId, {
+          entryId,
+          itemId,
+          path: claimPath(event.content),
+        } satisfies ProductClaim);
+      } catch {
+        return {
+          cancel: true,
+          reason: "Commerce product is already claimed by another scheduled or published product.",
+        };
+      }
+    },
     "content:afterUnpublish": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
       const entryId = entryIdOf(event.content);
