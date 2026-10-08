@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { readInstalledCommerceCatalog, readInstalledCommerceProduct } from "../../src/features/commerce-catalog/installed.js";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../src/features/guest-cart/checkout-protocol.js";
+import {
+  COMMERCE_NATIVE_PLUGIN_ID,
+  readInstalledCommerceCatalog,
+  readInstalledCommerceProduct,
+} from "../../src/features/commerce-catalog/installed.js";
 
 const item = (id = "item") => ({ id, name: "Neutral product", sku: "NEUTRAL", price: { currency: "USD", minor: "125" },
   availability: { status: "in-stock", sellable: true, listable: true } });
@@ -21,7 +24,7 @@ describe("installed Commerce public catalog consumer", () => {
     expect(products[0]!.gallery).toEqual([]);
     expect(ctx.runtime.handlePublicPluginApiRoute).toHaveBeenCalledTimes(3);
     for (const [id, method, route, request] of ctx.runtime.handlePublicPluginApiRoute.mock.calls as unknown as [string, string, string, Request][]) {
-      expect([id, method, route]).toEqual([COMMERCE_REGISTRY_RUNTIME_ID, "GET", "catalog/public"]);
+      expect([id, method, route]).toEqual([COMMERCE_NATIVE_PLUGIN_ID, "GET", "catalog/public"]);
       expect([...request.headers]).toEqual([]);
       expect([...new URL(request.url).searchParams.keys()].every(key => key === "cursor")).toBe(true);
     }

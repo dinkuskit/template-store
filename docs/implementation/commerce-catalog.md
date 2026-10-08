@@ -4,8 +4,9 @@
 
 Shop on `/` and `/shop/<Commerce ID>` consume installed Commerce
 `catalog/public` through EmDash public-only SSR dispatch
-(`handlePublicPluginApiRoute`). The Registry runtime identity is
-`r_gshdrqaldna3r7sn`. The request is a fresh public GET: no incoming cookies,
+(`handlePublicPluginApiRoute`). The native Commerce plugin identity is
+`dinkus-commerce`; the old registry runtime ID is legacy and is not used for
+this catalog consumer. The request is a fresh public GET: no incoming cookies,
 credentials, query parameters, or shopper capability. Every opaque cursor is
 followed, including empty filtered pages. Display price is Commerce's projected
 customer price; this template does not reconstruct a Regular/Sale pair.

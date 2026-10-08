@@ -1,4 +1,3 @@
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
 import { formatUsdMinor } from "../store-shell/price.js";
 import type { PublicCommerceProduct } from "./index.js";
 import { readCommerceGallery, readCommerceImage } from "./media.js";
@@ -6,6 +5,7 @@ import { readCommerceGallery, readCommerceImage } from "./media.js";
 const ROUTE = "catalog/public";
 const ITEM_ROUTE = "catalog/public/item";
 const STATUSES = new Set(["in-stock", "low-stock", "out-of-stock", "available-on-backorder", "availability-unavailable"]);
+export const COMMERCE_NATIVE_PLUGIN_ID = "dinkus-commerce";
 
 export interface InstalledCatalogContext {
   request: Request;
@@ -42,7 +42,7 @@ function product(value: unknown): PublicCommerceProduct {
 
 /** Public-only SSR dispatch preserves the installed plugin's original context. */
 export async function readInstalledCommerceCatalog({ runtime, request }: InstalledCatalogContext): Promise<PublicCommerceProduct[]> {
-  const metadata = runtime?.getPluginRouteMeta(COMMERCE_REGISTRY_RUNTIME_ID, ROUTE);
+  const metadata = runtime?.getPluginRouteMeta(COMMERCE_NATIVE_PLUGIN_ID, ROUTE);
   if (!runtime || metadata?.public !== true || !metadata.methods?.includes("GET")) {
     throw new Error("Installed public catalog unavailable");
   }
@@ -51,11 +51,11 @@ export async function readInstalledCommerceCatalog({ runtime, request }: Install
   const cursors = new Set<string>();
   let cursor: string | undefined;
   do {
-    const url = new URL(`/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/${ROUTE}`, request.url);
+    const url = new URL(`/_emdash/api/plugins/${COMMERCE_NATIVE_PLUGIN_ID}/${ROUTE}`, request.url);
     if (cursor) url.searchParams.set("cursor", cursor);
     // No incoming cookies, credentials, query parameters, or shopper capability.
     const result = await runtime.handlePublicPluginApiRoute(
-      COMMERCE_REGISTRY_RUNTIME_ID, "GET", ROUTE, new Request(url, { method: "GET" }),
+      COMMERCE_NATIVE_PLUGIN_ID, "GET", ROUTE, new Request(url, { method: "GET" }),
     );
     if (!result.success || !object(result.data) || !Array.isArray(result.data.products) || result.data.products.length > 50) {
       throw new Error("Installed public catalog unavailable");
@@ -79,14 +79,14 @@ export async function readInstalledCommerceProduct(
   itemId: string,
   { runtime, request }: InstalledCatalogContext,
 ): Promise<PublicCommerceProduct | null> {
-  const metadata = runtime?.getPluginRouteMeta(COMMERCE_REGISTRY_RUNTIME_ID, ITEM_ROUTE);
+  const metadata = runtime?.getPluginRouteMeta(COMMERCE_NATIVE_PLUGIN_ID, ITEM_ROUTE);
   if (!runtime || metadata?.public !== true || !metadata.methods?.includes("GET")) {
     throw new Error("Installed public product lookup unavailable");
   }
-  const url = new URL(`/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/${ITEM_ROUTE}`, request.url);
+  const url = new URL(`/_emdash/api/plugins/${COMMERCE_NATIVE_PLUGIN_ID}/${ITEM_ROUTE}`, request.url);
   url.searchParams.set("itemId", itemId);
   const result = await runtime.handlePublicPluginApiRoute(
-    COMMERCE_REGISTRY_RUNTIME_ID,
+    COMMERCE_NATIVE_PLUGIN_ID,
     "GET",
     ITEM_ROUTE,
     new Request(url, { method: "GET" }),
