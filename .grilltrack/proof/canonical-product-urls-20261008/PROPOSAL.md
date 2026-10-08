@@ -32,4 +32,3 @@ Conservative implementation assumptions used pending those answers:
 The requested issue comment could not be posted because the available GitHub
 token returned HTTP 403 (`Resource not accessible by personal access token`).
 The same questions are retained here and in the PR description.
-
