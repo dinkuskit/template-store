@@ -60,7 +60,7 @@ managed records, or copy demonstration products into persisted Commerce storage.
 Ryan decided that the #34 schema change is an intentional breaking upgrade:
 no template-store site accepts real orders, so there is no live-store migration
 path to preserve. An initialized database that still has `merchandise` fails
-closed under the new template: `products` and `collections` are absent, so no
+closed under the new template: `products` and `categories` are absent, so no
 canonical product pages are published and no old record is guessed or converted.
 This is an explicit unavailable/empty catalog state, not a blank fallback or a
 startup crash.

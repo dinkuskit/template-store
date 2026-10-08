@@ -9,8 +9,8 @@ export type ProductEntry = Readonly<{
   description: string;
   visualLabel: string;
   commerceItemId: string;
-  collectionSlugs: readonly string[];
-  collectionTitles: readonly string[];
+  categorySlugs: readonly string[];
+  categoryTitles: readonly string[];
   illustration: "tee" | "hoodie" | "cap" | "beanie";
 }>;
 
@@ -28,9 +28,9 @@ export async function hydrateProductCollectionMembership(
 ): Promise<readonly { id: string; data: Record<string, unknown> }[]> {
   return Promise.all(entries.map(async (entry) => {
     const result = await getEmDashEntry("products", entry.id, {
-      references: { collections: true },
+      references: { categories: true },
     });
-    const memberships = result.entry?.references?.collections?.entries
+    const memberships = result.entry?.references?.categories?.entries
       .map((collection) => collection.id) ?? [];
     return {
       ...entry,
@@ -43,9 +43,11 @@ export function canonicalProductPath(slug: string): string {
   return `/products/${slug}`;
 }
 
-export function canonicalCollectionPath(slug: string): string {
-  return `/collections/${slug}`;
+export function canonicalCategoryPath(slug: string): string {
+  return `/categories/${slug}`;
 }
+
+export const canonicalCollectionPath = canonicalCategoryPath;
 
 export function validProductSlug(slug: unknown): slug is string {
   return typeof slug === "string" && SLUG.test(slug) && !slug.includes("/");
@@ -65,13 +67,13 @@ function illustration(value: string): ProductEntry["illustration"] {
 
 export function readProductEntries(
   entries: readonly { id: string; data: Record<string, unknown> }[],
-  collections: readonly { id: string; data: Record<string, unknown> }[],
+  categories: readonly { id: string; data: Record<string, unknown> }[],
 ): { products: ProductEntry[]; errors: string[] } {
-  const collectionMap = new Map<string, { title: string; description: string }>();
-  for (const entry of collections) {
+  const categoryMap = new Map<string, { title: string; description: string }>();
+  for (const entry of categories) {
     const title = text(entry.data, "title");
     if (validProductSlug(entry.id) && title) {
-      collectionMap.set(entry.id, {
+      categoryMap.set(entry.id, {
         title,
         description: text(entry.data, "description") ?? "",
       });
@@ -90,12 +92,12 @@ export function readProductEntries(
     const description = text(entry.data, "description") ?? "";
     const visualLabel = text(entry.data, "visual_label");
     const commerceItemId = text(entry.data, "commerce_item_id");
-    const collectionSlugs = (Array.isArray(entry.data.collections)
-      ? entry.data.collections
-      : [entry.data.collection])
+    const categorySlugs = (Array.isArray(entry.data.categories)
+      ? entry.data.categories
+      : [])
       .filter(validProductSlug);
     if (!validProductSlug(entry.id) || !title || !visualLabel || !commerceItemId ||
-        collectionSlugs.length === 0 || collectionSlugs.some((slug) => !collectionMap.has(slug))) {
+        categorySlugs.some((slug) => !categoryMap.has(slug))) {
       errors.push(`invalid product entry: ${entry.id}`);
       continue;
     }
@@ -103,7 +105,7 @@ export function readProductEntries(
       errors.push(`duplicate published Commerce itemId: ${commerceItemId}`);
       continue;
     }
-    const collectionTitles = collectionSlugs.map((slug) => collectionMap.get(slug)!.title);
+    const categoryTitles = categorySlugs.map((slug) => categoryMap.get(slug)!.title);
     products.push({
       id: entry.id,
       slug: entry.id,
@@ -111,27 +113,27 @@ export function readProductEntries(
       description,
       visualLabel,
       commerceItemId,
-      collectionSlugs,
-      collectionTitles,
+      categorySlugs,
+      categoryTitles,
       illustration: illustration(visualLabel),
     });
   }
   return { products, errors };
 }
 
-export function buildProductCollections(
+export function buildProductCategories(
   entries: readonly ProductEntry[],
 ): ProductCollection[] {
   const groups = new Map<string, ProductCollection>();
   for (const product of entries) {
-    for (const [index, collectionSlug] of product.collectionSlugs.entries()) {
-      const current = groups.get(collectionSlug);
+    for (const [index, categorySlug] of product.categorySlugs.entries()) {
+      const current = groups.get(categorySlug);
       if (current) {
-        groups.set(collectionSlug, { ...current, products: [...current.products, product] });
+        groups.set(categorySlug, { ...current, products: [...current.products, product] });
       } else {
-        groups.set(collectionSlug, {
-          slug: collectionSlug,
-          title: product.collectionTitles[index]!,
+        groups.set(categorySlug, {
+          slug: categorySlug,
+          title: product.categoryTitles[index]!,
           description: "",
           products: [product],
         });
@@ -140,6 +142,8 @@ export function buildProductCollections(
   }
   return [...groups.values()].sort((a, b) => a.title.localeCompare(b.title));
 }
+
+export const buildProductCollections = buildProductCategories;
 
 export async function resolvePublishedProduct(
   product: ProductEntry,

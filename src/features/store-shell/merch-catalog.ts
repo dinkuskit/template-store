@@ -11,6 +11,7 @@ export type MerchRecord = Readonly<{
 }>;
 
 export type MerchCollection = Readonly<{
+  slug: string;
   name: string;
   items: readonly MerchRecord[];
 }>;
@@ -26,20 +27,17 @@ export function buildMerchCollections(
     const title = typeof entry.data.title === "string" ? entry.data.title.trim() : "";
     if (title && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.id)) {
       collectionNames.set(entry.id, title);
-      groups.set(title, []);
+      groups.set(entry.id, []);
     }
   }
   for (const entry of entries) {
     if (entry.id === UNPRICED_PRODUCT_ITEM_ID) continue; // Commerce draft is never public.
-    const { title, collections, collection, category, description, visual_label: visualLabel } = entry.data;
-    const collectionSlug = Array.isArray(collections) ? collections[0] : collection;
-    const categoryName = typeof collectionSlug === "string"
-      ? collectionNames.get(collectionSlug) ??
-        ({ tees: "Tees", hats: "Hats" } as Record<string, string>)[collectionSlug] ?? collectionSlug
-      : category;
+    const { title, categories, description, visual_label: visualLabel } = entry.data;
+    const categorySlugs = Array.isArray(categories)
+      ? categories.filter((value): value is string => typeof value === "string")
+      : [];
     if (
       typeof title !== "string" || !title.trim() ||
-      typeof categoryName !== "string" || !categoryName.trim() ||
       (description !== undefined && typeof description !== "string") ||
       typeof visualLabel !== "string" || !visualLabel.trim() ||
       !productPath(entry.id)
@@ -50,7 +48,7 @@ export function buildMerchCollections(
     const item: MerchRecord = {
       id: entry.id,
       title: title.trim(),
-      category: categoryName.trim(),
+      category: "",
       description: typeof description === "string" ? description.trim() : "",
       visualLabel: visualLabel.trim(),
       availabilitySource: commerceItemId === "dinkus-template-managed-product"
@@ -61,21 +59,33 @@ export function buildMerchCollections(
         return style === "hoodie" || style === "cap" || style === "beanie" ? style : "tee";
       })(),
     };
-    const group = groups.get(item.category) ?? [];
-    group.push(item);
-    groups.set(item.category, group);
+    for (const slug of categorySlugs) {
+      const name = collectionNames.get(slug);
+      if (!name) continue;
+      const group = groups.get(slug) ?? [];
+      group.push({ ...item, category: name });
+      groups.set(slug, group);
+    }
   }
-  return [...groups].map(([name, items]) => ({ name, items })).sort((a, b) => a.name.localeCompare(b.name));
+  return [...collectionNames].map(([slug, name]) => ({
+    slug,
+    name,
+    items: groups.get(slug) ?? [],
+  })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function categoryAnchor(name: string): string {
   return `collection-${name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "")}`;
 }
 
-export function collectionPath(name: string): string {
-  const slug = categoryAnchor(name).slice("collection-".length) || "collection";
-  return `/collections/${slug}`;
+export function categoryPath(nameOrSlug: string): string {
+  const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(nameOrSlug)
+    ? nameOrSlug
+    : categoryAnchor(nameOrSlug).slice("collection-".length) || "category";
+  return `/categories/${slug}`;
 }
+
+export const collectionPath = categoryPath;
 
 /** Entry IDs, rather than editable names, are the stable product identity. */
 export function productPath(id: string): string | null {
@@ -86,5 +96,5 @@ export function productPath(id: string): string | null {
 export function publicMerchCollections(collections: readonly MerchCollection[], managedListable: boolean, unmanagedListable: boolean): readonly MerchCollection[] {
   return collections.map(group => ({ ...group, items: group.items.filter(item =>
     item.availabilitySource === "preview" || (item.availabilitySource === "managed" ? managedListable : unmanagedListable)
-  ) })).filter(group => group.items.length > 0);
+  ) }));
 }

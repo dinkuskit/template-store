@@ -66,7 +66,7 @@ owner inserts the section with `/section`, then owns that copy.
 The #34 URL contract deliberately breaks databases initialized with the old
 `merchandise` collection. No template-store sites accept real orders, so there
 is no live-store migration path to preserve. An old database fails closed: the
-new `products` and `collections` routes have no records to publish, rather than
+new `products` and `categories` routes have no records to publish, rather than
 silently treating old records as canonical products or crashing.
 
 For a local site, back up the database and use the easiest manual upgrade:

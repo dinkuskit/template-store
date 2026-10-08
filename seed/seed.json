@@ -60,11 +60,11 @@
           "required": true
         },
         {
-          "slug": "collections",
-          "label": "Collections",
+          "slug": "categories",
+          "label": "Categories",
           "type": "reference",
           "validation": {
-            "relation": "product_collections",
+            "relation": "product_categories",
             "relationSide": "child"
           }
         },
@@ -87,10 +87,10 @@
       ]
     },
     {
-      "slug": "collections",
-      "label": "Collections",
-      "labelSingular": "Collection",
-      "urlPattern": "/collections/{slug}",
+      "slug": "categories",
+      "label": "Categories",
+      "labelSingular": "Category",
+      "urlPattern": "/categories/{slug}",
       "seo": true,
       "supports": [
         "drafts",
@@ -99,7 +99,7 @@
       "fields": [
         {
           "slug": "title",
-          "label": "Collection title",
+          "label": "Category title",
           "type": "string",
           "required": true
         },
@@ -113,13 +113,44 @@
   ],
   "relations": [
     {
-      "slug": "product_collections",
-      "parentCollection": "collections",
+      "slug": "product_categories",
+      "parentCollection": "categories",
       "childCollection": "products",
       "parentLabel": "Products",
-      "childLabel": "Collections",
+      "childLabel": "Categories",
       "maxChildrenPerParent": null,
       "maxParentsPerChild": null
+    }
+  ],
+  "menus": [
+    {
+      "name": "store-primary",
+      "label": "Store navigation",
+      "items": [
+        {
+          "type": "custom",
+          "label": "Shop",
+          "url": "/#commerce-catalog"
+        },
+        {
+          "type": "collection",
+          "label": "Tees",
+          "collection": "categories",
+          "ref": "tees"
+        },
+        {
+          "type": "collection",
+          "label": "Hoodies",
+          "collection": "categories",
+          "ref": "hoodies"
+        },
+        {
+          "type": "collection",
+          "label": "Hats",
+          "collection": "categories",
+          "ref": "hats"
+        }
+      ]
     }
   ],
   "sections": [
@@ -248,7 +279,7 @@
         }
       }
     ],
-    "collections": [
+    "categories": [
       {
         "id": "tees",
         "slug": "tees",
@@ -284,7 +315,7 @@
         "status": "published",
         "data": {
           "title": "Everyday Tee",
-          "collections": ["tees"],
+          "categories": ["tees"],
           "commerce_item_id": "dinkus-template-managed-product",
           "description": "A clean, versatile tee for the everyday rotation.",
           "visual_label": "TEE"
@@ -296,7 +327,7 @@
         "status": "published",
         "data": {
           "title": "Boxy Tee",
-          "collections": ["tees"],
+          "categories": ["tees"],
           "commerce_item_id": "dinkus-template-preview-boxy-tee",
           "description": "An easy silhouette with a relaxed feel.",
           "visual_label": "TEE"
@@ -308,7 +339,7 @@
         "status": "published",
         "data": {
           "title": "Pullover Hoodie",
-          "collections": ["hoodies"],
+          "categories": ["hoodies"],
           "commerce_item_id": "dinkus-template-preview-hoodie",
           "description": "A comfortable layer for cooler days.",
           "visual_label": "HOODIE"
@@ -320,7 +351,7 @@
         "status": "published",
         "data": {
           "title": "Canvas Cap",
-          "collections": ["hats"],
+          "categories": ["hats"],
           "commerce_item_id": "dinkus-template-unmanaged-product",
           "description": "A simple finishing touch for casual days.",
           "visual_label": "CAP"
@@ -332,7 +363,7 @@
         "status": "published",
         "data": {
           "title": "Ribbed Beanie",
-          "collections": ["hats"],
+          "categories": ["hats"],
           "commerce_item_id": "dinkus-template-preview-beanie",
           "description": "A soft, close-fitting cold-weather staple.",
           "visual_label": "BEANIE"

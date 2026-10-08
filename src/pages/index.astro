@@ -25,11 +25,11 @@ const layout = pageData?.layout;
 const content = pageData?.content as PortableTextBlock[] | undefined;
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
-const collectionEntries = await getEmDashCollection<"collections", Record<string, unknown>>("collections", { status: "published" });
-const productLinks = readProductEntries(products.entries, collectionEntries.entries);
+const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
+const productLinks = readProductEntries(products.entries, categoryEntries.entries);
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
   products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
-  collectionEntries.entries,
+  categoryEntries.entries,
 );
 let catalogUnavailable = false;
 const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });

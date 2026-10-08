@@ -4,7 +4,6 @@ import {
   decodedForms,
   evaluatePublicBoundary,
   isExactGuestCheckoutPath,
-  slashlessRedirectPath,
 } from "./features/security/public-boundary.js";
 import { resolveGuestCheckoutAdmission } from "./features/guest-cart/checkout-admission.js";
 
@@ -17,20 +16,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     pathForms = decodedForms(context.url.pathname);
   } catch {
     const response = Response.json({ error: "Invalid path." }, { status: 403 });
-    applySecurityHeaders(response.headers);
-    return response;
-  }
-  const slashlessPath = slashlessRedirectPath(context.url.pathname);
-  if (slashlessPath && (context.request.method === "GET" || context.request.method === "HEAD")) {
-    const redirectUrl = new URL(context.request.url);
-    redirectUrl.pathname = slashlessPath;
-    const response = new Response(null, {
-      status: 302,
-      headers: {
-        Location: redirectUrl.href,
-        "Cache-Control": "no-store",
-      },
-    });
     applySecurityHeaders(response.headers);
     return response;
   }
@@ -113,5 +98,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
-  return next();
+  const response = await next();
+  applySecurityHeaders(response.headers);
+  return response;
 });

@@ -1,0 +1,54 @@
+---
+import { getEmDashCollection } from "emdash";
+import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
+import { GuestCartNav } from "../../features/guest-cart/ui.ts";
+import { STORE_TITLE, categoryPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
+import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
+import "../../features/store-shell/global.css";
+
+const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
+const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
+const productLinks = readProductEntries(products.entries, categoryEntries.entries);
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
+  products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
+  categoryEntries.entries,
+);
+const category = collections.find((group) => group.slug === Astro.params.slug);
+if (!category) Astro.response.status = 404;
+const managed = demonstrations?.managed;
+const unmanaged = demonstrations?.unmanaged;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={category ? `Explore ${category.name} in the DinkusKit product catalog.` : "Category not found."} />
+    {category && <link rel="canonical" href={new URL(categoryPath(category.slug), Astro.site ?? Astro.url).href} />}
+    <title>{category ? `${category.name} | ${STORE_TITLE}` : `Category not found | ${STORE_TITLE}`}</title>
+  </head>
+  <body data-storefront-profile={profile}>
+    <div class="store-demo-banner" data-store-demo-banner role="status">Demo / Test Store &mdash; Synthetic demonstration. Purchases and checkout are unavailable.</div>
+    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><GuestCartNav /></nav></header>
+    <main class="browse-page">
+      <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">{category?.name ?? "Not found"}</span></nav>
+      {category ? (
+        <>
+          <h1 class="browse-title">{category.name}</h1>
+          <p class="browse-intro">Explore the {category.name.toLowerCase()} category. {profile === "proof" ? "Connected availability is live; previews cannot be purchased." : "Editorial previews cannot be purchased."}</p>
+          <MerchCatalog collections={[category]} managed={managed} unmanaged={unmanaged} collectionOnly />
+        </>
+      ) : <><h1>Category not found</h1><p>This category is not published or does not exist.</p><a href="/">Return to catalog</a></>}
+    </main>
+    <footer class="store-footer">Product copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
+  </body>
+</html>
+<style>
+  .browse-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}
+  .browse-breadcrumb{display:flex;flex-wrap:wrap;gap:.7rem;padding:2rem 0;color:var(--store-muted)}
+  .browse-breadcrumb a{color:inherit;text-underline-offset:.2em}
+  .browse-title{font-size:clamp(2.4rem,6vw,5rem);line-height:1;margin:.5rem 0}
+  .browse-intro{max-width:45rem;line-height:1.6;color:var(--store-muted)}
+  .browse-page :global(.merch-catalog){width:100%;margin:2rem 0}
+</style>

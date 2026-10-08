@@ -8,6 +8,7 @@ import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
 import { d1, r2 } from "@emdash-cms/cloudflare";
+import { productUrlPlugin } from "./src/features/product-url-plugin/index.ts";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
@@ -54,12 +55,15 @@ export default defineConfig({
             baseUrl: "/_emdash/api/media/file",
           }),
       ...(siteUrl ? { siteUrl } : {}),
-      plugins: process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
-        dinkusCommerce({
-          enableLocalStockManagement,
-          ...(siteUrl ? { siteUrl } : {}),
-        }),
-      ] : [],
+      plugins: [
+        productUrlPlugin,
+        ...(process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
+          dinkusCommerce({
+            enableLocalStockManagement,
+            ...(siteUrl ? { siteUrl } : {}),
+          }),
+        ] : []),
+      ],
     }),
   ],
   vite: {

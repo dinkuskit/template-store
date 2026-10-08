@@ -390,13 +390,13 @@ async function ensureProduct(
 async function assertNeutralHome(db: EmDashDb, sql: KyselyModule["sql"]): Promise<void> {
   const collections = await sql<{ slug: string }>`
     select slug from _emdash_collections
-    where slug in ('pages', 'products', 'collections')
+    where slug in ('pages', 'products', 'categories')
   `.execute(db);
   const slugs = new Set(collections.rows.map((row) => row.slug));
-  if (!slugs.has("pages") || !slugs.has("products") || !slugs.has("collections")) {
+  if (!slugs.has("pages") || !slugs.has("products") || !slugs.has("categories")) {
     throw new SeedRefusal(
-      "CMS_COLLECTIONS_MISSING",
-      "Neutral EmDash pages, products, and collections were not initialized.",
+      "CMS_CATEGORIES_MISSING",
+      "Neutral EmDash pages, products, and categories were not initialized.",
     );
   }
   const home = await sql<{ slug: string; status: string; layout_length: number; content_length: number }>`
@@ -425,7 +425,7 @@ async function assertNeutralHome(db: EmDashDb, sql: KyselyModule["sql"]): Promis
   emit("seed.cms", {
     pages: true,
     products: true,
-    collections: true,
+    categories: true,
     home: row.slug,
     status: row.status,
     composition: layoutLength > 2 ? "layout" : "content",
