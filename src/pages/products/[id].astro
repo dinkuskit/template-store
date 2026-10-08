@@ -15,11 +15,16 @@ const productLinks = readProductEntries(products.entries, categoryEntries.entrie
 const validEntries = products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id));
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(validEntries, categoryEntries.entries);
 const linked = productLinks.products.find((candidate) => productPath(candidate.id) === Astro.url.pathname);
+const linkedSource = linked?.commerceItemId === "dinkus-template-managed-product"
+  ? "managed" as const
+  : linked?.commerceItemId === "dinkus-template-unmanaged-product"
+    ? "unmanaged" as const
+    : "preview" as const;
 const item = collections.flatMap((group) => group.items).find((candidate) => productPath(candidate.id) === Astro.url.pathname)
   ?? (linked && {
     ...linked,
     category: "",
-    availabilitySource: "preview" as const,
+    availabilitySource: linkedSource,
     illustration: linked.visualLabel.toLowerCase() as "tee" | "hoodie" | "cap" | "beanie",
   });
 const category = linked?.categorySlugs[0]
