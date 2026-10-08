@@ -369,7 +369,6 @@ export function hydrateGuestCartControls(): void {
         return;
       }
       applyIntent(result.intent, session.notice);
-      void probeGuestCheckout(root);
       if (status instanceof HTMLElement) {
         status.hidden = false;
         if (persistFailed()) {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
+  GUEST_CHECKOUT_START_ENDPOINT,
   callGuestCheckout,
   checkoutCanConfirm,
   createGuestCheckoutController,
@@ -139,7 +139,7 @@ describe("guest checkout protocol and recovery", () => {
     );
     expect(result.failure).toBeNull();
     expect(calls[0]).toMatchObject({
-      endpoint: `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/start`,
+      endpoint: GUEST_CHECKOUT_START_ENDPOINT,
       capability: "cap-1.secret",
     });
     expect(JSON.parse(calls[0]!.body)).toEqual({
