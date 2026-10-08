@@ -189,6 +189,15 @@ async function inspect(path, from = "crawl") {
     return null;
   }
   if (response.status >= 300 && response.status < 400) {
+    const listed = sitemapPaths.has(url.pathname + url.search);
+    if (listed) {
+      result(
+        "Sitemap redirect",
+        "FAIL",
+        `${url.pathname} is listed in the sitemap but returned ${response.status}`,
+      );
+      return response;
+    }
     const target = redirectTarget(response, url);
     if (![301, 302].includes(response.status)) {
       result("Redirect status", "FAIL", `${url.pathname} returned ${response.status}; only 301/302 are allowed`);

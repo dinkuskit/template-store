@@ -182,3 +182,52 @@ test("skips an empty sitemap index on this starter", async () => {
     await new Promise((resolveClose) => server.close(resolveClose));
   }
 });
+
+test("fails when a sitemap-listed URL redirects instead of serving a page", async () => {
+  const fetched = [];
+  const { server, origin } = await listen((req, res) => {
+    const url = new URL(req.url ?? "/", origin);
+    fetched.push(url.pathname);
+    if (url.pathname === "/") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(html([]));
+      return;
+    }
+    if (url.pathname === "/home") {
+      res.writeHead(302, { location: "/", "cache-control": "no-store" });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/old") {
+      res.writeHead(302, { location: "/new", "cache-control": "no-store" });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/new") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(html([]));
+      return;
+    }
+    if (url.pathname === "/robots.txt") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    if (url.pathname === "/sitemap.xml") {
+      res.writeHead(200, { "content-type": "application/xml" });
+      res.end(
+        `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/old</loc></url></urlset>`,
+      );
+      return;
+    }
+    res.writeHead(404).end();
+  });
+  try {
+    const result = await runVerifier(origin);
+    assert.notEqual(result.status, 0, result.stdout + result.stderr);
+    assert.match(`${result.stdout}\n${result.stderr}`, /listed in the sitemap but returned 302/);
+    assert.equal(fetched.includes("/old"), true);
+  } finally {
+    await new Promise((resolveClose) => server.close(resolveClose));
+  }
+});
