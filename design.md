@@ -17,7 +17,7 @@ The Shop above the separate integration demonstrations is driven by persisted
 Commerce Products. Name/SKU and Regular/Sale are operated in native EmDash
 Products admin. Missing Regular hides both listing and detail; Sale strikes
 Regular. Render truthful Commerce availability without inventing quantity.
-The catalog may be empty. The earlier catalog-only scope is superseded for the authorized guest-cart slice below; checkout remains unavailable until the exact Commerce guest runtime is paired. Preserve
+The catalog may be empty. Shop cards and product pages show the primary image Commerce projects from EmDash's Media Library: the projected alt text, responsive `/_image` srcset, and Commerce's store placeholder when that projection sets `placeholder: true`. A missing or unresolvable image is the text placeholder "No image", never another product's photo, a filename, or a URL from the catalog payload. Prices, availability, and add-to-cart stay on the card. The earlier catalog-only scope is superseded for the authorized guest-cart slice below; checkout remains unavailable until the exact Commerce guest runtime is paired. Preserve
 the existing neutral visual language, keyboard links, and narrow-screen fit.
 The approved shipping v1 profile has Inventory off. Managed demonstrations
 remain explicit development proof. Default shopper pages consume the persisted

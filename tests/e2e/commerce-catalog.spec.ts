@@ -46,6 +46,9 @@ test("merchant product prices drive public listing and survive an admin reload",
   await page.reload();
   await expect(card.locator("[data-regular-price]")).toHaveText("$24.00");
   await expect(card.locator("[data-commerce-availability]")).toHaveText("In stock");
+  await expect(card.locator("[data-commerce-image-placeholder]")).toHaveText("No image");
+  await expect(card.locator("img")).toHaveCount(0);
+  await expect(card.locator("[data-add-to-cart]")).toHaveAttribute("data-add-to-cart", id);
   expect((await save("24", "18")).saved).toBe(true);
   await page.reload();
   await expect(card.locator("s[data-regular-price]")).toHaveText("$24.00");

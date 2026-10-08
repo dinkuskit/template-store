@@ -262,6 +262,8 @@ describe("guest cart snapshot presentation", () => {
             listable: true,
             displayQuantity: { value: "8", unit: "each" },
           },
+          image: { id: "media_hat", alt: "Navy hat", width: 300, height: 300, placeholder: false, src: "https://evil.example/hat.png" },
+          gallery: [{ id: "media_side", alt: "Side", width: null, height: null, placeholder: false }],
         },
       ]),
     ).toEqual([
