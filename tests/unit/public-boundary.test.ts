@@ -24,6 +24,7 @@ const astroFetch = astroEntry.fetch as ReturnType<typeof vi.fn>;
 describe("public boundary access evaluation", () => {
   it("allows standard storefront shopper GET endpoints", () => {
     expect(evaluatePublicBoundary("GET", "/").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/home").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/cart").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/sitemap.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/shop/DEMO-HOSTED-SHIRT").allowed).toBe(true);

@@ -143,10 +143,11 @@ async function inspect(path, from = "crawl") {
     return null;
   }
   if (response.status >= 300 && response.status < 400) {
-    redirectTarget(response, url);
+    const target = redirectTarget(response, url);
     if (![301, 302].includes(response.status)) {
       result("Redirect status", "FAIL", `${url.pathname} returned ${response.status}; only 301/302 are allowed`);
     }
+    if (target?.origin === base) await inspect(target.pathname + target.search, "redirect target");
     return response;
   }
   if (response.status < 200 || response.status >= 300) {
@@ -158,7 +159,13 @@ async function inspect(path, from = "crawl") {
   if (type.includes("html")) {
     parseLinks(body, url);
     parseJsonLd(body, url);
-    pages.set(url.pathname, { url, body, canonical: parseCanonical(body, url) });
+    pages.set(url.pathname, {
+      url,
+      body,
+      canonical: parseCanonical(body, url),
+      noindex: /noindex/i.test(response.headers.get("x-robots-tag") ?? "") ||
+        /<meta\b[^>]*(?:name=["']robots["'][^>]*content=["'][^"']*\bnoindex\b|content=["'][^"']*\bnoindex\b[^"']*["'][^>]*name=["']robots["'])/i.test(body),
+    });
   }
   return response;
 }
@@ -196,7 +203,18 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
       result("Sitemap XML", "FAIL", `Invalid sitemap URL: ${match[1]}`);
     }
   }
-  result("Sitemap availability", "PASS", `${sitemapPaths.size} URL(s)`);
+  if (sitemapPaths.size === 0) {
+    result("Sitemap XML", "FAIL", "Sitemap has no <loc> URLs");
+  } else {
+    result("Sitemap availability", "PASS", `${sitemapPaths.size} URL(s)`);
+  }
+} else if (sitemapResponse?.status === 500) {
+  const sitemapError = await sitemapResponse.text();
+  if (sitemapError.includes("<!-- EmDash not configured -->") && !REQUIRED_LANDED_CHECKS) {
+    result("Sitemap contract", "SKIP", "EmDash 1.0.1 local runtime reports not configured for its built-in sitemap; require after the 1.2 upgrade.");
+  } else {
+    result("Sitemap availability", "FAIL", `/sitemap.xml returned ${sitemapResponse.status}`);
+  }
 } else if (sitemapResponse) {
   result("Sitemap availability", "FAIL", `/sitemap.xml returned ${sitemapResponse.status}`);
 }
@@ -218,9 +236,10 @@ if (sitemapPaths.size) {
     } else {
       requiredOrSkip("Sitemap canonical", `${path} has no exactly-one canonical tag`);
     }
-    if (page.body.match(/<meta\b[^>]*name=["']robots["'][^>]*content=["'][^"']*\bnoindex\b/i) ||
-        page.body.match(/<meta\b[^>]*content=["'][^"']*\bnoindex\b[^"']*["'][^>]*name=["']robots["']/i)) {
+    if (page.noindex && !demoHost) {
       result("Sitemap indexability", "FAIL", `${path} is noindex`);
+    } else if (page.noindex && demoHost) {
+      result("Sitemap indexability", "PASS", `${path} is noindex under explicit demo-host policy`);
     }
   }
   if (sitemapPaths.has("/home")) result("Sitemap homepage", "FAIL", "/home must not be in the sitemap");
