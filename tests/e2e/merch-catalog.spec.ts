@@ -17,9 +17,11 @@ test("products are editable in EmDash and visible in the canonical catalog", asy
   const welcome = admin.getByRole("dialog", { name: /Welcome to EmDash/ });
   try {
     await expect(welcome).toBeVisible({ timeout: 5_000 });
-    await admin.getByRole("button", { name: "Get Started" }).click();
+    const getStarted = admin.getByRole("button", { name: "Get Started" });
+    await getStarted.scrollIntoViewIfNeeded();
+    await getStarted.click({ force: true });
   } catch {
-    await expect(welcome).toHaveCount(0);
+    await admin.keyboard.press("Escape");
   }
   await expect(welcome).toHaveCount(0);
   await expect(admin.locator('input[value="Everyday Tee"]')).toBeVisible({ timeout: 30_000 });
