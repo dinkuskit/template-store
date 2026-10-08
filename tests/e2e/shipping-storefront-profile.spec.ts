@@ -97,7 +97,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator("[data-product-status]")).toHaveText("Preview only · not purchasable");
   await expect(page.locator("[data-stock-value]")).toHaveCount(0);
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
-  expect((await page.goto("/products/everyday-tee"))?.status()).toBe(404);
+  expect((await page.goto("/products/everyday-tee"))?.status()).toBe(503);
 
   await page.goto("/");
   expect(
