@@ -4,11 +4,11 @@ export const GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY = "dinkus.guest-checkout.v1";
 export const GUEST_CHECKOUT_CAPABILITY_HEADER = "x-commerce-guest-capability";
 export const COMMERCE_REGISTRY_RUNTIME_ID = "r_gshdrqaldna3r7sn";
 export const GUEST_CHECKOUT_PREPARE_ENDPOINT =
-  `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/prepare`;
+  "/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare";
 export const GUEST_CHECKOUT_START_ENDPOINT =
-  `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/start`;
+  "/_emdash/api/plugins/dinkus-commerce/checkout/guest/start";
 export const GUEST_CHECKOUT_STATUS_ENDPOINT =
-  `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/status`;
+  "/_emdash/api/plugins/dinkus-commerce/checkout/guest/status";
 export const GUEST_CHECKOUT_PROJECTION_SCHEMA =
   "dinkuskit.commerce.guest-checkout-projection/v1";
 

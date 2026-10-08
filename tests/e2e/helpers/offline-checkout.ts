@@ -1,11 +1,11 @@
 import { expect } from "@playwright/test";
 import type { Browser, BrowserContext, BrowserContextOptions, Page, Route } from "@playwright/test";
 
-export const RUNTIME_ID = "r_gshdrqaldna3r7sn";
+export const RUNTIME_ID = "dinkus-commerce";
 export const RUNTIME_PREPARE = `/_emdash/api/plugins/${RUNTIME_ID}/checkout/guest/prepare`;
 export const RUNTIME_START = RUNTIME_PREPARE.replace("prepare", "start");
 export const RUNTIME_STATUS = RUNTIME_PREPARE.replace("prepare", "status");
-export const NATIVE_PREPARE = "/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare";
+export const LEGACY_PREPARE = "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare";
 export const SYNTHETIC_PAYMENT_URL = "https://offline-payment.invalid/session/synthetic";
 
 export function assertLoopbackBaseOrigin(baseURL: string): URL {

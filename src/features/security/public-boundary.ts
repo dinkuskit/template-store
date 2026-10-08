@@ -26,7 +26,7 @@ const ALLOWED_PATH_PATTERNS = [
 ];
 
 const GUEST_CHECKOUT_POST_PATH =
-  /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
+  /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|start|status)$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 function slashlessCollectionPath(pathname: string): string | undefined {
   if (!pathname.endsWith("/") || pathname === "/") return undefined;
