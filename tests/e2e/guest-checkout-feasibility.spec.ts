@@ -1,25 +1,16 @@
+import { createServer } from "node:http";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
-test.use({ trace: "off", video: "off" });
+import {
+  NATIVE_PREPARE,
+  RUNTIME_PREPARE,
+  freshOfflineContext,
+  installOfflineCheckoutHarness,
+} from "./helpers/offline-checkout";
 
-const RUNTIME_ID = "r_gshdrqaldna3r7sn";
-const RUNTIME_PREPARE = `/_emdash/api/plugins/${RUNTIME_ID}/checkout/guest/prepare`;
-const NATIVE_PREPARE = "/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare";
-
-const syntheticProjection = (state: "pending" | "paid" | "released-retry", attemptId: string | null) => ({
-  schema: "dinkuskit.commerce.guest-checkout-projection/v1",
-  state,
-  attemptId,
-  lines: [{ catalogItemId: "fixture-shirt", name: "Synthetic fixture shirt", quantity: 1, unitPrice: { currency: "USD", minor: "2400" } }],
-  total: { currency: "USD", minor: "2400" },
-  pricing: { finalTotal: { currency: "USD", minor: "2400" } },
-  redirectUrl: null,
-  order: state === "paid" ? { orderId: "order:fixture", receiptId: "receipt:fixture", lines: [{ catalogItemId: "fixture-shirt", quantity: 1 }] } : null,
-  retryAfter: null,
-  unavailable: null,
-});
+test.use({ trace: "off", video: "off", serviceWorkers: "block" });
 
 test("guest checkout stays closed and return pages never trust browser claims", async ({
   browser,
@@ -40,11 +31,14 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   });
   expect(nativePrepare.status()).toBe(405);
 
-  const context = await browser.newContext({
-    viewport: testInfo.project.use.viewport,
-  });
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
   try {
   const page = await context.newPage();
+  await installOfflineCheckoutHarness(page, { baseURL: testInfo.project.use.baseURL as string, synthetic: false });
   await page.goto(
     "/checkout/success?success=true&session_id=forged&redirect_status=succeeded",
   );
@@ -58,7 +52,7 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   await expect(page.getByRole("heading", { name: "Checkout canceled" })).toBeVisible();
   await expect(page.locator("[data-guest-checkout-order]")).toBeHidden();
 
-  const runDir = resolve("runs/checkout-integration-runs/20261007/browser", testInfo.project.name);
+  const runDir = resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name);
   await mkdir(runDir, { recursive: true });
   await page.screenshot({
     path: resolve(runDir, "guest-checkout-cancel-closed.png"),
@@ -73,86 +67,22 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
 }, testInfo) => {
   test.setTimeout(60_000);
   expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
-  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
   try {
   const page = await context.newPage();
-  let statusCalls = 0;
-  let prepareCalls = 0;
-  let startCalls = 0;
-  let capabilityId = "fixture-cap-1";
+  const harness = await installOfflineCheckoutHarness(page, {
+    baseURL: testInfo.project.use.baseURL as string,
+  });
   await page.addInitScript(() => {
     if (localStorage.getItem("dinkus.guest-cart.v1")) return;
     localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
       version: 1,
       lines: [{ id: "fixture-shirt", quantity: 1 }],
     }));
-  });
-  await page.route("**/cart", async (route) => {
-    const response = await route.fetch();
-    const html = (await response.text()).replace(
-      'data-guest-checkout-admitted="false"',
-      'data-guest-checkout-admitted="true"',
-    );
-    await route.fulfill({ response, body: html });
-  });
-  await page.route("**/api/guest-cart/snapshot**", async (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      products: [{
-        id: "fixture-shirt",
-        found: true,
-        name: "Synthetic fixture shirt",
-        sku: "FIXTURE",
-        price: { listable: true, regularText: "$24.00", saleText: null },
-        availability: { status: "in-stock", sellable: true, listable: true },
-      }],
-    }),
-  }));
-  await page.route(`**${RUNTIME_PREPARE}`, async (route) => {
-    prepareCalls += 1;
-    capabilityId = `fixture-cap-${prepareCalls}`;
-    await route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      success: true,
-      data: {
-        ok: true,
-        capabilityId,
-        capability: {
-          capabilityId,
-          capability: `${capabilityId}.secret`,
-          retention: "json-body",
-          header: "x-commerce-guest-capability",
-        },
-        checkout: syntheticProjection("pending", null),
-      },
-    }),
-  }); });
-  await page.route(`**${RUNTIME_PREPARE.replace("prepare", "start")}`, async (route) => {
-    startCalls += 1;
-    expect(route.request().headers()["x-commerce-guest-capability"]).toBe(`${capabilityId}.secret`);
-    expect(route.request().postDataJSON()).toEqual({ lines: [{ catalogItemId: "fixture-shirt", quantity: 1 }] });
-    await route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      success: true,
-      data: { ok: true, capabilityId, checkout: syntheticProjection("pending", `fixture-attempt-${startCalls}`) },
-    }),
-  }); });
-  await page.route(`**${RUNTIME_PREPARE.replace("prepare", "status")}`, async (route) => {
-    statusCalls += 1;
-    const state = statusCalls > 1 ? "paid" : "pending";
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        success: true,
-        data: { ok: true, capabilityId, checkout: syntheticProjection(state, `fixture-attempt-${startCalls}`) },
-      }),
-    });
   });
   await page.goto("/cart");
   await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
@@ -169,10 +99,10 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   await page.getByRole("button", { name: "Check status again" }).click();
   await expect(page.locator("[data-guest-checkout-order]")).toContainText("order:fixture");
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
-  expect(statusCalls).toBe(2);
+  expect(harness.counts().statusCalls).toBe(2);
   await expect(page.locator("[data-guest-cart-count]")).toBeHidden();
   await page.screenshot({
-    path: resolve("runs/checkout-integration-runs/20261007/browser", testInfo.project.name, "guest-checkout-synthetic-paid.png"),
+    path: resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name, "guest-checkout-synthetic-paid.png"),
     fullPage: true,
     animations: "disabled",
   });
@@ -187,7 +117,70 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   await expect(page.locator("[data-guest-cart-qty]")).toBeEnabled();
   await page.getByRole("button", { name: "Continue to secure checkout" }).click();
   await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
-  expect(prepareCalls).toBe(2);
-  expect(startCalls).toBe(2);
+  expect(harness.counts().prepareCalls).toBe(2);
+  expect(harness.counts().startCalls).toBe(2);
   } finally { await context.close(); }
+});
+
+test("offline checkout blocks external payment and unregistered local checkout paths before delivery", async ({
+  browser,
+}, testInfo) => {
+  let delivered = 0;
+  const server = createServer((_request, response) => {
+    delivered += 1;
+    response.end("local sentinel");
+  });
+  await new Promise<void>((resolveListen) => server.listen(0, "127.0.0.1", resolveListen));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("sentinel did not bind");
+  const baseURL = `http://127.0.0.1:${address.port}`;
+  const context = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL });
+    const failures: string[] = [];
+    page.on("requestfailed", (request) => failures.push(request.failure()?.errorText ?? ""));
+    await page.goto("/");
+    expect(delivered).toBe(1); // The sentinel is reachable; rejection is not a network outage.
+    const rejected = [
+      harness.paymentURL,
+      `${baseURL}/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/unregistered`,
+      `${baseURL}${RUNTIME_PREPARE}`, // Wrong method must never fall through.
+      `${baseURL}/api/payment/session`,
+    ];
+    for (const url of rejected) await expect(page.goto(url)).rejects.toThrow(/ERR_BLOCKED_BY_CLIENT/);
+    expect(harness.blocked).toEqual(rejected);
+    expect(failures).toEqual(rejected.map(() => "net::ERR_BLOCKED_BY_CLIENT"));
+    expect(delivered).toBe(1);
+    expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 0, statusCalls: 0 });
+  } finally {
+    await context.close();
+    await new Promise<void>((resolveClose, reject) => server.close((error) => error ? reject(error) : resolveClose()));
+  }
+});
+
+test("offline browser contexts cannot reuse cart state or cookies", async ({ browser }, testInfo) => {
+  const baseURL = testInfo.project.use.baseURL as string;
+  const first = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await first.newPage();
+    await installOfflineCheckoutHarness(page, { baseURL, synthetic: false });
+    await page.goto("/cart");
+    await page.evaluate(() => {
+      localStorage.setItem("offline-isolation-sentinel", "previous shopper");
+      sessionStorage.setItem("offline-isolation-sentinel", "previous tab");
+    });
+    await first.addCookies([{ name: "offline-isolation-sentinel", value: "previous shopper", url: baseURL }]);
+  } finally { await first.close(); }
+  const second = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await second.newPage();
+    await installOfflineCheckoutHarness(page, { baseURL, synthetic: false });
+    await page.goto("/cart");
+    expect(await page.evaluate(() => ({
+      local: localStorage.getItem("offline-isolation-sentinel"),
+      session: sessionStorage.getItem("offline-isolation-sentinel"),
+    }))).toEqual({ local: null, session: null });
+    expect((await second.cookies()).some((cookie) => cookie.name === "offline-isolation-sentinel")).toBe(false);
+  } finally { await second.close(); }
 });
