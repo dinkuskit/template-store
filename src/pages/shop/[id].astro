@@ -8,7 +8,7 @@ import "../../features/store-shell/global.css";
 import { canonicalProductPath, validProductSlug } from "../../features/store-shell/product-routes.js";
 const productEntries = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const linked = productEntries.entries.find((entry) =>
-  entry.data.commerceItemId === Astro.params.id && validProductSlug(entry.id),
+  (entry.data.commerce_item_id ?? entry.data.commerceItemId) === Astro.params.id && validProductSlug(entry.id),
 );
 if (linked) {
   const target = new URL(canonicalProductPath(linked.id), Astro.url);
