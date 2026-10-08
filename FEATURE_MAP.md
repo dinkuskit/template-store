@@ -37,7 +37,8 @@ See [operator and compatibility boundaries](docs/implementation/commerce-catalog
 
 Run the site verifier in order against the local server, a preview origin,
 then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD
-checks and crawls the homepage and sitemap-linked internal URLs. A deployment
+checks and crawls the homepage, sitemap-linked internal URLs, and nested
+internal links discovered on child pages until the queue is empty. A deployment
 is complete only after the production run passes. Checks owned by the not-yet
 landed product canonical and structured-data/feed work remain explicit `SKIP`
 results until those contracts are available.

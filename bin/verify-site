@@ -190,6 +190,16 @@ async function inspect(path, from = "crawl") {
   return response;
 }
 
+async function drainDiscovered() {
+  const maxPages = 500;
+  while (visited.size < maxPages) {
+    const pending = [...discovered].filter((path) => !visited.has(absoluteUrl(path).href));
+    if (pending.length === 0) return;
+    for (const path of pending) await inspect(path);
+  }
+  result("Crawl coverage", "FAIL", `Stopped after ${maxPages} URLs; nested public links remain unvisited`);
+}
+
 console.log(`verify-site: ${base}${demoHost ? " (demo-host policy)" : ""}`);
 await inspect("/");
 const homeRedirect = await request(new URL("/home", `${base}/`));
@@ -272,8 +282,7 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
 const robots = await inspect("/robots.txt", "robots.txt");
 if (robots?.ok) result("Robots availability", "PASS", "/robots.txt is reachable");
 
-for (const path of [...discovered]) await inspect(path);
-for (const path of sitemapPaths) await inspect(path, "sitemap");
+await drainDiscovered();
 
 if (sitemapPaths.size) {
   for (const [path, page] of pages) {
