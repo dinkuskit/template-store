@@ -10,6 +10,8 @@ import { resolveGuestCheckoutAdmission } from "./features/guest-cart/checkout-ad
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|start|status)$/;
+const LEGACY_GUEST_CHECKOUT_POST_PATH =
+  /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const slashlessPath = slashlessRedirectPath(context.url.pathname);
@@ -105,7 +107,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
-  if (pathForms.some((path) => NATIVE_GUEST_CHECKOUT_POST_PATH.test(path))) {
+  if (
+    pathForms.some(
+      (path) =>
+        NATIVE_GUEST_CHECKOUT_POST_PATH.test(path) ||
+        LEGACY_GUEST_CHECKOUT_POST_PATH.test(path),
+    )
+  ) {
     const response = new Response(
       JSON.stringify({ error: "Native or source-alias checkout is not a supported install." }),
       {

@@ -369,6 +369,7 @@ export function hydrateGuestCartControls(): void {
         return;
       }
       applyIntent(result.intent, session.notice);
+      document.dispatchEvent(new CustomEvent("guest-cart-updated"));
       if (status instanceof HTMLElement) {
         status.hidden = false;
         if (persistFailed()) {
@@ -492,6 +493,7 @@ export function hydrateGuestCartPage(): void {
     mutationNotice = null;
     applyIntent(result.intent, session.notice, root);
   });
+  document.addEventListener("guest-cart-updated", () => void probeGuestCheckout(root));
   if (guestReturnQueryIsPresent(window.location.search)) {
     mutationNotice = null;
   }
