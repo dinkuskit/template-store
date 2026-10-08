@@ -32,17 +32,21 @@ if [[ "$MODE" == "full" ]]; then
     wait "$VERIFY_SITE_PID" 2>/dev/null || true
   }
   trap cleanup_verify_site EXIT
-  for attempt in {1..80}; do
-    if curl --silent --fail --max-time 2 "http://127.0.0.1:${VERIFY_SITE_PORT}/" >/dev/null; then
+  for attempt in {1..60}; do
+    if curl --silent --fail --max-time 15 "http://127.0.0.1:${VERIFY_SITE_PORT}/" >/dev/null; then
       break
     fi
-    sleep 0.25
+    sleep 1
   done
-  if ! curl --silent --fail --max-time 2 "http://127.0.0.1:${VERIFY_SITE_PORT}/" >/dev/null; then
+  if ! curl --silent --fail --max-time 15 "http://127.0.0.1:${VERIFY_SITE_PORT}/" >/dev/null; then
+    echo "::error::Astro preview on 127.0.0.1:${VERIFY_SITE_PORT} never returned HTTP 2xx" >&2
     cat "$VERIFY_SITE_LOG" >&2
     exit 1
   fi
-  bin/verify-site "http://127.0.0.1:${VERIFY_SITE_PORT}"
+  if ! bin/verify-site "http://127.0.0.1:${VERIFY_SITE_PORT}" | tee "${VERIFY_SITE_LOG}.results"; then
+    echo "::error::bin/verify-site failed against http://127.0.0.1:${VERIFY_SITE_PORT}" >&2
+    exit 1
+  fi
 fi
 
 echo "verify-web: ${MODE} passed"
