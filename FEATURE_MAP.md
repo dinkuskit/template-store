@@ -40,8 +40,9 @@ at `/collections/{slug}`. Product identity is the linked Commerce `itemId`;
 slugs are editorial URL input, never identity. Duplicate or invalid published
 links fail closed. `/shop/{id}`, legacy collection digests, `/home`, and slash
 variants are redirect inputs only, and redirect responses are `302`/`no-store`
-until verified for a later `301`. The default starter is indexable; demo-host
-noindex is explicit via `DINKUS_DEMO_NOINDEX=1` or the proof profile.
+until verified for a later `301`. Demos, previews, and staging are noindex by
+default; a real merchant store must explicitly set
+`DINKUS_LAUNCH_INDEXABLE=1`. Noindex controls search visibility, not access.
 
 Run the site verifier in order against the local server, a preview origin,
 then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD

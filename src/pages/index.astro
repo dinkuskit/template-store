@@ -28,6 +28,7 @@ const collectionEntries = await getEmDashCollection<"collections", Record<string
 const productLinks = readProductEntries(products.entries, collectionEntries.entries);
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
   products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
+  collectionEntries.entries,
 );
 let catalogUnavailable = false;
 const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });

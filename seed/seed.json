@@ -60,16 +60,18 @@
           "required": true
         },
         {
-          "slug": "collection",
-          "label": "Collection slug",
-          "type": "string",
-          "required": true
+          "slug": "collections",
+          "label": "Collections",
+          "type": "reference",
+          "validation": {
+            "relation": "product-collections",
+            "relationSide": "child"
+          }
         },
         {
           "slug": "commerce_item_id",
-          "label": "Commerce item ID",
-          "type": "string",
-          "required": true
+          "label": "Commerce product",
+          "type": "string"
         },
         {
           "slug": "description",
@@ -107,6 +109,17 @@
           "type": "string"
         }
       ]
+    }
+  ],
+  "relations": [
+    {
+      "slug": "product-collections",
+      "parentCollection": "collections",
+      "childCollection": "products",
+      "parentLabel": "Products",
+      "childLabel": "Collections",
+      "maxChildrenPerParent": null,
+      "maxParentsPerChild": null
     }
   ],
   "sections": [
@@ -262,7 +275,7 @@
         "status": "published",
         "data": {
           "title": "Everyday Tee",
-          "collection": "tees",
+          "collections": ["tees"],
           "commerce_item_id": "dinkus-template-managed-product",
           "description": "A clean, versatile tee for the everyday rotation.",
           "visual_label": "TEE"
@@ -274,7 +287,7 @@
         "status": "published",
         "data": {
           "title": "Boxy Tee",
-          "collection": "tees",
+          "collections": ["tees"],
           "commerce_item_id": "dinkus-template-preview-boxy-tee",
           "description": "An easy silhouette with a relaxed feel.",
           "visual_label": "TEE"
@@ -286,7 +299,7 @@
         "status": "published",
         "data": {
           "title": "Pullover Hoodie",
-          "collection": "tees",
+          "collections": ["tees"],
           "commerce_item_id": "dinkus-template-preview-hoodie",
           "description": "A comfortable layer for cooler days.",
           "visual_label": "HOODIE"
@@ -298,7 +311,7 @@
         "status": "published",
         "data": {
           "title": "Canvas Cap",
-          "collection": "hats",
+          "collections": ["hats"],
           "commerce_item_id": "dinkus-template-unmanaged-product",
           "description": "A simple finishing touch for casual days.",
           "visual_label": "CAP"
@@ -310,7 +323,7 @@
         "status": "published",
         "data": {
           "title": "Ribbed Beanie",
-          "collection": "hats",
+          "collections": ["hats"],
           "commerce_item_id": "dinkus-template-preview-beanie",
           "description": "A soft, close-fitting cold-weather staple.",
           "visual_label": "BEANIE"

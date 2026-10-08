@@ -12,17 +12,23 @@ const products = await getEmDashCollection<"products", Record<string, unknown>>(
 const collectionEntries = await getEmDashCollection<"collections", Record<string, unknown>>("collections", { status: "published" });
 const productLinks = readProductEntries(products.entries, collectionEntries.entries);
 const validEntries = products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id));
-const { profile, demonstrations, collections } = await loadStorefrontRouteContext(validEntries);
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(validEntries, collectionEntries.entries);
 const collection = collections.find((group) => group.items.some((candidate) => productPath(candidate.id) === Astro.url.pathname));
 const item = collection?.items.find((candidate) => productPath(candidate.id) === Astro.url.pathname);
 if (!item) Astro.response.status = 404;
-const linkedProduct = item && profile === "shipping"
-  ? await readInstalledCommerceProduct(
+let lookupUnavailable = false;
+let linkedProduct = null;
+if (item && profile === "shipping") {
+  try {
+    linkedProduct = await readInstalledCommerceProduct(
       (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
       { runtime: Astro.locals.emdash, request: Astro.request },
-    ).catch(() => null)
-  : null;
-if (item && profile === "shipping" && !linkedProduct) Astro.response.status = 404;
+    );
+  } catch {
+    lookupUnavailable = true;
+  }
+}
+if (item && profile === "shipping") Astro.response.status = lookupUnavailable ? 503 : linkedProduct ? 200 : 404;
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
 const status = managed ? `${managed.inventory.available} available` : unmanaged ? ({
@@ -58,7 +64,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={unmanaged?.storefront.status}>{status}</p>
             {linkedProduct && <AddToCart product={linkedProduct} />}
-            {item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             <a class="product-detail__back" href={collectionPath(collection.name)}>← Back to {collection.name}</a>
           </div>
         </article>

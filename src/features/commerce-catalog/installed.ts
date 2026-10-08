@@ -78,7 +78,7 @@ export async function readInstalledCommerceCatalog({ runtime, request }: Install
 export async function readInstalledCommerceProduct(
   itemId: string,
   { runtime, request }: InstalledCatalogContext,
-): Promise<PublicCommerceProduct> {
+): Promise<PublicCommerceProduct | null> {
   const metadata = runtime?.getPluginRouteMeta(COMMERCE_REGISTRY_RUNTIME_ID, ITEM_ROUTE);
   if (!runtime || metadata?.public !== true || !metadata.methods?.includes("GET")) {
     throw new Error("Installed public product lookup unavailable");
@@ -91,8 +91,10 @@ export async function readInstalledCommerceProduct(
     ITEM_ROUTE,
     new Request(url, { method: "GET" }),
   );
-  if (!result.success || !object(result.data)) {
+  if (!result.success) {
     throw new Error("Installed public product unavailable");
   }
+  if (result.data === null) return null;
+  if (!object(result.data)) throw new Error("Invalid installed product projection");
   return product(result.data);
 }

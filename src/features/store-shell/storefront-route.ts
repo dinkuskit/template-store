@@ -20,15 +20,20 @@ export type StorefrontRouteContext = Readonly<{
 
 export async function loadStorefrontRouteContext(
   entries: readonly { id: string; data: Record<string, unknown> }[],
+  collectionEntriesOrEnv: readonly { id: string; data: Record<string, unknown> }[] | NodeJS.ProcessEnv = [],
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<StorefrontRouteContext> {
-  const profile = readStorefrontProfile(env);
-  const demonstrations = await readProofDemonstrations(env);
+  const collectionEntries = Array.isArray(collectionEntriesOrEnv) ? collectionEntriesOrEnv : [];
+  const runtimeEnv: NodeJS.ProcessEnv = Array.isArray(collectionEntriesOrEnv)
+    ? env
+    : collectionEntriesOrEnv;
+  const profile = readStorefrontProfile(runtimeEnv);
+  const demonstrations = await readProofDemonstrations(runtimeEnv);
   return {
     profile,
     demonstrations,
     collections: publicMerchCollections(
-      buildMerchCollections(entries),
+      buildMerchCollections(entries, collectionEntries),
       demonstrations?.managed.price.listable === true,
       demonstrations?.unmanaged.price.listable === true,
     ),

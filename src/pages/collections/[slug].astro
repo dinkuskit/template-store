@@ -11,6 +11,7 @@ const collectionEntries = await getEmDashCollection<"collections", Record<string
 const productLinks = readProductEntries(products.entries, collectionEntries.entries);
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
   products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
+  collectionEntries.entries,
 );
 const collection = collections.find((group) => collectionPath(group.name) === Astro.url.pathname);
 if (!collection) Astro.response.status = 404;

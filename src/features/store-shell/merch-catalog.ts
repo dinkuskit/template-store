@@ -18,13 +18,24 @@ export type MerchCollection = Readonly<{
 /** Editorial content comes from EmDash; Commerce links are validated by the page resolver. */
 export function buildMerchCollections(
   entries: readonly { id: string; data: Record<string, unknown> }[],
+  collectionEntries: readonly { id: string; data: Record<string, unknown> }[] = [],
 ): readonly MerchCollection[] {
   const groups = new Map<string, MerchRecord[]>();
+  const collectionNames = new Map<string, string>();
+  for (const entry of collectionEntries) {
+    const title = typeof entry.data.title === "string" ? entry.data.title.trim() : "";
+    if (title && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.id)) {
+      collectionNames.set(entry.id, title);
+      groups.set(title, []);
+    }
+  }
   for (const entry of entries) {
     if (entry.id === UNPRICED_PRODUCT_ITEM_ID) continue; // Commerce draft is never public.
-    const { title, collection, category, description, visual_label: visualLabel } = entry.data;
-    const categoryName = typeof collection === "string"
-      ? ({ tees: "Tees", hats: "Hats" } as Record<string, string>)[collection] ?? collection
+    const { title, collections, collection, category, description, visual_label: visualLabel } = entry.data;
+    const collectionSlug = Array.isArray(collections) ? collections[0] : collection;
+    const categoryName = typeof collectionSlug === "string"
+      ? collectionNames.get(collectionSlug) ??
+        ({ tees: "Tees", hats: "Hats" } as Record<string, string>)[collectionSlug] ?? collectionSlug
       : category;
     if (
       typeof title !== "string" || !title.trim() ||

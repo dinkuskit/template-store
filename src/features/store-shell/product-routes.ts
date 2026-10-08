@@ -8,8 +8,8 @@ export type ProductEntry = Readonly<{
   description: string;
   visualLabel: string;
   commerceItemId: string;
-  collectionSlug: string;
-  collectionTitle: string;
+  collectionSlugs: readonly string[];
+  collectionTitles: readonly string[];
   illustration: "tee" | "hoodie" | "cap" | "beanie";
 }>;
 
@@ -62,25 +62,31 @@ export function readProductEntries(
   }
 
   const errors: string[] = [];
-  const seen = new Set<string>();
+  const linkCounts = new Map<string, number>();
+  for (const entry of entries) {
+    const link = text(entry.data, "commerce_item_id") ?? text(entry.data, "commerceItemId");
+    if (link) linkCounts.set(link, (linkCounts.get(link) ?? 0) + 1);
+  }
   const products: ProductEntry[] = [];
   for (const entry of entries) {
     const title = text(entry.data, "title");
     const description = text(entry.data, "description") ?? "";
     const visualLabel = text(entry.data, "visual_label");
     const commerceItemId = text(entry.data, "commerce_item_id") ?? text(entry.data, "commerceItemId");
-    const collectionSlug = text(entry.data, "collection");
+    const collectionSlugs = (Array.isArray(entry.data.collections)
+      ? entry.data.collections
+      : [entry.data.collection])
+      .filter(validProductSlug);
     if (!validProductSlug(entry.id) || !title || !visualLabel || !commerceItemId ||
-        !validProductSlug(collectionSlug) || !collectionMap.has(collectionSlug)) {
+        collectionSlugs.length === 0 || collectionSlugs.some((slug) => !collectionMap.has(slug))) {
       errors.push(`invalid product entry: ${entry.id}`);
       continue;
     }
-    if (seen.has(commerceItemId)) {
+    if ((linkCounts.get(commerceItemId) ?? 0) > 1) {
       errors.push(`duplicate published Commerce itemId: ${commerceItemId}`);
       continue;
     }
-    seen.add(commerceItemId);
-    const collection = collectionMap.get(collectionSlug)!;
+    const collectionTitles = collectionSlugs.map((slug) => collectionMap.get(slug)!.title);
     products.push({
       id: entry.id,
       slug: entry.id,
@@ -88,8 +94,8 @@ export function readProductEntries(
       description,
       visualLabel,
       commerceItemId,
-      collectionSlug,
-      collectionTitle: collection.title,
+      collectionSlugs,
+      collectionTitles,
       illustration: illustration(visualLabel),
     });
   }
@@ -101,16 +107,18 @@ export function buildProductCollections(
 ): ProductCollection[] {
   const groups = new Map<string, ProductCollection>();
   for (const product of entries) {
-    const current = groups.get(product.collectionSlug);
-    if (current) {
-      groups.set(product.collectionSlug, { ...current, products: [...current.products, product] });
-    } else {
-      groups.set(product.collectionSlug, {
-        slug: product.collectionSlug,
-        title: product.collectionTitle,
-        description: "",
-        products: [product],
-      });
+    for (const [index, collectionSlug] of product.collectionSlugs.entries()) {
+      const current = groups.get(collectionSlug);
+      if (current) {
+        groups.set(collectionSlug, { ...current, products: [...current.products, product] });
+      } else {
+        groups.set(collectionSlug, {
+          slug: collectionSlug,
+          title: product.collectionTitles[index]!,
+          description: "",
+          products: [product],
+        });
+      }
     }
   }
   return [...groups.values()].sort((a, b) => a.title.localeCompare(b.title));

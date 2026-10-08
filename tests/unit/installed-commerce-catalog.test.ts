@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { readInstalledCommerceCatalog } from "../../src/features/commerce-catalog/installed.js";
+import { readInstalledCommerceCatalog, readInstalledCommerceProduct } from "../../src/features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../src/features/guest-cart/checkout-protocol.js";
 
 const item = (id = "item") => ({ id, name: "Neutral product", sku: "NEUTRAL", price: { currency: "USD", minor: "125" },
@@ -77,6 +77,14 @@ describe("installed Commerce public catalog consumer", () => {
       { id: "media_hat", alt: "Navy hat on a table", width: 1200, height: 800, placeholder: false },
       { id: "media_side", alt: "Neutral product", width: null, height: null, placeholder: false },
     ]);
+  });
+
+  it("distinguishes a missing item from a temporary lookup failure", async () => {
+    const missing = context([null]);
+    await expect(readInstalledCommerceProduct("missing", missing)).resolves.toBeNull();
+    const failed = context([]);
+    failed.runtime.handlePublicPluginApiRoute.mockResolvedValue({ success: false, data: undefined });
+    await expect(readInstalledCommerceProduct("item", failed)).rejects.toThrow();
   });
 
   it("keeps the priced product when the image payload is unsafe", async () => {

@@ -197,13 +197,14 @@ describe("public boundary access evaluation", () => {
     expect(headers.get("Permissions-Policy")).toBe("camera=(), microphone=(), geolocation=()");
   });
 
-  it("does not noindex shipping responses, while demo responses remain noindex", () => {
+  it("keeps every profile noindex until an explicit launch setting", () => {
     const shipping = new Headers();
     applySecurityHeaders(shipping, { DINKUS_STOREFRONT_PROFILE: "shipping" });
-    expect(shipping.get("X-Robots-Tag")).toBeNull();
-    expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBe(false);
+    expect(shipping.get("X-Robots-Tag")).toBe("noindex, nofollow");
+    expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBe(true);
     expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(true);
     expect(demoNoIndexEnabled({ DINKUS_DEMO_NOINDEX: "1" })).toBe(true);
+    expect(demoNoIndexEnabled({ DINKUS_LAUNCH_INDEXABLE: "1" })).toBe(false);
   });
 });
 

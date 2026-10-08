@@ -226,13 +226,9 @@ export function evaluatePublicBoundary(
 export function demoNoIndexEnabled(
   env: Record<string, unknown> = process.env,
 ): boolean {
-  const demoNoIndex = typeof env.DINKUS_DEMO_NOINDEX === "string"
-    ? env.DINKUS_DEMO_NOINDEX
-    : undefined;
-  const profile = typeof env.DINKUS_STOREFRONT_PROFILE === "string"
-    ? env.DINKUS_STOREFRONT_PROFILE
-    : undefined;
-  return demoNoIndex === "1" || profile?.trim().toLowerCase() === "proof";
+  // Search visibility is not access protection. A real merchant launch must
+  // explicitly opt in; demos, previews, and staging are private to crawlers.
+  return env.DINKUS_LAUNCH_INDEXABLE !== "1";
 }
 
 export function applySecurityHeaders(

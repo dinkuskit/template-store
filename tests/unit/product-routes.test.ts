@@ -40,10 +40,8 @@ describe("canonical product routes", () => {
       product("bad/item", "item-2"),
       product("orphan", "item-3", "unknown"),
     ], collections);
-    expect(result.products).toHaveLength(1);
-    expect(result.errors).toHaveLength(3);
-    expect(buildProductCollections(result.products)).toEqual([
-      expect.objectContaining({ slug: "tees", products: [expect.objectContaining({ slug: "one" })] }),
-    ]);
+    expect(result.products).toHaveLength(0);
+    expect(result.errors).toHaveLength(4);
+    expect(buildProductCollections(result.products)).toEqual([]);
   });
 });
