@@ -7,13 +7,11 @@ export interface SecurityPolicyCheck {
 const EXACT_ALLOWED_PATHS = new Set([
   "/",
   "/cart",
-  "/cart/",
   "/checkout/success",
-  "/checkout/success/",
   "/checkout/cancel",
-  "/checkout/cancel/",
   "/favicon.ico",
   "/robots.txt",
+  "/sitemap.xml",
   "/api/guest-cart/snapshot",
 ]);
 
@@ -172,16 +170,27 @@ export function evaluatePublicBoundary(
   };
 }
 
-export const PUBLIC_SECURITY_HEADERS: Readonly<Record<string, string>> = Object.freeze({
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "DENY",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "X-Robots-Tag": "noindex, nofollow",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-});
+export function demoNoIndexEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return env.DINKUS_DEMO_NOINDEX === "1" ||
+    env.DINKUS_STOREFRONT_PROFILE?.trim().toLowerCase() === "proof";
+}
 
-export function applySecurityHeaders(headers: Headers): void {
-  for (const [key, value] of Object.entries(PUBLIC_SECURITY_HEADERS)) {
+export function applySecurityHeaders(
+  headers: Headers,
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  const securityHeaders: Record<string, string> = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  };
+  if (demoNoIndexEnabled(env)) {
+    securityHeaders["X-Robots-Tag"] = "noindex, nofollow";
+  }
+  for (const [key, value] of Object.entries(securityHeaders)) {
     headers.set(key, value);
   }
 }

@@ -1,0 +1,247 @@
+#!/usr/bin/env node
+
+/**
+ * Read-only public URL contract verifier.
+ *
+ * The three checks below are intentionally easy to make required as upstream
+ * work lands. Keep them as explicit SKIPs while main still carries EmDash
+ * 1.0.1 and the product/feed work is in open upstream changes.
+ */
+import process from "node:process";
+
+const REQUIRED_LANDED_CHECKS = false;
+const originArg = process.argv[2];
+const demoHost = process.argv.includes("--demo-host");
+const timeoutMs = Number(process.env.VERIFY_SITE_TIMEOUT_MS ?? 15_000);
+
+if (!originArg || originArg.startsWith("-")) {
+  console.error("usage: bin/verify-site <origin> [--demo-host]");
+  process.exit(2);
+}
+
+const origin = new URL(originArg);
+origin.pathname = "/";
+origin.search = "";
+origin.hash = "";
+const base = origin.origin;
+const results = [];
+const visited = new Set();
+const discovered = new Set(["/"]);
+const sitemapPaths = new Set();
+const pages = new Map();
+
+function result(name, status, detail) {
+  results.push({ name, status, detail });
+  const marker = status === "PASS" ? "✓" : status === "SKIP" ? "–" : "✗";
+  console.log(`${marker} ${status} ${name}${detail ? ` — ${detail}` : ""}`);
+}
+
+function requiredOrSkip(name, detail, passed = false) {
+  if (REQUIRED_LANDED_CHECKS) {
+    result(name, passed ? "PASS" : "FAIL", passed ? undefined : detail);
+  } else {
+    result(name, "SKIP", `${detail} Set REQUIRED_LANDED_CHECKS=true when landed.`);
+  }
+}
+
+function absoluteUrl(path) {
+  return new URL(path, `${base}/`);
+}
+
+function checkPathShape(url, source) {
+  if (/%2f/i.test(url.pathname)) {
+    result("URL encoding", "FAIL", `${source} contains %2F: ${url.href}`);
+  }
+  if (url.pathname !== "/" && url.pathname.endsWith("/")) {
+    result("Trailing slash", "FAIL", `${source} is not slashless: ${url.href}`);
+  }
+}
+
+async function request(url, method = "GET") {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      method,
+      redirect: "manual",
+      signal: controller.signal,
+      headers: { "user-agent": "dinkuskit-verify-site/1.0" },
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function redirectTarget(response, url) {
+  const location = response.headers.get("location");
+  if (!location) {
+    result("Redirect contract", "FAIL", `${url.href} has no Location header`);
+    return null;
+  }
+  const target = new URL(location, url);
+  checkPathShape(target, `redirect target from ${url.pathname}`);
+  const cacheControl = response.headers.get("cache-control")?.toLowerCase() ?? "";
+  const maxAge = Number(cacheControl.match(/max-age\s*=\s*(\d+)/)?.[1] ?? 0);
+  if (cacheControl.includes("immutable") || maxAge > 86_400) {
+    result("Redirect cache policy", "FAIL", `${url.pathname} has unsafe Cache-Control: ${cacheControl}`);
+  }
+  if (target.origin !== base) {
+    result("Redirect target", "FAIL", `${url.pathname} leaves the public origin`);
+  }
+  return target;
+}
+
+function parseLinks(html, pageUrl) {
+  for (const match of html.matchAll(/\b(?:href|src)\s*=\s*["']([^"']+)["']/gi)) {
+    const raw = match[1];
+    if (/^(?:#|mailto:|tel:|javascript:|data:)/i.test(raw)) continue;
+    let link;
+    try {
+      link = new URL(raw, pageUrl);
+    } catch {
+      result("Internal links", "FAIL", `Invalid URL on ${pageUrl.pathname}: ${raw}`);
+      continue;
+    }
+    if (link.origin !== base) continue;
+    link.hash = "";
+    checkPathShape(link, `link on ${pageUrl.pathname}`);
+    discovered.add(link.pathname + link.search);
+  }
+}
+
+function parseCanonical(html, pageUrl) {
+  const matches = [...html.matchAll(/<link\b[^>]*\brel\s*=\s*["'][^"']*\bcanonical\b[^"']*["'][^>]*>/gi)];
+  const values = matches.map((match) => match[0].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1]).filter(Boolean);
+  if (values.length !== 1) return values;
+  try {
+    return [new URL(values[0], pageUrl).href];
+  } catch {
+    return values;
+  }
+}
+
+function parseJsonLd(html, pageUrl) {
+  for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      JSON.parse(match[1].trim());
+    } catch {
+      result("JSON-LD syntax", "FAIL", `${pageUrl.pathname} contains invalid JSON-LD`);
+    }
+  }
+}
+
+async function inspect(path, from = "crawl") {
+  const url = absoluteUrl(path);
+  checkPathShape(url, from);
+  if (url.origin !== base || visited.has(url.href)) return null;
+  visited.add(url.href);
+  let response;
+  try {
+    response = await request(url);
+  } catch (error) {
+    result("HTTP availability", "FAIL", `${url.pathname}: ${error.message}`);
+    return null;
+  }
+  if (response.status >= 300 && response.status < 400) {
+    redirectTarget(response, url);
+    if (![301, 302].includes(response.status)) {
+      result("Redirect status", "FAIL", `${url.pathname} returned ${response.status}; only 301/302 are allowed`);
+    }
+    return response;
+  }
+  if (response.status < 200 || response.status >= 300) {
+    result("HTTP availability", "FAIL", `${url.pathname} returned ${response.status}`);
+    return response;
+  }
+  const type = response.headers.get("content-type") ?? "";
+  const body = await response.text();
+  if (type.includes("html")) {
+    parseLinks(body, url);
+    parseJsonLd(body, url);
+    pages.set(url.pathname, { url, body, canonical: parseCanonical(body, url) });
+  }
+  return response;
+}
+
+console.log(`verify-site: ${base}${demoHost ? " (demo-host policy)" : ""}`);
+await inspect("/");
+const homeRedirect = await request(new URL("/home", `${base}/`));
+if (homeRedirect.status === 301 || homeRedirect.status === 302) {
+  const target = redirectTarget(homeRedirect, new URL("/home", `${base}/`));
+  if (target?.pathname !== "/") result("Homepage authority", "FAIL", "/home must redirect to /");
+  else result("Homepage authority", "PASS", "/home redirects to /");
+} else {
+  result("Homepage authority", "FAIL", `/home returned ${homeRedirect.status}; it must redirect to /`);
+}
+
+let sitemapResponse;
+try {
+  sitemapResponse = await request(new URL("/sitemap.xml", `${base}/`));
+} catch (error) {
+  result("Sitemap availability", "FAIL", error.message);
+}
+if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
+  result("Sitemap contract", "SKIP", "EmDash 1.0.1 on main does not expose the built-in sitemap; require after the 1.2 upgrade.");
+} else if (sitemapResponse?.ok) {
+  const xml = await sitemapResponse.text();
+  for (const match of xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) {
+    try {
+      const url = new URL(match[1]);
+      if (url.origin !== base) result("Sitemap origin", "FAIL", `${url.href} is outside ${base}`);
+      url.hash = "";
+      sitemapPaths.add(url.pathname + url.search);
+      checkPathShape(url, "sitemap");
+      discovered.add(url.pathname + url.search);
+    } catch {
+      result("Sitemap XML", "FAIL", `Invalid sitemap URL: ${match[1]}`);
+    }
+  }
+  result("Sitemap availability", "PASS", `${sitemapPaths.size} URL(s)`);
+} else if (sitemapResponse) {
+  result("Sitemap availability", "FAIL", `/sitemap.xml returned ${sitemapResponse.status}`);
+}
+
+const robots = await inspect("/robots.txt", "robots.txt");
+if (robots?.ok) result("Robots availability", "PASS", "/robots.txt is reachable");
+
+for (const path of [...discovered]) await inspect(path);
+for (const path of sitemapPaths) await inspect(path, "sitemap");
+
+if (sitemapPaths.size) {
+  for (const [path, page] of pages) {
+    if (!sitemapPaths.has(path)) continue;
+    if (page.canonical.length === 1) {
+      const canonical = new URL(page.canonical[0]);
+      if (canonical.href !== page.url.href) {
+        result("Sitemap canonical", "FAIL", `${path} canonical is ${canonical.href}, not ${page.url.href}`);
+      }
+    } else {
+      requiredOrSkip("Sitemap canonical", `${path} has no exactly-one canonical tag`);
+    }
+    if (page.body.match(/<meta\b[^>]*name=["']robots["'][^>]*content=["'][^"']*\bnoindex\b/i) ||
+        page.body.match(/<meta\b[^>]*content=["'][^"']*\bnoindex\b[^"']*["'][^>]*name=["']robots["']/i)) {
+      result("Sitemap indexability", "FAIL", `${path} is noindex`);
+    }
+  }
+  if (sitemapPaths.has("/home")) result("Sitemap homepage", "FAIL", "/home must not be in the sitemap");
+} else {
+  requiredOrSkip("Sitemap canonical", "No sitemap URLs were available to compare");
+}
+
+const productPaths = [...pages.keys()].filter((path) => path.startsWith("/products/"));
+requiredOrSkip(
+  "Canonical product routes (#34)",
+  "Product canonical /products/{slug} and legacy redirects are not landed on main",
+  productPaths.every((path) => !path.endsWith("/")),
+);
+requiredOrSkip(
+  "Product JSON-LD and feed contract (#35)",
+  "Product JSON-LD, visible price/availability matching, and feeds are not landed on main",
+  false,
+);
+requiredOrSkip("Feeds (#35)", "Feed endpoints are not landed on main", false);
+
+const failures = results.filter(({ status }) => status === "FAIL").length;
+const skips = results.filter(({ status }) => status === "SKIP").length;
+console.log(`verify-site: ${failures ? "failed" : "passed"} (${failures} failure(s), ${skips} skip(s), ${visited.size} URL(s) checked)`);
+process.exitCode = failures ? 1 : 0;

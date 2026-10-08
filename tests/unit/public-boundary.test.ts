@@ -13,6 +13,7 @@ vi.mock("@emdash-cms/cloudflare/worker", () => ({
 
 import {
   applySecurityHeaders,
+  demoNoIndexEnabled,
   evaluatePublicBoundary,
 } from "../../src/features/security/public-boundary.js";
 import astroEntry from "@astrojs/cloudflare/entrypoints/server";
@@ -24,7 +25,7 @@ describe("public boundary access evaluation", () => {
   it("allows standard storefront shopper GET endpoints", () => {
     expect(evaluatePublicBoundary("GET", "/").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/cart").allowed).toBe(true);
-    expect(evaluatePublicBoundary("GET", "/cart/").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/sitemap.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/shop/DEMO-HOSTED-SHIRT").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/collections/apparel").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/products/hoodie-black").allowed).toBe(true);
@@ -37,6 +38,14 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/_emdash/api/media/file/hero.png").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/favicon.ico").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/robots.txt").allowed).toBe(true);
+  });
+
+  it("uses slashless cart and checkout paths at the public boundary", () => {
+    expect(evaluatePublicBoundary("GET", "/cart/").status).toBe(404);
+    expect(evaluatePublicBoundary("GET", "/checkout/success/").status).toBe(404);
+    expect(evaluatePublicBoundary("GET", "/checkout/cancel/").status).toBe(404);
+    expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(true);
   });
 
   it("allows HEAD requests on public read endpoints", () => {
@@ -151,12 +160,21 @@ describe("public boundary access evaluation", () => {
 
   it("applies standard security headers", () => {
     const headers = new Headers();
-    applySecurityHeaders(headers);
+    applySecurityHeaders(headers, { DINKUS_STOREFRONT_PROFILE: "proof" });
     expect(headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(headers.get("X-Frame-Options")).toBe("DENY");
     expect(headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
     expect(headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
     expect(headers.get("Permissions-Policy")).toBe("camera=(), microphone=(), geolocation=()");
+  });
+
+  it("does not noindex shipping responses, while demo responses remain noindex", () => {
+    const shipping = new Headers();
+    applySecurityHeaders(shipping, { DINKUS_STOREFRONT_PROFILE: "shipping" });
+    expect(shipping.get("X-Robots-Tag")).toBeNull();
+    expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBe(false);
+    expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(true);
+    expect(demoNoIndexEnabled({ DINKUS_DEMO_NOINDEX: "1" })).toBe(true);
   });
 });
 

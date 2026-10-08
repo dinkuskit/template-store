@@ -21,6 +21,26 @@ git diff --check
 if [[ "$MODE" == "full" ]]; then
   pnpm exec astro build
   pnpm exec playwright test
+  VERIFY_SITE_PORT="${VERIFY_SITE_PORT:-4321}"
+  VERIFY_SITE_LOG="${TMPDIR:-/tmp}/dinkuskit-verify-site-${VERIFY_SITE_PORT}.log"
+  pnpm exec astro preview --host 127.0.0.1 --port "$VERIFY_SITE_PORT" >"$VERIFY_SITE_LOG" 2>&1 &
+  VERIFY_SITE_PID=$!
+  cleanup_verify_site() {
+    kill "$VERIFY_SITE_PID" 2>/dev/null || true
+    wait "$VERIFY_SITE_PID" 2>/dev/null || true
+  }
+  trap cleanup_verify_site EXIT
+  for attempt in {1..40}; do
+    if curl --silent --fail "http://127.0.0.1:${VERIFY_SITE_PORT}/" >/dev/null; then
+      break
+    fi
+    sleep 0.25
+  done
+  if ! curl --silent --fail "http://127.0.0.1:${VERIFY_SITE_PORT}/" >/dev/null; then
+    cat "$VERIFY_SITE_LOG" >&2
+    exit 1
+  fi
+  bin/verify-site "http://127.0.0.1:${VERIFY_SITE_PORT}"
 fi
 
 echo "verify-web: ${MODE} passed"
