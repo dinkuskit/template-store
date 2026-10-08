@@ -117,3 +117,24 @@
 {"action": "decision_proposed", "at": "2026-10-08T15:13:50+00:00", "data": {"decision_id": "template-redirects-020"}, "event_id": "e0a1e737-068a-4128-a122-1340b488c721"}
 {"action": "decision_proposed", "at": "2026-10-08T15:13:50+00:00", "data": {"decision_id": "template-seo-demo-021"}, "event_id": "7ac5cf25-ebec-47d3-80cb-aa00c2d85ebd"}
 {"action": "decision_proposed", "at": "2026-10-08T15:13:50+00:00", "data": {"decision_id": "template-unlinked-022"}, "event_id": "06545e5e-de60-47fe-9abd-f3920c22367f"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:14+00:00", "data": {"decision_id": "template-product-url-migration-023"}, "event_id": "1ad8ce43-6df2-4739-ae26-2693e10e59a1"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:14+00:00", "data": {"decision_id": "template-product-url-migration-023"}, "event_id": "9d3e6424-a7f9-4f22-baed-b719ff25a291"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:14+00:00", "data": {"decision_id": "template-product-url-link-024"}, "event_id": "946eff9a-ab30-406b-908c-0080a41efb3c"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:14+00:00", "data": {"decision_id": "template-product-url-link-024"}, "event_id": "413eedce-5764-4451-b822-73c480935637"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:14+00:00", "data": {"decision_id": "template-product-url-resolver-025"}, "event_id": "fc9f0388-f4aa-4845-9cb6-3ac5ba59d619"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:14+00:00", "data": {"decision_id": "template-product-url-resolver-025"}, "event_id": "ee422a32-f282-40fb-9402-92a13dd12eee"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:24+00:00", "data": {"decision_id": "template-product-url-redirects-026"}, "event_id": "eb030712-c9cd-4a9e-ac79-b01f4fb58f74"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:24+00:00", "data": {"decision_id": "template-product-url-redirects-026"}, "event_id": "f88dc310-3154-48f5-aeba-a555f3c88a3c"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:24+00:00", "data": {"decision_id": "template-product-url-categories-027"}, "event_id": "ef4f1af4-0982-4e89-ac69-f60af9d85421"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:24+00:00", "data": {"decision_id": "template-product-url-categories-027"}, "event_id": "0ba7271a-b621-4166-83ce-18b6e49e8bb0"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:24+00:00", "data": {"decision_id": "template-product-url-indexing-028"}, "event_id": "df1b9679-f387-4dc9-bd39-533d110967e7"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:25+00:00", "data": {"decision_id": "template-product-url-indexing-028"}, "event_id": "ad473339-3737-4e02-baea-16abbb284298"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:25+00:00", "data": {"decision_id": "template-product-url-drift-029"}, "event_id": "85b2a59e-2095-4c38-bb94-ae337c8e6d7d"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:25+00:00", "data": {"decision_id": "template-product-url-drift-029"}, "event_id": "2ed65ac8-9396-44f6-8aeb-38d7868255dd"}
+{"action": "decision_proposed", "at": "2026-10-08T19:35:25+00:00", "data": {"decision_id": "template-product-url-pages-030"}, "event_id": "ee5f86f1-2bf4-4180-b5ad-fe1a153d62fb"}
+{"action": "decision_locked", "at": "2026-10-08T19:35:25+00:00", "data": {"decision_id": "template-product-url-pages-030"}, "event_id": "558a3c16-9cfa-44fa-8401-ee1dc3b266c7"}
+{"action": "decision_superseded", "at": "2026-10-08T19:35:31+00:00", "data": {"affected": [], "decision_id": "template-products-link-018", "replacement_id": "template-product-url-link-024"}, "event_id": "556500db-e4cc-4337-90a5-83c79f2243c2"}
+{"action": "decision_superseded", "at": "2026-10-08T19:35:31+00:00", "data": {"affected": [], "decision_id": "template-products-collections-019", "replacement_id": "template-product-url-categories-027"}, "event_id": "ffec151f-fd90-4bab-a852-46282addc0f3"}
+{"action": "decision_superseded", "at": "2026-10-08T19:35:31+00:00", "data": {"affected": [], "decision_id": "template-redirects-020", "replacement_id": "template-product-url-redirects-026"}, "event_id": "0691c91b-4479-4ae6-81e4-cd6b65a0c5dd"}
+{"action": "decision_superseded", "at": "2026-10-08T19:35:31+00:00", "data": {"affected": [], "decision_id": "template-seo-demo-021", "replacement_id": "template-product-url-indexing-028"}, "event_id": "cc93846a-e039-4574-8117-0f685661f6c8"}
+{"action": "decision_superseded", "at": "2026-10-08T19:35:31+00:00", "data": {"affected": [], "decision_id": "template-unlinked-022", "replacement_id": "template-product-url-drift-029"}, "event_id": "d071e7d5-e264-4970-8f21-db3155cb0d6f"}
