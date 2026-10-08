@@ -80,3 +80,7 @@ do not establish released artifact, registry, checkout, or Cloudflare readiness.
 
 Publishing packages, deployment, production mutation, secrets or permissions
 changes, pull-request creation, and merges require separate authorization.
+
+Use Node 22.23.2 per `.nvmrc`; in cloud agents put nvm's Node ahead of
+`/exec-daemon` on `PATH` with `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"`
+and verify `node -v`.

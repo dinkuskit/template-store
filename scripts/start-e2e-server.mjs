@@ -7,6 +7,14 @@ import {
   validateOfflineE2EOptions,
 } from "./lib/offline-e2e-environment.mjs";
 
+// EmDash's local SQLite adapter needs node:sqlite StatementSync.columns() (Node >=22.16).
+// Older Node fails every migration with "statement.columns is not a function".
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+if (nodeMajor !== 22 || nodeMinor < 16) {
+  console.error(`start-e2e-server: Node ${process.versions.node} is unsupported; use Node 22.16+ (.nvmrc pins 22.23.2).`);
+  process.exit(1);
+}
+
 const root = resolve(import.meta.dirname, "..");
 const profile = process.env.DINKUS_STOREFRONT_PROFILE ?? "proof";
 const options = validateOfflineE2EOptions({
