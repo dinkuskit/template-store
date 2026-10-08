@@ -244,6 +244,9 @@ async function drainDiscovered() {
 
 console.log(`verify-site: ${base}${demoHost ? " (demo-host policy)" : ""}`);
 await inspect("/");
+if (pages.get("/")?.body.includes("data-product-url-errors")) {
+  result("Product URL duplicate claims", "FAIL", "Published product URL claims are ambiguous; inspect the server log and unpublish the duplicates.");
+}
 const homeRedirect = await request(new URL("/home", `${base}/`));
 if (homeRedirect.status === 301 || homeRedirect.status === 302) {
   const target = redirectTarget(homeRedirect, new URL("/home", `${base}/`));

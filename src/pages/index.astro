@@ -1,5 +1,5 @@
 ---
-import { getEmDashEntry, getEmDashCollection, type PortableTextBlock } from "emdash";
+import { getEmDashEntry, getEmDashCollection, getMenu, type PortableTextBlock } from "emdash";
 import { Blocks, PortableText, type BlockValue } from "emdash/ui";
 import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
 import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
@@ -26,7 +26,11 @@ const content = pageData?.content as PortableTextBlock[] | undefined;
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
+const storeMenu = await getMenu("store-primary");
 const productLinks = readProductEntries(products.entries, categoryEntries.entries);
+if (productLinks.errors.length > 0) {
+  console.error(`[product-url] excluded published product entries: ${productLinks.errors.join("; ")}`);
+}
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
   products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
   categoryEntries.entries,
@@ -80,10 +84,13 @@ const unmanaged = demonstrations?.unmanaged;
       <section aria-label="Separate integration demonstrations" data-integration-demos>
       <h2 class="demo-heading">Integration demonstrations</h2>
       <p class="demo-heading">These seeded examples are separate from the merchant catalog above.</p>
-      <MerchCatalog collections={collections} managed={availability} unmanaged={unmanaged} />
+      <MerchCatalog collections={collections} menu={storeMenu ?? undefined} managed={availability} unmanaged={unmanaged} />
       {availability.price.listable && <ManagedProductAvailability availability={availability} />}
       {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
       </section>
+      )}
+      {productLinks.errors.length > 0 && (
+        <aside data-product-url-errors hidden>{productLinks.errors.join(" | ")}</aside>
       )}
     </main>
     <footer class="store-footer">
