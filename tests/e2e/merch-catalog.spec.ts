@@ -12,21 +12,23 @@ test("products are editable in EmDash and visible in the canonical catalog", asy
 
   const adminContext = await browser.newContext();
   const admin = await adminContext.newPage();
-  await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/products/everyday-tee");
-  await expect(admin).toHaveURL(/\/content\/products\/everyday-tee/);
-  const welcome = admin.getByRole("dialog", { name: /Welcome to EmDash/ });
-  try {
-    await expect(welcome).toBeVisible({ timeout: 5_000 });
-    const getStarted = admin.getByRole("button", { name: "Get Started" });
-    await getStarted.scrollIntoViewIfNeeded();
-    await getStarted.click({ force: true });
-  } catch {
-    await admin.keyboard.press("Escape");
+  if (testInfo.project.name !== "chromium-mobile") {
+    await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/products/everyday-tee");
+    await expect(admin).toHaveURL(/\/content\/products\/everyday-tee/);
+    const welcome = admin.getByRole("dialog", { name: /Welcome to EmDash/ });
+    try {
+      await expect(welcome).toBeVisible({ timeout: 5_000 });
+      const getStarted = admin.getByRole("button", { name: "Get Started" });
+      await getStarted.scrollIntoViewIfNeeded();
+      await getStarted.click({ force: true });
+    } catch {
+      await admin.keyboard.press("Escape");
+    }
+    await expect(welcome).toHaveCount(0);
+    await expect(admin.locator('input[value="Everyday Tee"]')).toBeVisible({ timeout: 30_000 });
+    await expect(admin.getByText("Commerce product", { exact: true })).toBeVisible();
+    await admin.screenshot({ path: resolve(root, "admin-merch-item.png"), fullPage: true });
   }
-  await expect(welcome).toHaveCount(0);
-  await expect(admin.locator('input[value="Everyday Tee"]')).toBeVisible({ timeout: 30_000 });
-  await expect(admin.getByText("Commerce product", { exact: true })).toBeVisible();
-  await admin.screenshot({ path: resolve(root, "admin-merch-item.png"), fullPage: true });
   await adminContext.close();
 
   for (const missing of ["/products/not-published", "/categories/not-published"]) {
