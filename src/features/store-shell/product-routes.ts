@@ -68,7 +68,7 @@ export function readProductEntries(
     const title = text(entry.data, "title");
     const description = text(entry.data, "description") ?? "";
     const visualLabel = text(entry.data, "visual_label");
-    const commerceItemId = text(entry.data, "commerceItemId");
+    const commerceItemId = text(entry.data, "commerce_item_id") ?? text(entry.data, "commerceItemId");
     const collectionSlug = text(entry.data, "collection");
     if (!validProductSlug(entry.id) || !title || !visualLabel || !commerceItemId ||
         !validProductSlug(collectionSlug) || !collectionMap.has(collectionSlug)) {

@@ -33,7 +33,9 @@ export function buildMerchCollections(
       typeof visualLabel !== "string" || !visualLabel.trim() ||
       !productPath(entry.id)
     ) continue;
-    const commerceItemId = typeof entry.data.commerceItemId === "string" ? entry.data.commerceItemId : "";
+    const commerceItemId = typeof entry.data.commerce_item_id === "string"
+      ? entry.data.commerce_item_id
+      : typeof entry.data.commerceItemId === "string" ? entry.data.commerceItemId : "";
     const item: MerchRecord = {
       id: entry.id,
       title: title.trim(),
