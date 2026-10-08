@@ -5,10 +5,11 @@ import { AddToCart } from "../../features/guest-cart/ui.ts";
 import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
 import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
 import { STORE_TITLE, collectionPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
-import { readProductEntries } from "../../features/store-shell/product-routes.js";
+import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
 
-const products = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const collectionEntries = await getEmDashCollection<"collections", Record<string, unknown>>("collections", { status: "published" });
 const productLinks = readProductEntries(products.entries, collectionEntries.entries);
 const validEntries = products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id));

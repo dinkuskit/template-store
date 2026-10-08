@@ -1,3 +1,4 @@
+import { getEmDashEntry } from "emdash";
 import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
 import { readInstalledCommerceProduct, type InstalledCatalogContext } from "../commerce-catalog/installed.js";
 
@@ -21,6 +22,22 @@ export type ProductCollection = Readonly<{
 }>;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export async function hydrateProductCollectionMembership(
+  entries: readonly { id: string; data: Record<string, unknown> }[],
+): Promise<readonly { id: string; data: Record<string, unknown> }[]> {
+  return Promise.all(entries.map(async (entry) => {
+    const result = await getEmDashEntry("products", entry.id, {
+      references: { collections: true },
+    });
+    const memberships = result.entry?.references?.collections?.entries
+      .map((collection) => collection.id) ?? [];
+    return {
+      ...entry,
+      data: { ...entry.data, collections: memberships },
+    };
+  }));
+}
 
 export function canonicalProductPath(slug: string): string {
   return `/products/${slug}`;
