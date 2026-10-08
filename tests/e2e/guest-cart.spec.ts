@@ -51,7 +51,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   request,
 }, testInfo) => {
   test.setTimeout(180_000);
-  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(false);
   const root = resolve("runs/guest-cart/browser", testInfo.project.name);
   await mkdir(root, { recursive: true });
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
@@ -66,13 +66,13 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
     await expect(admin.getByRole("dialog", { name: /Welcome to EmDash/ })).toHaveCount(0);
   }
   await expect(admin.getByRole("heading", { name: "Products", exact: true })).toBeVisible();
-  expect(existsSync(".artifacts/e2e-shipping/content.db")).toBe(true);
+  expect(existsSync(".artifacts/e2e/content.db")).toBe(true);
   await expect.poll(
     () =>
       execFileSync(
         "sqlite3",
         [
-          ".artifacts/e2e-shipping/content.db",
+          ".artifacts/e2e/content.db",
           "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_dinkus-commerce_catalogItems_%'",
         ],
         { encoding: "utf8" },
@@ -108,7 +108,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
     if (inventoryishUrl(req.url())) inventoryRequests.push(req.url());
   });
   await shopper.goto("/");
-  await expect(shopper.locator("body")).toHaveAttribute("data-storefront-profile", "shipping");
+  await expect(shopper.locator("body")).toHaveAttribute("data-storefront-profile", "proof");
   await expect(shopper.getByRole("checkbox", { name: "Edit mode" })).toHaveCount(0);
   await expect(shopper.getByText("Edit mode")).toHaveCount(0);
   expect(
@@ -116,8 +116,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   ).toEqual([]);
   const card = shopper.locator(`[data-commerce-product="${id}"]`);
   await expect(card.getByRole("button", { name: "Add to cart", exact: true })).toBeVisible({ timeout: 15_000 });
-  await expect(shopper.locator("[data-stock-value]")).toHaveCount(0);
-  await expect(shopper.locator("[data-managed-product]")).toHaveCount(0);
+  await expect(card.locator("[data-stock-value]")).toHaveCount(0);
   await expect(shopper.getByRole("link", { name: /Cart/ })).toBeVisible();
 
   await shopper.evaluate((key) => {
@@ -317,10 +316,10 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
     `${JSON.stringify(
       {
         project: testInfo.project.name,
-        profile: "shipping",
+        profile: "proof",
         anonymous: true,
         editMode: false,
-        shippingDb: ".artifacts/e2e-shipping/content.db",
+        shippingDb: ".artifacts/e2e/content.db",
         storedShape: "version-id-quantity",
         checkoutReason: "Checkout is not available yet.",
         lineBackground: lineStyles.backgroundColor,

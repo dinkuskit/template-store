@@ -8,7 +8,7 @@ function childEnv(overrides: Record<string, string>): Record<string, string> {
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) env[key] = value;
   }
-  return { ...env, DINKUS_CATALOG_PROFILE: "native-development", ...overrides };
+  return { ...env, ...overrides };
 }
 
 export default defineConfig({
@@ -29,17 +29,17 @@ export default defineConfig({
   projects: [
     {
       name: "chromium-desktop",
-      testIgnore: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
+      testIgnore: /(?:shipping-storefront-profile|guest-checkout-feasibility)\.spec\.ts$/,
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "chromium-mobile",
-      testIgnore: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
+      testIgnore: /(?:shipping-storefront-profile|guest-checkout-feasibility)\.spec\.ts$/,
       use: { ...devices["Pixel 7"] },
     },
     {
       name: "shipping-chromium-desktop",
-      testMatch: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
+      testMatch: /(?:shipping-storefront-profile|guest-checkout-feasibility)\.spec\.ts$/,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: `http://127.0.0.1:${shippingPort}`,
@@ -47,7 +47,7 @@ export default defineConfig({
     },
     {
       name: "shipping-chromium-mobile",
-      testMatch: /(?:shipping-storefront-profile|guest-cart|guest-checkout-feasibility)\.spec\.ts$/,
+      testMatch: /(?:shipping-storefront-profile|guest-checkout-feasibility)\.spec\.ts$/,
       use: {
         ...devices["Pixel 7"],
         baseURL: `http://127.0.0.1:${shippingPort}`,
@@ -66,6 +66,7 @@ export default defineConfig({
         DINKUS_E2E_PORT: proofPort,
         DINKUS_STOREFRONT_PROFILE: "proof",
         DINKUS_PROOF_MODE: "1",
+        DINKUS_CATALOG_PROFILE: "native-development",
       }),
     },
     {
@@ -73,9 +74,13 @@ export default defineConfig({
       url: `http://127.0.0.1:${shippingPort}/_emdash/api/setup/dev-bypass`,
       reuseExistingServer: false,
       timeout: 120_000,
-      env: childEnv({
-        DINKUS_SHIPPING_E2E_PORT: shippingPort,
-      }),
+      env: (() => {
+        const env = childEnv({
+          DINKUS_SHIPPING_E2E_PORT: shippingPort,
+        });
+        delete env.DINKUS_CATALOG_PROFILE;
+        return env;
+      })(),
     },
   ],
   outputDir: "test-results/playwright",

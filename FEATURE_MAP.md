@@ -65,11 +65,11 @@ Commerce49 derives canonical TEST payment lookup and wake list/ACK from original
 
 The default source-pilot profile is `shipping`; explicit
 `DINKUS_STOREFRONT_PROFILE=proof` selects development demonstrations.
-`tests/e2e/shipping-storefront-profile.spec.ts` covers Products create, Regular/Sale,
-manual availability, absent quantities/demonstrations, preview isolation, and
-merchant product detail on desktop/mobile. The current Commerce pin
-`45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef` preserves the disabled Coming soon
-control under the native entry, while registry pairing remains pending.
+`tests/e2e/shipping-storefront-profile.spec.ts` covers the installed public
+catalog path with no native plugin mount: fail-closed Shop, no invented
+products, absent quantities/demonstrations, preview isolation, and closed
+checkout on desktop/mobile. Native Products create, Regular/Sale, Coming soon,
+and guest-cart add-to-cart remain `native-development` proof.
 `pnpm verify` keeps both this profile and all earlier managed regressions.
 
 ## Storefront drivers
