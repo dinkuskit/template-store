@@ -12,7 +12,10 @@ customer price; this template does not reconstruct a Regular/Sale pair.
 `image` and `gallery[]` are kept when Commerce sends
 `{ id, alt, width, height, placeholder }`. The card and product page map
 `image.id` through EmDash `handleMediaGet` and `getPublicMediaUrl`, then
-build `srcset` at 300/600/1200 through `/_image`. They never render a URL,
+build `srcset` at 300/600/1200 through `/_image`. The public boundary admits
+GET and HEAD `/_image` only when `href` is that same host's
+`/_emdash/api/media/file/<key>`, `w` is at most 2048, and `f` is `webp`.
+Other image targets stay 404. They never render a URL,
 filename, or storage key from the catalog payload. An absent, unsafe, or
 unresolvable image renders the text placeholder "No image". Gallery entries
 stay on the product for a later view; cards show the primary image only.
