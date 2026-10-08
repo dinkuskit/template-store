@@ -25,7 +25,7 @@ const content = pageData?.content as PortableTextBlock[] | undefined;
 const merchandise = await getEmDashCollection<"merchandise", Record<string, unknown>>("merchandise", { status: "published" });
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(merchandise.entries);
 let catalogUnavailable = false;
-const products = await readCommerceCatalog().catch(() => { catalogUnavailable = true; return []; });
+const products = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
 const availability = demonstrations?.managed;
 const unmanaged = demonstrations?.unmanaged;
 ---

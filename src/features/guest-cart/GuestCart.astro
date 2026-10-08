@@ -14,6 +14,8 @@ const { checkoutAdmission = null } = Astro.props;
   <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
   <div data-guest-cart-lines></div>
   <div class="guest-cart-checkout">
+    <label for="guest-cart-coupon">Coupon code (optional)</label>
+    <input id="guest-cart-coupon" data-guest-cart-coupon type="text" maxlength="128" autocomplete="off" disabled={!checkoutAdmission} />
     <button type="button" data-guest-cart-checkout disabled>{GUEST_CHECKOUT_LABEL}</button>
     <p data-guest-cart-checkout-reason>{GUEST_CHECKOUT_REASON}</p>
     <button type="button" data-guest-cart-retry>Retry catalog update</button>

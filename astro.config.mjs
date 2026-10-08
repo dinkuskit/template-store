@@ -53,12 +53,12 @@ export default defineConfig({
             baseUrl: "/_emdash/api/media/file",
           }),
       ...(siteUrl ? { siteUrl } : {}),
-      plugins: [
+      plugins: process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
         dinkusCommerce({
           enableLocalStockManagement,
           ...(siteUrl ? { siteUrl } : {}),
         }),
-      ],
+      ] : [],
     }),
   ],
   vite: {
