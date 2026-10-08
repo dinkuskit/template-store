@@ -34,6 +34,10 @@ function result(name, status, detail) {
   results.push({ name, status, detail });
   const marker = status === "PASS" ? "✓" : status === "SKIP" ? "–" : "✗";
   console.log(`${marker} ${status} ${name}${detail ? ` — ${detail}` : ""}`);
+  if (status === "FAIL") {
+    const text = `${name}${detail ? ` — ${detail}` : ""}`;
+    console.error(`::error title=verify-site::${text.replace(/\n/g, "%0A")}`);
+  }
 }
 
 function requiredOrSkip(name, detail, passed = false) {
@@ -326,4 +330,7 @@ requiredOrSkip("Feeds (#35)", "Feed endpoints are not landed on main", false);
 const failures = results.filter(({ status }) => status === "FAIL").length;
 const skips = results.filter(({ status }) => status === "SKIP").length;
 console.log(`verify-site: ${failures ? "failed" : "passed"} (${failures} failure(s), ${skips} skip(s), ${visited.size} URL(s) checked)`);
+if (failures) {
+  console.error(`visited: ${[...visited].join(" ")}`);
+}
 process.exitCode = failures ? 1 : 0;
