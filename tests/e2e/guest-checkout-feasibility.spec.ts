@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 import {
-  NATIVE_PREPARE,
+  LEGACY_PREPARE,
   RUNTIME_PREPARE,
   freshOfflineContext,
   installOfflineCheckoutHarness,
@@ -25,11 +25,11 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   });
   expect(runtimePrepare.status()).toBe(503);
 
-  const nativePrepare = await request.post(NATIVE_PREPARE, {
+  const legacyPrepare = await request.post(LEGACY_PREPARE, {
     data: {},
     headers: { "content-type": "application/json" },
   });
-  expect(nativePrepare.status()).toBe(405);
+  expect(legacyPrepare.status()).toBe(405);
 
   const context = await freshOfflineContext(
     browser,

@@ -1342,6 +1342,47 @@
       "superseded_by": null,
       "updated_at": "2026-10-07T23:29:29+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Enable the cart only after Commerce guest checkout prepare confirms an explicit server-owned Stripe TEST binding; pass only browser cart lines and the opaque prepare capability to start, redirect only to Commerce's validated URL, and require authoritative Commerce status projection paid for success. Ryan (saariuslystoned) approved this change on a branch. Do not merge.",
+      "context_ref": "https://github.com/dinkuskit/commerce/pull/66;https://github.com/dinkuskit/payments/pull/21",
+      "created_at": "2026-10-08T16:34:46+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T16:34:55+00:00",
+          "choice": "Enable the cart only after Commerce guest checkout prepare confirms an explicit server-owned Stripe TEST binding; pass only browser cart lines and the opaque prepare capability to start, redirect only to Commerce's validated URL, and require authoritative Commerce status projection paid for success. Ryan (saariuslystoned) approved this change on a branch. Do not merge.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "demo-payments-binding-20261008-template",
+      "implementation_ref": null,
+      "question": "What Template Store behavior is authorized for demo.dinkuskit.com guest checkout?",
+      "rationale": "Commerce PR #66 docs/demo-checkout.md and Payments PR #21 provide the test-only handoff. Contact, billing, delivery, shipping and tax remain deferred under Commerce issue #33.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T16:34:55+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -1366,5 +1407,5 @@
   "status": "active",
   "title": "Inventory-off v1 template and exact Commerce pairing",
   "track_id": "gt-20260930163954-43d0a5",
-  "updated_at": "2026-10-07T23:29:29+00:00"
+  "updated_at": "2026-10-08T16:34:55+00:00"
 }

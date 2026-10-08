@@ -44,6 +44,7 @@ let checkoutAdmitted = false;
 let mutationNotice: string | null = null;
 let checkoutMessage: string | null = null;
 let checkoutMessageError = false;
+let checkoutProbePending = false;
 
 function checkoutLocked(): boolean {
   return pendingCheckout || Boolean(readGuestCheckoutRetention(checkoutStorage()) &&
@@ -197,6 +198,7 @@ function renderCart(root: Element): void {
   const empty = root.querySelector("[data-guest-cart-empty]");
   const lines = root.querySelector("[data-guest-cart-lines]");
   const checkout = root.querySelector("[data-guest-cart-checkout]");
+  const coupon = root.querySelector("[data-guest-cart-coupon]");
   const reason = root.querySelector("[data-guest-cart-checkout-reason]");
   const retry = root.querySelector("[data-guest-cart-retry]");
   const checkoutRecoveryButton = root.querySelector("[data-guest-cart-recover]");
@@ -210,6 +212,9 @@ function renderCart(root: Element): void {
   if (checkout instanceof HTMLButtonElement) {
     checkout.disabled = !current.checkoutEnabled || checkoutLocked();
     checkout.textContent = current.checkoutLabel;
+  }
+  if (coupon instanceof HTMLInputElement) {
+    coupon.disabled = !checkoutAdmitted || checkoutLocked();
   }
   if (reason instanceof HTMLElement) {
     reason.textContent = current.checkoutReason;
@@ -245,6 +250,26 @@ function checkoutFailureText(failure: string | null): string {
     return "This checkout is still tied to the original attempt. Check status before retrying.";
   }
   return "Checkout is not available yet. Try again when Commerce is available.";
+}
+
+async function probeGuestCheckout(root: Element): Promise<void> {
+  if (!checkoutController || checkoutProbePending || session.intent.lines.length === 0) return;
+  checkoutProbePending = true;
+  checkoutMessage = "Checking Commerce checkout availability.";
+  checkoutMessageError = false;
+  renderCart(root);
+  const prepared = await checkoutController.prepare();
+  checkoutProbePending = false;
+  if (prepared.result?.ok) {
+    checkoutAdmitted = true;
+    checkoutMessage = null;
+    checkoutMessageError = false;
+  } else {
+    checkoutAdmitted = false;
+    checkoutMessage = checkoutFailureText(prepared.failure);
+    checkoutMessageError = true;
+  }
+  renderCart(root);
 }
 
 async function recoverGuestCheckout(root: Element): Promise<void> {
@@ -344,6 +369,7 @@ export function hydrateGuestCartControls(): void {
         return;
       }
       applyIntent(result.intent, session.notice);
+      void probeGuestCheckout(root);
       if (status instanceof HTMLElement) {
         status.hidden = false;
         if (persistFailed()) {
@@ -365,7 +391,9 @@ export function hydrateGuestCartPage(): void {
   session = loadSession();
   checkoutAdmitted = root.dataset.guestCheckoutAdmitted === "true";
   checkoutController = createGuestCheckoutController({
-    admitted: checkoutAdmitted,
+    // The server remains the authority. The client starts closed and probes
+    // Commerce; a successful prepare is the only signal that enables UI.
+    admitted: true,
     storage: checkoutStorage(),
     transport: {
       fetch: (input: string, init: RequestInit) => fetch(input, init),
@@ -375,6 +403,7 @@ export function hydrateGuestCartPage(): void {
   checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
   checkoutMessage = checkoutRecovery ? "You have a saved checkout. Check its status before trying again." : null;
   checkoutMessageError = false;
+  checkoutProbePending = false;
   snapshots = null;
   const retry = root.querySelector("[data-guest-cart-retry]");
   retry?.addEventListener("click", () => {
@@ -469,6 +498,7 @@ export function hydrateGuestCartPage(): void {
   }
   renderCart(root);
   void refreshSnapshot(root);
+  void probeGuestCheckout(root);
   if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) void recoverGuestCheckout(root);
 }
 
