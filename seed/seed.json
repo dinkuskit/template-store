@@ -266,6 +266,15 @@
           "title": "Hats",
           "description": "Simple finishing touches for casual days."
         }
+      },
+      {
+        "id": "hoodies",
+        "slug": "hoodies",
+        "status": "published",
+        "data": {
+          "title": "Hoodies",
+          "description": "Comfortable layers for cooler days."
+        }
       }
     ],
     "products": [
@@ -299,7 +308,7 @@
         "status": "published",
         "data": {
           "title": "Pullover Hoodie",
-          "collections": ["tees"],
+          "collections": ["hoodies"],
           "commerce_item_id": "dinkus-template-preview-hoodie",
           "description": "A comfortable layer for cooler days.",
           "visual_label": "HOODIE"

@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 
 const proofRoot = resolve("runs/merch-catalog-20260925/browser");
 
-test("merchandise is editable in EmDash and visible in the classic catalog", async ({ page, request, browser }, testInfo) => {
+test("products are editable in EmDash and visible in the canonical catalog", async ({ page, request, browser }, testInfo) => {
   test.setTimeout(120_000);
   const root = resolve(proofRoot, testInfo.project.name);
   await mkdir(root, { recursive: true });
@@ -12,8 +12,8 @@ test("merchandise is editable in EmDash and visible in the classic catalog", asy
 
   const adminContext = await browser.newContext();
   const admin = await adminContext.newPage();
-  await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/merchandise/everyday-tee");
-  await expect(admin).toHaveURL(/\/content\/merchandise\/everyday-tee/);
+  await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/products/everyday-tee");
+  await expect(admin).toHaveURL(/\/content\/products\/everyday-tee/);
   const welcome = admin.getByRole("dialog", { name: /Welcome to EmDash/ });
   try {
     await expect(welcome).toBeVisible({ timeout: 5_000 });
@@ -23,7 +23,7 @@ test("merchandise is editable in EmDash and visible in the classic catalog", asy
   }
   await expect(welcome).toHaveCount(0);
   await expect(admin.locator('input[value="Everyday Tee"]')).toBeVisible({ timeout: 30_000 });
-  await expect(admin.locator('input[value="Tees"]')).toBeVisible();
+  await expect(admin.getByText("Commerce product", { exact: true })).toBeVisible();
   await admin.screenshot({ path: resolve(root, "admin-merch-item.png"), fullPage: true });
   await adminContext.close();
 
@@ -107,5 +107,5 @@ test("merchandise is editable in EmDash and visible in the classic catalog", asy
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
   await page.screenshot({ path: resolve(root, "public-catalog.png"), fullPage: true });
-  await writeFile(resolve(root, "assertions.json"), `${JSON.stringify({ project: testInfo.project.name, adminPath: "/_emdash/admin/content/merchandise/everyday-tee", collections: ["Hats", "Hoodies", "Tees"], previewCount: 3, horizontalOverflow: overflow }, null, 2)}\n`);
+  await writeFile(resolve(root, "assertions.json"), `${JSON.stringify({ project: testInfo.project.name, adminPath: "/_emdash/admin/content/products/everyday-tee", collections: ["Hats", "Hoodies", "Tees"], previewCount: 3, horizontalOverflow: overflow }, null, 2)}\n`);
 });
