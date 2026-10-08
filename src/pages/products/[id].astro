@@ -28,7 +28,9 @@ if (item && profile === "shipping") {
     lookupUnavailable = true;
   }
 }
-if (item && profile === "shipping") Astro.response.status = lookupUnavailable ? 503 : linkedProduct ? 200 : 404;
+if (item && profile === "shipping" && item.availabilitySource !== "preview") {
+  Astro.response.status = lookupUnavailable ? 503 : linkedProduct ? 200 : 404;
+}
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
 const status = managed ? `${managed.inventory.available} available` : unmanaged ? ({
