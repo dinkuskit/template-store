@@ -15,6 +15,7 @@ import {
   applySecurityHeaders,
   demoNoIndexEnabled,
   evaluatePublicBoundary,
+  slashlessRedirectPath,
 } from "../../src/features/security/public-boundary.js";
 import astroEntry from "@astrojs/cloudflare/entrypoints/server";
 import worker from "../../src/worker.js";
@@ -27,6 +28,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/home").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/cart").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/sitemap.xml").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/sitemap-commerce.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/shop/DEMO-HOSTED-SHIRT").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/collections/apparel").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/products/hoodie-black").allowed).toBe(true);
@@ -42,11 +44,19 @@ describe("public boundary access evaluation", () => {
   });
 
   it("uses slashless cart and checkout paths at the public boundary", () => {
-    expect(evaluatePublicBoundary("GET", "/cart/").status).toBe(404);
-    expect(evaluatePublicBoundary("GET", "/checkout/success/").status).toBe(404);
-    expect(evaluatePublicBoundary("GET", "/checkout/cancel/").status).toBe(404);
+    expect(slashlessRedirectPath("/cart/")).toBe("/cart");
+    expect(slashlessRedirectPath("/checkout/success/")).toBe("/checkout/success");
+    expect(slashlessRedirectPath("/checkout/cancel/")).toBe("/checkout/cancel");
+    expect(slashlessRedirectPath("/checkout/other/")).toBeUndefined();
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(true);
+  });
+
+  it("allows only strict lowercase child sitemap names", () => {
+    expect(evaluatePublicBoundary("GET", "/sitemap-a1-collection.xml").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/sitemap-Collection.xml").allowed).toBe(false);
+    expect(evaluatePublicBoundary("GET", "/sitemap-a_collection.xml").allowed).toBe(false);
+    expect(evaluatePublicBoundary("GET", "/sitemap-a.xml/extra").allowed).toBe(false);
   });
 
   it("allows HEAD requests on public read endpoints", () => {
@@ -306,5 +316,24 @@ describe("worker boundary handler", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
+  it("redirects legacy slash variants without long-lived caching", async () => {
+    astroFetch.mockClear();
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const request = new Request("http://demo.dinkuskit.com/cart/?from=bookmark", {
+      headers: { "cf-connecting-ip": "198.51.100.1" },
+    });
+    const res = await worker.fetch(request, { RATE_LIMITER: limiter }, dummyCtx);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("http://demo.dinkuskit.com/cart?from=bookmark");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(astroFetch).not.toHaveBeenCalled();
+  });
+
+  it("reads demo noindex policy from the Worker env binding", () => {
+    const headers = new Headers();
+    applySecurityHeaders(headers, { DINKUS_DEMO_NOINDEX: "1" });
+    expect(headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
   });
 });

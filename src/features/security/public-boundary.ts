@@ -17,6 +17,7 @@ const EXACT_ALLOWED_PATHS = new Set([
 ]);
 
 const ALLOWED_PATH_PATTERNS = [
+  /^\/sitemap-[a-z0-9-]+\.xml$/,
   /^\/_astro\/[^\s]+$/,
   /^\/merch\/[^\s]+$/,
   /^\/_emdash\/api\/media\/file\/[^\s]+$/,
@@ -27,6 +28,11 @@ const ALLOWED_PATH_PATTERNS = [
 
 const GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
+const SLASHLESS_REDIRECTS = new Map([
+  ["/cart/", "/cart"],
+  ["/checkout/success/", "/checkout/success"],
+  ["/checkout/cancel/", "/checkout/cancel"],
+]);
 
 export function decodedForms(value: string): string[] {
   const forms = [value];
@@ -46,6 +52,10 @@ export function isExactGuestCheckoutPath(pathname: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function slashlessRedirectPath(pathname: string): string | undefined {
+  return SLASHLESS_REDIRECTS.get(pathname);
 }
 
 function isDisallowedTraversalOrTarget(pathname: string, search: string): boolean {
@@ -172,15 +182,20 @@ export function evaluatePublicBoundary(
 }
 
 export function demoNoIndexEnabled(
-  env: NodeJS.ProcessEnv = process.env,
+  env: Record<string, unknown> = process.env,
 ): boolean {
-  return env.DINKUS_DEMO_NOINDEX === "1" ||
-    env.DINKUS_STOREFRONT_PROFILE?.trim().toLowerCase() === "proof";
+  const demoNoIndex = typeof env.DINKUS_DEMO_NOINDEX === "string"
+    ? env.DINKUS_DEMO_NOINDEX
+    : undefined;
+  const profile = typeof env.DINKUS_STOREFRONT_PROFILE === "string"
+    ? env.DINKUS_STOREFRONT_PROFILE
+    : undefined;
+  return demoNoIndex === "1" || profile?.trim().toLowerCase() === "proof";
 }
 
 export function applySecurityHeaders(
   headers: Headers,
-  env: NodeJS.ProcessEnv = process.env,
+  env: Record<string, unknown> = process.env,
 ): void {
   const securityHeaders: Record<string, string> = {
     "X-Content-Type-Options": "nosniff",

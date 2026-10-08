@@ -130,6 +130,26 @@ function parseJsonLd(html, pageUrl) {
   }
 }
 
+function sitemapLocations(xml) {
+  return [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((match) => match[1]);
+}
+
+function addSitemapPage(raw) {
+  try {
+    const url = new URL(raw);
+    if (url.origin !== base) {
+      result("Sitemap origin", "FAIL", `${url.href} is outside ${base}`);
+      return;
+    }
+    url.hash = "";
+    checkPathShape(url, "sitemap");
+    sitemapPaths.add(url.pathname + url.search);
+    discovered.add(url.pathname + url.search);
+  } catch {
+    result("Sitemap XML", "FAIL", `Invalid sitemap URL: ${raw}`);
+  }
+}
+
 async function inspect(path, from = "crawl") {
   const url = absoluteUrl(path);
   checkPathShape(url, from);
@@ -191,22 +211,52 @@ if (sitemapResponse?.status === 404 && !REQUIRED_LANDED_CHECKS) {
   result("Sitemap contract", "SKIP", "EmDash 1.0.1 on main does not expose the built-in sitemap; require after the 1.2 upgrade.");
 } else if (sitemapResponse?.ok) {
   const xml = await sitemapResponse.text();
-  for (const match of xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) {
-    try {
-      const url = new URL(match[1]);
-      if (url.origin !== base) result("Sitemap origin", "FAIL", `${url.href} is outside ${base}`);
-      url.hash = "";
-      sitemapPaths.add(url.pathname + url.search);
-      checkPathShape(url, "sitemap");
-      discovered.add(url.pathname + url.search);
-    } catch {
-      result("Sitemap XML", "FAIL", `Invalid sitemap URL: ${match[1]}`);
+  const locations = sitemapLocations(xml);
+  if (/<sitemapindex\b/i.test(xml)) {
+    let childCount = 0;
+    for (const rawChild of locations) {
+      let childUrl;
+      try {
+        childUrl = new URL(rawChild);
+        if (childUrl.origin !== base) {
+          result("Sitemap origin", "FAIL", `${childUrl.href} is outside ${base}`);
+          continue;
+        }
+        checkPathShape(childUrl, "sitemap child");
+      } catch {
+        result("Sitemap XML", "FAIL", `Invalid child sitemap URL: ${rawChild}`);
+        continue;
+      }
+      let childResponse;
+      try {
+        childResponse = await request(childUrl);
+      } catch (error) {
+        result("Sitemap child availability", "FAIL", `${childUrl.pathname}: ${error.message}`);
+        continue;
+      }
+      if (!childResponse.ok) {
+        result("Sitemap child availability", "FAIL", `${childUrl.pathname} returned ${childResponse.status}`);
+        continue;
+      }
+      const childXml = await childResponse.text();
+      if (/<sitemapindex\b/i.test(childXml)) {
+        result("Sitemap XML", "FAIL", `${childUrl.pathname} must contain page URLs, not another sitemap index`);
+        continue;
+      }
+      for (const rawPage of sitemapLocations(childXml)) {
+        addSitemapPage(rawPage);
+      }
+      childCount += 1;
     }
-  }
-  if (sitemapPaths.size === 0) {
-    result("Sitemap XML", "FAIL", "Sitemap has no <loc> URLs");
+    if (childCount === 0) result("Sitemap XML", "FAIL", "Sitemap index has no usable child sitemaps");
+    else result("Sitemap availability", "PASS", `${childCount} child sitemap(s), ${sitemapPaths.size} page URL(s)`);
   } else {
-    result("Sitemap availability", "PASS", `${sitemapPaths.size} URL(s)`);
+    for (const rawPage of locations) addSitemapPage(rawPage);
+    if (sitemapPaths.size === 0) {
+      result("Sitemap XML", "FAIL", "Sitemap has no <loc> URLs");
+    } else {
+      result("Sitemap availability", "PASS", `${sitemapPaths.size} URL(s)`);
+    }
   }
 } else if (sitemapResponse?.status === 500) {
   const sitemapError = await sitemapResponse.text();
@@ -229,9 +279,13 @@ if (sitemapPaths.size) {
   for (const [path, page] of pages) {
     if (!sitemapPaths.has(path)) continue;
     if (page.canonical.length === 1) {
-      const canonical = new URL(page.canonical[0]);
-      if (canonical.href !== page.url.href) {
-        result("Sitemap canonical", "FAIL", `${path} canonical is ${canonical.href}, not ${page.url.href}`);
+      try {
+        const canonical = new URL(page.canonical[0]);
+        if (canonical.href !== page.url.href) {
+          result("Sitemap canonical", "FAIL", `${path} canonical is ${canonical.href}, not ${page.url.href}`);
+        }
+      } catch {
+        result("Sitemap canonical", "FAIL", `${path} has an invalid canonical URL`);
       }
     } else {
       requiredOrSkip("Sitemap canonical", `${path} has no exactly-one canonical tag`);

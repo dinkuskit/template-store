@@ -6,6 +6,10 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "vars": {
+    "DINKUS_STOREFRONT_PROFILE": "proof",
+    "DINKUS_DEMO_NOINDEX": "1"
+  },
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist/client",
