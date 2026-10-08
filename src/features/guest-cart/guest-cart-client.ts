@@ -254,6 +254,14 @@ function checkoutFailureText(failure: string | null): string {
 
 async function probeGuestCheckout(root: Element): Promise<void> {
   if (!checkoutController || checkoutProbePending || session.intent.lines.length === 0) return;
+  const retention = readGuestCheckoutRetention(checkoutStorage());
+  if (
+    retention &&
+    !checkoutController.canPrepareNew() &&
+    !checkoutController.canStart()
+  ) {
+    return;
+  }
   checkoutProbePending = true;
   checkoutMessage = "Checking Commerce checkout availability.";
   checkoutMessageError = false;
@@ -261,7 +269,6 @@ async function probeGuestCheckout(root: Element): Promise<void> {
   const prepared = await checkoutController.prepare();
   checkoutProbePending = false;
   if (prepared.result?.ok) {
-    checkoutAdmitted = true;
     checkoutMessage = null;
     checkoutMessageError = false;
   } else {
@@ -391,9 +398,9 @@ export function hydrateGuestCartPage(): void {
   session = loadSession();
   checkoutAdmitted = root.dataset.guestCheckoutAdmitted === "true";
   checkoutController = createGuestCheckoutController({
-    // The server remains the authority. The client starts closed and probes
-    // Commerce; a successful prepare is the only signal that enables UI.
-    admitted: true,
+    // Capability preparation does not establish readiness. The server's
+    // registry/catalog admission is the only browser-facing admission input.
+    admitted: checkoutAdmitted,
     storage: checkoutStorage(),
     transport: {
       fetch: (input: string, init: RequestInit) => fetch(input, init),
@@ -499,8 +506,12 @@ export function hydrateGuestCartPage(): void {
   }
   renderCart(root);
   void refreshSnapshot(root);
-  void probeGuestCheckout(root);
-  if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) void recoverGuestCheckout(root);
+  void (async () => {
+    if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) {
+      await recoverGuestCheckout(root);
+    }
+    await probeGuestCheckout(root);
+  })();
 }
 
 function checkoutStorage() {

@@ -66,7 +66,7 @@ describe("public boundary access evaluation", () => {
   });
 
   it("allows only the exact installed guest POST protocol and safe callback reads", () => {
-    const base = "/_emdash/api/plugins/dinkus-commerce/checkout/guest";
+    const base = "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest";
     expect(evaluatePublicBoundary("POST", `${base}/prepare`).allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", `${base}/start`).allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", `${base}/status`).allowed).toBe(true);
@@ -78,7 +78,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("DELETE", "/checkout/cancel/").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/checkout/success").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/_emdash/api/plugins/r_other/checkout/guest/start").status).toBe(405);
-    expect(evaluatePublicBoundary("POST", `${base.replace("dinkus-commerce", "dinkus-%63ommerce")}/start`).allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", `${base.replace("r_", "%72_")}/start`).allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", `${base}/%2573tart`).allowed).toBe(true);
   });
 

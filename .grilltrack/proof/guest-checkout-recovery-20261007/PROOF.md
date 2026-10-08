@@ -6,6 +6,8 @@ The browser sends only product IDs, bounded integer quantities, and optional sca
 
 Requests use exact Registry-derived guest POST paths, same-origin credentials, no-store, an eight-second deadline, a 64 KiB body cap and redirect rejection. The public boundary admits only those three POST paths and shopper success/cancel reads, retaining admin/auth/proof and rate protections. Native/source aliases remain closed. Merchant Stripe callbacks remain protected.
 
+The original PR43 native endpoint substitution is rejected by the existing same-runtime Registry/catalog authority contract; this candidate keeps the Registry runtime identity end-to-end.
+
 ## Closed admission
 
 EmDash 1.0.1 runtime-installed settings/route metadata is necessary but insufficient. The supported same-installed catalog/configuration authority contract is unresolved. The shipping caller supplies no catalog authority; all three guest endpoints return unavailable. The local catalog-authority type is a provisional composition input, not a signed install receipt or Core contract. No test flag opens shipping checkout.
@@ -29,3 +31,7 @@ Remaining product gates: supported installed catalog/config authority, actual Re
 The native P1 paid-cart lock finding and the parent successor response-loss finding on git:27c3579802bbe9251a87f9677b1b98149b6e63f7 are repaired. The original capability is retained for receipt reload until explicit new purchase. Cleanup markers affect only browser cart cache and never confirm payment. Unknown starts query the current attempt through the same capability. Purchased intent clears only after matched authoritative paid order lines; newer or changed contents survive replay and interrupted browser writes. Returning to the cart refreshes paid status and permits fresh preparation for a new purchase after cleanup.
 
 See NATIVE-PAID-CLEANUP-FINDING.md, SUCCESSOR-RECOVERY-FINDING.md and PRIOR-SOURCE-REPRODUCTION.json for dispositions and reproduced prior behavior. Earlier CI/OpenClaw/native evidence cannot clear the repaired source.
+
+## PR43 admission and recovery repair
+
+The repair preserves server-rendered Registry/catalog admission instead of treating capability preparation as Payments readiness. Retained paid-cart recovery finishes before preparation for a new cart; active attempts remain retained. Coupon controls follow the same admission and attempt lock. Registry-derived endpoint identity and the existing explicit unavailable/native-denial responses are preserved. Browser fixtures remain synthetic and cannot qualify installed checkout. The original PR43 decision history is retained through CLI-reconciled same-repository lineage. Candidate verification and exact-source reviewer results are recorded in the repair PR; earlier checks do not qualify this changed source.

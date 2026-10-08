@@ -4,34 +4,13 @@ import {
   decodedForms,
   evaluatePublicBoundary,
   isExactGuestCheckoutPath,
-  slashlessRedirectPath,
 } from "./features/security/public-boundary.js";
 import { resolveGuestCheckoutAdmission } from "./features/guest-cart/checkout-admission.js";
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|start|status)$/;
-const LEGACY_GUEST_CHECKOUT_POST_PATH =
-  /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const slashlessPath = slashlessRedirectPath(context.url.pathname);
-  if (
-    slashlessPath &&
-    (context.request.method === "GET" || context.request.method === "HEAD")
-  ) {
-    const redirectUrl = new URL(context.request.url);
-    redirectUrl.pathname = slashlessPath;
-    const response = new Response(null, {
-      status: 302,
-      headers: {
-        Location: redirectUrl.href,
-        "Cache-Control": "no-store",
-      },
-    });
-    applySecurityHeaders(response.headers);
-    return response;
-  }
-
   let pathForms: string[];
   try {
     pathForms = decodedForms(context.url.pathname);
@@ -107,13 +86,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
-  if (
-    pathForms.some(
-      (path) =>
-        NATIVE_GUEST_CHECKOUT_POST_PATH.test(path) ||
-        LEGACY_GUEST_CHECKOUT_POST_PATH.test(path),
-    )
-  ) {
+  if (pathForms.some((path) => NATIVE_GUEST_CHECKOUT_POST_PATH.test(path))) {
     const response = new Response(
       JSON.stringify({ error: "Native or source-alias checkout is not a supported install." }),
       {

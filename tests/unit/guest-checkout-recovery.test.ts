@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
-  GUEST_CHECKOUT_START_ENDPOINT,
   callGuestCheckout,
   checkoutCanConfirm,
   createGuestCheckoutController,
@@ -45,6 +45,23 @@ function wire(overrides: Record<string, unknown> = {}) {
 }
 
 describe("guest checkout protocol and recovery", () => {
+  it("does not mint a capability when server admission is closed", async () => {
+    let calls = 0;
+    const controller = createGuestCheckoutController({
+      admitted: false,
+      storage: storage(),
+      transport: {
+        fetch: async () => {
+          calls += 1;
+          return Response.json(wire());
+        },
+      },
+    });
+
+    expect((await controller.prepare()).failure).toBe("storage-unavailable");
+    expect(calls).toBe(0);
+  });
+
   it("accepts the exact wrapped Commerce wire result and retains the original opaque capability", () => {
     const result = parseGuestCheckoutWireResult({
       success: true,
@@ -139,7 +156,7 @@ describe("guest checkout protocol and recovery", () => {
     );
     expect(result.failure).toBeNull();
     expect(calls[0]).toMatchObject({
-      endpoint: GUEST_CHECKOUT_START_ENDPOINT,
+      endpoint: `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/start`,
       capability: "cap-1.secret",
     });
     expect(JSON.parse(calls[0]!.body)).toEqual({
