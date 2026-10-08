@@ -1,0 +1,2535 @@
+{
+  "closeout": null,
+  "created_at": "2026-10-08T19:35:31+00:00",
+  "current_focus": null,
+  "decisions": [
+    {
+      "baseline_ref": "git:41a63299d575eeb9784de700c63ca628543b2d60",
+      "candidate_refs": [],
+      "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+      "context_ref": "task:post-merge-template-checkout-integration-20260930",
+      "created_at": "2026-10-01T00:39:28+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "guest-cart-005"
+      ],
+      "domain": "post-merge guest checkout host qualification",
+      "history": [
+        {
+          "at": "2026-10-01T00:39:28+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T02:13:32+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T02:13:32+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "implemented",
+          "implementation_ref": "file:astro.config.mjs;file:tests/e2e/guest-checkout-feasibility.spec.ts;file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T12:11:52+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "verified",
+          "implementation_ref": "file:astro.config.mjs;file:tests/e2e/guest-checkout-feasibility.spec.ts;file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
+          "note": "Authorized issue20 continuation: supported installed guest prepare/start/status, shopper return/retry/reload UI; actual installed catalog identity remains Core contract request and public checkout remains closed without capability/config. No new money/order policy or runtime activation.",
+          "repair_required": false,
+          "review_classifications": [
+            "defer",
+            "human_gate",
+            "reject_false_positive"
+          ],
+          "review_ref": "file:.grilltrack/proof/checkout-integration-20260930/REVIEW.md",
+          "review_result": "findings",
+          "review_source_identity": "git:49cea8c54774fd5064965d51dddce5087a9bf510",
+          "to": "reopened",
+          "verification_ref": "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T12:26:19+00:00",
+          "choice": "Qualify the exact merged Commerce native pilot and public guest prepare/start/status against current Template Store; preserve unmanaged shipping and disabled checkout until supported registry identity/storage/routes, trusted Payments transport and wake consumer are proved. Record executable upstream dependencies when the purchase journey is blocked. No independent pricing/order/stock/payment authority or invented policy.",
+          "from": "reopened",
+          "implementation_ref": "file:astro.config.mjs;file:tests/e2e/guest-checkout-feasibility.spec.ts;file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [
+            "defer",
+            "human_gate",
+            "reject_false_positive"
+          ],
+          "review_ref": "file:.grilltrack/proof/checkout-integration-20260930/REVIEW.md",
+          "review_result": "findings",
+          "review_source_identity": "git:49cea8c54774fd5064965d51dddce5087a9bf510",
+          "to": "locked",
+          "verification_ref": "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:01:31+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "locked",
+          "implementation_ref": "file:astro.config.mjs;file:tests/e2e/guest-checkout-feasibility.spec.ts;file:.grilltrack/proof/checkout-integration-20260930/DEPENDENCY-HANDOFF.md",
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [
+            "defer",
+            "human_gate",
+            "reject_false_positive"
+          ],
+          "review_ref": "file:.grilltrack/proof/checkout-integration-20260930/REVIEW.md",
+          "review_result": "findings",
+          "review_source_identity": "git:49cea8c54774fd5064965d51dddce5087a9bf510",
+          "to": "implemented",
+          "verification_ref": "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:01:31+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts;file:src/features/guest-cart/guest-cart-client.ts;file:src/pages/checkout/;file:src/middleware.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": "file:.grilltrack/proof/checkout-integration-20260930/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:15:21+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "verified",
+          "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts;file:src/features/guest-cart/guest-cart-client.ts;file:src/pages/checkout/;file:src/middleware.ts",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "review_result": "clean",
+          "review_source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396",
+          "to": "needs_reverification",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:15:21+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts;file:src/features/guest-cart/guest-cart-client.ts;file:src/pages/checkout/;file:src/middleware.ts",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/SUCCESSOR-RECOVERY-FINDING.md",
+          "review_result": "findings",
+          "review_source_identity": "git:27c3579802bbe9251a87f9677b1b98149b6e63f7",
+          "to": "implemented",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:16:28+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts",
+          "note": "Accepted successor response-loss finding requires fresh consumer composition verification; confirmed product choice and activation boundaries unchanged.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "reopened",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:16:29+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "reopened",
+          "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts",
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:16:29+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "locked",
+          "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts",
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:42:57+00:00",
+          "choice": "Consume the qualified immutable Commerce Registry guest prepare/start/status contract for cart and shopper return/retry/reload recovery. Retain original opaque capability/attempt, browser-only product/quantity/coupon intent and Commerce-only totals/orders. Exact public boundaries keep checkout unavailable without supported installed matching catalog/config authority. Identify remaining Core contract and distinguish local package/browser fixtures from Registry installation or real TEST checkout. No independent pricing/order/stock/provider authority or deployment/grant changes.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts;file:tests/unit/guest-checkout-recovery.test.ts;file:scripts/verify-registry-checkout.mjs",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "checkout-qualification-006",
+      "implementation_ref": "file:src/features/guest-cart/checkout-protocol.ts;file:tests/unit/guest-checkout-recovery.test.ts;file:scripts/verify-registry-checkout.mjs",
+      "question": "What integration is supported by the merged Commerce and Payments contracts?",
+      "rationale": "Continue the authorized guest shopper scope against the qualified Registry package; native/source-alias feasibility is historical and cannot establish shipping installation. Preserve prior product locks and immutable proof lineage.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "defer",
+            "human_gate",
+            "reject_false_positive"
+          ],
+          "ref": "file:.grilltrack/proof/checkout-integration-20260930/REVIEW.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-01T02:14:29+00:00",
+          "source_identity": "git:49cea8c54774fd5064965d51dddce5087a9bf510"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:01:31+00:00",
+          "source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396"
+        },
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/SUCCESSOR-RECOVERY-FINDING.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-07T13:15:21+00:00",
+          "source_identity": "git:27c3579802bbe9251a87f9677b1b98149b6e63f7"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:42:57+00:00",
+          "source_identity": "sha256:acf2aa8b9930d564087302785d1f07e5763b5b9bd83766b123d9cd3cc3fc6e4a"
+        }
+      ],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Enable the cart only after Commerce guest checkout prepare confirms an explicit server-owned Stripe TEST binding; pass only browser cart lines and the opaque prepare capability to start, redirect only to Commerce's validated URL, and require authoritative Commerce status projection paid for success. Ryan (saariuslystoned) approved this change on a branch. Do not merge.",
+      "context_ref": "https://github.com/dinkuskit/commerce/pull/66;https://github.com/dinkuskit/payments/pull/21",
+      "created_at": "2026-10-08T16:34:46+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T16:34:55+00:00",
+          "choice": "Enable the cart only after Commerce guest checkout prepare confirms an explicit server-owned Stripe TEST binding; pass only browser cart lines and the opaque prepare capability to start, redirect only to Commerce's validated URL, and require authoritative Commerce status projection paid for success. Ryan (saariuslystoned) approved this change on a branch. Do not merge.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "demo-payments-binding-20261008-template",
+      "implementation_ref": null,
+      "question": "What Template Store behavior is authorized for demo.dinkuskit.com guest checkout?",
+      "rationale": "Commerce PR #66 docs/demo-checkout.md and Payments PR #21 provide the test-only handoff. Contact, billing, delivery, shipping and tax remain deferred under Commerce issue #33.",
+      "reconciliation_sources": [
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:3f3aaebc81f33be32d4d2f98b7321c4cd154ba01",
+      "candidate_refs": [],
+      "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/20;https://github.com/dinkuskit/commerce/issues/32",
+      "created_at": "2026-09-30T17:54:10+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized guest cart presentation and Commerce handoff",
+      "history": [
+        {
+          "at": "2026-09-30T17:54:10+00:00",
+          "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T18:51:38+00:00",
+          "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T18:51:38+00:00",
+          "choice": "Add identity/positive-integer quantity intent, validated persistent browser cache, desktop/mobile cart editing and current Commerce snapshot presentation. Keep checkout inactive until the supported exact Commerce contract/artifact arrives; never infer payment confirmation from return URLs or implement pricing/order authority.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/guest-cart/index.ts;file:docs/implementation/guest-cart.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "guest-cart-005",
+      "implementation_ref": "file:src/features/guest-cart/index.ts;file:docs/implementation/guest-cart.md",
+      "question": "What shopper work can proceed before the Commerce guest mount?",
+      "rationale": "Explicit authorized issue20 continuation. Historical no-cart/no-checkout catalog scope is superseded only for this bounded shopper feature; price, Inventory, payment and order authority remain upstream.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "defer",
+            "human_gate",
+            "reject_false_positive"
+          ],
+          "ref": "file:.grilltrack/proof/guest-cart-20260930/PROOF.md",
+          "result": "findings",
+          "reviewed_at": "2026-09-30T18:55:23+00:00",
+          "source_identity": "git:cbf1bfc2000284da97891951d3657cb8ec4ec086"
+        }
+      ],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+      "context_ref": null,
+      "created_at": "2026-10-01T04:31:34+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Hosted synthetic browse and guest cart demo on exact EmDash 1.0.1",
+      "history": [
+        {
+          "at": "2026-10-01T04:31:35+00:00",
+          "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T07:24:59+00:00",
+          "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T07:24:59+00:00",
+          "choice": "demo.dinkuskit.com hosts the actual EmDash 1.0.1 Template Store with isolated synthetic Commerce catalog and guest cart, clear demo labeling, protected admin and no real payments or fulfillment; actual test checkout remains gated on qualified capabilities.",
+          "from": "implemented",
+          "implementation_ref": "file:src/worker.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "hosted-demo-007",
+      "implementation_ref": "file:src/worker.ts",
+      "question": "Which public demonstration should be stood up?",
+      "rationale": "An independently useful public browse and cart demonstration lets prospective users inspect the commerce starter while payment and released-artifact integrations remain unproved.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:0040061283f748b00d23a33a17b421ec01ba7e6f",
+      "candidate_refs": [],
+      "choice": "Use EmDash public-only SSR dispatch for the exact installed Commerce namespace and catalog/public route, validate all returned products and follow every opaque cursor including empty filtered pages. Keep native storage reads explicitly development-only. Pass current cart quantities and optional coupon through existing canonical checkout protocol, but keep UI and middleware closed until Core supplies genuine installed checkout configuration authority.",
+      "context_ref": "https://github.com/dinkuskit/commerce/pull/53;https://github.com/dinkuskit/template-store/issues/20",
+      "created_at": "2026-10-07T23:26:12+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-07T23:26:12+00:00",
+          "choice": "Use EmDash public-only SSR dispatch for the exact installed Commerce namespace and catalog/public route, validate all returned products and follow every opaque cursor including empty filtered pages. Keep native storage reads explicitly development-only. Pass current cart quantities and optional coupon through existing canonical checkout protocol, but keep UI and middleware closed until Core supplies genuine installed checkout configuration authority.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T23:29:29+00:00",
+          "choice": "Use EmDash public-only SSR dispatch for the exact installed Commerce namespace and catalog/public route, validate all returned products and follow every opaque cursor including empty filtered pages. Keep native storage reads explicitly development-only. Pass current cart quantities and optional coupon through existing canonical checkout protocol, but keep UI and middleware closed until Core supplies genuine installed checkout configuration authority.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "implemented",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "installed-catalog-consumer-012",
+      "implementation_ref": "file:src/features/commerce-catalog/installed.ts;file:src/features/guest-cart/guest-cart-client.ts",
+      "question": "How does Template consume the installed Commerce catalog?",
+      "rationale": "",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:3b2d6d1342a87ad7a36d8cae2969ce18d075488a",
+      "candidate_refs": [],
+      "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+      "context_ref": null,
+      "created_at": "2026-10-07T01:10:55+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "test-checkout-host-009"
+      ],
+      "domain": "Matched compiled TEST checkout pair and installed host boundary",
+      "history": [
+        {
+          "at": "2026-10-07T01:10:55+00:00",
+          "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T01:46:11+00:00",
+          "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T01:48:50+00:00",
+          "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+          "from": "implemented",
+          "implementation_ref": "src/features/paired-checkout/index.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T12:11:52+00:00",
+          "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+          "from": "verified",
+          "implementation_ref": "src/features/paired-checkout/index.ts",
+          "note": "dependency checkout-qualification-006 changed: Authorized issue20 continuation: supported installed guest prepare/start/status, shopper return/retry/reload UI; actual installed catalog identity remains Core contract request and public checkout remains closed without capability/config. No new money/order policy or runtime activation.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": ".grilltrack/proof/paired-checkout-20261006/SOURCE-REVIEW.json",
+          "review_result": "clean",
+          "review_source_identity": "sha256:412750268e0103e1b44de4420f7d18d0a762c865214b9bcf389b601041cd8540",
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/paired-checkout-20261006/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-07T13:01:31+00:00",
+          "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+          "from": "needs_reverification",
+          "implementation_ref": "src/features/paired-checkout/index.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/paired-checkout-20261006/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-07T13:16:28+00:00",
+          "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+          "from": "verified",
+          "implementation_ref": "src/features/paired-checkout/index.ts",
+          "note": "dependency checkout-qualification-006 changed: Accepted successor response-loss finding requires fresh consumer composition verification; confirmed product choice and activation boundaries unchanged.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "review_result": "clean",
+          "review_source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396",
+          "to": "needs_reverification",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:42:57+00:00",
+          "choice": "Adopt exact pre-release Commerce48 and Payments12 pricing/v1 contracts in a bounded opt-in source slice. Bind the original runtime-owned Commerce PluginContext to the public service resolver and canonical guest/recovery surfaces only where supported; otherwise record the concrete minimal owner contract gap. Prove actual compiled/package behavior locally with neutral synthetic transport, canonical totals/order/replay/restart and authoritative return states. Preserve Inventory-unavailable defaults, one site-owned scheduler, and prior ledger history. No zero-order kernel, real provider, deployment, credential/grant/account or Registry release.",
+          "from": "needs_reverification",
+          "implementation_ref": "src/features/paired-checkout/index.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "paired-checkout-010",
+      "implementation_ref": "src/features/paired-checkout/index.ts",
+      "question": "How is the qualified Commerce/Payments pricing pair consumed by the Template host?",
+      "rationale": "Existing bounded paired-checkout continuation; Commerce owns pricing/order and Payments owns provider transport. Source/package proof must identify actual fidelity and installation gaps.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/paired-checkout-20261006/SOURCE-REVIEW.json",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T01:51:16+00:00",
+          "source_identity": "sha256:412750268e0103e1b44de4420f7d18d0a762c865214b9bcf389b601041cd8540"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:01:31+00:00",
+          "source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:42:57+00:00",
+          "source_identity": "sha256:acf2aa8b9930d564087302785d1f07e5763b5b9bd83766b123d9cd3cc3fc6e4a"
+        }
+      ],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4628089ebdf90162efaa0b422915a869274177be",
+      "candidate_refs": [],
+      "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+      "context_ref": ".grilltrack/work/registry-checkout-adoption-20261006/ADMISSION.json",
+      "created_at": "2026-10-07T03:06:01+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "paired-checkout-010"
+      ],
+      "domain": "Default Commerce Registry services and immutable paired runtime proof",
+      "history": [
+        {
+          "at": "2026-10-07T03:06:01+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T03:11:25+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T03:11:25+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "implemented",
+          "implementation_ref": "file:package.json;file:src/features/paired-checkout/index.ts;file:scripts/verify-registry-checkout.mjs;file:docs/v1-pairing.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-07T03:32:27+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "verified",
+          "implementation_ref": "file:package.json;file:src/features/paired-checkout/index.ts;file:scripts/verify-registry-checkout.mjs;file:docs/v1-pairing.md",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/work/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T03:32:27+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:package.json;file:src/features/paired-checkout/index.ts;file:scripts/verify-registry-checkout.mjs;file:docs/v1-pairing.md",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+          "review_result": "findings",
+          "review_source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d",
+          "to": "implemented",
+          "verification_ref": ".grilltrack/work/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T03:38:08+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "implemented",
+          "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/work/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T12:11:52+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "verified",
+          "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+          "note": "dependency checkout-qualification-006 changed: Authorized issue20 continuation: supported installed guest prepare/start/status, shopper return/retry/reload UI; actual installed catalog identity remains Core contract request and public checkout remains closed without capability/config. No new money/order policy or runtime activation.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+          "review_result": "clean",
+          "review_source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d",
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:01:31+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:16:28+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "verified",
+          "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+          "note": "dependency checkout-qualification-006 changed: Accepted successor response-loss finding requires fresh consumer composition verification; confirmed product choice and activation boundaries unchanged.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "review_result": "clean",
+          "review_source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396",
+          "to": "needs_reverification",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:42:57+00:00",
+          "choice": "Adopt exact review-qualified pre-release Commerce49 source and immutable npm/Registry artifacts against merged Template28, retaining unmerged versus merged identity until owner receipt. Prove the immutable default backend through original EmDash workerd owner context, versioned settings, encrypted synthetic credential and canonical storage CAS, integrated with immutable Payments12 Worker and intercepted issuer/provider. Preserve frozen pricing, one durable order/coupon effect, restart/replay and wake-after-settlement ACK. Empty shipped grants and unconfigured profiles fail closed; default public checkout stays disabled. No Registry publication/delivery, credential lookup/real identity renewal, grant/account/provider/deployment changes or scheduler registration claim. Preserve required zero-order then product-page owner queue.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "registry-checkout-adoption-011",
+      "implementation_ref": "file:scripts/verify-registry-checkout.mjs;file:scripts/lib/immutable-payments-fixture.mjs;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md",
+      "question": "How does Template consume the qualified default Commerce Registry checkout service assembly?",
+      "rationale": "The exact owner-qualified default service resolver removes the source assembly gap; runtime fidelity must replace injected-context fixture assumptions.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-07T03:32:27+00:00",
+          "source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d"
+        },
+        {
+          "classifications": [],
+          "ref": ".grilltrack/proof/registry-checkout-adoption-20261006/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T03:38:08+00:00",
+          "source_identity": "sha256:e55bf3d9817fef73f4df5c6aa417edb4d046dd4d7f9cfeb66f900836024a740d"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:01:31+00:00",
+          "source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:42:57+00:00",
+          "source_identity": "sha256:acf2aa8b9930d564087302785d1f07e5763b5b9bd83766b123d9cd3cc3fc6e4a"
+        }
+      ],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:690783f8ef368bf18c5dc8afc57c90f19f9809ee",
+      "candidate_refs": [],
+      "choice": "EmDash owns blocks; retire @dinkuskit/blocks entirely from active Template dependency/runtime/build/audit/lockfile, reuse merged PR18 upstream blocks transition (97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9) as starting point, preserve current appearance/content behavior with local presentation components for retained PortableText, failclosed migration with concrete backup verification, and keep Commerce/EmDash pins unchanged.",
+      "context_ref": null,
+      "created_at": "2026-10-01T10:03:46+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Retire @dinkuskit/blocks and preserve native EmDash 1.0.1 composition",
+      "history": [
+        {
+          "at": "2026-10-01T10:03:48+00:00",
+          "choice": "EmDash owns blocks; retire @dinkuskit/blocks entirely from active Template dependency/runtime/build/audit/lockfile, reuse merged PR18 upstream blocks transition (97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9) as starting point, preserve current appearance/content behavior with local presentation components for retained PortableText, failclosed migration with concrete backup verification, and keep Commerce/EmDash pins unchanged.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T11:35:05+00:00",
+          "choice": "EmDash owns blocks; retire @dinkuskit/blocks entirely from active Template dependency/runtime/build/audit/lockfile, reuse merged PR18 upstream blocks transition (97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9) as starting point, preserve current appearance/content behavior with local presentation components for retained PortableText, failclosed migration with concrete backup verification, and keep Commerce/EmDash pins unchanged.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-01T13:22:20+00:00",
+          "choice": "EmDash owns blocks; retire @dinkuskit/blocks entirely from active Template dependency/runtime/build/audit/lockfile, reuse merged PR18 upstream blocks transition (97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9) as starting point, preserve current appearance/content behavior with local presentation components for retained PortableText, failclosed migration with concrete backup verification, and keep Commerce/EmDash pins unchanged.",
+          "from": "implemented",
+          "implementation_ref": "file:package.json;file:pnpm-lock.yaml;file:astro.config.mjs;file:src/pages/index.astro;file:src/features/store-shell/portable-text/;file:src/features/store-shell/blocks/UnknownBlock.astro;file:scripts/migrate-home-layout.mjs;file:tests/e2e/upstream-blocks.spec.ts;file:docs/implementation/upstream-blocks-transition.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "retire-blocks-008",
+      "implementation_ref": "file:package.json;file:pnpm-lock.yaml;file:astro.config.mjs;file:src/pages/index.astro;file:src/features/store-shell/portable-text/;file:src/features/store-shell/blocks/UnknownBlock.astro;file:scripts/migrate-home-layout.mjs;file:tests/e2e/upstream-blocks.spec.ts;file:docs/implementation/upstream-blocks-transition.md",
+      "question": "How are page composition and content blocks maintained in Template Store following the retirement of @dinkuskit/blocks?",
+      "rationale": "Direct human decision verified by coordinator: EmDash natively supports first-class content blocks (Blocks/PortableText); retiring @dinkuskit/blocks removes obsolete parallel block plugin architecture while preserving full editorial behavior and backwards-compatible readable PortableText fallback.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: categories content type, multi-select product references, menu-backed navigation, first-category breadcrumb.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:24+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:24+00:00",
+          "choice": "Locked: categories is a content type at /categories/{slug}, not a taxonomy; products have multi-select categories references, categories can be empty, seeded nav is an EmDash menu created only if missing, and the breadcrumb uses the first category.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-categories-027",
+      "implementation_ref": null,
+      "question": "What is the product grouping content type?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: null is 404, error is 503, out-of-stock is 200 disabled, and unlistable cards have no link.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:25+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:25+00:00",
+          "choice": "Locked: published linked null lookup is 404 and verify-site fails; lookup error is 503; out-of-stock remains 200 with purchasing disabled; unlistable cards have no link.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-drift-029",
+      "implementation_ref": null,
+      "question": "How is Commerce drift handled?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: noindex by default with explicit launch opt-in and verifier enforcement.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:24+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:25+00:00",
+          "choice": "Locked: noindex by default; only explicit DINKUS_LAUNCH_INDEXABLE=1 makes a site indexable; production verification fails if sitemap URLs are noindex; Node and Cloudflare emit X-Robots-Tag.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-indexing-028",
+      "implementation_ref": null,
+      "question": "What is the indexing default?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: commerce_item_id format plus Commerce lookup policy as documented.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:14+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:14+00:00",
+          "choice": "Locked: commerce_item_id must be non-empty and at most 1,024 characters; a null catalog/public/item lookup cancels publication; lookup errors cancel publication when reachable, otherwise format plus atomic claim is the explicit limit and Commerce state is enforced at render.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-link-024",
+      "implementation_ref": null,
+      "question": "What does publishing require for the Commerce link?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: deliberate breaking change; reseed or re-bootstrap; old merchandise databases fail closed; no live stores exist.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:14+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:14+00:00",
+          "choice": "Locked: deliberate breaking change; reseed or re-bootstrap from the current seed. Old merchandise databases fail closed. No live template-store sites accept real orders, so no migration is provided.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-migration-023",
+      "implementation_ref": null,
+      "question": "How does the old merchandise model upgrade?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: pages unchanged.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:25+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:25+00:00",
+          "choice": "Locked: pages remain unchanged.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-pages-030",
+      "implementation_ref": null,
+      "question": "Does this change pages?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: no legacy redirects; only accepted upstream slash, slug-edit, and /home exceptions.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:24+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:24+00:00",
+          "choice": "Locked: remove legacy /shop and old collection digest redirects entirely; Astro trailing-slash 301, EmDash slug-edit 301, and existing /home 302 are accepted exceptions.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-redirects-026",
+      "implementation_ref": null,
+      "question": "Which redirects remain?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Locked: atomic plugin-storage itemId claim and deterministic seeded-duplicate exclusion.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34#issuecomment-6067384558",
+      "created_at": "2026-10-08T19:35:14+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:14+00:00",
+          "choice": "Locked: content:beforePublish atomically claims itemId to entryId in plugin storage with a unique itemId index; duplicate publish is cancelled naming the live URL; afterUnpublish and afterDelete release only the holder. Seeded unclaimed duplicates are all excluded and flagged.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "locked",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "template-product-url-resolver-025",
+      "implementation_ref": null,
+      "question": "How is one published page per item enforced?",
+      "rationale": "Ryan issue #34 comment 6067384558.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:9c0f9f4",
+      "candidate_refs": [],
+      "choice": "Proposal: migrate the merchandise collection to products with urlPattern /products/{slug}, SEO enabled, preserved seed slugs, and a required commerceItemId; add a collections collection with slashless unique slugs, SEO enabled, and /collections/{slug}; product URLs remain flat and never nested.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34",
+      "created_at": "2026-10-08T14:25:53+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [],
+      "id": "template-products-collections-014",
+      "implementation_ref": null,
+      "question": "How should merchandise migrate to products and collections?",
+      "rationale": "Removes free-text category routing and the second /shop product URL system using built-in EmDash collections.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T14:25:53+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4003f5c",
+      "candidate_refs": [],
+      "choice": "Ryan answer: a collection has title and slug; products have a multi-select collection selector and may belong to several collections. Collections do not duplicate membership lists. Empty collections may be saved; public pages show only published, valid products.",
+      "context_ref": "chat:Ryan-2026-10-08;https://github.com/dinkuskit/template-store/pull/41",
+      "created_at": "2026-10-08T15:13:50+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "choice": "Ryan answer: a collection has title and slug; products have a multi-select collection selector and may belong to several collections. Collections do not duplicate membership lists. Empty collections may be saved; public pages show only published, valid products.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "Superseded by Ryan locked categories decision in issue #34 comment 6067384558.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-products-collections-019",
+      "implementation_ref": null,
+      "question": "Clarification of template-products-collections-014: what is collection membership?",
+      "rationale": "Clarification recorded from Ryan chat answers on 2026-10-08; original proposal remains undecided.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "superseded",
+      "superseded_by": "template-product-url-categories-027",
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:9c0f9f4",
+      "candidate_refs": [],
+      "choice": "Proposal: products entries own a required commerceItemId string containing Commerce itemId; the host resolver validates links and exposes at most one published canonical page per item, with duplicates, invalid links, unlinked items, unpublished items, and missing public Commerce data failing closed. Unpublish/delete leaves no page and never falls back to a draft; concurrent duplicate publication has a deterministic single winner or no publication.",
+      "context_ref": "https://github.com/dinkuskit/commerce/issues/58#issuecomment-6059044194;https://github.com/dinkuskit/template-store/issues/34",
+      "created_at": "2026-10-08T14:25:53+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T15:13:25+00:00",
+          "choice": "Proposal: products entries own a required commerceItemId string containing Commerce itemId; the host resolver validates links and exposes at most one published canonical page per item, with duplicates, invalid links, unlinked items, unpublished items, and missing public Commerce data failing closed. Unpublish/delete leaves no page and never falls back to a draft; concurrent duplicate publication has a deterministic single winner or no publication.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "Ryan clarified the six #34 questions in chat on 2026-10-08; update the proposal without deciding it.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "reopened",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-products-link-013",
+      "implementation_ref": null,
+      "question": "How does a published EmDash product entry link to Commerce and enforce one canonical page per item?",
+      "rationale": "Preserves Commerce itemId authority and the maintainer decisions in commerce#58 while keeping CMS/page routing in the host.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "reopened",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T15:13:25+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4003f5c",
+      "candidate_refs": [],
+      "choice": "Ryan answer: the field is commerce_item_id, labeled Commerce product; drafts may omit it but publication requires a valid link. Reject the second publication, including simultaneous attempts; an existing published page remains working. Imported ambiguous duplicates are hidden and flagged for admin, never arbitrarily selected or replaced by a draft.",
+      "context_ref": "chat:Ryan-2026-10-08;https://github.com/dinkuskit/template-store/pull/41",
+      "created_at": "2026-10-08T15:13:49+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "choice": "Ryan answer: the field is commerce_item_id, labeled Commerce product; drafts may omit it but publication requires a valid link. Reject the second publication, including simultaneous attempts; an existing published page remains working. Imported ambiguous duplicates are hidden and flagged for admin, never arbitrarily selected or replaced by a draft.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "Superseded by Ryan locked decision in issue #34 comment 6067384558.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-products-link-018",
+      "implementation_ref": null,
+      "question": "Clarification of template-products-link-013: what is the Commerce link and duplicate publication rule?",
+      "rationale": "Clarification recorded from Ryan chat answers on 2026-10-08; original proposal remains undecided.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "superseded",
+      "superseded_by": "template-product-url-link-024",
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:9c0f9f4",
+      "candidate_refs": [],
+      "choice": "Proposal: legacy /shop/{id}, old digest collection paths, /home, and slash variants redirect with 302 and no-store until verified, then may become 301; never use immutable or long max-age redirect caching. Slug edits use the EmDash redirect table.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34",
+      "created_at": "2026-10-08T14:25:53+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [],
+      "id": "template-redirects-015",
+      "implementation_ref": null,
+      "question": "What redirect policy applies to legacy, slug-change, and trailing-slash URLs?",
+      "rationale": "Conservative redirect rollout avoids caching an incorrect canonical while satisfying one slashless URL.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T14:25:53+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4003f5c",
+      "candidate_refs": [],
+      "choice": "Ryan answer: use 302 while migration is validated, then 301 for confirmed permanent old-URL and slash redirects before public launch. Implementation owner proves destinations, no loops, and canonical/sitemap agreement.",
+      "context_ref": "chat:Ryan-2026-10-08;https://github.com/dinkuskit/template-store/pull/41",
+      "created_at": "2026-10-08T15:13:50+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "choice": "Ryan answer: use 302 while migration is validated, then 301 for confirmed permanent old-URL and slash redirects before public launch. Implementation owner proves destinations, no loops, and canonical/sitemap agreement.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "Superseded by Ryan locked no-legacy-redirect decision in issue #34 comment 6067384558.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-redirects-020",
+      "implementation_ref": null,
+      "question": "Clarification of template-redirects-015: when do migration redirects become permanent?",
+      "rationale": "Clarification recorded from Ryan chat answers on 2026-10-08; original proposal remains undecided.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "superseded",
+      "superseded_by": "template-product-url-redirects-026",
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:9c0f9f4",
+      "candidate_refs": [],
+      "choice": "Proposal: starter stores are indexable by default and use EmDash built-in sitemap.xml and robots.txt; demo-host noindex is explicit runtime configuration only, not the default.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34",
+      "created_at": "2026-10-08T14:25:53+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [],
+      "id": "template-seo-demo-016",
+      "implementation_ref": null,
+      "question": "What is the default indexing policy for the starter and demo host?",
+      "rationale": "Keeps the reusable starter SEO-ready while allowing an intentionally non-indexed synthetic demo.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T14:25:53+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4003f5c",
+      "candidate_refs": [],
+      "choice": "Ryan answer: demos, previews, and staging are noindex by default; a real merchant store becomes indexable only through an explicit launch setting. Noindex controls search visibility, not access.",
+      "context_ref": "chat:Ryan-2026-10-08;https://github.com/dinkuskit/template-store/pull/41",
+      "created_at": "2026-10-08T15:13:50+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "choice": "Ryan answer: demos, previews, and staging are noindex by default; a real merchant store becomes indexable only through an explicit launch setting. Noindex controls search visibility, not access.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "Superseded by Ryan locked noindex decision in issue #34 comment 6067384558.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-seo-demo-021",
+      "implementation_ref": null,
+      "question": "Clarification of template-seo-demo-016: what is the default indexing policy?",
+      "rationale": "Clarification recorded from Ryan chat answers on 2026-10-08; original proposal remains undecided.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "superseded",
+      "superseded_by": "template-product-url-indexing-028",
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:9c0f9f4",
+      "candidate_refs": [],
+      "choice": "Proposal: an unlinked Commerce item, an item without a published products entry, an invalid/duplicate link, and a non-listable or unpriced public lookup all return 404/no public URL; no invented slug, fallback page, draft fallback, or alternate /shop URL.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/34;https://github.com/dinkuskit/commerce/issues/58#issuecomment-6059015959",
+      "created_at": "2026-10-08T14:25:53+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [],
+      "id": "template-unlinked-017",
+      "implementation_ref": null,
+      "question": "How should unlinked or non-public Commerce items behave?",
+      "rationale": "Fail-closed behavior prevents ambiguous canonical URLs and keeps Commerce authoritative.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T14:25:53+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4003f5c",
+      "candidate_refs": [],
+      "choice": "Ryan answer: 404 for absent, unpublished, unlinked, or deliberately hidden products. A valid price is required before a sellable page can publish. Out-of-stock products remain visible with purchasing disabled. Temporary Commerce lookup outage is temporary unavailability, not 404; not purchasable and does not exist are distinct.",
+      "context_ref": "chat:Ryan-2026-10-08;https://github.com/dinkuskit/template-store/pull/41",
+      "created_at": "2026-10-08T15:13:50+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "authorized installed public catalog consumer",
+      "history": [
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "choice": "Ryan answer: 404 for absent, unpublished, unlinked, or deliberately hidden products. A valid price is required before a sellable page can publish. Out-of-stock products remain visible with purchasing disabled. Temporary Commerce lookup outage is temporary unavailability, not 404; not purchasable and does not exist are distinct.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "Superseded by Ryan locked Commerce drift decision in issue #34 comment 6067384558.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-unlinked-022",
+      "implementation_ref": null,
+      "question": "Clarification of template-unlinked-017: how are unavailable and non-public products distinguished?",
+      "rationale": "Clarification recorded from Ryan chat answers on 2026-10-08; original proposal remains undecided.",
+      "reconciliation_sources": [
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "superseded",
+      "superseded_by": "template-product-url-drift-029",
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:bd997144517242e0a70596e15de20bbfc3314df8",
+      "candidate_refs": [],
+      "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+      "context_ref": "approved:test-checkout-host-20261001",
+      "created_at": "2026-10-03T19:58:40+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "checkout-qualification-006"
+      ],
+      "domain": "Trusted TEST checkout host and wake scheduler source",
+      "history": [
+        {
+          "at": "2026-10-03T19:58:40+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-03T19:58:40+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-03T20:21:05+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/test-checkout-host/;file:src/worker.ts;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-scheduler.test.ts;file:tests/unit/checkout-host-wake-client.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-05T16:04:51+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "verified",
+          "implementation_ref": "file:src/features/test-checkout-host/;file:src/worker.ts;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-scheduler.test.ts;file:tests/unit/checkout-host-wake-client.test.ts",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-20261001/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-05T16:04:51+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:src/features/test-checkout-host/;file:src/worker.ts;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-scheduler.test.ts;file:tests/unit/checkout-host-wake-client.test.ts",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": ".grilltrack/proof/test-checkout-host-response-cap-20261005/PRIOR-FINDING.md",
+          "review_result": "findings",
+          "review_source_identity": "git:537664f4595712212111a2cb60c274a64ff36081",
+          "to": "implemented",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-20261001/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-05T16:17:25+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "implemented",
+          "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-20261001/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-07T12:11:52+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "verified",
+          "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+          "note": "dependency checkout-qualification-006 changed: Authorized issue20 continuation: supported installed guest prepare/start/status, shopper return/retry/reload UI; actual installed catalog identity remains Core contract request and public checkout remains closed without capability/config. No new money/order policy or runtime activation.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-response-cap-20261005/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-07T13:01:31+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/test-checkout-host-response-cap-20261005/VERIFICATION.json"
+        },
+        {
+          "at": "2026-10-07T13:16:28+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "verified",
+          "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+          "note": "dependency checkout-qualification-006 changed: Accepted successor response-loss finding requires fresh consumer composition verification; confirmed product choice and activation boundaries unchanged.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "review_result": "clean",
+          "review_source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396",
+          "to": "needs_reverification",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-07T13:42:57+00:00",
+          "choice": "One trusted full configuration supplies the canonical TEST payment host and byte-bounded wake transport; one admitted scheduler uses installed Commerce checkout storage. Preserve frozen requests, the inclusive 1800..1860 provider window and ACK only after canonical terminal writes. Source/package fixtures do not enable the hosted demo or prove a Registry install or real purchase.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PROOF.md;file:.grilltrack/proof/guest-checkout-recovery-20261007/CHECKS.json;file:.grilltrack/proof/registry-checkout-adoption-20261006/PROOF.md"
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "test-checkout-host-009",
+      "implementation_ref": "file:package.json;file:scripts/verify-checkout-package.mjs;file:tests/unit/checkout-host-payment-cap.test.ts;file:tests/unit/checkout-host-scheduler.test.ts",
+      "question": "How is the trusted TEST wake transport joined to canonical checkout reconciliation?",
+      "rationale": "Continue the previously approved TEST checkout integration through a bounded host source repair and explicit runtime prerequisite.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": ".grilltrack/proof/test-checkout-host-response-cap-20261005/PRIOR-FINDING.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-05T16:04:51+00:00",
+          "source_identity": "git:537664f4595712212111a2cb60c274a64ff36081"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:01:31+00:00",
+          "source_identity": "sha256:1fea82bb885b9607ba19a65a6fc444957e16d40669ddb378714c6710a45a4396"
+        },
+        {
+          "classifications": [],
+          "ref": "file:.grilltrack/proof/guest-checkout-recovery-20261007/PARENT-ADJUDICATION.md",
+          "result": "clean",
+          "reviewed_at": "2026-10-07T13:42:57+00:00",
+          "source_identity": "sha256:acf2aa8b9930d564087302785d1f07e5763b5b9bd83766b123d9cd3cc3fc6e4a"
+        }
+      ],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9",
+      "candidate_refs": [],
+      "choice": "Host the same working template with neutral synthetic identity and clearly identified isolated test/demo checkout. No real charge or customer fulfillment. Prepare a deploy plan now; hosting, DNS, secrets and publication require later explicit approval. Cart, order and shipping owner contract gaps stay explicit.",
+      "context_ref": "approved:v1-template-pair-and-hosted-demo-20260930",
+      "created_at": "2026-09-30T16:40:44+00:00",
+      "deferred_reason": "Concrete same-template isolated demo plan prepared. Working guest purchase/order/shipping, final immutable pair, runtime compatibility and later exact hosting/DNS/secrets approval remain gates; no verified demo URL.",
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "approved inventory-off v1 template profile and pairing",
+      "history": [
+        {
+          "at": "2026-09-30T16:40:44+00:00",
+          "choice": "Host the same working template with neutral synthetic identity and clearly identified isolated test/demo checkout. No real charge or customer fulfillment. Prepare a deploy plan now; hosting, DNS, secrets and publication require later explicit approval. Cart, order and shipping owner contract gaps stay explicit.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T17:21:32+00:00",
+          "choice": "Host the same working template with neutral synthetic identity and clearly identified isolated test/demo checkout. No real charge or customer fulfillment. Prepare a deploy plan now; hosting, DNS, secrets and publication require later explicit approval. Cart, order and shipping owner contract gaps stay explicit.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Concrete same-template isolated demo plan prepared. Working guest purchase/order/shipping, final immutable pair, runtime compatibility and later exact hosting/DNS/secrets approval remain gates; no verified demo URL.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "deferred",
+          "verification_ref": null
+        }
+      ],
+      "id": "v1-demo-003",
+      "implementation_ref": null,
+      "question": "What may the hosted demonstration do?",
+      "rationale": "Previously approved human direction; bounded template preparation does not reopen approved choices.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "deferred",
+      "superseded_by": null,
+      "updated_at": "2026-09-30T17:21:32+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9",
+      "candidate_refs": [],
+      "choice": "TemplateStore ships alongside its matching exact Commerce release/artifact. Before release approval consume only immutable source/artifact identity with digest provenance; no invented version, latest, main or range. A final artifact handoff and paired clean install remain gates.",
+      "context_ref": "approved:v1-template-pair-and-hosted-demo-20260930",
+      "created_at": "2026-09-30T16:40:44+00:00",
+      "deferred_reason": "Exact legacy source pin and source archive digest proved. Actual registry-enabled Commerce artifact/public mount, Blocks compatibility, supported EmDash identity and paired clean install remain pending; source aliases cannot satisfy this requirement.",
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "approved inventory-off v1 template profile and pairing",
+      "history": [
+        {
+          "at": "2026-09-30T16:40:44+00:00",
+          "choice": "TemplateStore ships alongside its matching exact Commerce release/artifact. Before release approval consume only immutable source/artifact identity with digest provenance; no invented version, latest, main or range. A final artifact handoff and paired clean install remain gates.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T17:21:32+00:00",
+          "choice": "TemplateStore ships alongside its matching exact Commerce release/artifact. Before release approval consume only immutable source/artifact identity with digest provenance; no invented version, latest, main or range. A final artifact handoff and paired clean install remain gates.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Exact legacy source pin and source archive digest proved. Actual registry-enabled Commerce artifact/public mount, Blocks compatibility, supported EmDash identity and paired clean install remain pending; source aliases cannot satisfy this requirement.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "deferred",
+          "verification_ref": null
+        }
+      ],
+      "id": "v1-pairing-002",
+      "implementation_ref": null,
+      "question": "How does TemplateStore ship with Commerce?",
+      "rationale": "Previously approved human direction; bounded template preparation does not reopen approved choices.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "deferred",
+      "superseded_by": null,
+      "updated_at": "2026-09-30T17:21:32+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9",
+      "candidate_refs": [],
+      "choice": "Prepare the default inventory-off native source pilot, preserve managed regressions and existing data, verify desktop/mobile persisted Products and manual availability with no quantity or proof runtime bootstrap, and document exact registry pairing/onboarding/deploy gates without claiming a released or purchasable store.",
+      "context_ref": "decision:v1-profile-001;decision:v1-pairing-002;decision:v1-demo-003",
+      "created_at": "2026-09-30T17:21:32+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "approved inventory-off v1 template profile and pairing",
+      "history": [
+        {
+          "at": "2026-09-30T17:21:32+00:00",
+          "choice": "Prepare the default inventory-off native source pilot, preserve managed regressions and existing data, verify desktop/mobile persisted Products and manual availability with no quantity or proof runtime bootstrap, and document exact registry pairing/onboarding/deploy gates without claiming a released or purchasable store.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T17:21:32+00:00",
+          "choice": "Prepare the default inventory-off native source pilot, preserve managed regressions and existing data, verify desktop/mobile persisted Products and manual availability with no quantity or proof runtime bootstrap, and document exact registry pairing/onboarding/deploy gates without claiming a released or purchasable store.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T17:42:02+00:00",
+          "choice": "Prepare the default inventory-off native source pilot, preserve managed regressions and existing data, verify desktop/mobile persisted Products and manual availability with no quantity or proof runtime bootstrap, and document exact registry pairing/onboarding/deploy gates without claiming a released or purchasable store.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/store-shell/profile.ts;file:docs/v1-pairing.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-08T19:35:31+00:00",
+          "from": "verified",
+          "note": "fork composition invalidates prior current proof",
+          "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+          "to": "needs_reverification"
+        }
+      ],
+      "id": "v1-pilot-proof-004",
+      "implementation_ref": "file:src/features/store-shell/profile.ts;file:docs/v1-pairing.md",
+      "question": "What is the authorized bounded profile candidate evidence before the final artifact handoff?",
+      "rationale": "The assigned next slice explicitly permits bounded profile/docs preparation and stopping at the real artifact or public-contract gap. Overall shipping requirements stay separately locked.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [
+        {
+          "classifications": [
+            "defer",
+            "human_gate"
+          ],
+          "ref": "file:.grilltrack/proof/v1-profile-20260930/PROOF.md",
+          "result": "findings",
+          "reviewed_at": "2026-09-30T17:44:32+00:00",
+          "source_identity": "git:63716f83d786da813716af5c7db14ef0bf2fa25f"
+        }
+      ],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-08T19:35:31+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:97d4ebfa6b31bcc00f3a3b8e72055fc4bc9e03d9",
+      "candidate_refs": [],
+      "choice": "Shipping v1 has Inventory off and unmanaged authoritative Commerce prices/manual availability. Stock management Coming soon is disabled; managed fixtures and fail-closed provider regression remain development-only. No automatic managed-data migration.",
+      "context_ref": "approved:v1-template-pair-and-hosted-demo-20260930",
+      "created_at": "2026-09-30T16:40:44+00:00",
+      "deferred_reason": "Local source-pilot inventory-off boundary prepared; actual shipping Coming soon control and approved EmDash registry pair await exact Commerce artifact and host support. No existing managed data migration.",
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "approved inventory-off v1 template profile and pairing",
+      "history": [
+        {
+          "at": "2026-09-30T16:40:44+00:00",
+          "choice": "Shipping v1 has Inventory off and unmanaged authoritative Commerce prices/manual availability. Stock management Coming soon is disabled; managed fixtures and fail-closed provider regression remain development-only. No automatic managed-data migration.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-09-30T17:21:32+00:00",
+          "choice": "Shipping v1 has Inventory off and unmanaged authoritative Commerce prices/manual availability. Stock management Coming soon is disabled; managed fixtures and fail-closed provider regression remain development-only. No automatic managed-data migration.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Local source-pilot inventory-off boundary prepared; actual shipping Coming soon control and approved EmDash registry pair await exact Commerce artifact and host support. No existing managed data migration.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "deferred",
+          "verification_ref": null
+        }
+      ],
+      "id": "v1-profile-001",
+      "implementation_ref": null,
+      "question": "Which inventory profile ships by default?",
+      "rationale": "Previously approved human direction; bounded template preparation does not reopen approved choices.",
+      "reconciliation_sources": [
+        {
+          "role": "base",
+          "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "current",
+          "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+          "track_id": "gt-20260930163954-43d0a5"
+        },
+        {
+          "role": "incoming",
+          "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+          "track_id": "gt-20260930163954-43d0a5"
+        }
+      ],
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "deferred",
+      "superseded_by": null,
+      "updated_at": "2026-09-30T17:21:32+00:00",
+      "verification_ref": null
+    }
+  ],
+  "last_activation": {
+    "at": "2026-10-08T19:35:31+00:00",
+    "mechanism": "implicit"
+  },
+  "last_pause": null,
+  "pause": null,
+  "recommendation": null,
+  "reconciliation": {
+    "plan_id": "2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+    "refs": {
+      "base": "ef6a44bd2493523c78e4dde6e0545fb295eae714",
+      "current": "774aaaa588594e0dc4655fd5de34839147df342f",
+      "incoming": "bb25df84cd6d7e59b5c79d0e633b642b035500a0"
+    },
+    "snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4"
+  },
+  "schema_version": "grilltrack/v0.1",
+  "status": "active",
+  "title": "Reconcile current main into PR43 checkout repair",
+  "track_id": "gt-join-2082043c036aa939e706c9c093908348",
+  "updated_at": "2026-10-08T19:35:31+00:00"
+}

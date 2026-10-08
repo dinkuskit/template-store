@@ -1,0 +1,436 @@
+{
+  "composed_review": false,
+  "composed_verification": false,
+  "decision_ids": [
+    "checkout-qualification-006",
+    "demo-payments-binding-20261008-template",
+    "guest-cart-005",
+    "hosted-demo-007",
+    "installed-catalog-consumer-012",
+    "paired-checkout-010",
+    "registry-checkout-adoption-011",
+    "retire-blocks-008",
+    "template-product-url-categories-027",
+    "template-product-url-drift-029",
+    "template-product-url-indexing-028",
+    "template-product-url-link-024",
+    "template-product-url-migration-023",
+    "template-product-url-pages-030",
+    "template-product-url-redirects-026",
+    "template-product-url-resolver-025",
+    "template-products-collections-014",
+    "template-products-collections-019",
+    "template-products-link-013",
+    "template-products-link-018",
+    "template-redirects-015",
+    "template-redirects-020",
+    "template-seo-demo-016",
+    "template-seo-demo-021",
+    "template-unlinked-017",
+    "template-unlinked-022",
+    "test-checkout-host-009",
+    "v1-demo-003",
+    "v1-pairing-002",
+    "v1-pilot-proof-004",
+    "v1-profile-001"
+  ],
+  "decision_provenance": {
+    "checkout-qualification-006": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "demo-payments-binding-20261008-template": [
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "guest-cart-005": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "hosted-demo-007": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "installed-catalog-consumer-012": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "paired-checkout-010": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "registry-checkout-adoption-011": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "retire-blocks-008": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-categories-027": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-drift-029": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-indexing-028": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-link-024": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-migration-023": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-pages-030": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-redirects-026": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-product-url-resolver-025": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-products-collections-014": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-products-collections-019": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-products-link-013": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-products-link-018": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-redirects-015": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-redirects-020": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-seo-demo-016": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-seo-demo-021": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-unlinked-017": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "template-unlinked-022": [
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "test-checkout-host-009": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "v1-demo-003": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "v1-pairing-002": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "v1-pilot-proof-004": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ],
+    "v1-profile-001": [
+      {
+        "role": "base",
+        "source_identity": "git:ef6a44bd2493523c78e4dde6e0545fb295eae714",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "current",
+        "source_identity": "git:774aaaa588594e0dc4655fd5de34839147df342f",
+        "track_id": "gt-20260930163954-43d0a5"
+      },
+      {
+        "role": "incoming",
+        "source_identity": "git:bb25df84cd6d7e59b5c79d0e633b642b035500a0",
+        "track_id": "gt-20260930163954-43d0a5"
+      }
+    ]
+  },
+  "joined_track_id": "gt-join-2082043c036aa939e706c9c093908348",
+  "needs_reverification": [
+    "checkout-qualification-006",
+    "demo-payments-binding-20261008-template",
+    "guest-cart-005",
+    "hosted-demo-007",
+    "installed-catalog-consumer-012",
+    "paired-checkout-010",
+    "registry-checkout-adoption-011",
+    "retire-blocks-008",
+    "template-product-url-categories-027",
+    "template-product-url-drift-029",
+    "template-product-url-indexing-028",
+    "template-product-url-link-024",
+    "template-product-url-migration-023",
+    "template-product-url-pages-030",
+    "template-product-url-redirects-026",
+    "template-product-url-resolver-025",
+    "test-checkout-host-009",
+    "v1-pilot-proof-004"
+  ],
+  "plan_id": "2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+  "refs": {
+    "base": "ef6a44bd2493523c78e4dde6e0545fb295eae714",
+    "current": "774aaaa588594e0dc4655fd5de34839147df342f",
+    "incoming": "bb25df84cd6d7e59b5c79d0e633b642b035500a0"
+  },
+  "retention": {
+    "lineage": {},
+    "schema": "grilltrack/retained/v2"
+  },
+  "schema": "grilltrack/reconcile/v2",
+  "snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
+  "snapshots": {
+    "base": {
+      "archive/gt-20260830190023-11b4b5/events.jsonl": "b5110114a641abb5055e81bfc9c01bf94e5ca9e2bba8ecaeabf8d108e1ec575b",
+      "archive/gt-20260830190023-11b4b5/ledger.json": "eb276d2628c151040b5fd9a58194ab5d52fae4cda0224a9a9aa407db38864990",
+      "archive/gt-20260926022138-947c39/events.jsonl": "f7dab7d581eca020d5aee0326ad977e96d7ea7b09add6b4f1bf28f76e66a3f95",
+      "archive/gt-20260926022138-947c39/ledger.json": "be8c2f264ff0e148e8100522aac632b5934ec3ea4272591b80d47bf7cd3e48f3",
+      "events.jsonl": "dae919b82516aaad236969c2ed166be2894c0dfe4c12f9e759f0d06fb98315ba",
+      "ledger.json": "2d89347b538711a1b2e166b1d3db0e336183d3b064796da456f7fb906ec0600d"
+    },
+    "current": {
+      "archive/gt-20260830190023-11b4b5/events.jsonl": "b5110114a641abb5055e81bfc9c01bf94e5ca9e2bba8ecaeabf8d108e1ec575b",
+      "archive/gt-20260830190023-11b4b5/ledger.json": "eb276d2628c151040b5fd9a58194ab5d52fae4cda0224a9a9aa407db38864990",
+      "archive/gt-20260926022138-947c39/events.jsonl": "f7dab7d581eca020d5aee0326ad977e96d7ea7b09add6b4f1bf28f76e66a3f95",
+      "archive/gt-20260926022138-947c39/ledger.json": "be8c2f264ff0e148e8100522aac632b5934ec3ea4272591b80d47bf7cd3e48f3",
+      "events.jsonl": "fc078fc2b6138cb8572ead0d17bf30ed8038a26becc590fd7ef185ade284bcf0",
+      "ledger.json": "0ca084b9be64c694ca88a0ab65b137ee686d8327052004adfffaa93af36aff1d"
+    },
+    "incoming": {
+      "archive/gt-20260830190023-11b4b5/events.jsonl": "b5110114a641abb5055e81bfc9c01bf94e5ca9e2bba8ecaeabf8d108e1ec575b",
+      "archive/gt-20260830190023-11b4b5/ledger.json": "eb276d2628c151040b5fd9a58194ab5d52fae4cda0224a9a9aa407db38864990",
+      "archive/gt-20260926022138-947c39/events.jsonl": "f7dab7d581eca020d5aee0326ad977e96d7ea7b09add6b4f1bf28f76e66a3f95",
+      "archive/gt-20260926022138-947c39/ledger.json": "be8c2f264ff0e148e8100522aac632b5934ec3ea4272591b80d47bf7cd3e48f3",
+      "events.jsonl": "0541c327b2b794f14a8f32e1dd967d376ba5e8cbe28cb953501b5ce34414fe65",
+      "ledger.json": "fa1dd703bb5508f861ed9588c730dcc227736a9dfcef9c20bbba03fbc95fa329"
+    }
+  },
+  "title": "Reconcile current main into PR43 checkout repair"
+}
