@@ -24,9 +24,7 @@ export async function loadStorefrontRouteContext(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<StorefrontRouteContext> {
   const collectionEntries = Array.isArray(collectionEntriesOrEnv) ? collectionEntriesOrEnv : [];
-  const runtimeEnv: NodeJS.ProcessEnv = Array.isArray(collectionEntriesOrEnv)
-    ? env
-    : collectionEntriesOrEnv;
+  const runtimeEnv = (Array.isArray(collectionEntriesOrEnv) ? env : collectionEntriesOrEnv) as NodeJS.ProcessEnv;
   const profile = readStorefrontProfile(runtimeEnv);
   const demonstrations = await readProofDemonstrations(runtimeEnv);
   return {

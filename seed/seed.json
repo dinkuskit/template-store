@@ -64,7 +64,7 @@
           "label": "Collections",
           "type": "reference",
           "validation": {
-            "relation": "product-collections",
+            "relation": "product_collections",
             "relationSide": "child"
           }
         },
@@ -113,7 +113,7 @@
   ],
   "relations": [
     {
-      "slug": "product-collections",
+      "slug": "product_collections",
       "parentCollection": "collections",
       "childCollection": "products",
       "parentLabel": "Products",
