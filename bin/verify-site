@@ -206,7 +206,15 @@ async function inspect(path, from = "crawl") {
     return response;
   }
   if (response.status < 200 || response.status >= 300) {
-    result("HTTP availability", "FAIL", `${url.pathname} returned ${response.status}`);
+    if (sitemapPaths.has(url.pathname + url.search)) {
+      result(
+        "Sitemap availability",
+        "FAIL",
+        `${url.pathname} is listed in the sitemap but returned ${response.status}`,
+      );
+    } else {
+      result("HTTP availability", "FAIL", `${url.pathname} returned ${response.status}`);
+    }
     return response;
   }
   const type = response.headers.get("content-type") ?? "";
@@ -325,6 +333,16 @@ const robots = await inspect("/robots.txt", "robots.txt");
 if (robots?.ok) result("Robots availability", "PASS", "/robots.txt is reachable");
 
 await drainDiscovered();
+
+for (const path of sitemapPaths) {
+  if (!pages.has(path)) {
+    result(
+      "Sitemap redirect",
+      "FAIL",
+      `${path} is listed in the sitemap but is not a canonical 200 HTML page`,
+    );
+  }
+}
 
 if (sitemapPaths.size) {
   for (const [path, page] of pages) {
