@@ -82,6 +82,21 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("POST", `${base}/%2573tart`).allowed).toBe(true);
   });
 
+  it("admits only same-host Commerce image transforms", () => {
+    const origin = "https://shop.example.test/shop/hat";
+    const href = encodeURIComponent("https://shop.example.test/_emdash/api/media/file/01HAT.png");
+    const search = `?href=${href}&w=300&f=webp`;
+    expect(evaluatePublicBoundary("GET", "/_image", search, origin).allowed).toBe(true);
+    expect(evaluatePublicBoundary("HEAD", "/_image", search, origin).allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/_image", search).status).toBe(404);
+    expect(evaluatePublicBoundary("POST", "/_image", search, origin).status).toBe(405);
+    const foreign = encodeURIComponent("https://evil.example/_emdash/api/media/file/01HAT.png");
+    expect(evaluatePublicBoundary("GET", "/_image", `?href=${foreign}&w=300&f=webp`, origin).status).toBe(404);
+    expect(evaluatePublicBoundary("GET", "/_image", `?href=${href}&w=9000&f=webp`, origin).status).toBe(404);
+    expect(evaluatePublicBoundary("GET", "/_image", `?href=${href}&w=300&f=png`, origin).status).toBe(404);
+    expect(evaluatePublicBoundary("GET", "/_image", `?href=${href}&w=300&f=webp&q=1`, origin).status).toBe(404);
+  });
+
   it("denies unknown routes with 404", () => {
     const unknownRoute = evaluatePublicBoundary("GET", "/nonexistent");
     expect(unknownRoute.allowed).toBe(false);

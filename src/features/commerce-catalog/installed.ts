@@ -1,6 +1,7 @@
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
 import { formatUsdMinor } from "../store-shell/price.js";
 import type { PublicCommerceProduct } from "./index.js";
+import { readCommerceGallery, readCommerceImage } from "./media.js";
 
 const ROUTE = "catalog/public";
 const STATUSES = new Set(["in-stock", "low-stock", "out-of-stock", "available-on-backorder", "availability-unavailable"]);
@@ -32,6 +33,9 @@ function product(value: unknown): PublicCommerceProduct {
       status: value.availability.status as PublicCommerceProduct["availability"]["status"],
       sellable: value.availability.sellable, listable: true,
     },
+    // A bad image degrades to a placeholder. It must not hide the price.
+    image: readCommerceImage(value.image, value.name),
+    gallery: readCommerceGallery(value.gallery, value.name),
   };
 }
 

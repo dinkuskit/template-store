@@ -17,6 +17,8 @@ describe("installed Commerce public catalog consumer", () => {
     const products = await readInstalledCommerceCatalog(ctx);
     expect(products.map(product => product.id)).toEqual(["second", "third"]);
     expect(products[0]!.price).toEqual({ listable: true, regularText: "$1.25", saleText: null });
+    expect(products[0]!.image).toBeNull();
+    expect(products[0]!.gallery).toEqual([]);
     expect(ctx.runtime.handlePublicPluginApiRoute).toHaveBeenCalledTimes(3);
     for (const [id, method, route, request] of ctx.runtime.handlePublicPluginApiRoute.mock.calls as unknown as [string, string, string, Request][]) {
       expect([id, method, route]).toEqual([COMMERCE_REGISTRY_RUNTIME_ID, "GET", "catalog/public"]);
@@ -41,5 +43,50 @@ describe("installed Commerce public catalog consumer", () => {
     [{ products: [{ ...item(), availability: { status: "in-stock", sellable: true, listable: false } }] }],
   ])("rejects malformed or cyclic projections without returning partial products", async (...pages) => {
     await expect(readInstalledCommerceCatalog(context(pages))).rejects.toThrow();
+  });
+
+  it("keeps Commerce media ids and alt text without taking a payload URL", async () => {
+    const ctx = context([{
+      products: [{
+        ...item("hat"),
+        image: {
+          id: "media_hat",
+          alt: "  Navy hat on a table  ",
+          width: 1200,
+          height: 800,
+          placeholder: false,
+          src: "https://evil.example/hat.png",
+          filename: "IMG_0001.png",
+        },
+        gallery: [
+          { id: "media_hat", alt: "Navy hat on a table", width: 1200, height: 800, placeholder: false },
+          { id: "https://evil.example/other.png", alt: "nope", width: 10, height: 10, placeholder: false },
+          { id: "media_side", alt: "", width: null, height: null, placeholder: false },
+        ],
+      }],
+    }]);
+    const [product] = await readInstalledCommerceCatalog(ctx);
+    expect(product).toMatchObject({
+      id: "hat",
+      price: { listable: true, regularText: "$1.25", saleText: null },
+      availability: { status: "in-stock", sellable: true, listable: true },
+      image: { id: "media_hat", alt: "Navy hat on a table", width: 1200, height: 800, placeholder: false },
+    });
+    expect(product!.image).not.toHaveProperty("src");
+    expect(product!.gallery).toEqual([
+      { id: "media_hat", alt: "Navy hat on a table", width: 1200, height: 800, placeholder: false },
+      { id: "media_side", alt: "Neutral product", width: null, height: null, placeholder: false },
+    ]);
+  });
+
+  it("keeps the priced product when the image payload is unsafe", async () => {
+    const ctx = context([{ products: [{ ...item("hat"), image: { id: "javascript:alert(1)", alt: "x", width: 1, height: 1, placeholder: false } }] }]);
+    const [product] = await readInstalledCommerceCatalog(ctx);
+    expect(product).toMatchObject({
+      id: "hat",
+      price: { regularText: "$1.25" },
+      availability: { status: "in-stock", sellable: true },
+      image: null,
+    });
   });
 });

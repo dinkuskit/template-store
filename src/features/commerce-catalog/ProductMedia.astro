@@ -1,0 +1,65 @@
+---
+import { handleMediaGet } from "emdash";
+import { getDb } from "emdash/runtime";
+import { resolveCommerceImage, type PublicCommerceImage, type ResolvedCommerceImage } from "./media.js";
+
+interface Props {
+  image: PublicCommerceImage | null;
+  productId: string;
+}
+
+const { image, productId } = Astro.props;
+const emdash = Astro.locals.emdash as { getPublicMediaUrl?: (storageKey: string) => string } | undefined;
+const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image, {
+  origin: Astro.url.origin,
+  getPublicMediaUrl: emdash?.getPublicMediaUrl,
+  async getMedia(id) {
+    const result = await handleMediaGet(await getDb(), id);
+    const item = result.success ? result.data?.item : null;
+    if (!item?.storageKey || !item.mimeType) return null;
+    return { mimeType: item.mimeType, storageKey: item.storageKey, status: item.status };
+  },
+});
+---
+<div class="commerce-product-media">
+  {resolved ? (
+    <img
+      src={resolved.src}
+      srcset={resolved.srcset}
+      sizes={resolved.sizes}
+      alt={resolved.alt}
+      width={resolved.width ?? undefined}
+      height={resolved.height ?? undefined}
+      loading="lazy"
+      decoding="async"
+      data-commerce-image={productId}
+      data-placeholder={String(resolved.placeholder)}
+    />
+  ) : (
+    <p data-commerce-image-placeholder={productId}>No image</p>
+  )}
+</div>
+<style>
+  .commerce-product-media {
+    margin: 0 0 1rem;
+    border-radius: 0.6rem;
+    overflow: hidden;
+    background: #efece3;
+    aspect-ratio: 4 / 3;
+  }
+  .commerce-product-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    object-fit: cover;
+  }
+  .commerce-product-media p {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    margin: 0;
+    color: var(--store-muted);
+    font-size: 0.95rem;
+  }
+</style>

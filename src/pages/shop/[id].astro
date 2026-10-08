@@ -1,5 +1,6 @@
 ---
 import { readCommerceCatalog, availabilityLabels } from "../../features/commerce-catalog/index.js";
+import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
 import { AddToCart, GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
@@ -19,6 +20,7 @@ const profile = readStorefrontProfile();
 <main class="shop-detail">
 <a href="/#commerce-catalog">← Back to shop</a>
 {product ? <article data-commerce-product={product.id}>
+<ProductMedia image={product.image} productId={product.id} />
 <h1>{product.name}</h1>
 <p>SKU: {product.sku}</p>
 <p class="price">{product.price.saleText ? <><s data-regular-price>{product.price.regularText}</s><strong data-sale-price>{product.price.saleText}</strong></> : <strong data-regular-price>{product.price.regularText}</strong>}</p>

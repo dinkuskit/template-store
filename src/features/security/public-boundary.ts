@@ -28,6 +28,7 @@ const ALLOWED_PATH_PATTERNS = [
 
 const GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
+const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 const SLASHLESS_REDIRECTS = new Map([
   ["/cart/", "/cart"],
   ["/checkout/success/", "/checkout/success"],
@@ -94,10 +95,39 @@ function isDisallowedTraversalOrTarget(pathname: string, search: string): boolea
   return false;
 }
 
+/** Same-host EmDash media file transformed by `/_image`. Not an open proxy. */
+export function isSafeCommerceImageRequest(search: string, requestHref?: string): boolean {
+  if (!requestHref) return false;
+  let requestUrl: URL;
+  let params: URLSearchParams;
+  try {
+    requestUrl = new URL(requestHref);
+    params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  } catch {
+    return false;
+  }
+  const names = [...params.keys()];
+  if (names.length !== 3 || names.some((name) => name !== "href" && name !== "w" && name !== "f")) return false;
+  if (params.getAll("href").length !== 1 || params.getAll("w").length !== 1 || params.getAll("f").length !== 1) return false;
+  if (params.get("f") !== "webp") return false;
+  const width = params.get("w") ?? "";
+  if (!/^[1-9]\d{0,3}$/.test(width) || Number(width) > 2048) return false;
+  let href: URL;
+  try {
+    href = new URL(params.get("href") ?? "");
+  } catch {
+    return false;
+  }
+  if (href.username || href.password || href.search || href.hash) return false;
+  if (href.protocol !== requestUrl.protocol || href.host !== requestUrl.host) return false;
+  return COMMERCE_IMAGE_HREF_PATH.test(href.pathname);
+}
+
 export function evaluatePublicBoundary(
   method: string,
   pathname: string,
   search: string = "",
+  requestHref?: string,
 ): SecurityPolicyCheck {
   const normalizedMethod = method.toUpperCase();
 
@@ -171,6 +201,10 @@ export function evaluatePublicBoundary(
     if (pattern.test(decodedPath)) {
       return { allowed: true, status: 200 };
     }
+  }
+
+  if (decodedPath === "/_image" && searchForms.some((form) => isSafeCommerceImageRequest(form, requestHref))) {
+    return { allowed: true, status: 200 };
   }
 
   // 4. Any route not explicitly in the allowlist is rejected

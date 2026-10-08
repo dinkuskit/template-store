@@ -10,7 +10,10 @@ import {
   type StorefrontAvailabilitySettingsRecord, type StorefrontAvailabilityResult,
 } from "@dinkuskit/commerce";
 import { readInstalledCommerceCatalog, type InstalledCatalogContext } from "./installed.js";
+import type { PublicCommerceImage } from "./media.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
+
+export type { PublicCommerceImage } from "./media.js";
 
 export interface PublicCommerceProduct {
   id: string;
@@ -18,6 +21,8 @@ export interface PublicCommerceProduct {
   sku: string;
   price: PublicPriceView;
   availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
+  image: PublicCommerceImage | null;
+  gallery: readonly PublicCommerceImage[];
 }
 
 export function commerceProductPath(id: string): string {
@@ -75,7 +80,15 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
     if (!availability.listable) continue;
     const price = presentStorefrontPrice(await resolveCatalogItemPrice(storage.prices, product.catalogItemId));
     if (!price.listable) continue;
-    visible.push({ id: product.catalogItemId, name: product.name, sku: product.sku, price, availability });
+    visible.push({
+      id: product.catalogItemId,
+      name: product.name,
+      sku: product.sku,
+      price,
+      availability,
+      image: null,
+      gallery: [],
+    });
   }
   return visible;
 }

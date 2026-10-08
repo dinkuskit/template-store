@@ -49,6 +49,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       request.method,
       url.pathname,
       url.search,
+      url.href,
     );
     if (!check.allowed) {
       const response = new Response(
