@@ -84,12 +84,10 @@ describe("storefront profile", () => {
   });
 
   it("does not load managed or unmanaged demonstration runtimes in shipping", async () => {
-    const context = await loadStorefrontRouteContext(merchEntries, {
-      DINKUS_STOREFRONT_PROFILE: "shipping",
-    }, [
+    const context = await loadStorefrontRouteContext(merchEntries, [
       { id: "tees", data: { title: "Tees" } },
       { id: "hats", data: { title: "Hats" } },
-    ]);
+    ], { DINKUS_STOREFRONT_PROFILE: "shipping" });
     expect(context.profile).toBe(STOREFRONT_PROFILE_SHIPPING);
     expect(context.demonstrations).toBeNull();
     expect(await readProofDemonstrations({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBeNull();
@@ -99,12 +97,10 @@ describe("storefront profile", () => {
   });
 
   it("loads demonstration runtimes only when the proof profile is explicit", async () => {
-    const context = await loadStorefrontRouteContext(merchEntries, {
-      DINKUS_STOREFRONT_PROFILE: "proof",
-    }, [
+    const context = await loadStorefrontRouteContext(merchEntries, [
       { id: "tees", data: { title: "Tees" } },
       { id: "hats", data: { title: "Hats" } },
-    ]);
+    ], { DINKUS_STOREFRONT_PROFILE: "proof" });
     expect(context.profile).toBe(STOREFRONT_PROFILE_PROOF);
     expect(context.demonstrations?.managed.inventory).toMatchObject({
       available: "8",
