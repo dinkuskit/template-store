@@ -27,7 +27,7 @@ export function createPlugin() {
   return definePlugin({
   id: "dinkus-template-product-urls",
   version: "1.0.0",
-  capabilities: ["content:read", "content:publish"],
+  capabilities: ["content:read", "content:publish", "hooks.content-policy:register"],
   storage: {
     claims: {
       indexes: [],
