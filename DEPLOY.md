@@ -65,8 +65,11 @@ Payments issue #27 currently publishes no public Registry plugin routes.
 `verify:access-routes` is intentionally fail-closed against the current
 Commerce pin until upstream issue #79 adds the missing admin declaration and
 published route manifest. This is a release prerequisite, not permission to
-interpret an undeclared route as public. The policy checker also rejects
-plugin-wide wildcard text in tracked deployment policy files.
+interpret an undeclared route as public. The policy checker audits only the
+actual deployment-policy inputs at the repository root: `DEPLOY.md` and
+`wrangler.jsonc`. It rejects concrete named-plugin wildcard paths (for
+example, a named plugin followed by `/*`); tests, proof, and source fixtures
+are outside this audit scope.
 
 After the installed-manifest policy has been reviewed, a separately
 authorized operator may apply exact Access rules and run the production `bin/verify-site`

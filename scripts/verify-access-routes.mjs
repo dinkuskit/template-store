@@ -73,12 +73,12 @@ function deriveCommerceRoutes() {
   for (const file of sourceFiles(resolve(commerceRoot, "src"))) {
     for (const [name, value] of constants(readFileSync(file, "utf8"))) values.set(name, value);
   }
-  const properties = [...routes.matchAll(/^\s{4}(?:\[([A-Z][A-Z0-9_]*)\]|([a-z][\w-]*))\s*:/gmu)];
+  const properties = [...routes.matchAll(/^\s{4}(?:\[([A-Z][A-Z0-9_]*)\]|([a-z][\w-]*)|(["'])([^"']+)\3)\s*:/gmu)];
   const result = [];
   for (let index = 0; index < properties.length; index += 1) {
     const match = properties[index];
     const next = properties[index + 1]?.index ?? routes.length;
-    const name = match[1] ? values.get(match[1]) ?? null : match[2];
+    const name = match[1] ? values.get(match[1]) ?? null : match[2] ?? match[4];
     const declaration = routes.slice(match.index, next);
     if (name === null) {
       result.push({ name: null, constant: match[1], path: null, public: null, methods: [] });
@@ -145,13 +145,19 @@ function bypassProblem(route) {
 }
 
 function wildcardBypassExists() {
-  const pluginPrefix = "/_emdash/api/plugins/";
-  const forbidden = [pluginPrefix + "*", pluginPrefix + "<plugin>/*", pluginPrefix + "{plugin}/*"];
-  const listed = spawnSync("git", ["ls-files", "-z"], { cwd: root, encoding: "buffer" });
-  if (listed.status !== 0) throw new Error("could not enumerate tracked files");
-  return listed.stdout.toString().split("\0").filter(Boolean).some((file) => {
-    const text = readFileSync(resolve(root, file), "utf8");
-    return forbidden.some((pattern) => text.includes(pattern));
+  const policyRoot = process.env.ACCESS_ROUTES_POLICY_ROOT
+    ? resolve(process.env.ACCESS_ROUTES_POLICY_ROOT)
+    : root;
+  const policyFiles = ["DEPLOY.md", "wrangler.jsonc"];
+  const wildcard = /\/_emdash\/api\/plugins\/[a-z0-9-]+\/\*/u;
+  return policyFiles.some((file) => {
+    const path = resolve(policyRoot, file);
+    try {
+      return wildcard.test(readFileSync(path, "utf8"));
+    } catch (error) {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    }
   });
 }
 

@@ -43,6 +43,57 @@ test("check mode fails closed when an upstream route is undeclared", async () =>
   );
 });
 
+test("wildcard audit checks only deployment policy inputs and catches named-plugin wildcards", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "access-routes-policy-"));
+  try {
+    await writeFile(join(dir, "DEPLOY.md"), [
+      "Exact route: /_emdash/api/plugins/dinkus-commerce/catalog/public",
+      "Wildcard route: /_emdash/api/plugins/dinkus-commerce/*",
+    ].join("\n"));
+    await writeFile(join(dir, "wrangler.jsonc"), JSON.stringify({
+      access: ["/_emdash/api/plugins/dinkus-payments/checkout"],
+    }));
+    const commerce = await mkdtemp(join(tmpdir(), "access-routes-commerce-"));
+    try {
+      await mkdir(join(commerce, "src"), { recursive: true });
+      await writeFile(join(commerce, "src/plugin.ts"), [
+        "const plugin = {",
+        "  routes: {",
+        '    "catalog/public": pluginRoute({ public: true, methods: ["GET"] }),',
+        "  },",
+        "};",
+        "",
+      ].join("\n"));
+      const env = {
+        ...process.env,
+        ACCESS_ROUTES_COMMERCE_ROOT: commerce,
+        ACCESS_ROUTES_POLICY_ROOT: dir,
+      };
+      const wildcardResult = await execFileAsync(
+        process.execPath,
+        ["scripts/verify-access-routes.mjs"],
+        { cwd: root, encoding: "utf8", env },
+      );
+      assert.equal(JSON.parse(wildcardResult.stdout).wildcardPluginBypass, true);
+
+      await writeFile(join(dir, "DEPLOY.md"), [
+        "Exact route: /_emdash/api/plugins/dinkus-commerce/catalog/public",
+        "Exact route: /_emdash/api/plugins/dinkus-commerce/catalog/public/item",
+      ].join("\n"));
+      const exactResult = await execFileAsync(
+        process.execPath,
+        ["scripts/verify-access-routes.mjs"],
+        { cwd: root, encoding: "utf8", env },
+      );
+      assert.equal(JSON.parse(exactResult.stdout).wildcardPluginBypass, false);
+    } finally {
+      await rm(commerce, { recursive: true, force: true });
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("route ids resolve from any Commerce module and unresolved ids fail closed", async () => {
   const commerce = await mkdtemp(join(tmpdir(), "access-routes-"));
   try {
@@ -72,6 +123,47 @@ test("route ids resolve from any Commerce module and unresolved ids fail closed"
     await assert.rejects(
       execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs", "--check"], { cwd: root, encoding: "utf8", env }),
       (error) => /could not be resolved: MISSING_ROUTE/u.test(`${error.stdout}\n${error.stderr}`),
+    );
+  } finally {
+    await rm(commerce, { recursive: true, force: true });
+  }
+});
+
+test("quoted Commerce route keys are included and undeclared keys fail check mode", async () => {
+  const commerce = await mkdtemp(join(tmpdir(), "access-routes-quoted-"));
+  try {
+    await mkdir(join(commerce, "src"), { recursive: true });
+    await writeFile(join(commerce, "src/plugin.ts"), [
+      "const plugin = {",
+      "  routes: {",
+      '    \'catalog/public\': pluginRoute({ public: true, methods: ["GET"] }),',
+      '    "admin": pluginRoute({ methods: ["GET"] }),',
+      "  },",
+      "};",
+      "",
+    ].join("\n"));
+    const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
+    const result = await execFileAsync(
+      process.execPath,
+      ["scripts/verify-access-routes.mjs"],
+      { cwd: root, encoding: "utf8", env },
+    );
+    const policy = JSON.parse(result.stdout);
+    assert.deepEqual(policy.commerce.publicRoutes, [
+      "/_emdash/api/plugins/dinkus-commerce/catalog/public",
+    ]);
+    assert.deepEqual(policy.undeclaredRoutes, [
+      "/_emdash/api/plugins/dinkus-commerce/admin",
+    ]);
+    await assert.rejects(
+      execFileAsync(
+        process.execPath,
+        ["scripts/verify-access-routes.mjs", "--check"],
+        { cwd: root, encoding: "utf8", env },
+      ),
+      (error) => /lack an explicit public\/admin declaration: \/_emdash\/api\/plugins\/dinkus-commerce\/admin/u.test(
+        `${error.stdout}\n${error.stderr}`,
+      ),
     );
   } finally {
     await rm(commerce, { recursive: true, force: true });
