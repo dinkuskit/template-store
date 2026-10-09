@@ -612,6 +612,10 @@ export function hydrateGuestCheckoutReturn(): void {
         ? "Checkout is still pending with Commerce. Check status again before retrying."
         : "Commerce has not confirmed a paid order. The original checkout remains protected.";
     setMessage(message, result.ok && result.checkout.state !== "pending");
+    if (!canRetryGuestCheckoutStatus(statusChecks) &&
+        result.ok && result.checkout.state === "pending") {
+      setMessage("Status checks are temporarily limited. No purchase was confirmed.", true);
+    }
     finishCheck();
   };
   statusRetry?.addEventListener("click", () => void checkStatus());
