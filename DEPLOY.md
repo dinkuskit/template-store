@@ -40,7 +40,13 @@ The generated policy is the source for the Access change:
    Never copy a site-id placeholder into Access. The Payments manifest must
    emit the concrete server-owned webhook path for the store (for example the
    Authorize.net hosted route includes the site id) and its provider-signature
-   authentication requirement.
+   authentication requirement. Each manifest route is
+   `{ "path", "public", "method" | "methods", "surface": "registry" | "hosted", "auth" }`.
+   The checker treats the manifest as untrusted: a public route becomes a
+   bypass only when its path is one exact literal path (no `*`, `{...}`,
+   `<...>`, query or trailing slash), it names explicit HTTP methods, a
+   `registry` route sits under one named plugin, and a Payments route declares
+   `auth`. Anything else is listed as refused and fails `--check`.
 
 `verify:access-routes` is intentionally fail-closed against the current
 Commerce pin until upstream issue #79 adds the missing admin declaration and
