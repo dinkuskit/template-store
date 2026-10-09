@@ -62,6 +62,7 @@ test("wildcard audit checks only deployment policy inputs and catches named-plug
         '    "catalog/public": pluginRoute({ public: true, methods: ["GET"] }),',
         "  },",
         "};",
+        "export default plugin;",
         "",
       ].join("\n"));
       const env = {
@@ -127,6 +128,7 @@ test("route ids resolve from any Commerce module and unresolved ids fail closed"
       "    }),",
       "  },",
       "};",
+      "export default plugin;",
       "",
     ].join("\n"));
     const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
@@ -155,6 +157,7 @@ test("quoted Commerce route keys are included and undeclared keys fail check mod
       '    "admin": pluginRoute({ methods: ["GET"] }),',
       "  },",
       "};",
+      "export default plugin;",
       "",
     ].join("\n"));
     const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
@@ -247,6 +250,7 @@ test("Payments rejects every auth declaration except provider-signature", async 
       "    }),",
       "  },",
       "};",
+      "export default plugin;",
       "",
     ].join("\n"));
     const manifest = join(dir, "payments-route-manifest.json");
@@ -302,6 +306,7 @@ test("route ids follow plugin import bindings and do not use colliding filesyste
       "    [LEGITIMATE_ROUTE]: pluginRoute({ public: true, methods: [\"GET\"] }),",
       "  },",
       "};",
+      "export default plugin;",
       "",
     ].join("\n"));
     const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
@@ -316,6 +321,67 @@ test("route ids follow plugin import bindings and do not use colliding filesyste
     ]);
     assert.equal(policy.commerce.publicRoutes.includes("/_emdash/api/plugins/dinkus-commerce/catalog/from-b"), false);
     assert.deepEqual(policy.unresolvedRouteIds, []);
+  } finally {
+    await rm(commerce, { recursive: true, force: true });
+  }
+});
+
+test("AST extraction ignores formatting, comments, and nested handler text", async () => {
+  const commerce = await mkdtemp(join(tmpdir(), "access-routes-ast-invariance-"));
+  try {
+    await mkdir(join(commerce, "src"), { recursive: true });
+    await writeFile(join(commerce, "src/plugin.ts"), [
+      "const plugin = {",
+      "routes: {",
+      "  // public: false, methods: [\"DELETE\"]",
+      "  'catalog/public': pluginRoute({",
+      "    methods: [\"GET\"], public: true,",
+      "    handler: async () => ({ text: 'public: false, methods: [\"POST\"]' }),",
+      "  }),",
+      "},",
+      "};",
+      "export default plugin;",
+      "",
+    ].join("\n"));
+    const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
+    const result = await execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs"], { cwd: root, encoding: "utf8", env });
+    const policy = JSON.parse(result.stdout);
+    assert.deepEqual(policy.commerce.publicRoutes, [
+      "/_emdash/api/plugins/dinkus-commerce/catalog/public",
+    ]);
+    assert.deepEqual(policy.unsupportedDeclarations, []);
+  } finally {
+    await rm(commerce, { recursive: true, force: true });
+  }
+});
+
+test("unsupported static declarations are reported and fail check without emitting a bypass", async () => {
+  const commerce = await mkdtemp(join(tmpdir(), "access-routes-ast-unsupported-"));
+  try {
+    await mkdir(join(commerce, "src"), { recursive: true });
+    await writeFile(join(commerce, "src/plugin.ts"), [
+      "const dynamic = true;",
+      "const metadata = { public: true, methods: [\"GET\"] };",
+      "const plugin = {",
+      "  routes: {",
+      "    'dynamic': pluginRoute({ ...metadata }),",
+      "    'computed': pluginRoute({ public: dynamic, methods: [\"GET\"] }),",
+      "  },",
+      "};",
+      "export default plugin;",
+      "",
+    ].join("\n"));
+    const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
+    const args = ["scripts/verify-access-routes.mjs"];
+    const result = await execFileAsync(process.execPath, args, { cwd: root, encoding: "utf8", env });
+    const policy = JSON.parse(result.stdout);
+    assert.deepEqual(policy.commerce.publicRoutes, []);
+    assert.deepEqual(policy.checkoutEnabled.bypasses, []);
+    assert.equal(policy.unsupportedDeclarations.length, 2);
+    await assert.rejects(
+      execFileAsync(process.execPath, [...args, "--check"], { cwd: root, encoding: "utf8", env }),
+      (error) => /unsupported route declaration/u.test(`${error.stdout}\n${error.stderr}`),
+    );
   } finally {
     await rm(commerce, { recursive: true, force: true });
   }

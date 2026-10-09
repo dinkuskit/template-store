@@ -66,10 +66,22 @@ Payments issue #27 currently publishes no public Registry plugin routes.
    `auth: "provider-signature"`. Anything else is listed as refused and fails
    `--check`.
 
-Commerce route ids are resolved from the bindings imported by `src/plugin.ts`
-(including explicit aliases and supported re-exports). The checker never
-executes source. Ambiguous or unsupported bindings fail closed rather than
-letting an unrelated module determine the emitted path.
+Commerce route ids and declarations are read with the pinned TypeScript
+parser, not regular expressions or source evaluation. The supported subset is
+the top-level `plugin` object default-exported from `src/plugin.ts`, with
+identifier or quoted route keys, computed keys from named imported string
+constants, explicit named `.js` to `.ts` re-exports, direct `pluginRoute({ ... })`
+metadata, and the bounded `guestRoute(handler)` wrapper that directly returns
+literal `public: true` and `methods: ["POST"]` metadata. A plain static route
+object without `public` remains undeclared (as with Commerce `admin`).
+
+Spreads, dynamic or ambiguous keys, non-literal `public`/`methods`, unsupported
+wrappers, alternate binding forms, and route shapes outside that subset are
+reported as unsupported declarations and fail `--check`; they are never
+emitted as Access bypasses. The parser ignores comments and nested handler
+content, and never executes source or implements general JavaScript semantics.
+Ambiguous or unsupported bindings fail closed rather than letting an unrelated
+module determine the emitted path.
 
 `verify:access-routes` is intentionally fail-closed against the current
 Commerce pin until upstream issue #79 adds the missing admin declaration and

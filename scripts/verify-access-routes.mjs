@@ -9,8 +9,9 @@
  * installed. Missing route declarations fail closed.
  */
 import { readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { extractCommerceRoutes } from "./access-route-extractor.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const commerceRoot = process.env.ACCESS_ROUTES_COMMERCE_ROOT
@@ -26,118 +27,8 @@ function fail(message) {
   process.exitCode = 1;
 }
 
-function balancedObject(text, start) {
-  let depth = 0;
-  let quote = null;
-  for (let index = start; index < text.length; index += 1) {
-    const char = text[index];
-    if (quote) {
-      if (char === "\\" ) index += 1;
-      else if (char === quote) quote = null;
-      continue;
-    }
-    if (char === "'" || char === '"' || char === "`") {
-      quote = char;
-      continue;
-    }
-    if (char === "{") depth += 1;
-    if (char === "}" && --depth === 0) return text.slice(start, index + 1);
-  }
-  throw new Error("unbalanced route object");
-}
-
-function constants(source) {
-  const values = new Map();
-  for (const match of source.matchAll(/export const ([A-Z][A-Z0-9_]*)\s*=\s*["']([^"']+)["']/gu)) {
-    if (values.has(match[1])) values.set(match[1], null);
-    else values.set(match[1], match[2]);
-  }
-  return values;
-}
-
-function modulePath(from, specifier) {
-  if (!specifier.startsWith(".")) return null;
-  const base = resolve(join(from, specifier.replace(/\.js$/u, "")));
-  for (const candidate of [`${base}.ts`, join(base, "index.ts")]) {
-    try {
-      readFileSync(candidate, "utf8");
-      return candidate;
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-  }
-  return null;
-}
-
-function importedConstants(file, seen = new Set()) {
-  if (seen.has(file)) return new Map();
-  seen.add(file);
-  const source = readFileSync(file, "utf8");
-  const values = constants(source);
-  for (const match of source.matchAll(/export\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["']/gu)) {
-    const target = modulePath(resolve(file, ".."), match[2]);
-    if (!target) continue;
-    const targetValues = importedConstants(target, seen);
-    for (const item of match[1].split(",")) {
-      const names = item.trim().match(/^([A-Z][A-Z0-9_]*)(?:\s+as\s+([A-Z][A-Z0-9_]*))?$/u);
-      if (!names) continue;
-      const [exported, local = exported] = names.slice(1);
-      if (!targetValues.has(exported) || values.has(local)) values.set(local, null);
-      else values.set(local, targetValues.get(exported));
-    }
-  }
-  return values;
-}
-
-function pluginImports(source) {
-  const bindings = new Map();
-  for (const match of source.matchAll(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["']/gu)) {
-    for (const item of match[1].split(",")) {
-      const names = item.trim().match(/^([A-Z][A-Z0-9_]*)(?:\s+as\s+([A-Z][A-Z0-9_]*))?$/u);
-      if (!names) continue;
-      const [imported, local = imported] = names.slice(1);
-      bindings.set(local, { imported, specifier: match[2] });
-    }
-  }
-  return bindings;
-}
-
 function deriveCommerceRoutes() {
-  const source = readFileSync(commercePlugin, "utf8");
-  const routesStart = source.indexOf("routes:");
-  if (routesStart < 0) throw new Error("Commerce plugin has no routes object");
-  const routes = balancedObject(source, source.indexOf("{", routesStart));
-  // Resolve only bindings imported by the plugin. A filesystem-wide map lets
-  // an unrelated module silently win when two modules export the same name.
-  const values = new Map();
-  for (const [local, { imported, specifier }] of pluginImports(source)) {
-    const target = modulePath(resolve(commercePlugin, ".."), specifier);
-    const targetValues = target ? importedConstants(target) : new Map();
-    values.set(local, targetValues.has(imported) ? targetValues.get(imported) : null);
-  }
-  const properties = [...routes.matchAll(/^\s{4}(?:\[([A-Z][A-Z0-9_]*)\]|([a-z][\w-]*)|(["'])([^"']+)\3)\s*:/gmu)];
-  const result = [];
-  for (let index = 0; index < properties.length; index += 1) {
-    const match = properties[index];
-    const next = properties[index + 1]?.index ?? routes.length;
-    const name = match[1] ? values.get(match[1]) ?? null : match[2] ?? match[4];
-    const declaration = routes.slice(match.index, next);
-    if (name === null) {
-      result.push({ name: null, constant: match[1], path: null, public: null, methods: [] });
-      continue;
-    }
-    const publicMatch = declaration.match(/\bpublic\s*:\s*(true|false)\b/u);
-    const inheritedGuestRoute = declaration.includes("guestRoute(");
-    const methods = declaration.match(/\bmethods\s*:\s*\[([^\]]*)\]/u)?.[1]
-      ?.match(/["']([A-Z]+)["']/gu)?.map((method) => method.replace(/["']/gu, "")) ?? [];
-    result.push({
-      name,
-      path: `/_emdash/api/plugins/dinkus-commerce/${name}`,
-      public: publicMatch ? publicMatch[1] === "true" : inheritedGuestRoute ? true : null,
-      methods: inheritedGuestRoute && methods.length === 0 ? ["POST"] : methods,
-    });
-  }
-  return result;
+  return extractCommerceRoutes(commercePlugin);
 }
 
 function paymentsRoutes() {
@@ -214,8 +105,13 @@ function wildcardBypassExists() {
 
 let commerce;
 let payments;
+let extractionUnsupported = [];
+let unresolvedRouteIds = [];
 try {
-  commerce = deriveCommerceRoutes();
+  const extracted = deriveCommerceRoutes();
+  commerce = extracted.routes;
+  extractionUnsupported = extracted.unsupported;
+  unresolvedRouteIds = extracted.unresolved.map((constant) => ({ constant }));
   payments = paymentsRoutes();
 } catch (error) {
   fail(error.message);
@@ -223,7 +119,7 @@ try {
 }
 
 const all = [...commerce, ...payments];
-const unresolved = commerce.filter((route) => route.path === null);
+const unresolved = unresolvedRouteIds;
 const undeclared = all.filter((route) => route.path !== null && route.public === null);
 const invalid = all
   .filter((route) => route.public === true)
@@ -254,6 +150,7 @@ const policy = {
   invalidPublicRoutes: invalid.map(({ route, problem }) => ({ path: route.path, problem })),
   undeclaredRoutes: undeclared.map((route) => route.path),
   unresolvedRouteIds: unresolved.map((route) => route.constant),
+  unsupportedDeclarations: extractionUnsupported,
   wildcardPluginBypass: wildcard,
 };
 
@@ -266,12 +163,14 @@ if (format === "markdown") {
   for (const { route, problem } of invalid) console.log(`| blocked | ${(route.methods ?? []).join(", ") || "unknown"} | \`${String(route.path)}\` | **refused: ${problem}** |`);
   for (const route of undeclared) console.log(`| blocked | ${route.methods.join(", ") || "unknown"} | \`${route.path}\` | **missing declaration** |`);
   for (const route of unresolved) console.log(`| blocked | unknown | \`${route.constant}\` | **unresolved route id** |`);
+  for (const declaration of extractionUnsupported) console.log(`| blocked | unknown | \`${declaration.path ?? declaration.name ?? "unknown"}\` | **unsupported: ${declaration.diagnostic}** |`);
 }
 
 if (format === "json") console.log(JSON.stringify(policy, null, 2));
-if (check && (wildcard || undeclared.length > 0 || unresolved.length > 0 || invalid.length > 0)) {
+if (check && (wildcard || undeclared.length > 0 || unresolved.length > 0 || invalid.length > 0 || extractionUnsupported.length > 0)) {
   if (wildcard) fail("a wildcard plugin bypass is present");
   for (const { route, problem } of invalid) fail(`refused public route ${JSON.stringify(route.path)}: ${problem}`);
   if (unresolved.length) fail(`route id(s) could not be resolved: ${unresolved.map((route) => route.constant).join(", ")}`);
   if (undeclared.length) fail(`route(s) lack an explicit public/admin declaration: ${undeclared.map((route) => route.path).join(", ")}`);
+  for (const declaration of extractionUnsupported) fail(`unsupported route declaration${declaration.path ? ` ${declaration.path}` : ""}: ${declaration.diagnostic}`);
 }
