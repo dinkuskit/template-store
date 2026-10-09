@@ -115,7 +115,63 @@ test("Payments manifest routes become bypasses only when exact and authenticated
     await assert.rejects(
       execFileAsync(process.execPath, [...args, "--check"], { cwd: root, encoding: "utf8" }),
       (error) => /refused public route "\/_emdash\/api\/plugins\/\*"/u.test(`${error.stdout}\n${error.stderr}`) &&
-        /must declare its authentication/u.test(`${error.stdout}\n${error.stderr}`),
+        /must declare auth exactly as provider-signature/u.test(`${error.stdout}\n${error.stderr}`),
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("Payments rejects every auth declaration except provider-signature", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "access-routes-payments-auth-"));
+  try {
+    const commerce = join(dir, "commerce");
+    await mkdir(join(commerce, "src"), { recursive: true });
+    await writeFile(join(commerce, "src/plugin.ts"), [
+      "const plugin = {",
+      "  routes: {",
+      '    "catalog/public": pluginRoute({',
+      "      public: true,",
+      '      methods: ["GET"],',
+      "    }),",
+      "  },",
+      "};",
+      "",
+    ].join("\n"));
+    const manifest = join(dir, "payments-route-manifest.json");
+    const rejectedAuth = ["none", "public", "unknown", "", "   ", 42];
+    await writeFile(manifest, JSON.stringify({
+      routes: [
+        { path: "/webhooks/valid", public: true, method: "POST", surface: "hosted", auth: "provider-signature" },
+        ...rejectedAuth.map((auth, index) => ({
+          path: `/webhooks/rejected-${index}`,
+          public: true,
+          method: "POST",
+          surface: "hosted",
+          auth,
+        })),
+      ],
+    }));
+    const args = [
+      "scripts/verify-access-routes.mjs",
+      `--payments-manifest=${manifest}`,
+    ];
+    const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
+    const result = await execFileAsync(process.execPath, [...args], { cwd: root, encoding: "utf8", env });
+    const policy = JSON.parse(result.stdout);
+    assert.deepEqual(policy.payments.publicRoutes, ["/webhooks/valid"]);
+    assert.deepEqual(
+      policy.invalidPublicRoutes.filter(({ path }) => path.startsWith("/webhooks/rejected-")).map(({ path }) => path),
+      rejectedAuth.map((_, index) => `/webhooks/rejected-${index}`),
+    );
+
+    await assert.rejects(
+      execFileAsync(process.execPath, [...args, "--check"], { cwd: root, encoding: "utf8", env }),
+      (error) => {
+        const output = `${error.stdout}\n${error.stderr}`;
+        return /must declare auth exactly as provider-signature/u.test(output) &&
+          !/lack an explicit public\/admin declaration/u.test(output);
+      },
     );
   } finally {
     await rm(dir, { recursive: true, force: true });

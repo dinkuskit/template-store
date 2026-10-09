@@ -138,8 +138,8 @@ function bypassProblem(route) {
   } else {
     return `unknown surface ${JSON.stringify(surface)}`;
   }
-  if (route.source === "payments" && (typeof route.auth !== "string" || route.auth.trim() === "")) {
-    return "public Payments route must declare its authentication (for example provider-signature)";
+  if (route.source === "payments" && route.auth !== "provider-signature") {
+    return "public Payments route must declare auth exactly as provider-signature";
   }
   return null;
 }
