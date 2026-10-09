@@ -8,12 +8,14 @@
  * supply its exported manifest with --payments-manifest when that artifact is
  * installed. Missing route declarations fail closed.
  */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const root = resolve(import.meta.dirname, "..");
-const commerceRoot = resolve(root, ".artifacts/source-deps/commerce");
+const commerceRoot = process.env.ACCESS_ROUTES_COMMERCE_ROOT
+  ? resolve(process.env.ACCESS_ROUTES_COMMERCE_ROOT)
+  : resolve(root, ".artifacts/source-deps/commerce");
 const commercePlugin = resolve(commerceRoot, "src/plugin.ts");
 const paymentsManifestArg = process.argv.find((value) => value.startsWith("--payments-manifest="));
 const format = process.argv.includes("--format=markdown") ? "markdown" : "json";
@@ -52,26 +54,36 @@ function constants(source) {
   return values;
 }
 
+function sourceFiles(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return sourceFiles(path);
+    return entry.isFile() && entry.name.endsWith(".ts") ? [path] : [];
+  });
+}
+
 function deriveCommerceRoutes() {
   const source = readFileSync(commercePlugin, "utf8");
   const routesStart = source.indexOf("routes:");
   if (routesStart < 0) throw new Error("Commerce plugin has no routes object");
   const routes = balancedObject(source, source.indexOf("{", routesStart));
+  // Route ids live in whichever feature module owns the route, so read every
+  // source file rather than a fixed list that silently misses new modules.
   const values = new Map();
-  for (const file of ["src/features/catalog/public.ts", "src/features/catalog/route-ids.ts", "src/features/checkout/route-ids.ts", "src/features/storefront-availability/route-ids.ts"]) {
-    try {
-      for (const [name, value] of constants(readFileSync(resolve(commerceRoot, file), "utf8"))) values.set(name, value);
-    } catch {
-      // Older paired artifacts may not have every optional route-id module.
-    }
+  for (const file of sourceFiles(resolve(commerceRoot, "src"))) {
+    for (const [name, value] of constants(readFileSync(file, "utf8"))) values.set(name, value);
   }
   const properties = [...routes.matchAll(/^\s{4}(?:\[([A-Z][A-Z0-9_]*)\]|([a-z][\w-]*))\s*:/gmu)];
   const result = [];
   for (let index = 0; index < properties.length; index += 1) {
     const match = properties[index];
     const next = properties[index + 1]?.index ?? routes.length;
-    const name = match[1] ? values.get(match[1]) ?? `UNRESOLVED:${match[1]}` : match[2];
+    const name = match[1] ? values.get(match[1]) ?? null : match[2];
     const declaration = routes.slice(match.index, next);
+    if (name === null) {
+      result.push({ name: null, constant: match[1], path: null, public: null, methods: [] });
+      continue;
+    }
     const publicMatch = declaration.match(/\bpublic\s*:\s*(true|false)\b/u);
     const inheritedGuestRoute = declaration.includes("guestRoute(");
     const methods = declaration.match(/\bmethods\s*:\s*\[([^\]]*)\]/u)?.[1]
@@ -122,7 +134,8 @@ try {
 }
 
 const all = [...commerce, ...payments];
-const undeclared = all.filter((route) => route.public === null);
+const unresolved = commerce.filter((route) => route.path === null);
+const undeclared = all.filter((route) => route.path !== null && route.public === null);
 const publicRoutes = all.filter((route) => route.public === true);
 const wildcard = wildcardBypassExists();
 const policy = {
@@ -133,6 +146,7 @@ const policy = {
   commerce: { routes: commerce, publicRoutes: commerce.filter((route) => route.public === true).map((route) => route.path) },
   payments: { routes: payments, publicRoutes: payments.filter((route) => route.public === true).map((route) => route.path) },
   undeclaredRoutes: undeclared.map((route) => route.path),
+  unresolvedRouteIds: unresolved.map((route) => route.constant),
   wildcardPluginBypass: wildcard,
 };
 
@@ -142,10 +156,12 @@ if (format === "markdown") {
   console.log("| Surface | Method | Exact path | Authentication declaration |\n| --- | --- | --- | --- |\n");
   for (const route of publicRoutes) console.log(`| ${route.surface ?? "registry"} | ${route.methods.join(", ") || "declared"} | \`${route.path}\` | public |\n`);
   for (const route of undeclared) console.log(`| blocked | ${route.methods.join(", ") || "unknown"} | \`${route.path}\` | **missing declaration** |\n`);
+  for (const route of unresolved) console.log(`| blocked | unknown | \`${route.constant}\` | **unresolved route id** |\n`);
 }
 
 if (format === "json") console.log(JSON.stringify(policy, null, 2));
-if (check && (wildcard || undeclared.length > 0)) {
+if (check && (wildcard || undeclared.length > 0 || unresolved.length > 0)) {
   if (wildcard) fail("a wildcard plugin bypass is present");
+  if (unresolved.length) fail(`route id(s) could not be resolved: ${unresolved.map((route) => route.constant).join(", ")}`);
   if (undeclared.length) fail(`route(s) lack an explicit public/admin declaration: ${undeclared.map((route) => route.path).join(", ")}`);
 }
