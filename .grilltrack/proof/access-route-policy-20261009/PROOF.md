@@ -22,3 +22,7 @@ CI `Store verification` on git:3a15126a7a562badc4410dece0a531fc7ea29d1b (job 114
 ## Not covered
 
 `pnpm verify:access-routes` intentionally fails on the current Commerce pin until commerce#79 declares `admin`. Payments publishes no route manifest yet (payments#27). Production `verify-site` Access assertions from #45 are not in this PR, so #45 stays open. No Access rule was changed.
+
+## Authority boundary (review revision 3)
+
+The Commerce side is read from the pinned source checkout, not from the artifact a store has installed, so it cannot be live Access authority (AGENTS.md: source-pilot checks do not establish Cloudflare readiness). The JSON output now carries `authority: { kind: "source-pin", commerceSourceCommit, deploymentReady: false }` and the markdown output is titled a preview that names the source commit and says not to apply its rows. DEPLOY.md states the rule (checkout off: no exceptions; checkout on: only exact public routes from the installed artifacts) and says checkout-on Access exceptions wait for the installed Commerce route manifest with immutable artifact identity and digest (dinkuskit/commerce#79). Test 1 asserts the source-pin authority, a 40-character source commit and `deploymentReady: false`.

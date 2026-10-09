@@ -15,6 +15,9 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
     encoding: "utf8",
   });
   const policy = JSON.parse(result.stdout);
+  assert.equal(policy.authority.kind, "source-pin");
+  assert.equal(policy.authority.deploymentReady, false);
+  assert.match(policy.authority.commerceSourceCommit, /^[0-9a-f]{40}$/u);
   assert.equal(policy.wildcardPluginBypass, false);
   assert.deepEqual(policy.checkoutDisabled.bypasses, []);
   assert.deepEqual(policy.commerce.publicRoutes, [

@@ -174,7 +174,20 @@ const invalid = all
   .filter(({ problem }) => problem !== null);
 const publicRoutes = all.filter((route) => route.public === true && !invalid.some(({ route: bad }) => bad === route));
 const wildcard = wildcardBypassExists();
+function commerceSourceCommit() {
+  const head = spawnSync("git", ["rev-parse", "HEAD"], { cwd: commerceRoot, encoding: "utf8" });
+  return head.status === 0 ? head.stdout.trim() : null;
+}
+
+// The Commerce side comes from a source checkout, never the artifact a store
+// has installed, so this output is a review preview and not Access authority.
 const policy = {
+  authority: {
+    kind: "source-pin",
+    commerceSourceCommit: commerceSourceCommit(),
+    deploymentReady: false,
+    reason: "Commerce routes come from a source checkout; live Access rules need the installed Commerce route manifest with artifact identity (dinkuskit/commerce#79).",
+  },
   checkoutDisabled: { bypasses: [] },
   checkoutEnabled: {
     bypasses: publicRoutes.map(({ path, methods, surface = "registry", auth }) => ({ path, methods, surface, ...(auth ? { auth } : {}) })),
@@ -188,8 +201,9 @@ const policy = {
 };
 
 if (format === "markdown") {
-  console.log("# Generated Access route policy\n");
-  console.log("Checkout off: no `/_emdash` exceptions.\n\nCheckout on: exact public routes derived from plugin code:\n");
+  console.log("# Access route policy preview (source pin, not deployment authority)\n");
+  console.log(`Commerce source commit: \`${policy.authority.commerceSourceCommit ?? "unknown"}\`. Do not apply these rows as live Access rules; checkout-on exceptions need the installed Commerce route manifest (dinkuskit/commerce#79).\n`);
+  console.log("Checkout off: no `/_emdash` exceptions.\n\nCheckout on (preview): exact public routes derived from plugin source:\n");
   console.log("| Surface | Method | Exact path | Authentication declaration |\n| --- | --- | --- | --- |");
   for (const route of publicRoutes) console.log(`| ${route.surface ?? "registry"} | ${route.methods.join(", ")} | \`${route.path}\` | ${route.auth ? `public, ${route.auth}` : "public"} |`);
   for (const { route, problem } of invalid) console.log(`| blocked | ${(route.methods ?? []).join(", ") || "unknown"} | \`${String(route.path)}\` | **refused: ${problem}** |`);

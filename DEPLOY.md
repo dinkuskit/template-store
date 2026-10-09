@@ -1,22 +1,35 @@
 # Deployment and Cloudflare Access
 
 This repository does not change a store's live Cloudflare Access applications.
-Before enabling a deployment, generate the route policy from the paired
-installed plugin artifacts:
+
+## Rule
+
+1. With `PAYMENTS_UNAVAILABLE=1` (the shipping default), keep all of
+   `/_emdash*` behind Access. There are no exceptions, and nothing needs to be
+   generated.
+2. When checkout is enabled, add only the exact routes marked `public` by the
+   **installed** Commerce and Payments artifacts. Never create a plugin-wide
+   exception.
+
+## Source preview (not deployment authority)
 
 ```sh
 pnpm verify:access-routes
 node scripts/verify-access-routes.mjs --format=markdown
 ```
 
-The generated policy is the source for the Access change:
+The checker reads Commerce's pinned source checkout
+(`.artifacts/source-deps/commerce`, prepared from `package.json`
+`dinkuskit.sourcePins.commerce`), not the Commerce artifact a store has
+installed. Its output is a review preview: it reports
+`authority.kind: "source-pin"`, the exact source commit, and
+`authority.deploymentReady: false`. A source pin can differ from what a store
+runs, so this output must not be applied as live Access rules. Checkout-on
+Access exceptions wait for the installed Commerce route manifest with an
+immutable artifact identity and digest (dinkuskit/commerce#79), matched to the
+store's installed release.
 
-1. With `PAYMENTS_UNAVAILABLE=1` (the shipping default), keep all of
-   `/_emdash*` behind Access. The checkout-disabled bypass list is empty.
-2. When checkout is enabled, add only the exact routes marked `public` by the
-   installed Commerce and Payments manifests. Do not create a plugin-wide
-   exception.
-3. The current pinned Commerce source derives these exact shopper paths:
+Preview from the current pin (review only):
 
    - `/_emdash/api/plugins/dinkus-commerce/catalog/public` (`GET`)
    - `/_emdash/api/plugins/dinkus-commerce/catalog/public/item` (`GET`)
@@ -27,7 +40,7 @@ The generated policy is the source for the Access change:
    These are generated from `src/plugin.ts` and its route-id exports; the list
    above is only a review snapshot. The script fails if the source exposes a
    route without an explicit public/admin declaration.
-4. Payments issue #27 currently publishes no public Registry plugin routes.
+Payments issue #27 currently publishes no public Registry plugin routes.
    Its provider webhooks are hosted routes, not `/_emdash` routes. The paired
    Payments artifact must supply its exported manifest to the checker:
 
@@ -54,7 +67,7 @@ published route manifest. This is a release prerequisite, not permission to
 interpret an undeclared route as public. The policy checker also rejects
 plugin-wide wildcard text in tracked deployment policy files.
 
-After the generated policy has been reviewed, a separately authorized
-operator may apply exact Access rules and run the production `bin/verify-site`
+After the installed-manifest policy has been reviewed, a separately
+authorized operator may apply exact Access rules and run the production `bin/verify-site`
 checks. No Access or deployment mutation is performed by this repository
 change.
