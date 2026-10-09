@@ -75,6 +75,20 @@ test("wildcard audit checks only deployment policy inputs and catches named-plug
         { cwd: root, encoding: "utf8", env },
       );
       assert.equal(JSON.parse(wildcardResult.stdout).wildcardPluginBypass, true);
+      for (const path of [
+        "/_emdash/api/plugins/*",
+        "/_emdash/api/plugins/<plugin>/*",
+        "/_emdash/api/plugins/{plugin}/*",
+        "/_emdash/api/plugins/dinkus-commerce/*",
+      ]) {
+        await writeFile(join(dir, "DEPLOY.md"), path);
+        await assert.rejects(
+          execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs", "--check"], {
+            cwd: root, encoding: "utf8", env,
+          }),
+          (error) => /a wildcard plugin bypass is present/u.test(error.stderr),
+        );
+      }
 
       await writeFile(join(dir, "DEPLOY.md"), [
         "Exact route: /_emdash/api/plugins/dinkus-commerce/catalog/public",
@@ -172,7 +186,7 @@ test("quoted Commerce route keys are included and undeclared keys fail check mod
 
 test("Payments manifest routes become bypasses only when exact and authenticated", async () => {
   const dir = await mkdtemp(join(tmpdir(), "access-routes-payments-"));
-  // Built at runtime so the tracked-text wildcard audit does not flag this test.
+  // Fixtures are outside the deployment-policy text audit.
   const pluginWide = "/_emdash/api/plugins/" + "*";
   try {
     const manifest = join(dir, "payments-route-manifest.json");
