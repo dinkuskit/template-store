@@ -71,8 +71,9 @@ parser, not regular expressions or source evaluation. The supported subset is
 the top-level `plugin` object default-exported from `src/plugin.ts`, with
 identifier or quoted route keys, computed keys from named imported string
 constants, explicit named `.js` to `.ts` re-exports, direct `pluginRoute({ ... })`
-metadata, and the bounded `guestRoute(handler)` wrapper that directly returns
-literal `public: true` and `methods: ["POST"]` metadata. A plain static route
+metadata imported through `pluginRoute` from `emdash/plugin`, and the bounded
+`guestRoute(handler)` wrapper that directly returns literal `public` and
+`methods` metadata (currently `true` and `["POST"]` in the pinned source). A plain static route
 object without `public` remains undeclared (as with Commerce `admin`).
 
 Spreads, dynamic or ambiguous keys, non-literal `public`/`methods`, unsupported
