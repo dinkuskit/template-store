@@ -17,6 +17,7 @@ const MAX_ATTEMPT_ID_LENGTH = 256;
 const MAX_COUPON_LENGTH = 128;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 const REQUEST_TIMEOUT_MS = 8_000;
+export const MAX_GUEST_CHECKOUT_STATUS_CHECKS = 5;
 
 export type GuestCheckoutProjection = Readonly<{
   schema: typeof GUEST_CHECKOUT_PROJECTION_SCHEMA;
@@ -369,6 +370,10 @@ export function checkoutCanConfirm(result: GuestCheckoutWireResult | null): bool
     result.checkout.attemptId &&
     result.checkout.order,
   );
+}
+
+export function canRetryGuestCheckoutStatus(checks: number): boolean {
+  return Number.isInteger(checks) && checks >= 0 && checks < MAX_GUEST_CHECKOUT_STATUS_CHECKS;
 }
 
 export function strictStripeCheckoutUrl(value: string | null): string | null {

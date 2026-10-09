@@ -139,6 +139,52 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   } finally { await context.close(); }
 });
 
+test("return status checks stop after the bounded retry budget", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string,
+      statusAlwaysPending: true,
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+        version: 1,
+        lines: [{ id: "fixture-shirt", quantity: 1 }],
+      }));
+    });
+    await page.goto("/cart");
+    await expect(page.getByRole("button", { name: "Continue to secure checkout" })).toBeEnabled();
+    await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
+    await page.goto("/checkout/success?success=true&session_id=synthetic-untrusted");
+    await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("pending");
+    await expect.poll(() => harness.counts().statusCalls).toBe(1);
+
+    for (let retry = 0; retry < 4; retry += 1) {
+      await page.getByRole("button", { name: "Check status again" }).click();
+      await expect.poll(() => harness.counts().statusCalls).toBe(retry + 2);
+    }
+    await expect(page.getByRole("button", { name: "Check status again" })).toBeDisabled();
+    await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("temporarily limited");
+    await page.screenshot({
+      path: resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name, "guest-checkout-status-budget.png"),
+      fullPage: true,
+      animations: "disabled",
+    });
+    await page.getByRole("button", { name: "Check status again" }).click({ force: true });
+    expect(harness.counts().statusCalls).toBe(5);
+  } finally {
+    await context.close();
+  }
+});
+
 test("offline checkout blocks external payment and unregistered local checkout paths before delivery", async ({
   browser,
 }, testInfo) => {
