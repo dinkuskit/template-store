@@ -57,6 +57,7 @@ test("wildcard audit checks only deployment policy inputs and catches named-plug
     try {
       await mkdir(join(commerce, "src"), { recursive: true });
       await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
         "const plugin = {",
         "  routes: {",
         '    "catalog/public": pluginRoute({ public: true, methods: ["GET"] }),',
@@ -115,6 +116,7 @@ test("route ids resolve from any Commerce module and unresolved ids fail closed"
     await mkdir(join(commerce, "src/features/policies"), { recursive: true });
     await writeFile(join(commerce, "src/features/policies/public.ts"), 'export const POLICIES_ROUTE = "policies/public";\n');
     await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
       'import { POLICIES_ROUTE } from "./features/policies/public.js";',
       "const plugin = {",
       "  routes: {",
@@ -151,6 +153,7 @@ test("quoted Commerce route keys are included and undeclared keys fail check mod
   try {
     await mkdir(join(commerce, "src"), { recursive: true });
     await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
       "const plugin = {",
       "  routes: {",
       '    \'catalog/public\': pluginRoute({ public: true, methods: ["GET"] }),',
@@ -242,6 +245,7 @@ test("Payments rejects every auth declaration except provider-signature", async 
     const commerce = join(dir, "commerce");
     await mkdir(join(commerce, "src"), { recursive: true });
     await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
       "const plugin = {",
       "  routes: {",
       '    "catalog/public": pluginRoute({',
@@ -300,6 +304,7 @@ test("route ids follow plugin import bindings and do not use colliding filesyste
     await writeFile(join(commerce, "src/a.ts"), 'export const PUBLIC_ROUTE = "catalog/from-a";\n');
     await writeFile(join(commerce, "src/b.ts"), 'export const PUBLIC_ROUTE = "catalog/from-b";\n');
     await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
       'import { PUBLIC_ROUTE as LEGITIMATE_ROUTE } from "./a.js";',
       "const plugin = {",
       "  routes: {",
@@ -331,6 +336,7 @@ test("AST extraction ignores formatting, comments, and nested handler text", asy
   try {
     await mkdir(join(commerce, "src"), { recursive: true });
     await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
       "const plugin = {",
       "routes: {",
       "  // public: false, methods: [\"DELETE\"]",
@@ -360,6 +366,7 @@ test("unsupported static declarations are reported and fail check without emitti
   try {
     await mkdir(join(commerce, "src"), { recursive: true });
     await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
       "const dynamic = true;",
       "const metadata = { public: true, methods: [\"GET\"] };",
       "const plugin = {",
@@ -384,5 +391,37 @@ test("unsupported static declarations are reported and fail check without emitti
     );
   } finally {
     await rm(commerce, { recursive: true, force: true });
+  }
+});
+
+
+test("static wrapper metadata, duplicates, missing wrappers and syntax errors fail safely", async () => {
+  const { extractCommerceRoutes } = await import("../../scripts/access-route-extractor.mjs");
+  const dir = await mkdtemp(join(tmpdir(), "access-static-boundary-"));
+  const file = join(dir, "plugin.ts");
+  const declaration = (routes, helper = "") => `import { pluginRoute } from "emdash/plugin";
+${helper}
+const plugin = { routes: { ${routes} } };
+export default plugin;`;
+  try {
+    await writeFile(file, declaration('private: guestRoute(handler)', 'function guestRoute(handler) { return pluginRoute({public:false, methods:["GET"], request:guestRequest, handler}); }'));
+    const privateWrapper = extractCommerceRoutes(file);
+    assert.equal(privateWrapper.routes[0].public, false);
+    assert.deepEqual(privateWrapper.routes[0].methods, ["GET"]);
+    await writeFile(file, declaration('unknown: guestRoute(handler)'));
+    assert.equal(extractCommerceRoutes(file).routes.length, 0);
+    assert.equal(extractCommerceRoutes(file).unsupported.length, 1);
+    await writeFile(file, declaration('same: pluginRoute({public:true, methods:["GET"]}), "same": {public:false, methods:["POST"]}'));
+    assert.equal(extractCommerceRoutes(file).routes.length, 0);
+    assert.match(extractCommerceRoutes(file).unsupported[0].diagnostic, /duplicate route/);
+    await writeFile(file, declaration('x: pluginRoute({public:true, methods:["GET"]})').replace('import { pluginRoute } from "emdash/plugin";', ''));
+    assert.equal(extractCommerceRoutes(file).routes.length, 0);
+    assert.match(extractCommerceRoutes(file).unsupported[0].diagnostic, /named import/);
+    await writeFile(file, 'const plugin = { routes: { broken: ');
+    assert.throws(() => extractCommerceRoutes(file), /malformed TypeScript/);
+    await writeFile(file, declaration('') + '\nplugin.routes.admin = {};');
+    assert.throws(() => extractCommerceRoutes(file), /top-level executable statement/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });

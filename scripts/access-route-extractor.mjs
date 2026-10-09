@@ -5,7 +5,11 @@ import ts from "typescript";
 const STATIC_ROUTE_KEYS = new Set(["public", "methods", "request", "cacheControl", "handler", "permission"]);
 
 function parse(file) {
-  return ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  if (source.parseDiagnostics.length) {
+    throw new Error(`${file}: unsupported malformed TypeScript: ${ts.flattenDiagnosticMessageText(source.parseDiagnostics[0].messageText, " ")}`);
+  }
+  return source;
 }
 
 function diagnostic(file, node, message) {
@@ -47,7 +51,7 @@ function resolveExport(file, name, seen = new Set()) {
     if (ts.isVariableStatement(statement) && statement.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.ExportKeyword)) {
       for (const declaration of statement.declarationList.declarations) {
         if (ts.isIdentifier(declaration.name) && declaration.name.text === name) {
-          if (!declaration.initializer || !ts.isStringLiteral(declaration.initializer)) {
+          if (!(statement.declarationList.flags & ts.NodeFlags.Const) || !declaration.initializer || !ts.isStringLiteral(declaration.initializer)) {
             return { value: null, diagnostic: diagnostic(file, declaration, `export ${name} is not a string literal`) };
           }
           if (found !== null) return { value: null, diagnostic: `ambiguous export ${name}` };
@@ -66,7 +70,7 @@ function resolveExport(file, name, seen = new Set()) {
       const targetFile = resolveModule(file, target);
       if (!targetFile) return { value: null, diagnostic: diagnostic(file, statement, `cannot resolve re-export ${target}`) };
       const result = resolveExport(targetFile, exportName(element), seen);
-      if (found !== null || result.value !== null && found !== null) {
+      if (found !== null) {
         return { value: null, diagnostic: diagnostic(file, statement, `ambiguous export ${name}`) };
       }
       if (result.value === null) return result;
@@ -85,7 +89,19 @@ function importedBindings(file, source) {
     const specifier = moduleSpecifier(statement);
     if (!specifier) continue;
     for (const element of statement.importClause.namedBindings.elements) {
-      bindings.set(element.name.text, { file: resolveModule(file, specifier), imported: element.propertyName?.text ?? element.name.text });
+      if (bindings.has(element.name.text) || statement.importClause.isTypeOnly || element.isTypeOnly) {
+        bindings.set(element.name.text, null);
+      } else {
+        bindings.set(element.name.text, { specifier, file: resolveModule(file, specifier), imported: element.propertyName?.text ?? element.name.text });
+      }
+    }
+  }
+  for (const statement of source.statements) {
+    const names = ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations.map((declaration) => declaration.name)
+      : ts.isFunctionDeclaration(statement) ? [statement.name] : [];
+    for (const name of names) {
+      if (name && ts.isIdentifier(name) && bindings.has(name.text)) bindings.set(name.text, null);
     }
   }
   return bindings;
@@ -162,57 +178,67 @@ function validateGuestRoute(file, source) {
   const functionDeclaration = findFunction(source, "guestRoute");
   if (!functionDeclaration) return null;
   if (functionDeclaration.parameters.length !== 1 || !ts.isIdentifier(functionDeclaration.parameters[0].name)) {
-    return diagnostic(file, functionDeclaration, "guestRoute must have one handler parameter");
+    return { diagnostic: diagnostic(file, functionDeclaration, "guestRoute must have one handler parameter") };
   }
   const handlerName = functionDeclaration.parameters[0].name.text;
   const statements = functionDeclaration.body?.statements ?? [];
   if (statements.length !== 1 || !ts.isReturnStatement(statements[0]) || !statements[0].expression ||
       !ts.isCallExpression(statements[0].expression) || !ts.isIdentifier(statements[0].expression.expression) ||
       statements[0].expression.expression.text !== "pluginRoute" || statements[0].expression.arguments.length !== 1) {
-    return diagnostic(file, functionDeclaration, "guestRoute must directly return pluginRoute(static metadata)");
+    return { diagnostic: diagnostic(file, functionDeclaration, "guestRoute must directly return pluginRoute(static metadata)") };
   }
   const object = statements[0].expression.arguments[0];
   const { properties, diagnostic: propertiesDiagnostic } = ts.isObjectLiteralExpression(object)
     ? directProperties(file, object, new Set(["public", "methods", "request", "handler"]))
     : { properties: new Map(), diagnostic: diagnostic(file, object, "guestRoute metadata must be a static object literal") };
-  if (propertiesDiagnostic) return propertiesDiagnostic;
+  if (propertiesDiagnostic) return { diagnostic: propertiesDiagnostic };
   if (properties.size !== 4 || !properties.has("public") || !properties.has("methods") ||
       !properties.has("request") || !properties.has("handler")) {
-    return diagnostic(file, object, "guestRoute must provide exactly public, methods, request, and handler");
+    return { diagnostic: diagnostic(file, object, "guestRoute must provide exactly public, methods, request, and handler") };
   }
   if (!ts.isIdentifier(properties.get("request")) || properties.get("request").text !== "guestRequest") {
-    return diagnostic(file, properties.get("request"), "guestRoute request must be the guestRequest binding");
+    return { diagnostic: diagnostic(file, properties.get("request"), "guestRoute request must be the guestRequest binding") };
   }
   if (!ts.isIdentifier(properties.get("handler")) || properties.get("handler").text !== handlerName) {
-    return diagnostic(file, properties.get("handler"), "guestRoute handler must be its parameter");
+    return { diagnostic: diagnostic(file, properties.get("handler"), "guestRoute handler must be its parameter") };
   }
   const metadata = validateMetadata(file, object, "guestRoute");
-  return metadata.diagnostic;
+  return metadata;
 }
 
 export function extractCommerceRoutes(commercePlugin) {
   const source = parse(commercePlugin);
   const bindings = importedBindings(commercePlugin, source);
-  const pluginDeclaration = source.statements.find((statement) =>
+  const routeBinding = bindings.get("pluginRoute");
+  const knownPluginRoute = routeBinding?.specifier === "emdash/plugin" && routeBinding.imported === "pluginRoute";
+  if (source.statements.some((statement) => ts.isExpressionStatement(statement))) {
+    throw new Error("unsupported top-level executable statement in static Commerce plugin");
+  }
+  const pluginDeclarations = source.statements.filter((statement) =>
     ts.isVariableStatement(statement) &&
     statement.declarationList.declarations.some((declaration) =>
       ts.isIdentifier(declaration.name) && declaration.name.text === "plugin"));
+  const pluginDeclaration = pluginDeclarations[0];
   const plugin = pluginDeclaration?.declarationList.declarations.find((declaration) =>
     ts.isIdentifier(declaration.name) && declaration.name.text === "plugin");
-  const defaultExport = source.statements.find((statement) =>
-    ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression) && statement.expression.text === "plugin");
+  const exports = source.statements.filter(ts.isExportAssignment);
+  const defaultExport = exports.length === 1 && !exports[0].isExportEquals &&
+    ts.isIdentifier(exports[0].expression) && exports[0].expression.text === "plugin";
   const unsupported = [];
   const unresolved = [];
-  if (!plugin || !defaultExport || !ts.isObjectLiteralExpression(plugin.initializer)) {
+  if (pluginDeclarations.length !== 1 || !(pluginDeclaration.declarationList.flags & ts.NodeFlags.Const) ||
+      !plugin || !defaultExport || !ts.isObjectLiteralExpression(plugin.initializer)) {
     throw new Error("Commerce plugin must default-export a top-level static plugin object");
   }
   const pluginProperties = directProperties(commercePlugin, plugin.initializer, new Set(["hooks", "routes"]));
   if (pluginProperties.diagnostic) throw new Error(pluginProperties.diagnostic);
   const routes = pluginProperties.properties.get("routes");
   if (!routes || !ts.isObjectLiteralExpression(routes)) throw new Error("Commerce plugin routes must be a top-level static object");
-  const guestDiagnostic = validateGuestRoute(commercePlugin, source);
+  const guestMetadata = validateGuestRoute(commercePlugin, source);
+  const guestDiagnostic = guestMetadata?.diagnostic;
   if (guestDiagnostic) unsupported.push({ name: "guestRoute", path: null, diagnostic: guestDiagnostic });
   const result = [];
+  const seenRoutes = new Set();
   for (const property of routes.properties) {
     if (ts.isSpreadAssignment(property)) {
       unsupported.push({ name: null, path: null, diagnostic: diagnostic(commercePlugin, property, "top-level route spread is unsupported") });
@@ -231,20 +257,32 @@ export function extractCommerceRoutes(commercePlugin) {
       continue;
     }
     const path = `/_emdash/api/plugins/dinkus-commerce/${key.name}`;
+    if (seenRoutes.has(key.name)) {
+      unsupported.push({ name: key.name, path, diagnostic: diagnostic(commercePlugin, property, "duplicate route key is unsupported") });
+      for (let index = result.length - 1; index >= 0; index -= 1) {
+        if (result[index].name === key.name) result.splice(index, 1);
+      }
+      continue;
+    }
+    seenRoutes.add(key.name);
     let metadata;
     const initializer = property.initializer;
     if (ts.isCallExpression(initializer) && ts.isIdentifier(initializer.expression) && initializer.expression.text === "pluginRoute") {
+      if (!knownPluginRoute) {
+        unsupported.push({ name: key.name, path, diagnostic: diagnostic(commercePlugin, initializer, "pluginRoute must be a named import from emdash/plugin") });
+        continue;
+      }
       if (initializer.arguments.length !== 1) {
         unsupported.push({ name: key.name, path, diagnostic: diagnostic(commercePlugin, initializer, "pluginRoute must receive one static metadata object") });
         continue;
       }
       metadata = validateMetadata(commercePlugin, initializer.arguments[0], "pluginRoute");
     } else if (ts.isCallExpression(initializer) && ts.isIdentifier(initializer.expression) && initializer.expression.text === "guestRoute") {
-      if (guestDiagnostic || initializer.arguments.length !== 1) {
+      if (!knownPluginRoute || !guestMetadata || guestDiagnostic || initializer.arguments.length !== 1) {
         unsupported.push({ name: key.name, path, diagnostic: guestDiagnostic ?? diagnostic(commercePlugin, initializer, "guestRoute must receive one handler") });
         continue;
       }
-      metadata = { public: true, methods: ["POST"], diagnostic: null };
+      metadata = guestMetadata;
     } else {
       metadata = validateMetadata(commercePlugin, initializer, "route");
     }
