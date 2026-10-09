@@ -59,8 +59,17 @@ Payments issue #27 currently publishes no public Registry plugin routes.
    bypass only when its path is one exact literal path (no `*`, `{...}`,
    `<...>`, query or trailing slash), it names explicit HTTP methods, a
    `registry` route sits under one named plugin, and a public Payments route
-   declares exactly `auth: "provider-signature"`. Anything else is listed as
-   refused and fails `--check`.
+   belongs to `dinkus-payments`. Hosted Payments routes are limited to the
+   documented provider paths `/webhooks/stripe` and the concrete
+   `/webhooks/authorize-net/<site-id>` form; unrelated hosted paths are
+   refused. Every public Payments route must declare exactly
+   `auth: "provider-signature"`. Anything else is listed as refused and fails
+   `--check`.
+
+Commerce route ids are resolved from the bindings imported by `src/plugin.ts`
+(including explicit aliases and supported re-exports). The checker never
+executes source. Ambiguous or unsupported bindings fail closed rather than
+letting an unrelated module determine the emitted path.
 
 `verify:access-routes` is intentionally fail-closed against the current
 Commerce pin until upstream issue #79 adds the missing admin declaration and

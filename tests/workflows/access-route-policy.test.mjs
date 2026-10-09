@@ -114,6 +114,7 @@ test("route ids resolve from any Commerce module and unresolved ids fail closed"
     await mkdir(join(commerce, "src/features/policies"), { recursive: true });
     await writeFile(join(commerce, "src/features/policies/public.ts"), 'export const POLICIES_ROUTE = "policies/public";\n');
     await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { POLICIES_ROUTE } from "./features/policies/public.js";',
       "const plugin = {",
       "  routes: {",
       "    [POLICIES_ROUTE]: pluginRoute({",
@@ -195,8 +196,10 @@ test("Payments manifest routes become bypasses only when exact and authenticated
         { path: "/webhooks/authorize-net/site-1", public: true, method: "POST", surface: "hosted", auth: "provider-signature" },
         { path: pluginWide, public: true, method: "POST" },
         { path: "/_emdash/api/plugins/dinkus-payments/*", public: true, method: "POST" },
+        { path: "/_emdash/api/plugins/dinkus-commerce/admin", public: true, method: "POST", surface: "registry", auth: "provider-signature" },
         { path: "/webhooks/authorize-net/{siteId}", public: true, method: "POST", surface: "hosted", auth: "provider-signature" },
-        { path: "/webhooks/stripe", public: true, method: "POST", surface: "hosted" },
+        { path: "/webhooks/stripe", public: true, method: "POST", surface: "hosted", auth: "provider-signature" },
+        { path: "/webhooks/not-a-provider", public: true, method: "POST", surface: "hosted", auth: "provider-signature" },
         { path: "/_emdash/api/plugins/dinkus-payments", public: true, method: "POST" },
         { path: "/_emdash/api/plugins/dinkus-payments/admin", public: false, method: "POST" },
       ],
@@ -204,12 +207,13 @@ test("Payments manifest routes become bypasses only when exact and authenticated
     const args = ["scripts/verify-access-routes.mjs", `--payments-manifest=${manifest}`];
     const result = await execFileAsync(process.execPath, args, { cwd: root, encoding: "utf8" });
     const policy = JSON.parse(result.stdout);
-    assert.deepEqual(policy.payments.publicRoutes, ["/webhooks/authorize-net/site-1"]);
+    assert.deepEqual(policy.payments.publicRoutes, ["/webhooks/authorize-net/site-1", "/webhooks/stripe"]);
     assert.deepEqual(policy.invalidPublicRoutes.map(({ path }) => path), [
       pluginWide,
       "/_emdash/api/plugins/dinkus-payments/*",
+      "/_emdash/api/plugins/dinkus-commerce/admin",
       "/webhooks/authorize-net/{siteId}",
-      "/webhooks/stripe",
+      "/webhooks/not-a-provider",
       "/_emdash/api/plugins/dinkus-payments",
     ]);
     const bypassPaths = policy.checkoutEnabled.bypasses.map(({ path }) => path);
@@ -221,7 +225,8 @@ test("Payments manifest routes become bypasses only when exact and authenticated
     await assert.rejects(
       execFileAsync(process.execPath, [...args, "--check"], { cwd: root, encoding: "utf8" }),
       (error) => /refused public route "\/_emdash\/api\/plugins\/\*"/u.test(`${error.stdout}\n${error.stderr}`) &&
-        /must declare auth exactly as provider-signature/u.test(`${error.stdout}\n${error.stderr}`),
+        /Payments registry route must belong to dinkus-payments/u.test(`${error.stdout}\n${error.stderr}`) &&
+        /outside the documented provider webhook paths/u.test(`${error.stdout}\n${error.stderr}`),
     );
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -248,9 +253,9 @@ test("Payments rejects every auth declaration except provider-signature", async 
     const rejectedAuth = ["none", "public", "unknown", "", "   ", 42];
     await writeFile(manifest, JSON.stringify({
       routes: [
-        { path: "/webhooks/valid", public: true, method: "POST", surface: "hosted", auth: "provider-signature" },
+        { path: "/webhooks/stripe", public: true, method: "POST", surface: "hosted", auth: "provider-signature" },
         ...rejectedAuth.map((auth, index) => ({
-          path: `/webhooks/rejected-${index}`,
+          path: `/webhooks/authorize-net/rejected-${index}`,
           public: true,
           method: "POST",
           surface: "hosted",
@@ -265,10 +270,10 @@ test("Payments rejects every auth declaration except provider-signature", async 
     const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
     const result = await execFileAsync(process.execPath, [...args], { cwd: root, encoding: "utf8", env });
     const policy = JSON.parse(result.stdout);
-    assert.deepEqual(policy.payments.publicRoutes, ["/webhooks/valid"]);
+    assert.deepEqual(policy.payments.publicRoutes, ["/webhooks/stripe"]);
     assert.deepEqual(
-      policy.invalidPublicRoutes.filter(({ path }) => path.startsWith("/webhooks/rejected-")).map(({ path }) => path),
-      rejectedAuth.map((_, index) => `/webhooks/rejected-${index}`),
+      policy.invalidPublicRoutes.filter(({ path }) => path.startsWith("/webhooks/authorize-net/rejected-")).map(({ path }) => path),
+      rejectedAuth.map((_, index) => `/webhooks/authorize-net/rejected-${index}`),
     );
 
     await assert.rejects(
@@ -281,5 +286,37 @@ test("Payments rejects every auth declaration except provider-signature", async 
     );
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("route ids follow plugin import bindings and do not use colliding filesystem exports", async () => {
+  const commerce = await mkdtemp(join(tmpdir(), "access-routes-imports-"));
+  try {
+    await mkdir(join(commerce, "src"), { recursive: true });
+    await writeFile(join(commerce, "src/a.ts"), 'export const PUBLIC_ROUTE = "catalog/from-a";\n');
+    await writeFile(join(commerce, "src/b.ts"), 'export const PUBLIC_ROUTE = "catalog/from-b";\n');
+    await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { PUBLIC_ROUTE as LEGITIMATE_ROUTE } from "./a.js";',
+      "const plugin = {",
+      "  routes: {",
+      "    [LEGITIMATE_ROUTE]: pluginRoute({ public: true, methods: [\"GET\"] }),",
+      "  },",
+      "};",
+      "",
+    ].join("\n"));
+    const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
+    const result = await execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs"], {
+      cwd: root,
+      encoding: "utf8",
+      env,
+    });
+    const policy = JSON.parse(result.stdout);
+    assert.deepEqual(policy.commerce.publicRoutes, [
+      "/_emdash/api/plugins/dinkus-commerce/catalog/from-a",
+    ]);
+    assert.equal(policy.commerce.publicRoutes.includes("/_emdash/api/plugins/dinkus-commerce/catalog/from-b"), false);
+    assert.deepEqual(policy.unresolvedRouteIds, []);
+  } finally {
+    await rm(commerce, { recursive: true, force: true });
   }
 });

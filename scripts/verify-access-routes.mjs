@@ -8,7 +8,7 @@
  * supply its exported manifest with --payments-manifest when that artifact is
  * installed. Missing route declarations fail closed.
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -49,17 +49,57 @@ function balancedObject(text, start) {
 function constants(source) {
   const values = new Map();
   for (const match of source.matchAll(/export const ([A-Z][A-Z0-9_]*)\s*=\s*["']([^"']+)["']/gu)) {
-    values.set(match[1], match[2]);
+    if (values.has(match[1])) values.set(match[1], null);
+    else values.set(match[1], match[2]);
   }
   return values;
 }
 
-function sourceFiles(dir) {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path);
-    return entry.isFile() && entry.name.endsWith(".ts") ? [path] : [];
-  });
+function modulePath(from, specifier) {
+  if (!specifier.startsWith(".")) return null;
+  const base = resolve(join(from, specifier.replace(/\.js$/u, "")));
+  for (const candidate of [`${base}.ts`, join(base, "index.ts")]) {
+    try {
+      readFileSync(candidate, "utf8");
+      return candidate;
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+  return null;
+}
+
+function importedConstants(file, seen = new Set()) {
+  if (seen.has(file)) return new Map();
+  seen.add(file);
+  const source = readFileSync(file, "utf8");
+  const values = constants(source);
+  for (const match of source.matchAll(/export\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["']/gu)) {
+    const target = modulePath(resolve(file, ".."), match[2]);
+    if (!target) continue;
+    const targetValues = importedConstants(target, seen);
+    for (const item of match[1].split(",")) {
+      const names = item.trim().match(/^([A-Z][A-Z0-9_]*)(?:\s+as\s+([A-Z][A-Z0-9_]*))?$/u);
+      if (!names) continue;
+      const [exported, local = exported] = names.slice(1);
+      if (!targetValues.has(exported) || values.has(local)) values.set(local, null);
+      else values.set(local, targetValues.get(exported));
+    }
+  }
+  return values;
+}
+
+function pluginImports(source) {
+  const bindings = new Map();
+  for (const match of source.matchAll(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']+)["']/gu)) {
+    for (const item of match[1].split(",")) {
+      const names = item.trim().match(/^([A-Z][A-Z0-9_]*)(?:\s+as\s+([A-Z][A-Z0-9_]*))?$/u);
+      if (!names) continue;
+      const [imported, local = imported] = names.slice(1);
+      bindings.set(local, { imported, specifier: match[2] });
+    }
+  }
+  return bindings;
 }
 
 function deriveCommerceRoutes() {
@@ -67,11 +107,13 @@ function deriveCommerceRoutes() {
   const routesStart = source.indexOf("routes:");
   if (routesStart < 0) throw new Error("Commerce plugin has no routes object");
   const routes = balancedObject(source, source.indexOf("{", routesStart));
-  // Route ids live in whichever feature module owns the route, so read every
-  // source file rather than a fixed list that silently misses new modules.
+  // Resolve only bindings imported by the plugin. A filesystem-wide map lets
+  // an unrelated module silently win when two modules export the same name.
   const values = new Map();
-  for (const file of sourceFiles(resolve(commerceRoot, "src"))) {
-    for (const [name, value] of constants(readFileSync(file, "utf8"))) values.set(name, value);
+  for (const [local, { imported, specifier }] of pluginImports(source)) {
+    const target = modulePath(resolve(commercePlugin, ".."), specifier);
+    const targetValues = target ? importedConstants(target) : new Map();
+    values.set(local, targetValues.has(imported) ? targetValues.get(imported) : null);
   }
   const properties = [...routes.matchAll(/^\s{4}(?:\[([A-Z][A-Z0-9_]*)\]|([a-z][\w-]*)|(["'])([^"']+)\3)\s*:/gmu)];
   const result = [];
@@ -133,8 +175,17 @@ function bypassProblem(route) {
     if (!/^\/_emdash\/api\/plugins\/[a-z0-9-]+\/[^/]/u.test(path)) {
       return "registry route must be one exact route under a named plugin";
     }
+    if (route.source === "payments" && !/^\/_emdash\/api\/plugins\/dinkus-payments\/[^/]/u.test(path)) {
+      return "Payments registry route must belong to dinkus-payments";
+    }
   } else if (surface === "hosted") {
     if (path.startsWith("/_emdash")) return "hosted route must not be an /_emdash path";
+    if (route.source === "payments" && !(
+      path === "/webhooks/stripe" ||
+      /^\/webhooks\/authorize-net\/[A-Za-z0-9._~-]+$/u.test(path)
+    )) {
+      return "Payments hosted route is outside the documented provider webhook paths";
+    }
   } else {
     return `unknown surface ${JSON.stringify(surface)}`;
   }
