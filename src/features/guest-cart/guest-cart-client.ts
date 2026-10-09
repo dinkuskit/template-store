@@ -253,7 +253,14 @@ function checkoutFailureText(failure: string | null): string {
 }
 
 async function probeGuestCheckout(root: Element): Promise<void> {
-  if (!checkoutController || checkoutProbePending || session.intent.lines.length === 0) return;
+  // A closed server admission must not trigger a proactive prepare attempt.
+  // Recovery remains separate and can still query a retained paid checkout.
+  if (
+    !checkoutController ||
+    !checkoutAdmitted ||
+    checkoutProbePending ||
+    session.intent.lines.length === 0
+  ) return;
   const retention = readGuestCheckoutRetention(checkoutStorage());
   if (
     retention &&
