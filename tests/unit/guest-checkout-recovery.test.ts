@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
+  MAX_GUEST_CHECKOUT_STATUS_CHECKS,
+  canRetryGuestCheckoutStatus,
   callGuestCheckout,
   checkoutCanConfirm,
   createGuestCheckoutController,
@@ -45,6 +47,15 @@ function wire(overrides: Record<string, unknown> = {}) {
 }
 
 describe("guest checkout protocol and recovery", () => {
+  it("bounds return-page status checks without changing checkout state", () => {
+    expect(MAX_GUEST_CHECKOUT_STATUS_CHECKS).toBe(5);
+    expect(canRetryGuestCheckoutStatus(0)).toBe(true);
+    expect(canRetryGuestCheckoutStatus(MAX_GUEST_CHECKOUT_STATUS_CHECKS - 1)).toBe(true);
+    expect(canRetryGuestCheckoutStatus(MAX_GUEST_CHECKOUT_STATUS_CHECKS)).toBe(false);
+    expect(canRetryGuestCheckoutStatus(-1)).toBe(false);
+    expect(canRetryGuestCheckoutStatus(1.5)).toBe(false);
+  });
+
   it("does not mint a capability when server admission is closed", async () => {
     let calls = 0;
     const controller = createGuestCheckoutController({

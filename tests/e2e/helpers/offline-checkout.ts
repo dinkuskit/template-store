@@ -42,6 +42,7 @@ type HarnessOptions = {
   mutateCart?: boolean;
   synthetic?: boolean;
   gateInitialPrepare?: boolean;
+  statusAlwaysPending?: boolean;
 };
 
 function projection(state: ProjectionState, attemptId: string | null) {
@@ -76,7 +77,7 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
@@ -132,7 +133,11 @@ export async function installOfflineCheckoutHarness(
         statusCalls += 1;
         await json(route, {
           success: true,
-          data: { ok: true, capabilityId, checkout: projection(statusCalls > 1 ? "paid" : "pending", `fixture-attempt-${startCalls}`) },
+          data: {
+            ok: true,
+            capabilityId,
+            checkout: projection(statusAlwaysPending || statusCalls === 1 ? "pending" : "paid", `fixture-attempt-${startCalls}`),
+          },
         });
         return;
       }

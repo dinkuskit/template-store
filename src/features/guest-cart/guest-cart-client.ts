@@ -15,6 +15,7 @@ import {
   setGuestCartLineQuantity,
   storageNoticeText,
   checkoutCanConfirm,
+  canRetryGuestCheckoutStatus,
   createGuestCheckoutController,
   readGuestCheckoutRetention,
   strictStripeCheckoutUrl,
@@ -558,16 +559,28 @@ export function hydrateGuestCheckoutReturn(): void {
     } satisfies GuestCheckoutTransport,
   });
   let checking = false;
+  let statusChecks = 0;
+  const updateRetryAvailability = () => {
+    if (statusRetry instanceof HTMLButtonElement) {
+      statusRetry.disabled = !canRetryGuestCheckoutStatus(statusChecks);
+    }
+  };
   const finishCheck = () => {
     checking = false;
-    if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = false;
+    updateRetryAvailability();
   };
   const checkStatus = async () => {
     if (checking) return;
+    if (!canRetryGuestCheckoutStatus(statusChecks)) {
+      setMessage("Status checks are temporarily limited. No purchase was confirmed.", true);
+      updateRetryAvailability();
+      return;
+    }
     checking = true;
     if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = true;
     if (retry instanceof HTMLAnchorElement) retry.hidden = true;
     setMessage("Checking the saved checkout status.");
+    statusChecks += 1;
     const { result, failure } = await controller.status();
     if (failure || !result) {
       setMessage("Checkout status could not be confirmed. Retry when you are back online.", true);

@@ -1,7 +1,14 @@
 {
   "closeout": null,
   "created_at": "2026-10-08T19:35:31+00:00",
-  "current_focus": null,
+  "current_focus": {
+    "cadence": "sequential",
+    "confirmed": false,
+    "domain": "guest-checkout-return-retry",
+    "started_at": "2026-10-09T14:51:51+00:00",
+    "status": "grilling",
+    "summary": "Issue #20 continuation: bound return status checks without changing Commerce authority"
+  },
   "decisions": [
     {
       "baseline_ref": "git:41a63299d575eeb9784de700c63ca628543b2d60",
@@ -2509,6 +2516,34 @@
       "superseded_by": null,
       "updated_at": "2026-09-30T17:21:32+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Permit at most five bounded status checks per page load, including the automatic initial check; disable further retries without inferring payment or changing retained checkout state.",
+      "context_ref": "task:issue-20-guest-checkout-continuation-20261009",
+      "created_at": "2026-10-09T14:51:51+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "guest-cart-005"
+      ],
+      "domain": "guest-checkout-return-retry",
+      "history": [],
+      "id": "guest-checkout-return-retry-bound",
+      "implementation_ref": null,
+      "question": "How should the guest return page bound manual status retries while Commerce remains authoritative?",
+      "rationale": "Issue #20 requires a bounded status retry rather than indefinite polling. Each request already has a finite timeout, but the current manual button can be clicked forever. A page-load bound limits provider traffic while preserving the retained capability and fail-closed unknown state.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-09T14:51:51+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -2531,5 +2566,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-08T19:35:31+00:00"
+  "updated_at": "2026-10-09T14:51:51+00:00"
 }
