@@ -2529,20 +2529,35 @@
         "guest-cart-005"
       ],
       "domain": "guest-checkout-return-retry",
-      "history": [],
+      "history": [
+        {
+          "at": "2026-10-09T23:40:07+00:00",
+          "choice": "Permit at most five bounded status checks per page load, including the automatic initial check; disable further retries without inferring payment or changing retained checkout state.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
       "id": "guest-checkout-return-retry-bound",
       "implementation_ref": null,
       "question": "How should the guest return page bound manual status retries while Commerce remains authoritative?",
-      "rationale": "Issue #20 requires a bounded status retry rather than indefinite polling. Each request already has a finite timeout, but the current manual button can be clicked forever. A page-load bound limits provider traffic while preserving the retained capability and fail-closed unknown state.",
+      "rationale": "Ronald (saariuslystoned) approved locking on 2026-10-09 after PR #46 merged; implementation and desktop/mobile browser proof landed in #46 (f82db65).",
       "repair_required": false,
       "review_classifications": [],
       "review_history": [],
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "proposed",
+      "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-10-09T14:51:51+00:00",
+      "updated_at": "2026-10-09T23:40:07+00:00",
       "verification_ref": null
     }
   ],
@@ -2566,5 +2581,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-09T14:51:51+00:00"
+  "updated_at": "2026-10-09T23:40:07+00:00"
 }
