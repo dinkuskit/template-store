@@ -47,7 +47,7 @@ let checkoutMessageError = false;
 let checkoutProbePending = false;
 
 function checkoutLocked(): boolean {
-  return pendingCheckout || Boolean(readGuestCheckoutRetention(checkoutStorage()) &&
+  return pendingCheckout || checkoutProbePending || Boolean(readGuestCheckoutRetention(checkoutStorage()) &&
     !checkoutController?.canStart() && !checkoutController?.canPrepareNew());
 }
 
