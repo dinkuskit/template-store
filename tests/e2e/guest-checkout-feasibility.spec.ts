@@ -76,6 +76,7 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   const page = await context.newPage();
   const harness = await installOfflineCheckoutHarness(page, {
     baseURL: testInfo.project.use.baseURL as string,
+    gateInitialPrepare: true,
   });
   await page.addInitScript(() => {
     if (localStorage.getItem("dinkus.guest-cart.v1")) return;
@@ -85,7 +86,23 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
     }));
   });
   await page.goto("/cart");
+  await expect.poll(() => harness.counts().prepareCalls).toBe(1);
+  const line = page.locator('[data-guest-cart-line="fixture-shirt"]');
+  await expect(line).toBeVisible();
+  await expect(line).not.toHaveAttribute("aria-busy", "true");
+  // Assert before the controller's eight-second timeout can close admission.
+  await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled({ timeout: 1_000 });
+  await expect(page.locator("[data-guest-cart-coupon]")).toBeDisabled();
+  await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+  expect(harness.counts()).toMatchObject({ prepareCalls: 1, startCalls: 0 });
+  await page.screenshot({
+    path: resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name, "guest-checkout-prepare-pending.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  harness.releaseInitialPrepare();
   await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+  expect(harness.counts()).toMatchObject({ prepareCalls: 1, startCalls: 0 });
   await page.getByRole("button", { name: "Continue to secure checkout" }).click();
   await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
   await expect(page.locator("[data-guest-cart-status]")).toContainText(/pending|Contacting Commerce/i);

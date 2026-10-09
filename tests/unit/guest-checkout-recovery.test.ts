@@ -45,6 +45,23 @@ function wire(overrides: Record<string, unknown> = {}) {
 }
 
 describe("guest checkout protocol and recovery", () => {
+  it("does not mint a capability when server admission is closed", async () => {
+    let calls = 0;
+    const controller = createGuestCheckoutController({
+      admitted: false,
+      storage: storage(),
+      transport: {
+        fetch: async () => {
+          calls += 1;
+          return Response.json(wire());
+        },
+      },
+    });
+
+    expect((await controller.prepare()).failure).toBe("storage-unavailable");
+    expect(calls).toBe(0);
+  });
+
   it("accepts the exact wrapped Commerce wire result and retains the original opaque capability", () => {
     const result = parseGuestCheckoutWireResult({
       success: true,

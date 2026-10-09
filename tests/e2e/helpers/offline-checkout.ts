@@ -37,7 +37,12 @@ export async function freshOfflineContext(
 }
 
 type ProjectionState = "pending" | "paid";
-type HarnessOptions = { baseURL: string; mutateCart?: boolean; synthetic?: boolean };
+type HarnessOptions = {
+  baseURL: string;
+  mutateCart?: boolean;
+  synthetic?: boolean;
+  gateInitialPrepare?: boolean;
+};
 
 function projection(state: ProjectionState, attemptId: string | null) {
   return {
@@ -71,7 +76,7 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
@@ -79,6 +84,10 @@ export async function installOfflineCheckoutHarness(
   let prepareCalls = 0;
   let startCalls = 0;
   let capabilityId = "fixture-cap-1";
+  let releaseInitialPrepare: (() => void) | null = null;
+  const initialPrepareGate = gateInitialPrepare
+    ? new Promise<void>((resolve) => { releaseInitialPrepare = resolve; })
+    : null;
 
   // One context route owns the whole decision tree, including popup requests.
   // Keep synthetic handlers and deny rules together; do not add page overrides.
@@ -94,6 +103,7 @@ export async function installOfflineCheckoutHarness(
       if (synthetic && path === RUNTIME_PREPARE && route.request().method() === "POST") {
         prepareCalls += 1;
         capabilityId = `fixture-cap-${prepareCalls}`;
+        if (prepareCalls === 1) await initialPrepareGate;
         await json(route, {
           success: true,
           data: {
@@ -162,6 +172,7 @@ export async function installOfflineCheckoutHarness(
   });
   return {
     counts: () => ({ statusCalls, prepareCalls, startCalls }),
+    releaseInitialPrepare: () => releaseInitialPrepare?.(),
     paymentURL: SYNTHETIC_PAYMENT_URL,
     blocked,
   };
