@@ -582,8 +582,11 @@ export function hydrateGuestCheckoutReturn(): void {
     setMessage("Checking the saved checkout status.");
     statusChecks += 1;
     const { result, failure } = await controller.status();
+    const exhausted = !canRetryGuestCheckoutStatus(statusChecks);
     if (failure || !result) {
-      setMessage("Checkout status could not be confirmed. Retry when you are back online.", true);
+      setMessage(exhausted
+        ? "Checkout status could not be confirmed. Status checks are temporarily limited. No purchase was confirmed."
+        : "Checkout status could not be confirmed. Retry when you are back online.", true);
       finishCheck();
       return;
     }
@@ -596,7 +599,11 @@ export function hydrateGuestCheckoutReturn(): void {
       const settled = await settleGuestCheckoutCart(checkoutStorage(), result);
       session = loadSession();
       renderNav();
-      setMessage(settled ? "Order confirmed." : "Order confirmed. Your cart could not be updated. Check status again.", !settled);
+      setMessage(settled
+        ? "Order confirmed."
+        : exhausted
+          ? "Order confirmed. Your cart could not be updated."
+          : "Order confirmed. Your cart could not be updated. Check status again.", !settled);
       finishCheck();
       return;
     }
@@ -612,8 +619,7 @@ export function hydrateGuestCheckoutReturn(): void {
         ? "Checkout is still pending with Commerce. Check status again before retrying."
         : "Commerce has not confirmed a paid order. The original checkout remains protected.";
     setMessage(message, result.ok && result.checkout.state !== "pending");
-    if (!canRetryGuestCheckoutStatus(statusChecks) &&
-        result.ok && result.checkout.state === "pending") {
+    if (exhausted && result.ok && result.checkout.state === "pending") {
       setMessage("Status checks are temporarily limited. No purchase was confirmed.", true);
     }
     finishCheck();
