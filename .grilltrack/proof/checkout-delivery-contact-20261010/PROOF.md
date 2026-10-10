@@ -41,6 +41,6 @@ fonts.google.com is unreachable); CI on the pushed head runs the full
 
 ## Authority boundary
 
-The Commerce source pin (`a3fb49a`, Commerce main containing #88) proves
+The Commerce source pin (`8655f0c`, Commerce main containing #88 and #90) proves
 development integration only. It is not installed Commerce artifact identity
 or digest, and nothing here claims paired installed-Commerce readiness.
