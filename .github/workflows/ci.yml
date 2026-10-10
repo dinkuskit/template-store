@@ -82,6 +82,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify:playground-config
+      - run: pnpm prepare:sources
       - run: pnpm exec astro build --config astro.playground.config.mjs
       - name: Record source commits
         id: commits

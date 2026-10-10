@@ -125,6 +125,7 @@ The public playground is a separate Worker application and does not use the
 demo Worker or its D1 database:
 
 ```bash
+pnpm prepare:sources
 pnpm exec astro dev --config astro.playground.config.mjs
 pnpm exec astro build --config astro.playground.config.mjs
 pnpm exec wrangler dev --config dist/server/wrangler.json
