@@ -31,7 +31,7 @@ describe("TemplateStore playground", () => {
     expect(config).toContain('"workers_dev": false');
     expect(config).toContain('"preview_urls": false');
     expect(config).toContain('"account_id": "cddb32366789cab1bdf4c25584dc1920"');
-    expect(config).toContain('"pattern": "demo.dinkuskit.com"');
+    expect(config).toContain('"pattern": "playground.dinkuskit.com"');
     expect(config).toContain('"previews_enabled": true');
     expect(config).toContain('"head_sampling_rate": 1');
   });
@@ -44,7 +44,7 @@ describe("TemplateStore playground", () => {
         return { success: !blocked };
       },
     });
-    const request = new Request("https://demo.dinkuskit.com/_playground/init", {
+    const request = new Request("https://playground.dinkuskit.com/_playground/init", {
       method: "POST",
       headers: { "cf-connecting-ip": "203.0.113.10" },
     });

@@ -13,7 +13,7 @@ for (const required of [
   '"account_id": "cddb32366789cab1bdf4c25584dc1920"',
   '"workers_dev": false',
   '"preview_urls": false',
-  '"pattern": "demo.dinkuskit.com"',
+  '"pattern": "playground.dinkuskit.com"',
   '"custom_domain": true',
   '"previews_enabled": true',
   '"name": "PLAYGROUND_CREATION_LIMITER"',
@@ -26,6 +26,11 @@ for (const required of [
 
 if (config.includes("workers.dev")) {
   throw new Error("Playground URLs must never be configured as workers.dev URLs.");
+}
+
+// demo.dinkuskit.com belongs to the live demo Worker; the playground must not claim it.
+if (/["/.]demo\.dinkuskit\.com/.test(config)) {
+  throw new Error("Playground Wrangler config must not route demo.dinkuskit.com.");
 }
 
 console.log("Playground Wrangler config passed binding and domain policy checks.");

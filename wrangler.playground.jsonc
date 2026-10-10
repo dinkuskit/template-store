@@ -35,7 +35,7 @@
   ],
   "routes": [
     {
-      "pattern": "demo.dinkuskit.com",
+      "pattern": "playground.dinkuskit.com",
       "custom_domain": true,
       "previews_enabled": true
     }

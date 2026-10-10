@@ -144,17 +144,17 @@ caps for `/_playground/init`). The project-owned hook in
 
 GitHub Actions builds with `astro.playground.config.mjs`. On a PR it uploads
 the preview Worker with `wrangler versions upload --preview-alias pr-N`; on
-`main` it deploys the same separate Worker to `demo.dinkuskit.com`. Each
+`main` it deploys the same separate Worker to `playground.dinkuskit.com`. Each
 deployment message records the template-store SHA and the pinned Commerce
 commit. The preview check is intentionally the custom-domain URL
-`https://pr-N.demo.dinkuskit.com`, never a `workers.dev` URL.
+`https://pr-N.playground.dinkuskit.com`, never a `workers.dev` URL.
 
 The only CI secret is `CLOUDFLARE_PLAYGROUND_API_TOKEN`. Ryan should create a
 Cloudflare API token with exactly `Account > Workers Scripts > Edit`, limited
 to account `cddb32366789cab1bdf4c25584dc1920`; it needs no Zone DNS, account
 read, payment, coupon, or secret permissions. Cloudflare-side approval is
-still required for the `demo.dinkuskit.com` custom domain, its
-`pr-*.demo.dinkuskit.com` preview hostnames/wildcard DNS, and the two
+still required for the `playground.dinkuskit.com` custom domain, its
+`pr-*.playground.dinkuskit.com` preview hostnames/wildcard DNS, and the two
 rate-limit namespaces. This change intentionally performs no deploy or
 resource creation.
 
