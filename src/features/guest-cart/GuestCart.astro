@@ -7,6 +7,8 @@ interface Props {
 }
 
 const { checkoutAdmission = null } = Astro.props;
+// Shown disabled until Commerce publishes the store's allowed shipping countries.
+const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia", "Germany", "France", "Japan"];
 ---
 <section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"}>
   <h1 id="guest-cart-title">Cart</h1>
@@ -34,8 +36,12 @@ const { checkoutAdmission = null } = Astro.props;
         <input id="guest-cart-delivery-region" data-guest-cart-delivery-region maxlength="200" autocomplete="shipping address-level1" />
         <label for="guest-cart-delivery-postal-code">Postal code</label>
         <input id="guest-cart-delivery-postal-code" data-guest-cart-delivery-postal-code maxlength="200" autocomplete="shipping postal-code" />
-        <label for="guest-cart-delivery-country">Country code</label>
-        <input id="guest-cart-delivery-country" data-guest-cart-delivery-country maxlength="2" autocomplete="shipping country" />
+        <label for="guest-cart-delivery-country">Country</label>
+        <select id="guest-cart-delivery-country" data-guest-cart-delivery-country autocomplete="shipping country">
+          <option value="">Select a country</option>
+          <option value="US">United States</option>
+          {COMING_SOON_SHIPPING_COUNTRIES.map((name) => <option value="" disabled>{name} (coming soon)</option>)}
+        </select>
       </div>
     </fieldset>
     <label for="guest-cart-coupon">Coupon code (optional)</label>
@@ -57,8 +63,8 @@ const { checkoutAdmission = null } = Astro.props;
   .guest-cart-contact p{margin:0 0 .5rem}
   .guest-cart-contact h2{font-size:1.15rem;margin:.75rem 0 0}
   .guest-cart-contact span{color:var(--store-muted);font-size:.9em}
-  .guest-cart-contact input{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit}
-  .guest-cart-contact input:focus-visible{outline:3px solid #215cc8;outline-offset:2px}
+  .guest-cart-contact input,.guest-cart-contact select{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit}
+  .guest-cart-contact input:focus-visible,.guest-cart-contact select:focus-visible{outline:3px solid #215cc8;outline-offset:2px}
   .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800}
   [data-guest-cart-checkout]:disabled{color:var(--store-muted);cursor:not-allowed}
   .guest-cart :global([data-guest-cart-line]){padding:1.5rem;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface);min-width:0;overflow-wrap:anywhere}

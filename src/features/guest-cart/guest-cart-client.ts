@@ -128,7 +128,7 @@ function escapeText(value: string): string {
 
 function inputValue(root: Element, selector: string): string {
   const input = root.querySelector(selector);
-  return input instanceof HTMLInputElement ? input.value.trim() : "";
+  return input instanceof HTMLInputElement || input instanceof HTMLSelectElement ? input.value.trim() : "";
 }
 
 function readCheckoutContact(
@@ -160,7 +160,7 @@ function readCheckoutContact(
     }
   }
   if (!/^[A-Z]{2}$/u.test(fields.country)) {
-    return { contact: null, error: "Country must be a two-letter country code, such as US." };
+    return { contact: null, error: "Choose a country this store ships to." };
   }
   const delivery = {
     name: fields.name,

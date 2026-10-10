@@ -39,6 +39,23 @@ Other local checks: `astro check` 0 errors; `vitest` 173 passed, 1 failed
 fonts.google.com is unreachable); CI on the pushed head runs the full
 `pnpm verify`.
 
+## Country list (decision `template-checkout-country-selector-002`)
+
+The free-text two-letter country box is replaced by a country list. Only
+"United States" (value `US`) can be chosen; Canada, United Kingdom,
+Australia, Germany, France and Japan are listed as disabled
+"(coming soon)" options with an empty value, so they can never be submitted.
+Commerce's per-store `shippingCountries` setting stays the authority and
+still refuses any country the store does not ship to.
+
+Evidence: both contact browser tests now choose the country with
+`selectOption("US")` / `selectOption("")` and assert the Canada option is
+disabled; `guest-checkout-feasibility.spec.ts` passes 12 of 12 (2 skipped)
+on shipping-chromium-desktop and shipping-chromium-mobile; the start body
+still carries `country: "US"`. `astro check` 0 errors; `vitest` unchanged
+(173 passed, `seed-demo-repeat` fails only for the sandbox font fetch);
+`check-features` ok; `grilltrack validate` valid.
+
 ## Authority boundary
 
 The Commerce source pin (`8655f0c`, Commerce main containing #88 and #90) proves

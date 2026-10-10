@@ -284,7 +284,8 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     await physical.getByLabel("Address line 1", { exact: true }).fill("1 Example Way");
     await physical.getByLabel("City", { exact: true }).fill("Testville");
     await physical.getByLabel("Postal code", { exact: true }).fill("00000");
-    await physical.getByLabel("Country code", { exact: true }).fill("US");
+    await physical.getByLabel("Country", { exact: true }).selectOption("US");
+    await expect(physical.getByRole("option", { name: "Canada (coming soon)" })).toBeDisabled();
     await physical.screenshot({ path: resolve(root, "physical-filled.png"), fullPage: true, animations: "disabled" });
 
     await physical.getByLabel("City", { exact: true }).fill("");
@@ -295,7 +296,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     await physical.getByLabel("Recipient", { exact: true }).fill("");
     await physical.getByLabel("Address line 1", { exact: true }).fill("");
     await physical.getByLabel("Postal code", { exact: true }).fill("");
-    await physical.getByLabel("Country code", { exact: true }).fill("");
+    await physical.getByLabel("Country", { exact: true }).selectOption("");
     await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
     await expect(physical.locator("[data-guest-cart-status]")).toContainText("Delivery address is required");
     await physical.screenshot({ path: resolve(root, "physical-commerce-refusal.png"), fullPage: true, animations: "disabled" });
@@ -346,7 +347,7 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     await page.getByLabel("Address line 1", { exact: true }).fill(address.line1);
     await page.getByLabel("City", { exact: true }).fill(address.city);
     await page.getByLabel("Postal code", { exact: true }).fill(address.postalCode);
-    await page.getByLabel("Country code", { exact: true }).fill(address.country);
+    await page.getByLabel("Country", { exact: true }).selectOption(address.country);
   };
 
   const physicalContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
