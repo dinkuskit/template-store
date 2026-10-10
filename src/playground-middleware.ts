@@ -3,12 +3,10 @@ import { env } from "cloudflare:workers";
 import { defineMiddleware } from "astro:middleware";
 import { onRequest as emdashPlayground } from "@emdash-cms/cloudflare/db/playground-middleware";
 import {
+  checkPlaygroundCreationLimit,
   PLAYGROUND_CREATION_LIMITER_BINDING,
+  PLAYGROUND_GLOBAL_LIMITER_BINDING,
 } from "./features/playground/contract.js";
-
-interface RateLimiter {
-  limit(options: { key: string }): Promise<{ success: boolean }>;
-}
 
 /**
  * Thin project-owned hook around EmDash's playground middleware.
@@ -24,18 +22,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   ) {
     const limiter = (env as Record<string, unknown>)[
       PLAYGROUND_CREATION_LIMITER_BINDING
-    ] as RateLimiter | undefined;
-    if (limiter) {
-      const clientIp = context.request.headers.get("cf-connecting-ip") ?? "local";
-      const result = await limiter.limit({
-        key: `template-store:playground:create:${clientIp}`,
-      });
-      if (!result.success) {
-        return new Response("Too many playground databases requested.", {
-          status: 429,
-          headers: { "Retry-After": "3600" },
-        });
-      }
+    ] as Parameters<typeof checkPlaygroundCreationLimit>[1]["perIp"];
+    const globalLimiter = (env as Record<string, unknown>)[
+      PLAYGROUND_GLOBAL_LIMITER_BINDING
+    ] as Parameters<typeof checkPlaygroundCreationLimit>[1]["global"];
+    const limited = await checkPlaygroundCreationLimit(context.request, {
+      perIp: limiter,
+      global: globalLimiter,
+    });
+    if (limited) {
+      return limited;
     }
   }
 
