@@ -2563,27 +2563,42 @@
     {
       "baseline_ref": null,
       "candidate_refs": [],
-      "choice": "Use a two-letter ISO country-code input now, normalize it to upper case, and later replace it with a Commerce-driven selector when supported shipping-country options are public; suggested pick: selector.",
+      "choice": "Use a two-letter ISO country-code input now, normalize it to upper case, and rely on Commerce refusals for unsupported countries; replace it with a Commerce-driven selector when supported shipping-country options are public.",
       "context_ref": "https://github.com/dinkuskit/commerce/pull/88",
       "created_at": "2026-10-10T13:00:00+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [],
       "domain": "guest-checkout-return-retry",
-      "history": [],
+      "history": [
+        {
+          "at": "2026-10-10T14:53:15+00:00",
+          "choice": "Use a two-letter ISO country-code input now, normalize it to upper case, and later replace it with a Commerce-driven selector when supported shipping-country options are public; suggested pick: selector.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
       "id": "template-checkout-country-input-001",
       "implementation_ref": null,
       "question": "How should the storefront choose a delivery country while Commerce does not expose shipping-country options through the public catalog?",
-      "rationale": "The current public catalog contract has no shipping-country list. A free-form field keeps the template from inventing merchant destinations while Commerce remains authoritative and can return DELIVERY_COUNTRY_UNAVAILABLE.",
+      "rationale": "Ronald (saariuslystoned) accepted the temporary two-letter country box on 2026-10-10 (decision card on PR #52); Commerce already refuses countries it cannot ship to.",
       "repair_required": false,
       "review_classifications": [],
       "review_history": [],
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "proposed",
+      "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-10-10T13:00:00+00:00",
+      "updated_at": "2026-10-10T14:53:15+00:00",
       "verification_ref": null
     }
   ],
@@ -2607,5 +2622,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-10T13:00:00+00:00"
+  "updated_at": "2026-10-10T14:53:15+00:00"
 }
