@@ -79,8 +79,14 @@ do not establish released artifact, registry, checkout, or Cloudflare readiness.
 ## Gates
 
 Publishing packages, deployment, production mutation, secrets or permissions
-changes, pull-request creation, and merges require separate authorization.
+changes, and merges require separate authorization.
 
-Use Node 22.23.2 per `.nvmrc`; in cloud agents put nvm's Node ahead of
-`/exec-daemon` on `PATH` with `export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"`
-and verify `node -v`.
+Use Node 22.23.2 per `.nvmrc` and verify `node -v`. In Cursor cloud agents put
+nvm's Node ahead of `/exec-daemon` on `PATH` with
+`export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"`. In Claude Code
+cloud sessions the environment supplies that Node and pnpm, and
+`.claude/hooks/session-start.sh` installs dependencies from the lockfile, the
+pinned Commerce source, the pinned agent skills and the Playwright browser,
+then reports anything missing; read that report before running project
+scripts. Attach `dinkuskit/inventory` to the session too: the cloud proxy
+serves `github:` dependency tarballs only for attached repositories.
