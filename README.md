@@ -162,11 +162,14 @@ resource creation.
 CI always builds the playground in the secret-free `Playground build` job.
 The upload, preview check and `main` deploy run in a separate `Playground
 deployment` job only when the repository variable `PLAYGROUND_DEPLOY_ENABLED`
-is `true`. That job uses the GitHub environment `playground`, which must have
-required reviewers and must be the only place `CLOUDFLARE_PLAYGROUND_API_TOKEN`
-is stored, so the token never reaches a run (or the pull request code it
-builds) until an owner approves that run. Create the environment, move the
-token into it, and set the variable after the one-time Cloudflare setup above
+is `true`. That job uses the GitHub environment `playground`, which must be
+the only place `CLOUDFLARE_PLAYGROUND_API_TOKEN` is stored (never a repository
+secret). By the owner's decision the environment has no required reviewer, so
+pushes to `main` deploy and same-repository pull requests upload `pr-N`
+previews without a click; fork pull requests never run the job. Anyone who can
+push a branch to this repository can therefore run code with the token, which
+the owner accepted. Create the environment, move the token into it, and set the
+variable after the one-time Cloudflare setup above
 is approved. Wrangler deploys the build's generated
 `dist/server/wrangler.json` (from `wrangler.playground.jsonc`, whose `main`
 stays `src/playground-worker.ts` so the Astro build can resolve it).

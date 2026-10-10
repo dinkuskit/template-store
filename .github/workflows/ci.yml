@@ -84,9 +84,10 @@ jobs:
 
   # Cloudflare uploads stay off until the owner approves the one-time
   # Cloudflare setup and sets the PLAYGROUND_DEPLOY_ENABLED variable. The
-  # token lives only in the protected `playground` environment, so every
-  # upload or deploy waits for an owner-approved environment review before
-  # the job (and any code it runs) can read it.
+  # token lives only in the `playground` environment. By the owner's choice
+  # (2026-10-10) that environment has no required reviewer: pushes to main
+  # deploy on their own, same-repository pull requests get preview links on
+  # their own, and fork pull requests never run this job.
   deploy-playground:
     name: Playground deployment
     needs: build-playground
