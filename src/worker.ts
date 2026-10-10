@@ -135,6 +135,7 @@ export default {
       url.pathname,
       url.search,
       request.url,
+      env,
     );
     if (!check.allowed) {
       return createErrorResponse(check.status, check.reason ?? "Forbidden", {}, env);

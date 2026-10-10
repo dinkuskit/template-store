@@ -60,7 +60,26 @@ export function slashlessRedirectPath(pathname: string): string | undefined {
   return slashlessCollectionPath(pathname);
 }
 
-function isDisallowedTraversalOrTarget(pathname: string, search: string): boolean {
+function isEmdashAdminPath(pathname: string): boolean {
+  return (
+    pathname === "/_emdash/admin" ||
+    pathname.startsWith("/_emdash/admin/") ||
+    pathname === "/_emdash/api" ||
+    pathname.startsWith("/_emdash/api/")
+  );
+}
+
+export function emdashAdminEnabled(
+  env: Record<string, unknown> = process.env,
+): boolean {
+  return env.DINKUS_EMDASH_ADMIN_ENABLED === "1";
+}
+
+function isDisallowedTraversalOrTarget(
+  pathname: string,
+  search: string,
+  allowEmdashAdmin: boolean,
+): boolean {
   // Check raw percent-encoded dots or null bytes
   if (/%2e/i.test(pathname) || /%2e/i.test(search) || /%00/i.test(pathname) || /%00/i.test(search)) {
     return true;
@@ -74,21 +93,23 @@ function isDisallowedTraversalOrTarget(pathname: string, search: string): boolea
   // Check for administrative, bypass, or sensitive targets in path or query
   const lowerPath = pathname.toLowerCase();
   const lowerSearch = search.toLowerCase();
-
-  if (
-    lowerPath.includes("dev-bypass") ||
-    lowerSearch.includes("dev-bypass") ||
+  const isSensitiveTarget =
     lowerPath.includes("admin") ||
     lowerSearch.includes("admin") ||
     lowerPath.includes("setup") ||
     lowerSearch.includes("setup") ||
-    lowerPath.includes("%61dmin") ||
-    lowerPath.includes("%64ev-bypass") ||
-    lowerPath.startsWith("/api/proof") ||
     lowerPath.startsWith("/_emdash/api/auth") ||
     lowerPath.startsWith("/api/auth") ||
     lowerPath.startsWith("/_emdash/api/schema") ||
-    lowerPath.startsWith("/api/schema")
+    lowerPath.startsWith("/api/schema");
+
+  if (
+    lowerPath.includes("dev-bypass") ||
+    lowerSearch.includes("dev-bypass") ||
+    lowerPath.includes("%61dmin") ||
+    lowerPath.includes("%64ev-bypass") ||
+    lowerPath.startsWith("/api/proof") ||
+    ((!allowEmdashAdmin || !isEmdashAdminPath(lowerPath)) && isSensitiveTarget)
   ) {
     return true;
   }
@@ -129,6 +150,7 @@ export function evaluatePublicBoundary(
   pathname: string,
   search: string = "",
   requestHref?: string,
+  env: Record<string, unknown> = process.env,
 ): SecurityPolicyCheck {
   const normalizedMethod = method.toUpperCase();
 
@@ -145,11 +167,23 @@ export function evaluatePublicBoundary(
     };
   }
 
+  // Cloudflare Access guards the literal /_emdash admin and API prefixes, so
+  // only a raw path already in that namespace may pass, and every decoded form
+  // must stay inside it. Encoded aliases such as /%5femdash/admin stay blocked.
+  const allowEmdashAdmin =
+    emdashAdminEnabled(env) &&
+    isEmdashAdminPath(pathname) &&
+    pathForms.every(isEmdashAdminPath);
+
   // 1. Fail-closed against path traversal, dev-bypass, or administrative endpoints,
   // including percent-encoded and double-encoded forms.
   for (const pathForm of pathForms) {
     for (const searchForm of searchForms) {
-      if (isDisallowedTraversalOrTarget(pathForm, searchForm)) {
+      if (isDisallowedTraversalOrTarget(
+        pathForm,
+        searchForm,
+        allowEmdashAdmin,
+      )) {
         return {
           allowed: false,
           status: 403,
@@ -160,14 +194,16 @@ export function evaluatePublicBoundary(
   }
 
   const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
+  const isAllowedEmdashAdminRequest = allowEmdashAdmin;
 
   // 2. Reject mutations and non-read HTTP methods, except the three exact
   // Commerce guest POSTs admitted below.
   if (
-    (normalizedMethod === "POST" && !isGuestCheckoutPost) ||
-    normalizedMethod === "PUT" ||
-    normalizedMethod === "PATCH" ||
-    normalizedMethod === "DELETE"
+    !isAllowedEmdashAdminRequest &&
+    ((normalizedMethod === "POST" && !isGuestCheckoutPost) ||
+      normalizedMethod === "PUT" ||
+      normalizedMethod === "PATCH" ||
+      normalizedMethod === "DELETE")
   ) {
     return {
       allowed: false,
@@ -176,7 +212,12 @@ export function evaluatePublicBoundary(
     };
   }
 
-  if (normalizedMethod !== "GET" && normalizedMethod !== "HEAD" && !isGuestCheckoutPost) {
+  if (
+    !isAllowedEmdashAdminRequest &&
+    normalizedMethod !== "GET" &&
+    normalizedMethod !== "HEAD" &&
+    !isGuestCheckoutPost
+  ) {
     return {
       allowed: false,
       status: 405,
@@ -185,6 +226,10 @@ export function evaluatePublicBoundary(
   }
 
   const decodedPath = pathForms[pathForms.length - 1] ?? pathname;
+
+  if (isAllowedEmdashAdminRequest) {
+    return { allowed: true, status: 200 };
+  }
 
   if (GUEST_CHECKOUT_POST_PATH.test(decodedPath)) {
     if (normalizedMethod !== "POST") {
