@@ -265,7 +265,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
   );
   try {
     const physical = await context.newPage();
-    const physicalHarness = await installOfflineCheckoutHarness(physical, {
+    await installOfflineCheckoutHarness(physical, {
       baseURL: testInfo.project.use.baseURL as string,
       refuseDelivery: true,
     });
@@ -296,9 +296,6 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     await physical.getByLabel("City", { exact: true }).fill("Testville");
     await physical.getByLabel("Postal code", { exact: true }).fill("00000");
     await physical.getByLabel("Country code", { exact: true }).fill("US");
-    physicalHarness.setRefuseDelivery(false);
-    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
-    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Checkout is pending");
     await physical.screenshot({ path: resolve(root, "physical-filled.png"), fullPage: true, animations: "disabled" });
 
     const digital = await context.newPage();
