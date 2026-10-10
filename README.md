@@ -150,7 +150,7 @@ deployment message records the template-store SHA and the pinned Commerce
 commit. The preview check is intentionally the custom-domain URL
 `https://pr-N-playground.dinkuskit.com`, never a `workers.dev` URL.
 
-The only CI secret is `CLOUDFLARE_API_TOKEN`. Ryan should create a
+The only CI secret is `CLOUDFLARE_PLAYGROUND_API_TOKEN`. Ryan should create a
 Cloudflare API token with exactly `Account > Workers Scripts > Edit`, limited
 to account `cddb32366789cab1bdf4c25584dc1920`; it needs no Zone DNS, account
 read, payment, coupon, or secret permissions. Cloudflare-side approval is
@@ -163,7 +163,7 @@ CI always builds the playground in the secret-free `Playground build` job.
 The upload, preview check and `main` deploy run in a separate `Playground
 deployment` job only when the repository variable `PLAYGROUND_DEPLOY_ENABLED`
 is `true`. That job uses the GitHub environment `playground`, which must be
-the only place `CLOUDFLARE_API_TOKEN` is stored (never a repository
+the only place `CLOUDFLARE_PLAYGROUND_API_TOKEN` is stored (never a repository
 secret). By the owner's decision the environment has no required reviewer, so
 pushes to `main` deploy and same-repository pull requests upload `pr-N`
 previews without a click; fork pull requests never run the job. Anyone who can
