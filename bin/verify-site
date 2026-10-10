@@ -219,9 +219,6 @@ async function inspect(path, from = "crawl") {
   const type = response.headers.get("content-type") ?? "";
   const body = await response.text();
   if (type.includes("html")) {
-    if (/The product catalog is temporarily unavailable\./i.test(body)) {
-      result("Catalog availability", "FAIL", `${url.pathname} renders the catalog-unavailable state`);
-    }
     parseLinks(body, url);
     parseJsonLd(body, url);
     pages.set(url.pathname, {

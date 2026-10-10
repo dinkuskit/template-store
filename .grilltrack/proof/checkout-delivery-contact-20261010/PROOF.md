@@ -56,6 +56,17 @@ still carries `country: "US"`. `astro check` 0 errors; `vitest` unchanged
 (173 passed, `seed-demo-repeat` fails only for the sandbox font fetch);
 `check-features` ok; `grilltrack validate` valid.
 
+## Site crawl stays on the shipping profile
+
+`bin/verify-web`, `bin/verify-site` and `tests/workflows/verify-site-crawl.test.mjs`
+are back to main's versions. An earlier commit on this branch made the
+crawl fail on the catalog-unavailable notice and then pointed the crawl at
+the proof/native-development catalog to pass. The shipping profile
+fail-closes without a paired installed Commerce artifact, so that notice is
+its expected state; the crawl must keep exercising it (ClawSweeper P1 on
+`84e4efa`). CI run 38055645476 shows the only crawl failure on the shipping
+profile was that new check. Workflow tests 28 of 28 pass.
+
 ## Authority boundary
 
 The Commerce source pin (`8655f0c`, Commerce main containing #88 and #90) proves

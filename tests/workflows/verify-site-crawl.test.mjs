@@ -52,50 +52,6 @@ async function runVerifier(origin) {
   }
 }
 
-async function runCatalogAvailabilityFixture(notice) {
-  const { server, origin } = await listen((req, res) => {
-    const url = new URL(req.url ?? "/", origin);
-    if (url.pathname === "/") {
-      res.writeHead(200, { "content-type": "text/html" });
-      res.end(`<!doctype html><html><body><section data-commerce-catalog><p class="notice">${notice}</p></section></body></html>`);
-      return;
-    }
-    if (url.pathname === "/home") {
-      res.writeHead(302, { location: "/", "cache-control": "no-store" });
-      res.end();
-      return;
-    }
-    if (url.pathname === "/robots.txt") {
-      res.writeHead(200, { "content-type": "text/plain" });
-      res.end("User-agent: *\nAllow: /\n");
-      return;
-    }
-    if (url.pathname === "/sitemap.xml") {
-      res.writeHead(200, { "content-type": "application/xml" });
-      res.end(`<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>`);
-      return;
-    }
-    res.writeHead(404).end();
-  });
-  try {
-    return await runVerifier(origin);
-  } finally {
-    await new Promise((resolveClose) => server.close(resolveClose));
-  }
-}
-
-test("fails when a storefront page renders the catalog-unavailable state", async () => {
-  const result = await runCatalogAvailabilityFixture("The product catalog is temporarily unavailable.");
-  assert.notEqual(result.status, 0, result.stdout + result.stderr);
-  assert.match(`${result.stdout}\n${result.stderr}`, /Catalog availability/);
-});
-
-test("does not confuse checkout-unavailable copy with catalog unavailability", async () => {
-  const result = await runCatalogAvailabilityFixture("Checkout is unavailable.");
-  assert.equal(result.status, 0, result.stdout + result.stderr);
-  assert.doesNotMatch(result.stdout, /Catalog availability/);
-});
-
 test("drains a nested internal link discovered on a child page and can fail on it", async () => {
   const fetched = [];
   const { server, origin } = await listen((req, res) => {
