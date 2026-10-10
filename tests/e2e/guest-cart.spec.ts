@@ -97,6 +97,22 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   const priced = await adminPost(admin, SAVE_ROUTE, { catalogItemId: id, regular: "24", sale: "" });
   expect(priced.ok(), await priced.text()).toBe(true);
   expect(unwrap<{ saved: boolean }>(await priced.json()).saved).toBe(true);
+  const productSlug = `guest-cart-${testInfo.project.name}`;
+  const editorial = await adminPost(admin, "/_emdash/api/content/products", {
+    slug: productSlug,
+    status: "draft",
+    data: {
+      title: name,
+      categories: ["hats"],
+      commerce_item_id: id,
+      description: "A product entry created for the cart proof.",
+      visual_label: "CAP",
+    },
+  });
+  expect(editorial.status(), await editorial.text()).toBe(201);
+  const editorialId = unwrap<{ item: { id: string } }>(await editorial.json()).item.id;
+  const published = await adminPost(admin, `/_emdash/api/content/products/${editorialId}/publish`, {});
+  expect(published.ok(), await published.text()).toBe(true);
 
   const inventoryRequests: string[] = [];
   const shopperContext = await browser.newContext({ viewport: testInfo.project.use.viewport });
@@ -114,7 +130,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   expect(
     (await shopperContext.cookies()).filter((cookie) => /emdash|session|auth|token/i.test(cookie.name)),
   ).toEqual([]);
-  const card = shopper.locator(`[data-commerce-product="${id}"]`);
+  const card = shopper.locator(`[data-product-item="${productSlug}"]`);
   await expect(card.getByRole("button", { name: "Add to cart", exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(card.locator("[data-stock-value]")).toHaveCount(0);
   await expect(shopper.getByRole("link", { name: /Cart/ })).toBeVisible();
@@ -278,7 +294,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   const inStock = await adminPost(admin, STATUS_ROUTE, { catalogItemId: id, status: "in-stock" });
   expect(inStock.ok(), await inStock.text()).toBe(true);
   await shopper.goto("/");
-  await shopper.locator(`[data-commerce-product="${id}"]`).getByRole("button", { name: "Add to cart", exact: true }).click();
+  await shopper.locator(`[data-product-item="${productSlug}"]`).getByRole("button", { name: "Add to cart", exact: true }).click();
   await shopper.getByRole("link", { name: /Cart/ }).click();
   await expect(shopper.getByRole("heading", { name, exact: true })).toBeVisible();
   const savedBeforeQtyFail = readStoredIntent(

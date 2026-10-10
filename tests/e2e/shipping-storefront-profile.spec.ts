@@ -53,7 +53,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator("body")).toHaveAttribute("data-storefront-profile", "shipping");
   await expect(page.locator("[data-product-catalog] h2")).toHaveText("Products");
   await expect(page.locator("[data-catalog-guidance]")).toHaveAttribute("data-catalog-guidance-state", "unavailable");
-  await expect(page.locator("[data-catalog-guidance]")).toContainText("Products are not shown until the connected store can be reached");
+  await expect(page.locator("[data-catalog-guidance]")).toContainText("Products are not shown until the linked Commerce items can be reached");
   await expect(page.locator("[data-catalog-guidance]")).not.toContainText("added to your cart");
   await expect(page.locator("[data-product-catalog] .catalog-empty")).toHaveText("No products are published. Add products in EmDash admin to populate this collection.");
   await expect(page.getByRole("button", { name: "Add to cart", exact: true })).toHaveCount(0);
