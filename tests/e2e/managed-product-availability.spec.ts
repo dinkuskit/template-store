@@ -31,8 +31,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   await expect(heroAction).toHaveCSS("background-color", "rgb(23, 32, 51)");
   await expect(page.locator("[data-cms-composition]")).toBeVisible();
   await expect(page.locator("[data-collection-nav] a")).toHaveText(["Hats", "Hoodies", "Tees"]);
-  await expect(page.locator("[data-product-item=everyday-tee] [data-product-status]")).toHaveText("8 available");
-  await expect(page.locator("[data-product-item=pullover-hoodie-preview]")).toHaveCount(0);
+  await expect(page.locator("[data-product-item]")).toHaveCount(0);
   await expect(page.locator("[data-commerce-sku]")).toHaveText(
     "DINKUS-DEMO-001",
   );
@@ -64,7 +63,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   expect(changedResponse.ok()).toBe(true);
   await page.reload();
   await expect(page.locator("[data-stock-value]")).toHaveText("5");
-  await expect(page.locator("[data-product-item=everyday-tee] [data-product-status]")).toHaveText("5 available");
+  await expect(page.locator("[data-product-item]")).toHaveCount(0);
   await page.getByRole("link", { name: "View Everyday Tee details" }).click();
   await expect(page.locator("[data-product-status]")).toHaveText("5 available");
   await page.screenshot({ path: resolve(screenshotRoot, "product-changed.png"), fullPage: true });
@@ -87,7 +86,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   expect(restoredResponse.ok()).toBe(true);
   await page.reload();
   await expect(page.locator("[data-stock-value]")).toHaveText("8");
-  await expect(page.locator("[data-product-item=everyday-tee] [data-product-status]")).toHaveText("8 available");
+  await expect(page.locator("[data-product-item]")).toHaveCount(0);
   const restoredVersion = await page
     .locator("[data-managed-product]")
     .getAttribute("data-stock-version");

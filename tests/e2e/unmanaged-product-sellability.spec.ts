@@ -63,7 +63,7 @@ test("admin composition and public unmanaged availability stay operable", async 
     "true",
   );
   await expect(page.locator("[data-availability-label]")).toHaveText("In stock");
-  await expect(page.locator("[data-product-item=canvas-cap] [data-product-status]")).toHaveText("In stock");
+  await expect(page.locator("[data-product-item]")).toHaveCount(0);
   await expect(page.locator("[data-quantity-shown]")).toHaveText("never");
   await expect(
     page.locator("[data-unmanaged-product] [data-regular-price]"),
@@ -102,7 +102,7 @@ test("admin composition and public unmanaged availability stay operable", async 
   await expect(page.locator("[data-availability-label]")).toHaveText(
     "Out of stock",
   );
-  await expect(page.locator("[data-product-item=canvas-cap] [data-product-status]")).toHaveText("Out of stock");
+  await expect(page.locator("[data-product-item]")).toHaveCount(0);
   await expect(page.locator("[data-quantity-shown]")).toHaveText("never");
   await page.screenshot({
     path: resolve(screenshotRoot, "public-out-of-stock.png"),
@@ -131,7 +131,7 @@ test("admin composition and public unmanaged availability stay operable", async 
   await expect(page.locator("[data-availability-label]")).toHaveText(
     "Available on backorder",
   );
-  await expect(page.locator("[data-product-item=canvas-cap] [data-product-status]")).toHaveText("Available on backorder");
+  await expect(page.locator("[data-product-item]")).toHaveCount(0);
   await page.screenshot({
     path: resolve(screenshotRoot, "public-backorder.png"),
     fullPage: true,
