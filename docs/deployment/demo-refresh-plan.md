@@ -65,10 +65,14 @@ through an authorized read-only deployment inspection.
 ## Reviewable cutover packet
 
 The code candidate starts from TemplateStore main
-`50e7ec686db119e43a8b3921cd94f5227903160d`. It preserves the exact Commerce
-source pin `fca668447473a05dbe4c32897dc77d7e87ffac9a` and EmDash `1.2.0`.
-Record the final PR head and built artifact SHA-256 at handoff. Pin updates
-require their own compatibility evidence; this refresh changes no pin.
+`50e7ec686db119e43a8b3921cd94f5227903160d`. This refresh includes a Commerce
+pin update: the exact Commerce source pin moves from
+`8655f0c38dbb63f48137a822d4d6827eae122abe` to
+`fca668447473a05dbe4c32897dc77d7e87ffac9a` (Commerce #91, native public catalog
+routes). EmDash stays at `1.2.0`. Record the final PR head and built artifact
+SHA-256 at handoff. The repin carries its own compatibility evidence, a full
+`pnpm verify` on the repin pull request; that local evidence is not deployment
+authority, and the demo redeploy still needs the owner's separate approval.
 
 Safe local checks for that head:
 
