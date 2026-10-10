@@ -35,7 +35,7 @@ describe("TemplateStore playground", () => {
     expect(
       resolveGuestCheckoutAdmission({ runtime: null, catalog: null }),
     ).toBeNull();
-    expect(readFileSync("src/pages/cart.astro", "utf8")).toContain(
+    expect(readFileSync("src/features/guest-cart/present.ts", "utf8")).toContain(
       "Checkout unavailable",
     );
   });
