@@ -1,0 +1,71 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dinkuskit-template-playground",
+  "main": "./src/playground-worker.ts",
+  "account_id": "cddb32366789cab1bdf4c25584dc1920",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "compatibility_date": "2026-09-30",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "DINKUS_DEMO_NOINDEX": "1"
+  },
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/client",
+    "run_worker_first": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PLAYGROUND_DB",
+        "class_name": "EmDashPreviewDB"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["EmDashPreviewDB"]
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "playground.dinkuskit.com",
+      "custom_domain": true,
+      "previews_enabled": true
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "PLAYGROUND_CREATION_LIMITER",
+      "namespace_id": "2026101011",
+      "simple": {
+        "limit": 5,
+        "period": 60
+      }
+    },
+    {
+      "name": "PLAYGROUND_GLOBAL_LIMITER",
+      "namespace_id": "2026101012",
+      "simple": {
+        "limit": 100,
+        "period": 60
+      }
+    }
+  ],
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "PLAYGROUND_DB",
+          "class_name": "EmDashPreviewDB"
+        }
+      ]
+    }
+  }
+}
