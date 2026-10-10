@@ -244,6 +244,7 @@ function renderCart(root: Element): void {
   const checkout = root.querySelector("[data-guest-cart-checkout]");
   const coupon = root.querySelector("[data-guest-cart-coupon]");
   const reason = root.querySelector("[data-guest-cart-checkout-reason]");
+  const delivery = root.querySelector("[data-guest-cart-delivery]");
   const retry = root.querySelector("[data-guest-cart-retry]");
   const checkoutRecoveryButton = root.querySelector("[data-guest-cart-recover]");
   if (empty instanceof HTMLElement) {
@@ -262,6 +263,9 @@ function renderCart(root: Element): void {
   }
   if (reason instanceof HTMLElement) {
     reason.textContent = current.checkoutReason;
+  }
+  if (delivery instanceof HTMLElement) {
+    delivery.hidden = !current.needsDelivery;
   }
   if (retry instanceof HTMLButtonElement) {
     retry.disabled = current.pending;

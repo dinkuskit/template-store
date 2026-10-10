@@ -19,6 +19,7 @@ export interface PublicCommerceProduct {
   id: string;
   name: string;
   sku: string;
+  fulfillment?: "physical" | "digital";
   price: PublicPriceView;
   availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
   image: PublicCommerceImage | null;
@@ -40,6 +41,7 @@ export type CommerceCatalogSnapshot =
       found: true;
       name: string;
       sku: string;
+      fulfillment: "physical" | "digital";
       price: PublicPriceView;
       availability: Readonly<{ status: string; sellable: boolean; listable: boolean }>;
     }>;
@@ -99,7 +101,9 @@ export async function readCommerceCatalogSnapshots(
     const byId = new Map(products.map(product => [product.id, product]));
     return ids.map(id => {
       const product = byId.get(id);
-      return product ? { ...product, found: true as const } : { id, found: false as const };
+      return product
+        ? { ...product, fulfillment: product.fulfillment ?? "physical", found: true as const }
+        : { id, found: false as const };
     });
   }
   const storage = await openCommerceCatalogStorage();
@@ -125,6 +129,7 @@ export async function readCommerceCatalogSnapshots(
       found: true,
       name: publicName,
       sku: publicSku,
+      fulfillment: (product as CatalogStorageRecord).fulfillment ?? "physical",
       price,
       availability: {
         status: availability.status,

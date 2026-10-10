@@ -43,6 +43,8 @@ type HarnessOptions = {
   synthetic?: boolean;
   gateInitialPrepare?: boolean;
   statusAlwaysPending?: boolean;
+  digital?: boolean;
+  refuseDelivery?: boolean;
 };
 
 function projection(state: ProjectionState, attemptId: string | null) {
@@ -77,13 +79,14 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, digital = false, refuseDelivery = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
   let statusCalls = 0;
   let prepareCalls = 0;
   let startCalls = 0;
+  let refuseDeliveryState = refuseDelivery;
   let capabilityId = "fixture-cap-1";
   let releaseInitialPrepare: (() => void) | null = null;
   const initialPrepareGate = gateInitialPrepare
@@ -118,7 +121,16 @@ export async function installOfflineCheckoutHarness(
       }
       if (synthetic && path === RUNTIME_START && route.request().method() === "POST") {
         startCalls += 1;
-        expect(route.request().postDataJSON()).toEqual({ lines: [{ catalogItemId: "fixture-shirt", quantity: 1 }] });
+        const requestBody = route.request().postDataJSON();
+        expect(requestBody.lines).toEqual([{ catalogItemId: "fixture-shirt", quantity: 1 }]);
+        expect(requestBody.contact.email).toMatch(/@/);
+        if (refuseDeliveryState) {
+          await json(route, {
+            ok: false,
+            error: { code: "INVALID_CART", message: "Delivery address is required" },
+          }, 400);
+          return;
+        }
         if (route.request().headers()["x-commerce-guest-capability"] !== `${capabilityId}.secret`) {
           await json(route, { success: false }, 403);
           return;
@@ -150,6 +162,7 @@ export async function installOfflineCheckoutHarness(
             sku: "FIXTURE",
             price: { listable: true, regularText: "$24.00", saleText: null },
             availability: { status: "in-stock", sellable: true, listable: true },
+            ...(digital ? { fulfillment: "digital" } : {}),
           }],
         });
         return;
@@ -178,6 +191,7 @@ export async function installOfflineCheckoutHarness(
   return {
     counts: () => ({ statusCalls, prepareCalls, startCalls }),
     releaseInitialPrepare: () => releaseInitialPrepare?.(),
+    setRefuseDelivery: (value: boolean) => { refuseDeliveryState = value; },
     paymentURL: SYNTHETIC_PAYMENT_URL,
     blocked,
   };

@@ -19,7 +19,7 @@ const { checkoutAdmission = null } = Astro.props;
       <p>Commerce uses your email for checkout. A delivery address is required only when the basket contains a physical item.</p>
       <label for="guest-cart-email">Email</label>
       <input id="guest-cart-email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" />
-      <div class="guest-cart-delivery" data-guest-cart-delivery>
+      <div class="guest-cart-delivery" data-guest-cart-delivery hidden>
         <h2>Delivery address</h2>
         <p>Complete these fields for a physical order. We do not collect a billing address.</p>
         <label for="guest-cart-delivery-name">Recipient</label>

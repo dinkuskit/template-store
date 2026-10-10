@@ -250,3 +250,71 @@ test("offline browser contexts cannot reuse cart state or cookies", async ({ bro
     expect((await second.cookies()).some((cookie) => cookie.name === "offline-isolation-sentinel")).toBe(false);
   } finally { await second.close(); }
 });
+
+test("checkout contact proof covers physical validation, Commerce refusal, filled address, and digital omission", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  test.skip(testInfo.project.name !== "shipping-chromium-desktop", "Proof screenshots are captured once on desktop.");
+  const root = resolve("runs/checkout-contact-proof", testInfo.project.name);
+  await mkdir(root, { recursive: true });
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
+  try {
+    const physical = await context.newPage();
+    const physicalHarness = await installOfflineCheckoutHarness(physical, {
+      baseURL: testInfo.project.use.baseURL as string,
+      refuseDelivery: true,
+    });
+    await physical.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+        version: 1,
+        lines: [{ id: "fixture-shirt", quantity: 1 }],
+      }));
+    });
+    await physical.goto("/cart");
+    await expect(physical.getByRole("heading", { name: "Delivery address" })).toBeVisible();
+    await physical.screenshot({ path: resolve(root, "physical-empty.png"), fullPage: true, animations: "disabled" });
+
+    await physical.getByLabel("Email", { exact: true }).fill("proof@example.test");
+    await physical.getByLabel("Recipient", { exact: true }).fill("Proof shopper");
+    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Complete the recipient");
+    await physical.screenshot({ path: resolve(root, "physical-validation-error.png"), fullPage: true, animations: "disabled" });
+
+    await physical.getByLabel("Recipient", { exact: true }).fill("");
+    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Delivery address is required");
+    await physical.screenshot({ path: resolve(root, "physical-commerce-refusal.png"), fullPage: true, animations: "disabled" });
+
+    await physical.getByLabel("Recipient", { exact: true }).fill("Proof shopper");
+    await physical.getByLabel("Address line 1", { exact: true }).fill("1 Example Way");
+    await physical.getByLabel("City", { exact: true }).fill("Testville");
+    await physical.getByLabel("Postal code", { exact: true }).fill("00000");
+    await physical.getByLabel("Country code", { exact: true }).fill("US");
+    physicalHarness.setRefuseDelivery(false);
+    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Checkout is pending");
+    await physical.screenshot({ path: resolve(root, "physical-filled.png"), fullPage: true, animations: "disabled" });
+
+    const digital = await context.newPage();
+    await installOfflineCheckoutHarness(digital, {
+      baseURL: testInfo.project.use.baseURL as string,
+      digital: true,
+    });
+    await digital.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+        version: 1,
+        lines: [{ id: "fixture-shirt", quantity: 1 }],
+      }));
+    });
+    await digital.goto("/cart");
+    await expect(digital.getByRole("heading", { name: "Delivery address" })).toBeHidden();
+    await digital.screenshot({ path: resolve(root, "digital-only-no-address.png"), fullPage: true, animations: "disabled" });
+  } finally {
+    await context.close();
+  }
+});
