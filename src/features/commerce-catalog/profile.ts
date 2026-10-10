@@ -1,5 +1,11 @@
+export interface CommerceCatalogProfileEnv {
+  ASTRO_ADAPTER?: string;
+  DINKUS_CATALOG_PROFILE?: string;
+  DINKUS_HOSTING_PROFILE?: string;
+}
+
 export function usesNativeCommerceCatalog(
-  env: Pick<NodeJS.ProcessEnv, "ASTRO_ADAPTER" | "DINKUS_CATALOG_PROFILE" | "DINKUS_HOSTING_PROFILE">,
+  env: CommerceCatalogProfileEnv,
 ): boolean {
   return env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
     env.ASTRO_ADAPTER === "cloudflare" ||
