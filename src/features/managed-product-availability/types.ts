@@ -19,7 +19,6 @@ export type ManagedProductAvailability = Readonly<{
     version: string;
   }>;
   provenance: Readonly<{
-    blocks: string;
     commerce: string;
     inventory: string;
   }>;
