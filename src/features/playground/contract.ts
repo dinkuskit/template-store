@@ -16,6 +16,12 @@ export function applyPlaygroundNoIndex(headers: Headers): void {
   headers.set("X-Robots-Tag", "noindex, nofollow");
 }
 
+/** A rewritten HTML body no longer matches the upstream length or validator. */
+export function dropRewrittenBodyHeaders(headers: Headers): void {
+  headers.delete("Content-Length");
+  headers.delete("ETag");
+}
+
 export function injectPlaygroundNoIndex(html: string): string {
   if (/<meta\s+name=["']robots["']/i.test(html)) return html;
   return html.replace(

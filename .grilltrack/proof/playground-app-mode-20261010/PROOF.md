@@ -59,19 +59,42 @@ Storefront and checkout for visitor B:
 No payment, coupon or Stripe binding exists in the playground build, and no
 checkout path admits an order on either Commerce mount.
 
-## Expiry (from upstream source, not observed live)
+## Expiry and token replay (observed live, short TTL)
 
-A one-hour wait was not run. The expiry comes from EmDash 1.2.0:
+Second run, same day, on the review-fix head (adds the Content-Length fix).
+EmDash hard-codes the playground TTL at 3600 seconds, so for this run only the
+built `dist/server/virtual_astro_middleware.mjs` was edited from
+`DEFAULT_TTL = 3600` to `DEFAULT_TTL = 20`, then restored. Nothing else changed
+and nothing was committed from that edit. `.wrangler/state` was cleared first.
 
-- `dist/db/playground-middleware.mjs`: `ensurePlaygroundInitialized` calls
-  `setTtlAlarm(ttl)` on the visitor's Durable Object before seeding; the cookie
-  carries the same `Max-Age=3600` seen above.
-- `dist/do-class-*.mjs`: `setTtlAlarm` sets `ctx.storage.setAlarm(now + ttl)`, and
-  `alarm()` calls `dropAllTables()`, which drops every user table in that store.
+| Step | Result |
+| --- | --- |
+| Visitor A opens `/playground` | cookie `Max-Age=20`; init 200 |
+| A creates page `expiry-marker` | 201 |
+| A lists pages before the TTL | `expiry-marker`, `home` |
+| 35 s later, same Worker process: A lists pages with the same token | 404 `COLLECTION_NOT_FOUND`; the log shows `no such table` for `ec_pages`, `_emdash_collections`, `options` |
+| Same: A tries to write a page | 500, nothing written (the tables no longer exist) |
+| Same: A opens `/_emdash/admin` | 200 admin shell only; every data call behind it fails as above |
+| Worker restarted, A replays the expired token | 200, pages `home` only: a freshly seeded store, `expiry-marker` gone |
+| Same: A writes `after-expiry` | 201 in that fresh store |
+| 30 s later: A lists pages again | 404 `COLLECTION_NOT_FOUND`: the re-created store expired on its own alarm |
+
+What this shows: when the TTL alarm fires, EmDash drops every table in that
+visitor's Durable Object, so nothing a visitor wrote survives expiry. Replaying
+an expired token never reaches earlier data: it either fails against the empty
+store or, on a fresh Worker, gets a new seeded sandbox with a new TTL, which is
+exactly what any new visitor gets. The token is a random server-minted ULID in
+an HttpOnly cookie, not an account, so there is nothing to reassign: a stolen
+or guessed token only ever reaches that one throwaway store (see the guessed
+token row above), and it is still blocked from the escape routes listed above.
+
+Upstream code behind this (EmDash 1.2.0): `dist/db/playground-middleware.mjs`
+calls `setTtlAlarm(ttl)` before seeding; `dist/do-class-*.mjs` `alarm()` calls
+`dropAllTables()`.
 
 ## Limits of this proof
 
-Local `wrangler dev` only. It does not prove the Cloudflare deployment, the
+Local `wrangler dev` only. The expiry run used a 20-second TTL; production uses EmDash's 3600 seconds. It does not prove the Cloudflare deployment, the
 `playground.dinkuskit.com` route, the live rate limits or preview links; those
 wait for the owner's Cloudflare setup approval (template-store #57).
 No product decision or GrillTrack ledger entry was changed.

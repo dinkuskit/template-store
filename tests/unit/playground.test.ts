@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { resolveGuestCheckoutAdmission } from "../../src/features/guest-cart/checkout-admission.js";
 import {
   applyPlaygroundNoIndex,
+  dropRewrittenBodyHeaders,
   injectPlaygroundNoIndex,
   playgroundDatabaseKey,
 } from "../../src/features/playground/contract.js";
@@ -46,5 +47,17 @@ describe("TemplateStore playground", () => {
     expect(headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
     expect(injectPlaygroundNoIndex("<html><head><title>Store</title></head>"))
       .toContain('<meta name="robots" content="noindex, nofollow" />');
+  });
+
+  it("drops length and validator headers once the HTML body is rewritten", () => {
+    const headers = new Headers({
+      "Content-Length": "12",
+      ETag: '"abc"',
+      "Content-Type": "text/html",
+    });
+    dropRewrittenBodyHeaders(headers);
+    expect(headers.has("Content-Length")).toBe(false);
+    expect(headers.has("ETag")).toBe(false);
+    expect(headers.get("Content-Type")).toBe("text/html");
   });
 });
