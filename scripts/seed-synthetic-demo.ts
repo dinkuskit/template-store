@@ -674,10 +674,12 @@ async function seedDemoProducts(): Promise<void> {
     stdio: "inherit",
   });
 
-  const production = parseWranglerConfig(readConfig(resolve(cwd, PRODUCTION_CONFIG_PATH)));
+  const productionConfig = readConfig(resolve(cwd, PRODUCTION_CONFIG_PATH));
+  const production = parseWranglerConfig(productionConfig);
   assertProductionConfig(production);
   const expectedId = readFileSync(resolve(cwd, LOCAL_ID_PATH), "utf8").trim();
-  const local = parseWranglerConfig(readConfig(resolve(cwd, LOCAL_CONFIG_PATH)));
+  const localConfig = readConfig(resolve(cwd, LOCAL_CONFIG_PATH));
+  const local = parseWranglerConfig(localConfig);
   const identity = assertLocalConfig(local, expectedId);
   const persistPath = persistInsideRepo(cwd, args.persist);
 
@@ -708,7 +710,7 @@ async function seedDemoProducts(): Promise<void> {
       database,
       cwd,
       args.proveSentinel,
-      process.env.DINKUS_CATALOG_PROFILE ?? readCatalogProfile(local) ?? readCatalogProfile(production),
+      process.env.DINKUS_CATALOG_PROFILE ?? readCatalogProfile(localConfig) ?? readCatalogProfile(productionConfig),
     );
   } finally {
     await proxy.dispose();
