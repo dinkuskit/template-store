@@ -244,6 +244,7 @@ describe("guest cart snapshot presentation", () => {
         found: true,
         name: "hat-1",
         sku: "",
+        fulfillment: "physical",
         price: { listable: false, regularText: null, saleText: null },
         availability: { status: "in-stock", sellable: false, listable: false },
       },
