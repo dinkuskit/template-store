@@ -159,10 +159,15 @@ still required for the `playground.dinkuskit.com` custom domain, its
 rate-limit namespaces. This change intentionally performs no deploy or
 resource creation.
 
-CI always builds the playground, but the upload, preview check and `main`
-deploy steps run only when the repository variable
-`PLAYGROUND_DEPLOY_ENABLED` is `true`. Set it after the one-time Cloudflare
-setup above is approved. Wrangler deploys the build's generated
+CI always builds the playground in the secret-free `Playground build` job.
+The upload, preview check and `main` deploy run in a separate `Playground
+deployment` job only when the repository variable `PLAYGROUND_DEPLOY_ENABLED`
+is `true`. That job uses the GitHub environment `playground`, which must have
+required reviewers and must be the only place `CLOUDFLARE_PLAYGROUND_API_TOKEN`
+is stored, so the token never reaches a run (or the pull request code it
+builds) until an owner approves that run. Create the environment, move the
+token into it, and set the variable after the one-time Cloudflare setup above
+is approved. Wrangler deploys the build's generated
 `dist/server/wrangler.json` (from `wrangler.playground.jsonc`, whose `main`
 stays `src/playground-worker.ts` so the Astro build can resolve it).
 
