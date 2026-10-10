@@ -153,7 +153,6 @@ export function evaluatePublicBoundary(
   env: Record<string, unknown> = process.env,
 ): SecurityPolicyCheck {
   const normalizedMethod = method.toUpperCase();
-  const allowEmdashAdmin = emdashAdminEnabled(env);
 
   let pathForms: string[];
   let searchForms: string[];
@@ -168,6 +167,14 @@ export function evaluatePublicBoundary(
     };
   }
 
+  // Cloudflare Access guards the literal /_emdash admin and API prefixes, so
+  // only a raw path already in that namespace may pass, and every decoded form
+  // must stay inside it. Encoded aliases such as /%5femdash/admin stay blocked.
+  const allowEmdashAdmin =
+    emdashAdminEnabled(env) &&
+    isEmdashAdminPath(pathname) &&
+    pathForms.every(isEmdashAdminPath);
+
   // 1. Fail-closed against path traversal, dev-bypass, or administrative endpoints,
   // including percent-encoded and double-encoded forms.
   for (const pathForm of pathForms) {
@@ -175,7 +182,7 @@ export function evaluatePublicBoundary(
       if (isDisallowedTraversalOrTarget(
         pathForm,
         searchForm,
-        allowEmdashAdmin && isEmdashAdminPath(pathForm),
+        allowEmdashAdmin,
       )) {
         return {
           allowed: false,
@@ -187,8 +194,7 @@ export function evaluatePublicBoundary(
   }
 
   const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
-  const isAllowedEmdashAdminRequest =
-    allowEmdashAdmin && pathForms.some(isEmdashAdminPath);
+  const isAllowedEmdashAdminRequest = allowEmdashAdmin;
 
   // 2. Reject mutations and non-read HTTP methods, except the three exact
   // Commerce guest POSTs admitted below.

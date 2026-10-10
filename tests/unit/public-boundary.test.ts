@@ -186,6 +186,16 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("POST", "/_emdash/api/content/pages/home", "", undefined, env).allowed).toBe(true);
   });
 
+  it("keeps encoded EmDash admin and API prefixes blocked when enabled", () => {
+    const env = { DINKUS_EMDASH_ADMIN_ENABLED: "1" };
+    expect(evaluatePublicBoundary("GET", "/%5femdash/admin", "", undefined, env).status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/%5Femdash/api/content", "", undefined, env).allowed).toBe(false);
+    expect(evaluatePublicBoundary("POST", "/%5femdash/api/content/pages/home", "", undefined, env).allowed).toBe(false);
+    expect(evaluatePublicBoundary("GET", "/%255femdash/admin", "", undefined, env).status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/_emdash/%61dmin", "", undefined, env).status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/_EMDASH/admin", "", undefined, env).status).toBe(403);
+  });
+
   it("denies dev-bypass in path or query with 403", () => {
     expect(evaluatePublicBoundary("GET", "/_emdash/api/setup/dev-bypass").status).toBe(403);
     expect(evaluatePublicBoundary("GET", "/", "?dev-bypass=1").status).toBe(403);
