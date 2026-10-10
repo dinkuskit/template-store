@@ -32,6 +32,16 @@ function fixture() {
     compareAndSet: writes, query: async () => ({ items: [], hasMore: false }) };
   const ctx = { plugin: { id: "dinkus-commerce", version: "0.0.0" },
     site: { url: config.commerceOrigin },
+    settings: { getVersioned: async () => ({
+      revision: "settings-1",
+      value: {
+        recordKind: "merchant-store-settings",
+        storeCountry: "US",
+        sellingCountries: ["US"],
+        shippingCountries: ["US"],
+        requirePhoneNumber: false,
+      },
+    }) },
     storage: Object.fromEntries(Object.values(SANDBOX_GUEST_CHECKOUT_STORAGE).map(name => [name, collection])),
   } as unknown as PluginContext;
   const route = { input: {}, request: { url: config.commerceOrigin + "/api/plugins/commerce/guest-prepare",

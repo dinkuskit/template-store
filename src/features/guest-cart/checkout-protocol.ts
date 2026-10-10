@@ -41,7 +41,7 @@ export type GuestCheckoutWireResult =
       }>;
       checkout: GuestCheckoutProjection;
     }>
-  | Readonly<{ ok: false; error: { code: string; message: string } }>;
+  | Readonly<{ ok: false; error: GuestCheckoutError }>;
 
 export type GuestCheckoutRetention = Readonly<{
   capabilityId: string;
@@ -63,8 +63,34 @@ export interface GuestCheckoutTransport {
 
 export type GuestCheckoutCall =
   | Readonly<{ kind: "prepare" }>
-  | Readonly<{ kind: "start"; intent: GuestCartIntent; couponCode?: string }>
+  | Readonly<{ kind: "start"; intent: GuestCartIntent; couponCode?: string; contact?: GuestCheckoutContact }>
   | Readonly<{ kind: "status"; attemptId?: string }>;
+
+export type GuestCheckoutDelivery = Readonly<{
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region?: string;
+  postalCode: string;
+  country: string;
+}>;
+
+export type GuestCheckoutContact = Readonly<{
+  email: string;
+  delivery?: GuestCheckoutDelivery;
+}>;
+
+export type GuestCheckoutCouponReason =
+  | "not-found" | "not-started" | "expired" | "minimum-not-met"
+  | "no-qualifying-items" | "used-up" | "try-later" | "not-applicable";
+
+export type GuestCheckoutError = Readonly<{
+  code: string;
+  message: string;
+  reason?: GuestCheckoutCouponReason;
+  minimum?: Readonly<{ currency: "USD"; minor: string }>;
+}>;
 
 export type GuestCheckoutCallResult = Readonly<{
   result: GuestCheckoutWireResult | null;
@@ -145,20 +171,28 @@ function unwrap(body: unknown): unknown {
 }
 
 export function parseGuestCheckoutWireResult(body: unknown): GuestCheckoutWireResult | null {
-  if (isObject(body) && body.success === false && isObject(body.error) &&
-      typeof body.error.code === "string" && typeof body.error.message === "string") {
+  const errorValue = (value: unknown): GuestCheckoutError | null => {
+    if (!isObject(value) || typeof value.code !== "string" || typeof value.message !== "string") return null;
+    const reasons = ["not-found", "not-started", "expired", "minimum-not-met", "no-qualifying-items", "used-up", "try-later", "not-applicable"];
+    if (value.reason !== undefined && (typeof value.reason !== "string" || !reasons.includes(value.reason))) return null;
+    if (value.minimum !== undefined &&
+        (!isObject(value.minimum) || value.minimum.currency !== "USD" ||
+          typeof value.minimum.minor !== "string" || !/^-?[0-9]+$/u.test(value.minimum.minor))) return null;
     return {
-      ok: false,
-      error: { code: body.error.code, message: body.error.message },
+      code: value.code,
+      message: value.message,
+      ...(value.reason === undefined ? {} : { reason: value.reason as GuestCheckoutCouponReason }),
+      ...(value.minimum === undefined ? {} : { minimum: value.minimum as GuestCheckoutError["minimum"] }),
     };
-  }
+  };
+  if (isObject(body) && body.success === false && isObject(body.error) &&
+      errorValue(body.error)) return { ok: false, error: errorValue(body.error)! };
   const value = unwrap(body);
   if (!isObject(value) || typeof value.ok !== "boolean") return null;
   if (!value.ok) {
-    if (!isObject(value.error) ||
-        typeof value.error.code !== "string" ||
-        typeof value.error.message !== "string") return null;
-    return { ok: false, error: { code: value.error.code, message: value.error.message } };
+    const error = errorValue(value.error);
+    if (!error) return null;
+    return { ok: false, error };
   }
   if (typeof value.capabilityId !== "string" || !safeId(value.capabilityId)) return null;
   const checkout = projectCheckout(value.checkout);
@@ -275,8 +309,8 @@ function requestFor(call: GuestCheckoutCall, retention: GuestCheckoutRetention |
     quantity: line.quantity,
   }));
   const body = call.couponCode
-    ? { lines, couponCode: call.couponCode }
-    : { lines };
+    ? { lines, couponCode: call.couponCode, ...(call.contact ? { contact: call.contact } : {}) }
+    : { lines, ...(call.contact ? { contact: call.contact } : {}) };
   return { endpoint: GUEST_CHECKOUT_START_ENDPOINT, body, capability: retention.capability };
 }
 
@@ -334,7 +368,6 @@ export async function callGuestCheckout(
       redirect: "error",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    if (!response.ok) return { result: null, failure: "http" };
     const rawBody = await readBoundedResponseBody(response);
     if (rawBody === null) {
       return { result: null, failure: "response-too-large" };
@@ -343,10 +376,11 @@ export async function callGuestCheckout(
     try {
       body = JSON.parse(rawBody);
     } catch {
-      return { result: null, failure: "wrong-shape" };
+      return { result: null, failure: response.ok ? "wrong-shape" : "http" };
     }
     const result = parseGuestCheckoutWireResult(body);
-    if (!result) return { result: null, failure: "wrong-shape" };
+    if (!result) return { result: null, failure: response.ok ? "wrong-shape" : "http" };
+    if (!response.ok) return { result, failure: null };
     if (retention && result.ok && result.capabilityId !== retention.capabilityId) {
       return { result: null, failure: "association" };
     }
@@ -390,7 +424,7 @@ export function strictStripeCheckoutUrl(value: string | null): string | null {
 
 export type GuestCheckoutController = Readonly<{
   prepare(): Promise<GuestCheckoutCallResult>;
-  start(intent: GuestCartIntent, couponCode?: string): Promise<GuestCheckoutCallResult>;
+  start(intent: GuestCartIntent, couponCode?: string, contact?: GuestCheckoutContact): Promise<GuestCheckoutCallResult>;
   status(): Promise<GuestCheckoutCallResult>;
   canStart(): boolean;
   canPrepareNew(): boolean;
@@ -461,7 +495,7 @@ export function createGuestCheckoutController(options: {
     status,
     canStart: () => startAllowed && !busy,
     canPrepareNew,
-    start: async (intent, couponCode) => {
+    start: async (intent, couponCode, contact) => {
       const retention = readGuestCheckoutRetention(options.storage);
       if (!options.admitted) return { result: null, failure: "storage-unavailable" };
       if (!retention) return { result: null, failure: "storage-unavailable" };
@@ -480,7 +514,18 @@ export function createGuestCheckoutController(options: {
             return { result: null, failure: "storage-unavailable" };
           }
         } catch { return { result: null, failure: "storage-unavailable" }; }
-        const response = await callGuestCheckout(start, retention, options.transport);
+        const response = await callGuestCheckout(
+          contact === undefined
+            ? start
+            : {
+                kind: "start",
+                intent,
+                ...(couponCode ? { couponCode } : {}),
+                contact,
+              },
+          retention,
+          options.transport,
+        );
         if (response.failure || !response.result || !response.result.ok) return response;
         if (!updateGuestCheckoutAttempt(options.storage, response.result)) {
           return { result: null, failure: "association" };

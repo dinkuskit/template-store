@@ -66,7 +66,7 @@ through an authorized read-only deployment inspection.
 
 The code candidate starts from TemplateStore main
 `50e7ec686db119e43a8b3921cd94f5227903160d`. It preserves the exact Commerce
-source pin `938cb06cc6c0a1e7f457e514076d608219e38c65` and EmDash `1.2.0`.
+source pin `8655f0c38dbb63f48137a822d4d6827eae122abe` and EmDash `1.2.0`.
 Record the final PR head and built artifact SHA-256 at handoff. Pin updates
 require their own compatibility evidence; this refresh changes no pin.
 

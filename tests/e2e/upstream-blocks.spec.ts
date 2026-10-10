@@ -389,7 +389,9 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
     const snapshotRoot = resolve(".artifacts/e2e/migration-snapshots", `${testInfo.project.name}-${process.pid}-${Date.now()}`);
     const backupPath = resolve(snapshotRoot, "pre-apply.db");
     const refusalPath = resolve(snapshotRoot, "existing-snapshot.db");
-    const migrationArgs = [resolve("scripts/migrate-home-layout.mjs"), "--apply", `--base-url=${testInfo.project.use.baseURL as string}`];
+    const migrationBaseUrl = new URL(testInfo.project.use.baseURL as string);
+    migrationBaseUrl.hostname = "127.0.0.1";
+    const migrationArgs = [resolve("scripts/migrate-home-layout.mjs"), "--apply", `--base-url=${migrationBaseUrl.href}`];
     await mkdir(snapshotRoot, { recursive: true });
     await copyFile(resolve(".artifacts/e2e/content.db"), refusalPath);
     expect(() => execFileSync(
