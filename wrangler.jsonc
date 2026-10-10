@@ -13,6 +13,7 @@
     "nodejs_compat"
   ],
   "vars": {
+    "DINKUS_CATALOG_PROFILE": "native-development",
     "DINKUS_STOREFRONT_PROFILE": "proof",
     "DINKUS_DEMO_NOINDEX": "1",
     "DINKUS_EMDASH_ADMIN_ENABLED": "1"

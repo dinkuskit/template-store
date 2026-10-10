@@ -24,7 +24,7 @@
     "predev": "pnpm prepare:sources",
     "dev": "astro dev",
     "prebuild": "pnpm prepare:sources",
-    "build": "astro build",
+    "build": "node scripts/build-demo.mjs",
     "pretypecheck": "pnpm prepare:sources",
     "typecheck": "astro check",
     "pretest": "pnpm prepare:sources",
