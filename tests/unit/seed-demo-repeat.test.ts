@@ -72,11 +72,14 @@ describe("synthetic demo D1 seed", () => {
       expect(first.stdout).toContain("DEMO-HOSTED-CAP");
       expect(first.stdout).toContain("DEMO-HOSTED-MUG");
       expect(first.stdout).toContain("\"nonDemo\":1");
+      expect(first.stdout).toContain("\"event\":\"seed.cms.demo-products\"");
+      expect(first.stdout).toContain("\"created\":9");
       const second = runSeed(["--prove-sentinel", "--persist", persist]);
       expect(second.status, second.stderr || second.stdout).toBe(0);
       expect(second.stdout).toContain("\"unchanged\":true");
       expect(second.stdout).toContain("\"home\":\"home\"");
       expect(second.stdout).toContain("DEMO-HOSTED-CAP");
+      expect(second.stdout).toContain("\"skipped\":9");
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
