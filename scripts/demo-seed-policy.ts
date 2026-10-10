@@ -35,16 +35,29 @@ const MAX_DATABASE_ID = "ffffffff-ffff-ffff-ffff-ffffffffffff";
 export interface DemoProductSeed {
   commandId: string;
   name: string;
+  description: string;
   sku: string;
   regularMinor: string;
   saleMinor: string | null;
-  availability: "in-stock";
+  availability: "in-stock" | "out-of-stock";
+  variant?: {
+    optionId: string;
+    optionLabel: string;
+    values: readonly {
+      valueId: string;
+      label: string;
+      commandId: string;
+      name: string;
+      sku: string;
+    }[];
+  };
 }
 
 export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
   {
     commandId: "seed-demo-shirt",
     name: "Dinkus Demo Heavyweight T-Shirt",
+    description: "A substantial cotton tee with an easy everyday fit.",
     sku: "DEMO-HOSTED-SHIRT",
     regularMinor: "3200",
     saleMinor: null,
@@ -53,6 +66,7 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
   {
     commandId: "seed-demo-cap",
     name: "Dinkus Demo Structured Cap",
+    description: "A six-panel cap with a clean, structured crown.",
     sku: "DEMO-HOSTED-CAP",
     regularMinor: "2800",
     saleMinor: "2400",
@@ -61,16 +75,92 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
   {
     commandId: "seed-demo-mug",
     name: "Dinkus Demo Ceramic Mug",
+    description: "A durable everyday mug for coffee, tea, or a desk-side drink.",
     sku: "DEMO-HOSTED-MUG",
     regularMinor: "1800",
     saleMinor: null,
     availability: "in-stock",
   },
+  {
+    commandId: "seed-demo-hoodie",
+    name: "Dinkus Demo Everyday Hoodie",
+    description: "A midweight pullover layer with a relaxed everyday fit.",
+    sku: "DEMO-HOSTED-HOODIE-S",
+    regularMinor: "5600",
+    saleMinor: null,
+    availability: "in-stock",
+    variant: {
+      optionId: "size",
+      optionLabel: "Size",
+      values: [
+        {
+          valueId: "small",
+          label: "Small",
+          commandId: "seed-demo-hoodie-small",
+          name: "Dinkus Demo Everyday Hoodie",
+          sku: "DEMO-HOSTED-HOODIE-S",
+        },
+        {
+          valueId: "medium",
+          label: "Medium",
+          commandId: "seed-demo-hoodie-medium",
+          name: "Dinkus Demo Everyday Hoodie",
+          sku: "DEMO-HOSTED-HOODIE-M",
+        },
+      ],
+    },
+  },
+  {
+    commandId: "seed-demo-tote",
+    name: "Dinkus Demo Canvas Tote",
+    description: "A sturdy carryall for daily errands and market runs.",
+    sku: "DEMO-HOSTED-TOTE",
+    regularMinor: "2600",
+    saleMinor: null,
+    availability: "in-stock",
+  },
+  {
+    commandId: "seed-demo-throw",
+    name: "Dinkus Demo Woven Throw",
+    description: "A soft woven layer for the sofa, reading chair, or bed.",
+    sku: "DEMO-HOSTED-THROW",
+    regularMinor: "4800",
+    saleMinor: "4200",
+    availability: "in-stock",
+  },
+  {
+    commandId: "seed-demo-tray",
+    name: "Dinkus Demo Catchall Tray",
+    description: "A compact tray for keys, glasses, and other small essentials.",
+    sku: "DEMO-HOSTED-TRAY",
+    regularMinor: "2200",
+    saleMinor: null,
+    availability: "in-stock",
+  },
+  {
+    commandId: "seed-demo-socks",
+    name: "Dinkus Demo Ribbed Socks",
+    description: "A comfortable ribbed pair for everyday rotation.",
+    sku: "DEMO-HOSTED-SOCKS",
+    regularMinor: "1400",
+    saleMinor: null,
+    availability: "out-of-stock",
+  },
+  {
+    commandId: "seed-demo-bottle",
+    name: "Dinkus Demo Steel Bottle",
+    description: "A simple insulated bottle sized for a day on the move.",
+    sku: "DEMO-HOSTED-BOTTLE",
+    regularMinor: "3000",
+    saleMinor: null,
+    availability: "in-stock",
+  },
 ]);
 
-export const DEMO_SKUS: ReadonlySet<string> = new Set(
-  DEMO_PRODUCTS.map((product) => product.sku),
-);
+export const DEMO_SKUS: ReadonlySet<string> = new Set([
+  ...DEMO_PRODUCTS.map((product) => product.sku),
+  ...DEMO_PRODUCTS.flatMap((product) => product.variant?.values.map((value) => value.sku) ?? []),
+]);
 
 export class SeedRefusal extends Error {
   readonly code: string;

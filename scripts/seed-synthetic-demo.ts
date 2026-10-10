@@ -15,6 +15,7 @@ import { pathToFileURL } from "node:url";
 import { createDialect } from "@emdash-cms/cloudflare/db/d1";
 import {
   clearCatalogItemSalePrice,
+  addCatalogVariantOption,
   createCatalogItem,
   createPlugin,
   listCatalogProducts,
@@ -352,12 +353,14 @@ async function ensureProduct(
   existing: CatalogRow | undefined,
   product: DemoProductSeed | typeof SENTINEL,
 ): Promise<"created" | "updated"> {
+  const variant = "variant" in product ? product.variant : undefined;
   let catalogItemId = existing?.catalogItemId;
   let action: "created" | "updated" = existing ? "updated" : "created";
   if (!catalogItemId) {
     const created = await createCatalogItem(storage.catalog, {
       commandId: product.commandId,
       manageStock: false,
+      ...(variant ? { fulfillment: "physical" as const } : {}),
       name: product.name,
       sku: product.sku,
     });
@@ -365,25 +368,68 @@ async function ensureProduct(
     action = created.created ? "created" : "updated";
   }
 
-  if (product.saleMinor === null) {
-    await clearCatalogItemSalePrice(storage, { catalogItemId });
+  if (variant) {
+    await addCatalogVariantOption(
+      { catalog: storage.catalog },
+      {
+        productId: catalogItemId,
+        optionId: variant.optionId,
+        optionLabel: variant.optionLabel,
+        values: [
+          {
+            valueId: variant.values[0]!.valueId,
+            label: variant.values[0]!.label,
+            member: { catalogItemId, fulfillment: "physical" },
+          },
+          ...variant.values.slice(1).map((value) => ({
+            valueId: value.valueId,
+            label: value.label,
+            member: {
+              commandId: value.commandId,
+              name: value.name,
+              sku: value.sku,
+              fulfillment: "physical" as const,
+            },
+          })),
+        ],
+      },
+      { collection: CATALOG_COLLECTION, pluginId: COMMERCE_PLUGIN_ID },
+    );
   }
-  await setCatalogItemRegularPrice(storage, {
-    catalogItemId,
-    amount: { currency: "USD", minor: product.regularMinor },
-  });
-  if (product.saleMinor === null) {
-    await clearCatalogItemSalePrice(storage, { catalogItemId });
-  } else {
-    await setCatalogItemSalePrice(storage, {
-      catalogItemId,
-      amount: { currency: "USD", minor: product.saleMinor },
+
+  const itemIds = [catalogItemId];
+  if (variant) {
+    const parent = await storage.catalog.get(catalogItemId);
+    if (parent && "variantProduct" in parent && parent.variantProduct) {
+      itemIds.push(
+        ...parent.variantProduct.members
+          .map((member) => member.catalogItemId)
+          .filter((memberId) => memberId !== catalogItemId),
+      );
+    }
+  }
+
+  for (const itemId of itemIds) {
+    if (product.saleMinor === null) {
+      await clearCatalogItemSalePrice(storage, { catalogItemId: itemId });
+    }
+    await setCatalogItemRegularPrice(storage, {
+      catalogItemId: itemId,
+      amount: { currency: "USD", minor: product.regularMinor },
+    });
+    if (product.saleMinor === null) {
+      await clearCatalogItemSalePrice(storage, { catalogItemId: itemId });
+    } else {
+      await setCatalogItemSalePrice(storage, {
+        catalogItemId: itemId,
+        amount: { currency: "USD", minor: product.saleMinor },
+      });
+    }
+    await setCatalogItemManualAvailability(storage, {
+      catalogItemId: itemId,
+      status: product.availability,
     });
   }
-  await setCatalogItemManualAvailability(storage, {
-    catalogItemId,
-    status: product.availability,
-  });
   return action;
 }
 

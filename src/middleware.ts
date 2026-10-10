@@ -27,8 +27,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const isProofMode =
     process.env.DINKUS_STOREFRONT_PROFILE === "proof" ||
     process.env.DINKUS_PROOF_MODE === "1";
+  const isPlayground =
+    Boolean((context.locals as { __playgroundDb?: unknown }).__playgroundDb);
 
-  if (isCloudflare && !isProofMode) {
+  if (isCloudflare && !isProofMode && !isPlayground) {
     const { request, url } = context;
     const check = evaluatePublicBoundary(
       request.method,
