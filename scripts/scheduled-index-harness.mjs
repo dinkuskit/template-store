@@ -13,8 +13,6 @@ import { dirname, resolve } from "node:path";
 
 const COMMERCE_SKU_UNIQUE_INDEX =
   "uidx_plugin_dinkus-commerce_catalogItems_skuKey";
-const NATIVE_CATALOG_PROFILE = "native-development";
-
 const root = resolve(import.meta.dirname, "..");
 const localConfigPath = resolve(root, ".artifacts/wrangler.local.jsonc");
 const harnessConfigPath = resolve(root, ".artifacts/wrangler.scheduled.jsonc");
@@ -74,10 +72,6 @@ function cloudflareHarnessEnv() {
     ...process.env,
     DINKUS_HOSTING_PROFILE: "cloudflare",
     DINKUS_WRANGLER_CONFIG: localConfigPath,
-    // Unique catalog indexes come from native definePlugin storage. The shipping
-    // default leaves plugins empty for installed Commerce; this harness is the
-    // native demo-seed path and must remount that descriptor at build time.
-    DINKUS_CATALOG_PROFILE: NATIVE_CATALOG_PROFILE,
   };
 }
 
