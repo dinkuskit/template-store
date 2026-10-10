@@ -111,6 +111,18 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   });
   expect(editorial.status(), await editorial.text()).toBe(201);
   const editorialId = unwrap<{ item: { id: string } }>(await editorial.json()).item.id;
+  const savedEditorial = await admin.request.put(`/_emdash/api/content/products/${editorialId}?locale=en`, {
+    headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
+    data: {
+      data: {
+        title: name,
+        commerce_item_id: id,
+        description: "A product entry created for the cart proof.",
+        visual_label: "CAP",
+      },
+    },
+  });
+  expect(savedEditorial.ok(), await savedEditorial.text()).toBe(true);
   const published = await adminPost(admin, `/_emdash/api/content/products/${editorialId}/publish`, {});
   expect(published.ok(), await published.text()).toBe(true);
 
