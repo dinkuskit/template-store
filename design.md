@@ -104,3 +104,21 @@ artifact. Return URL claims never establish a confirmed purchase. Later actual
 integration must preserve frozen attempts and clear only the purchased cart
 after Commerce durable paid-order confirmation. Synthetic UI proof is not
 Stripe test-mode or released registry-pair proof.
+
+## Bounded demo visual refresh (2026-10-09)
+
+This approved refinement stays within the restrained warm-neutral storefront.
+Shopper headers use the neutral label `Demo store` for the proof/development
+profile and `Store` for shipping semantics; technical integration-status
+language stays out of shopper content. The home page adds a short,
+runtime-derived guidance note: ready catalogs explain eligible add-to-cart
+behavior and closed checkout, while empty or unavailable catalogs explain that
+products are not being shown. It never invents a product, media asset, price,
+availability, or cart capability.
+
+Commerce cards use clearer media, title, price, availability, and action
+grouping. Missing or unresolved media remains the plain `No image` placeholder.
+CMS composition, published editorial content, Commerce authority, guest-cart
+behavior, and the closed checkout boundary are unchanged. This is a bounded
+presentation refinement, not a new visual candidate round or a design-ledger
+closure.

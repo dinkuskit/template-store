@@ -81,6 +81,30 @@
     gap: 1rem;
   }
 
+  .catalog-guidance {
+    width: min(70rem, calc(100% - 2rem));
+    margin: 2rem auto -1rem;
+    padding: 1rem 1.15rem;
+    border-left: 4px solid var(--store-line);
+    background: var(--store-surface);
+  }
+
+  .catalog-guidance strong {
+    display: block;
+    font-size: 1.05rem;
+  }
+
+  .catalog-guidance p {
+    max-width: 52rem;
+    margin: .35rem 0 0;
+    color: var(--store-muted);
+    line-height: 1.5;
+  }
+
+  .catalog-guidance[data-catalog-guidance-state="unavailable"] {
+    border-left-color: var(--store-alert-ink);
+  }
+
   .store-header__cart {
     font-weight: 800;
     text-underline-offset: 0.2em;

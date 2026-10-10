@@ -41,6 +41,8 @@ const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image,
 </div>
 <style>
   .commerce-product-media {
+    display: grid;
+    place-items: center;
     margin: 0 0 1rem;
     border-radius: 0.6rem;
     overflow: hidden;
@@ -61,5 +63,6 @@ const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image,
     margin: 0;
     color: var(--store-muted);
     font-size: 0.95rem;
+    letter-spacing: .04em;
   }
 </style>

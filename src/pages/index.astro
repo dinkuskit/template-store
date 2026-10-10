@@ -54,7 +54,7 @@ const unmanaged = demonstrations?.unmanaged;
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store">
-        <span class="store-header__status">Local integration proof</span>
+        <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
         <GuestCartNav />
       </nav>
     </header>
@@ -79,6 +79,14 @@ const unmanaged = demonstrations?.unmanaged;
           </section>
         )
       }
+      <section class="catalog-guidance" data-catalog-guidance data-catalog-guidance-state={catalogUnavailable ? "unavailable" : commerceProducts.length === 0 ? "empty" : "ready"} aria-label="How to use this store">
+        <strong>{catalogUnavailable ? "The catalog is unavailable right now." : commerceProducts.length === 0 ? "No products are listed yet." : "Browse the current catalog."}</strong>
+        <p>{catalogUnavailable
+          ? "Products are not shown until the connected store can be reached. Checkout is unavailable."
+          : commerceProducts.length === 0
+            ? "Products will appear here when they are published. Checkout is unavailable."
+            : "Eligible products can be added to your cart. Checkout is unavailable, so no purchase will be completed."}</p>
+      </section>
       <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} />
       {demonstrations && availability && unmanaged && (
       <section aria-label="Separate integration demonstrations" data-integration-demos>

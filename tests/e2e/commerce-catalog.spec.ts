@@ -44,6 +44,9 @@ test("merchant product prices drive public listing and survive an admin reload",
   }
   expect((await save("24", "")).saved).toBe(true);
   await page.reload();
+  await expect(page.locator("[data-catalog-guidance]")).toHaveAttribute("data-catalog-guidance-state", "ready");
+  await expect(page.locator("[data-catalog-guidance]")).toContainText("Eligible products can be added to your cart");
+  await expect(page.locator("[data-catalog-guidance]")).toContainText("Checkout is unavailable");
   await expect(card.locator("[data-regular-price]")).toHaveText("$24.00");
   await expect(card.locator("[data-commerce-availability]")).toHaveText("In stock");
   await expect(card.locator("[data-commerce-image-placeholder]")).toHaveText("No image");
