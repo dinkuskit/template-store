@@ -119,6 +119,31 @@ pnpm verify
 pnpm dev
 ```
 
+### Disposable playground
+
+The public playground is a separate Worker application and does not use the
+demo Worker or its D1 database:
+
+```bash
+pnpm exec astro dev --config astro.playground.config.mjs
+pnpm exec astro build --config astro.playground.config.mjs
+pnpm exec wrangler dev --config wrangler.playground.jsonc
+```
+
+Visit `/playground`. EmDash creates an anonymous admin session backed by a
+private Durable Object SQLite database, applies this repository's
+`seed/seed.json`, and expires the database after about one hour. Checkout
+continues to render the existing unavailable state; the playground has no
+payment or coupon bindings. Every response is noindex.
+
+Before a public preview is enabled, infra-keeper must add a Cloudflare Rate
+Limit binding named `PLAYGROUND_CREATION_LIMITER` to
+`wrangler.playground.jsonc` (a modest per-IP limit for `/_playground/init`).
+The project-owned hook in `src/playground-middleware.ts` consumes it. CI must
+build with `astro.playground.config.mjs`, deploy only the preview Worker with
+`wrangler.playground.jsonc`, and pass `--preview-alias pr-N` so Wrangler can
+serve `pr-N.demo.dinkuskit.com`. This change intentionally performs no deploy.
+
 The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build`,
 and the verifiers prepare Commerce's exact source in an ignored checkout, then
 resolve Commerce and Inventory through their package-root source entries because
