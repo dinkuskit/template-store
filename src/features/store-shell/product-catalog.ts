@@ -1,7 +1,8 @@
 import { UNPRICED_PRODUCT_ITEM_ID } from "../unmanaged-product-sellability/identity/index.js";
 
-export type MerchRecord = Readonly<{
+export type ProductRecord = Readonly<{
   id: string;
+  commerceItemId: string;
   title: string;
   category: string;
   description: string;
@@ -10,18 +11,18 @@ export type MerchRecord = Readonly<{
   illustration: "tee" | "hoodie" | "cap" | "beanie";
 }>;
 
-export type MerchCollection = Readonly<{
+export type ProductCollection = Readonly<{
   slug: string;
   name: string;
-  items: readonly MerchRecord[];
+  items: readonly ProductRecord[];
 }>;
 
 /** Editorial content comes from EmDash; Commerce links are validated by the page resolver. */
-export function buildMerchCollections(
+export function buildProductCollections(
   entries: readonly { id: string; data: Record<string, unknown> }[],
   collectionEntries: readonly { id: string; data: Record<string, unknown> }[] = [],
-): readonly MerchCollection[] {
-  const groups = new Map<string, MerchRecord[]>();
+): readonly ProductCollection[] {
+  const groups = new Map<string, ProductRecord[]>();
   const collectionNames = new Map<string, string>();
   for (const entry of collectionEntries) {
     const title = typeof entry.data.title === "string" ? entry.data.title.trim() : "";
@@ -45,8 +46,9 @@ export function buildMerchCollections(
     const commerceItemId = typeof entry.data.commerce_item_id === "string"
       ? entry.data.commerce_item_id
       : "";
-    const item: MerchRecord = {
+    const item: ProductRecord = {
       id: entry.id,
+      commerceItemId,
       title: title.trim(),
       category: "",
       description: typeof description === "string" ? description.trim() : "",
@@ -54,7 +56,7 @@ export function buildMerchCollections(
       availabilitySource: commerceItemId === "dinkus-template-managed-product"
         ? "managed"
         : commerceItemId === "dinkus-template-unmanaged-product" ? "unmanaged" : "preview",
-      illustration: ((): MerchRecord["illustration"] => {
+      illustration: ((): ProductRecord["illustration"] => {
         const style = visualLabel.trim().toLowerCase();
         return style === "hoodie" || style === "cap" || style === "beanie" ? style : "tee";
       })(),
@@ -92,8 +94,8 @@ export function productPath(id: string): string | null {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) ? `/products/${id}` : null;
 }
 
-/** A missing Commerce Regular price suppresses connected merchandise on every route. */
-export function publicMerchCollections(collections: readonly MerchCollection[], managedListable: boolean, unmanagedListable: boolean): readonly MerchCollection[] {
+/** Integration-only availability panels can suppress connected product cards. */
+export function publicProductCollections(collections: readonly ProductCollection[], managedListable: boolean, unmanagedListable: boolean): readonly ProductCollection[] {
   return collections.map(group => ({ ...group, items: group.items.filter(item =>
     item.availabilitySource === "preview" || (item.availabilitySource === "managed" ? managedListable : unmanagedListable)
   ) }));

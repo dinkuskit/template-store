@@ -2,9 +2,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
-const proofRoot = resolve("runs/merch-catalog-20260925/browser");
+const proofRoot = resolve("runs/product-catalog-20260925/browser");
 
-test("products are visible in the canonical category catalog", async ({ page, request }, testInfo) => {
+test("published products are visible in the canonical product catalog", async ({ page, request }, testInfo) => {
   test.setTimeout(120_000);
   const root = resolve(proofRoot, testInfo.project.name);
   await mkdir(root, { recursive: true });
@@ -17,27 +17,25 @@ test("products are visible in the canonical category catalog", async ({ page, re
   }
 
   await page.goto("/");
-  await expect(page.locator("[data-merch-catalog]")).toBeVisible();
-  await expect(page.locator("[data-merch-item=everyday-tee] h4")).toHaveText("Everyday Tee");
-  await expect(page.locator("[data-merch-item=canvas-cap] h4")).toHaveText("Canvas Cap");
-  await expect(page.locator("[data-merch-source=preview]")).toHaveCount(3);
-  await expect(page.locator("[data-merch-source=preview] [data-product-price]")).toHaveCount(0);
-  await expect(page.locator("[data-merch-item=everyday-tee] [data-regular-price]")).toHaveText("$12.00");
-  await expect(page.locator("[data-merch-item=canvas-cap] [data-sale-price]")).toHaveText("$10.00");
-  await expect(page.locator("[data-merch-item=dinkus-template-unpriced-product]")).toHaveCount(0);
-  await expect(page.locator("[data-merch-item=everyday-tee]")).toHaveAttribute("data-merch-source", "managed");
-  await expect(page.locator("[data-merch-item=canvas-cap]")).toHaveAttribute("data-merch-source", "unmanaged");
-  const illustrations = page.locator("[data-merch-catalog] .merch-card__visual img");
+  await expect(page.locator("[data-product-catalog]")).toBeVisible();
+  await expect(page.locator("[data-product-catalog] h2")).toHaveText("Products");
+  await expect(page.locator("[data-product-item=everyday-tee] h4")).toHaveText("Everyday Tee");
+  await expect(page.locator("[data-product-item=canvas-cap] h4")).toHaveText("Canvas Cap");
+  await expect(page.locator("[data-product-item=dinkus-template-unpriced-product]")).toHaveCount(0);
+  await expect(page.locator("[data-product-item=everyday-tee] [data-regular-price]")).toHaveText("$12.00");
+  await expect(page.locator("[data-product-item=canvas-cap] [data-sale-price]")).toHaveText("$10.00");
+  await expect(page.locator("[data-product-item=everyday-tee]")).toHaveAttribute("data-product-source", "commerce");
+  const illustrations = page.locator("[data-product-catalog] .product-card__visual img");
   await expect(illustrations).toHaveCount(5);
   for (const image of await illustrations.all()) {
     await image.scrollIntoViewIfNeeded();
     await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
   }
-  await expect(page.locator("[data-merch-source=preview] a")).toHaveCount(3);
+  await expect(page.locator("[data-product-item]")).toHaveCount(5);
   await page.getByRole("navigation", { name: "Product categories" }).getByRole("link", { name: "Tees" }).click();
   await expect(page.locator("h1")).toHaveText("Tees");
-  await expect(page.locator("[data-merch-item]")).toHaveCount(2);
-  await expect(page.locator("[data-merch-catalog] h2")).toHaveCount(2);
+  await expect(page.locator("[data-product-item]")).toHaveCount(2);
+  await expect(page.locator("[data-product-catalog] h2")).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   await page.screenshot({ path: resolve(root, "public-collection.png"), fullPage: true });
   await page.getByRole("link", { name: "View Everyday Tee details" }).click();
@@ -49,7 +47,7 @@ test("products are visible in the canonical category catalog", async ({ page, re
   await page.getByRole("link", { name: "Back to Tees" }).click();
   await expect(page.locator("h1")).toHaveText("Tees");
   await page.getByRole("link", { name: "Catalog" }).click();
-  await expect(page.locator("[data-merch-catalog]")).toBeVisible();
+  await expect(page.locator("[data-product-catalog]")).toBeVisible();
   await page.getByRole("link", { name: "View Boxy Tee details" }).click();
   await expect(page.locator("[data-product-status]")).toHaveText("Preview only · not purchasable");
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
@@ -90,5 +88,5 @@ test("products are visible in the canonical category catalog", async ({ page, re
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
   await page.screenshot({ path: resolve(root, "public-catalog.png"), fullPage: true });
-  await writeFile(resolve(root, "assertions.json"), `${JSON.stringify({ project: testInfo.project.name, adminPath: "/_emdash/admin/content/products/everyday-tee", collections: ["Hats", "Hoodies", "Tees"], previewCount: 3, horizontalOverflow: overflow }, null, 2)}\n`);
+  await writeFile(resolve(root, "assertions.json"), `${JSON.stringify({ project: testInfo.project.name, adminPath: "/_emdash/admin/content/products/everyday-tee", collections: ["Hats", "Hoodies", "Tees"], productCount: 5, horizontalOverflow: overflow }, null, 2)}\n`);
 });

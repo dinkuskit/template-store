@@ -1,0 +1,97 @@
+---
+import type { CommerceCatalogSnapshot } from "../commerce-catalog/index.js";
+import { AddToCart } from "../guest-cart/ui.ts";
+import { availabilityLabels } from "../commerce-catalog/index.js";
+import { categoryAnchor, categoryPath, productPath, type ProductCollection } from "./product-catalog.js";
+
+interface Props {
+  collections: readonly ProductCollection[];
+  commerceSnapshots: readonly CommerceCatalogSnapshot[];
+  menu?: { items: readonly { label: string; url: string }[] };
+  collectionOnly?: boolean;
+}
+const { collections, commerceSnapshots, menu, collectionOnly = false } = Astro.props;
+const commerceById = new Map(commerceSnapshots.filter((snapshot) => snapshot.found).map((snapshot) => [snapshot.id, snapshot]));
+const visibleCollections = collections.map((collection) => ({
+  ...collection,
+  items: collection.items.filter((item) => {
+    const commerce = commerceById.get(item.commerceItemId);
+    return commerce !== undefined && commerce.found && commerce.price.listable && commerce.availability.listable;
+  }),
+})).filter((collection) => collection.items.length > 0);
+---
+<section class="product-catalog" aria-labelledby={collectionOnly ? undefined : "catalog-title"} aria-label={collectionOnly ? "Product collection" : undefined} data-product-catalog>
+  {!collectionOnly && <div class="catalog-heading">
+    <div>
+      <p class="catalog-kicker">The collection</p>
+      <h2 id="catalog-title">Products</h2>
+      <p>Browse published products. Price and availability come from the linked Commerce item.</p>
+    </div>
+    <span class="catalog-count">{visibleCollections.reduce((total, group) => total + group.items.length, 0)} products</span>
+  </div>}
+  {!collectionOnly && <nav class="collection-nav" aria-label="Product categories" data-collection-nav>
+    {(menu?.items ?? []).map((item) => <a href={item.url}>{item.label}</a>)}
+  </nav>}
+  {visibleCollections.length === 0 ? (
+    <p class="catalog-empty" role="status">No products are published. Add products in EmDash admin to populate this collection.</p>
+  ) : visibleCollections.map((collection) => (
+    <section class="collection" id={categoryAnchor(collection.slug)} aria-label={`${collection.name} category`} data-collection={collection.name}>
+      {!collectionOnly && <div class="collection-heading"><h3><a href={categoryPath(collection.slug)}>{collection.name}</a></h3><span>{collection.items.length} {collection.items.length === 1 ? "style" : "styles"}</span></div>}
+      <div class="product-grid">
+        {collection.items.map((item) => {
+          const commerce = commerceById.get(item.commerceItemId);
+          if (!commerce || !commerce.found) return null;
+          const product = {
+            id: commerce.id,
+            name: commerce.name,
+            sku: commerce.sku,
+            fulfillment: commerce.fulfillment,
+            price: commerce.price,
+            availability: commerce.availability,
+            image: null,
+            gallery: [],
+          };
+          const status = availabilityLabels[commerce.availability.status] ?? "Availability unavailable";
+          const destination = productPath(item.id)!;
+          return <article class="product-card" data-product-item={item.id} data-product-source="commerce">
+            <div class={`product-card__visual product-card__visual--${item.illustration}`}><img src={`/products/${item.illustration}.svg`} alt={`${item.title} product illustration`} loading="lazy" width="640" height="480" /></div>
+            <div class="product-card__body">
+              <p class="product-card__category">{item.category}</p>
+              {collectionOnly ? <h2>{item.title}</h2> : <h4>{item.title}</h4>}
+              <p class="product-card__description">{item.description}</p>
+              <p class="product-card__price" data-product-price>{commerce.price.saleText ? <><s data-regular-price>{commerce.price.regularText}</s> <strong data-sale-price>{commerce.price.saleText}</strong></> : <strong data-regular-price>{commerce.price.regularText}</strong>}</p>
+              <p class="product-card__status" data-product-status>{status}</p>
+              <a href={destination} aria-label={`View ${item.title} details`}>View details <span aria-hidden="true">↗</span></a>
+              <AddToCart product={product} />
+            </div>
+          </article>;
+        })}
+      </div>
+    </section>
+  ))}
+</section>
+<style>
+  .product-catalog{width:min(70rem,calc(100% - 2rem));margin:4rem auto 2rem}
+  .catalog-heading,.collection-heading{display:flex;align-items:end;justify-content:space-between;gap:1rem}
+  .catalog-heading{padding-bottom:1.5rem;border-bottom:1px solid var(--store-line)}
+  .catalog-kicker,.product-card__category{margin:0 0 .5rem;color:var(--store-muted);font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  .catalog-heading h2{margin:0;font-size:clamp(2.3rem,5vw,4.5rem);letter-spacing:-.05em;line-height:1}
+  .catalog-heading p:last-child{max-width:40rem;color:var(--store-muted);line-height:1.6}
+  .catalog-count,.collection-heading span{color:var(--store-muted);white-space:nowrap}
+  .collection-nav{display:flex;flex-wrap:wrap;gap:.6rem;padding:1.2rem 0 2rem}
+  .collection-nav a{padding:.65rem 1.1rem;border:1px solid var(--store-line);border-radius:99rem;color:inherit;text-decoration:none;font-weight:700;background:var(--store-surface)}
+  .collection-nav a:hover{background:#e9e6dc}
+  .collection{scroll-margin-top:1.5rem;margin:0 0 3.5rem}
+  .collection-heading{margin-bottom:1rem}.collection-heading a{color:inherit;text-decoration-thickness:1px;text-underline-offset:.2em}.collection-heading h3{margin:0;font-size:1.7rem;letter-spacing:-.03em}
+  .product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+  .product-card{min-width:0;overflow:hidden;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface)}
+  .product-card__visual{aspect-ratio:4/3;background:#e9e8df;overflow:hidden}
+  .product-card__visual--hoodie{background:#dce2df}.product-card__visual--cap{background:#e6ddd1}.product-card__visual--beanie{background:#e2e1d6}
+  .product-card__visual img{display:block;width:100%;height:100%;object-fit:cover}
+  .product-card__body{padding:1.3rem}.product-card h4,.product-card h2{margin:0;font-size:1.4rem;line-height:1.15}.product-card__description{min-height:3.5rem;color:var(--store-muted);line-height:1.5}
+  .product-card__price{display:flex;gap:.5rem;align-items:baseline;margin:1rem 0 0}.product-card__price s{color:var(--store-muted)}
+  .product-card__status{font-weight:800}.product-card a{display:inline-block;margin-top:.2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
+  .catalog-empty{padding:2rem;border:1px dashed var(--store-line)}
+  @media(max-width:48rem){.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:35rem){.catalog-heading{display:block}.product-grid{grid-template-columns:1fr}.product-card__description{min-height:0}}
+</style>

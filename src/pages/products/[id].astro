@@ -70,7 +70,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
       {item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} /> : <img src={`/products/${item.illustration}.svg`} alt={`${item.title} product illustration`} width="640" height="480" />}
             </div>
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
@@ -87,7 +87,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
         </article>
       ) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
-    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
+    <footer class="store-footer">Product copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
   </body>
 </html>
 <style>

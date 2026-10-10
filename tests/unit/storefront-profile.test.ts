@@ -114,7 +114,7 @@ describe("storefront profile", () => {
     ]);
   });
 
-  it("keeps the fresh seed Home opener on truthful Commerce shop copy and #commerce-catalog", () => {
+  it("keeps the fresh seed Home opener on truthful Products copy and #catalog-title", () => {
     const seed = JSON.parse(
       readFileSync(resolve("seed/seed.json"), "utf8"),
     ) as {
@@ -132,7 +132,7 @@ describe("storefront profile", () => {
     const serialized = JSON.stringify(seed);
     expect(serialized).not.toMatch(/two connected styles/iu);
     expect(serialized).not.toMatch(/Inventory \+ manual/u);
-    expect(serialized).not.toMatch(/#catalog-title|#managed-product/u);
+    expect(serialized).toMatch(/#catalog-title/u);
     const home = seed.content.pages.find((page) => page.id === "home");
     const hero = home?.data.content.find((block) => block._type === "dinkus.page-hero");
     const opener = home?.data.layout[0];
@@ -140,16 +140,16 @@ describe("storefront profile", () => {
       (block) => block._type === "dinkus.page-hero",
     );
     expect(hero).toMatchObject({
-      primaryHref: "#commerce-catalog",
-      secondaryHref: "#commerce-catalog",
+      primaryHref: "#catalog-title",
+      secondaryHref: "#catalog-title",
     });
     expect(opener).toMatchObject({
-      primary_href: "#commerce-catalog",
-      secondary_href: "#commerce-catalog",
+      primary_href: "#catalog-title",
+      secondary_href: "#catalog-title",
     });
     expect(sectionHero).toMatchObject({
-      primary_href: "#commerce-catalog",
-      secondary_href: "#commerce-catalog",
+      primary_href: "#catalog-title",
+      secondary_href: "#catalog-title",
     });
   });
 });

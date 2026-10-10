@@ -1,8 +1,8 @@
 import {
-  buildMerchCollections,
-  publicMerchCollections,
-  type MerchCollection,
-} from "./merch-catalog.js";
+  buildProductCollections,
+  publicProductCollections,
+  type ProductCollection,
+} from "./product-catalog.js";
 import {
   readProofDemonstrations,
   type ProofDemonstrations,
@@ -15,7 +15,7 @@ import {
 export type StorefrontRouteContext = Readonly<{
   profile: StorefrontProfile;
   demonstrations: ProofDemonstrations | null;
-  collections: readonly MerchCollection[];
+  collections: readonly ProductCollection[];
 }>;
 
 export async function loadStorefrontRouteContext(
@@ -30,8 +30,8 @@ export async function loadStorefrontRouteContext(
   return {
     profile,
     demonstrations,
-    collections: publicMerchCollections(
-      buildMerchCollections(entries, collectionEntries),
+    collections: publicProductCollections(
+      buildProductCollections(entries, collectionEntries),
       demonstrations?.managed.price.listable === true,
       demonstrations?.unmanaged.price.listable === true,
     ),

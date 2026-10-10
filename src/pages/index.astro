@@ -5,10 +5,9 @@ import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
 import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
 import UnknownBlock from "../features/store-shell/blocks/UnknownBlock.astro";
 
-import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
-import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
+import { readCommerceCatalogSnapshots } from "../features/commerce-catalog/index.js";
 import { GuestCartNav } from "../features/guest-cart/ui.ts";
-import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
+import ProductsCatalog from "../features/store-shell/ProductsCatalog.astro";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
 import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
 import {
@@ -36,7 +35,10 @@ const { profile, demonstrations, collections } = await loadStorefrontRouteContex
   categoryEntries.entries,
 );
 let catalogUnavailable = false;
-const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
+const commerceSnapshots = await readCommerceCatalogSnapshots(
+  productLinks.products.map((product) => product.commerceItemId),
+  { runtime: Astro.locals.emdash, request: Astro.request },
+).catch(() => { catalogUnavailable = true; return []; });
 const availability = demonstrations?.managed;
 const unmanaged = demonstrations?.unmanaged;
 ---
@@ -79,20 +81,19 @@ const unmanaged = demonstrations?.unmanaged;
           </section>
         )
       }
-      <section class="catalog-guidance" data-catalog-guidance data-catalog-guidance-state={catalogUnavailable ? "unavailable" : commerceProducts.length === 0 ? "empty" : "ready"} aria-label="How to use this store">
-        <strong>{catalogUnavailable ? "The catalog is unavailable right now." : commerceProducts.length === 0 ? "No products are listed yet." : "Browse the current catalog."}</strong>
+      <section class="catalog-guidance" data-catalog-guidance data-catalog-guidance-state={catalogUnavailable ? "unavailable" : productLinks.products.length === 0 ? "empty" : "ready"} aria-label="How to use this store">
+        <strong>{catalogUnavailable ? "The product catalog is unavailable right now." : productLinks.products.length === 0 ? "No published products are available." : "Browse published products."}</strong>
         <p>{catalogUnavailable
-          ? "Products are not shown until the connected store can be reached. Checkout is unavailable."
-          : commerceProducts.length === 0
-            ? "Products will appear here when they are published. Checkout is unavailable."
-            : "Eligible products can be added to your cart. Checkout is unavailable, so no purchase will be completed."}</p>
+          ? "Products are not shown until the linked Commerce items can be reached. Checkout is unavailable."
+          : productLinks.products.length === 0
+            ? "Products will appear here when they are published in EmDash. Checkout is unavailable."
+            : "Price and availability come from Commerce. Checkout is unavailable, so no purchase will be completed."}</p>
       </section>
-      <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} />
+      <ProductsCatalog collections={collections} commerceSnapshots={commerceSnapshots} menu={storeMenu ?? undefined} />
       {demonstrations && availability && unmanaged && (
       <section aria-label="Separate integration demonstrations" data-integration-demos>
       <h2 class="demo-heading">Integration demonstrations</h2>
       <p class="demo-heading">These seeded examples are separate from the merchant catalog above.</p>
-      <MerchCatalog collections={collections} menu={storeMenu ?? undefined} managed={availability} unmanaged={unmanaged} />
       {availability.price.listable && <ManagedProductAvailability availability={availability} />}
       {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
       </section>

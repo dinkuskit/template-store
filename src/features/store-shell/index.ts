@@ -23,12 +23,12 @@ export {
   type StorefrontRouteContext,
 } from "./storefront-route.js";
 export {
-  buildMerchCollections,
-  publicMerchCollections,
+  buildProductCollections,
+  publicProductCollections,
   categoryAnchor,
   categoryPath,
   collectionPath,
   productPath,
-  type MerchCollection,
-  type MerchRecord,
-} from "./merch-catalog.js";
+  type ProductCollection,
+  type ProductRecord,
+} from "./product-catalog.js";
