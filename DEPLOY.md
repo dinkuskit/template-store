@@ -2,6 +2,8 @@
 
 This repository does not change a store's live Cloudflare Access applications.
 
+Workers.dev and preview URLs stay disabled (`workers_dev: false`, `preview_urls: false` in `wrangler.jsonc`) so the demo is served only on its Access-protected custom domain.
+
 ## Rule
 
 1. With `PAYMENTS_UNAVAILABLE=1` (the shipping default), keep all of
