@@ -19,7 +19,7 @@ const EXACT_ALLOWED_PATHS = new Set([
 const ALLOWED_PATH_PATTERNS = [
   /^\/sitemap-[a-z0-9-]+\.xml$/,
   /^\/_astro\/[^\s]+$/,
-  /^\/merch\/[^\s]+$/,
+  /^\/products\/[^\s]+\.svg$/,
   /^\/_emdash\/api\/media\/file\/[^\s]+$/,
   /^\/categories\/[a-zA-Z0-9_-]+$/,
   /^\/products\/[a-zA-Z0-9_-]+$/,
