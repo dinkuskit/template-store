@@ -1,6 +1,5 @@
 import {
   buildProductCollections,
-  publicProductCollections,
   type ProductCollection,
 } from "./product-catalog.js";
 import {
@@ -30,10 +29,6 @@ export async function loadStorefrontRouteContext(
   return {
     profile,
     demonstrations,
-    collections: publicProductCollections(
-      buildProductCollections(entries, collectionEntries),
-      demonstrations?.managed.price.listable === true,
-      demonstrations?.unmanaged.price.listable === true,
-    ),
+    collections: buildProductCollections(entries, collectionEntries),
   };
 }
