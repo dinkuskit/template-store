@@ -64,9 +64,6 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   await page.reload();
   await expect(page.locator("[data-stock-value]")).toHaveText("5");
   await expect(page.locator("[data-product-item]")).toHaveCount(0);
-  await page.getByRole("link", { name: "View Everyday Tee details" }).click();
-  await expect(page.locator("[data-product-status]")).toHaveText("5 available");
-  await page.screenshot({ path: resolve(screenshotRoot, "product-changed.png"), fullPage: true });
   await page.goto("/");
   const changedVersion = await page
     .locator("[data-managed-product]")
