@@ -159,12 +159,28 @@ describe("demo seed resource identity", () => {
     }
   });
 
-  it("keeps the demo write set to the three hosted SKUs", () => {
+  it("keeps the demo write set to the shipped hosted SKUs", () => {
     expect(DEMO_PRODUCTS.map((product) => product.sku)).toEqual([
       "DEMO-HOSTED-SHIRT",
       "DEMO-HOSTED-CAP",
       "DEMO-HOSTED-MUG",
+      "DEMO-HOSTED-HOODIE-S",
+      "DEMO-HOSTED-TOTE",
+      "DEMO-HOSTED-THROW",
+      "DEMO-HOSTED-TRAY",
+      "DEMO-HOSTED-SOCKS",
+      "DEMO-HOSTED-BOTTLE",
     ]);
+    expect(DEMO_SKUS.has("DEMO-HOSTED-HOODIE-M")).toBe(true);
+    expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-HOODIE-S")?.variant).toEqual(
+      expect.objectContaining({
+        optionId: "size",
+        optionLabel: "Size",
+      }),
+    );
+    expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-SOCKS")?.availability).toBe(
+      "out-of-stock",
+    );
     expect(DEMO_SKUS.has("SENTINEL-KEEP")).toBe(false);
     expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-CAP")?.saleMinor).toBe(
       "2400",
