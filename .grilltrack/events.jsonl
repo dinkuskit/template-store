@@ -2,3 +2,4 @@
 {"action": "focus_started", "at": "2026-10-09T14:51:51+00:00", "data": {"cadence": "sequential", "domain": "guest-checkout-return-retry"}, "event_id": "3485d80e-7464-45f0-bd6d-6bdc9a1c6117"}
 {"action": "decision_proposed", "at": "2026-10-09T14:51:51+00:00", "data": {"decision_id": "guest-checkout-return-retry-bound"}, "event_id": "adcec6ed-a29b-4a39-b65e-84c315b6754e"}
 {"action": "decision_locked", "at": "2026-10-09T23:40:07+00:00", "data": {"decision_id": "guest-checkout-return-retry-bound"}, "event_id": "86b41309-489a-4fa4-ad1d-27a5993fc36f"}
+{"action": "decision_proposed", "at": "2026-10-10T15:26:47+00:00", "data": {"decision_id": "commerce-main-canary-001"}, "event_id": "3e5a7ca6-10d0-4e71-9fea-055a42459f54"}

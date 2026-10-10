@@ -2559,6 +2559,32 @@
       "superseded_by": null,
       "updated_at": "2026-10-09T23:40:07+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:51eff75",
+      "candidate_refs": [],
+      "choice": "While all DinkusKit stores are dev-only, dependents track dinkuskit/commerce main instead of an exact SHA. A required canary runs on every dinkuskit/commerce PR: it builds template-store and coupons against the PR head and runs their verification, including template-store pnpm verify. A red canary blocks the Commerce merge. Exact pins return only for releases: registry publishes and site deploys record the exact commerce, template-store, and site commits in the Worker version deploy message and registry entry, and that recorded set is the rollback point. Readiness changes from pins current to canary green on the live head. Follow-ups outside this proposal are adding the canary workflow in commerce, switching the dependency spec, and following the same change in coupons.",
+      "context_ref": "task:commerce-main-canary-proposal-20261010",
+      "created_at": "2026-10-10T15:26:46+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "guest-checkout-return-retry",
+      "history": [],
+      "id": "commerce-main-canary-001",
+      "implementation_ref": null,
+      "question": "How should DinkusKit dependents stay current while all stores are dev-only, without requiring repin PRs after every Commerce merge?",
+      "rationale": "template-store and coupons currently pin exact dinkuskit/commerce SHAs. Every Commerce merge makes those pins stale, forcing repin PRs and new ClawSweeper reviews. Ryan approved this direction in chat; Ryan will lock the decision himself.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-10T15:26:46+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -2581,5 +2607,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-09T23:40:07+00:00"
+  "updated_at": "2026-10-10T15:26:46+00:00"
 }
