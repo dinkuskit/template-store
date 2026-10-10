@@ -20,6 +20,15 @@ This document defines the seeding and reset procedure for the hosted DinkusKit T
 | Dinkus Demo Heavyweight T-Shirt | `DEMO-HOSTED-SHIRT` | $32.00 USD | None | In stock |
 | Dinkus Demo Structured Cap | `DEMO-HOSTED-CAP` | $28.00 USD | $24.00 USD | In stock |
 | Dinkus Demo Ceramic Mug | `DEMO-HOSTED-MUG` | $18.00 USD | None | In stock |
+| Dinkus Demo Everyday Hoodie, Size Small | `DEMO-HOSTED-HOODIE-S` | $56.00 USD | None | In stock |
+| Dinkus Demo Everyday Hoodie, Size Medium | `DEMO-HOSTED-HOODIE-M` | $56.00 USD | None | In stock |
+| Dinkus Demo Canvas Tote | `DEMO-HOSTED-TOTE` | $26.00 USD | None | In stock |
+| Dinkus Demo Woven Throw | `DEMO-HOSTED-THROW` | $48.00 USD | $42.00 USD | In stock |
+| Dinkus Demo Catchall Tray | `DEMO-HOSTED-TRAY` | $22.00 USD | None | In stock |
+| Dinkus Demo Ribbed Socks | `DEMO-HOSTED-SOCKS` | $14.00 USD | None | Out of stock |
+| Dinkus Demo Steel Bottle | `DEMO-HOSTED-BOTTLE` | $30.00 USD | None | In stock |
+
+The Everyday Hoodie is one product with a Size option (Small, Medium); each size is its own `DEMO-HOSTED-*` SKU and is reset to the same baseline.
 
 ---
 
@@ -61,7 +70,7 @@ Catalog writes stay on Commerce `createCatalogItem`, `setCatalogItemRegularPrice
    The passing proxy call, which this slice does not invoke, is `getPlatformProxy({ configPath: <repo>/.artifacts/wrangler.remote.jsonc, remoteBindings: true, envFiles: [], persist: false })`. The command rejects preview ids, a local UUID presented as remote, a database file path, any other worker or database name, `--prove-sentinel`, a missing or wrong confirmation, and committed `account_id` / `database_id` / `remote` in `wrangler.jsonc`. Account and database ids stay in those ignored files only. A remote database also needs the same built-Worker scheduled initialization against that approved remote binding before Commerce writes. That remote initialization has not been run. Actual remote seeding remains unproved.
 
 4. **Verification**:
-   After the local scheduled harness and seed, the three `DEMO-HOSTED-*` rows are the baseline prices and availability. The repeat run reports the non-demo sentinel unchanged and the neutral home page published. Remote verification is not claimed.
+   After the local scheduled harness and seed, all nine `DEMO-HOSTED-*` products (ten SKUs, counting both hoodie sizes) are at the baseline prices and availability. The repeat run reports the non-demo sentinel unchanged and the neutral home page published. Remote verification is not claimed.
 
 ---
 
