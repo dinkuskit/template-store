@@ -290,6 +290,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     await expect(physical.locator("[data-guest-cart-status]")).toContainText("Delivery address is required");
     await physical.screenshot({ path: resolve(root, "physical-commerce-refusal.png"), fullPage: true, animations: "disabled" });
 
+    await physical.goto("/cart");
     await physical.getByLabel("Recipient", { exact: true }).fill("Proof shopper");
     await physical.getByLabel("Address line 1", { exact: true }).fill("1 Example Way");
     await physical.getByLabel("City", { exact: true }).fill("Testville");
