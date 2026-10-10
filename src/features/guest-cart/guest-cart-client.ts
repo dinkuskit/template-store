@@ -243,6 +243,7 @@ function renderCart(root: Element): void {
   const lines = root.querySelector("[data-guest-cart-lines]");
   const checkout = root.querySelector("[data-guest-cart-checkout]");
   const coupon = root.querySelector("[data-guest-cart-coupon]");
+  const contact = root.querySelector("[data-guest-cart-contact]");
   const reason = root.querySelector("[data-guest-cart-checkout-reason]");
   const delivery = root.querySelector("[data-guest-cart-delivery]");
   const retry = root.querySelector("[data-guest-cart-retry]");
@@ -260,6 +261,9 @@ function renderCart(root: Element): void {
   }
   if (coupon instanceof HTMLInputElement) {
     coupon.disabled = !checkoutAdmitted || checkoutLocked();
+  }
+  if (contact instanceof HTMLFieldSetElement) {
+    contact.disabled = !checkoutAdmitted || checkoutLocked();
   }
   if (reason instanceof HTMLElement) {
     reason.textContent = current.checkoutReason;
