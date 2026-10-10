@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Prepares a Claude Code cloud session for Template Store work: the .nvmrc
-# Node and packageManager pnpm, a frozen lockfile install, the pinned Commerce
-# source, the pinned agent skills, and the Chromium build the locked
-# Playwright expects. Local sessions are left alone. Every step is idempotent
+# Node and packageManager pnpm, the sqlite3 CLI, a frozen lockfile install,
+# the pinned Commerce source, the pinned agent skills, and the Chromium build
+# the locked Playwright expects. Local sessions are left alone. Every step is idempotent
 # and a failed step is reported, not fatal, so the session still starts and
 # can say what is missing.
 set -uo pipefail
@@ -34,6 +34,17 @@ if [ "$have" != "$want" ] || [ "$have_pnpm" != "$want_pnpm" ]; then
   exit 0
 fi
 status+=("node $have (pnpm $have_pnpm)")
+
+# sqlite3 CLI: scripts/scheduled-index-harness.mjs shells out to it, and CI's
+# Ubuntu runner already has it.
+if command -v sqlite3 >/dev/null 2>&1; then
+  status+=("sqlite3 present")
+elif [ "$(id -u)" = 0 ] && command -v apt-get >/dev/null 2>&1 &&
+  { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends sqlite3; } >&2; then
+  status+=("sqlite3 installed with apt-get, as on CI's Ubuntu runner")
+else
+  status+=("sqlite3 is missing and could not be installed; the scheduled-index seed test will fail")
+fi
 
 # Dependencies: frozen pnpm install, skipped when node_modules was already
 # installed from this exact lockfile with this Node and pnpm.

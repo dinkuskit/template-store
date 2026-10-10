@@ -79,7 +79,7 @@ do not establish released artifact, registry, checkout, or Cloudflare readiness.
 ## Gates
 
 Publishing packages, deployment, production mutation, secrets or permissions
-changes, pull-request creation, and merges require separate authorization.
+changes, and merges require separate authorization.
 
 Use Node 22.23.2 per `.nvmrc` and verify `node -v`. In Cursor cloud agents put
 nvm's Node ahead of `/exec-daemon` on `PATH` with
