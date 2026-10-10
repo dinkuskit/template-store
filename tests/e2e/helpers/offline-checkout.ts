@@ -87,6 +87,8 @@ export async function installOfflineCheckoutHarness(
   let prepareCalls = 0;
   let startCalls = 0;
   let refuseDeliveryState = refuseDelivery;
+  let digitalState = digital;
+  const startBodies: unknown[] = [];
   let capabilityId = "fixture-cap-1";
   let releaseInitialPrepare: (() => void) | null = null;
   const initialPrepareGate = gateInitialPrepare
@@ -122,6 +124,7 @@ export async function installOfflineCheckoutHarness(
       if (synthetic && path === RUNTIME_START && route.request().method() === "POST") {
         startCalls += 1;
         const requestBody = route.request().postDataJSON();
+        startBodies.push(requestBody);
         expect(requestBody.lines).toEqual([{ catalogItemId: "fixture-shirt", quantity: 1 }]);
         expect(requestBody.contact.email).toMatch(/@/);
         if (refuseDeliveryState) {
@@ -162,7 +165,7 @@ export async function installOfflineCheckoutHarness(
             sku: "FIXTURE",
             price: { listable: true, regularText: "$24.00", saleText: null },
             availability: { status: "in-stock", sellable: true, listable: true },
-            ...(digital ? { fulfillment: "digital" } : {}),
+            ...(digitalState ? { fulfillment: "digital" } : {}),
           }],
         });
         return;
@@ -192,6 +195,8 @@ export async function installOfflineCheckoutHarness(
     counts: () => ({ statusCalls, prepareCalls, startCalls }),
     releaseInitialPrepare: () => releaseInitialPrepare?.(),
     setRefuseDelivery: (value: boolean) => { refuseDeliveryState = value; },
+    setDigital: (value: boolean) => { digitalState = value; },
+    startBodies: () => structuredClone(startBodies),
     paymentURL: SYNTHETIC_PAYMENT_URL,
     blocked,
   };

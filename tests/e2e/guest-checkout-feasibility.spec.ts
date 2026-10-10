@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
@@ -317,4 +317,81 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
   } finally {
     await context.close();
   }
+});
+
+test("checkout start sends delivery only while the cart needs it, even after fields go stale", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  test.skip(testInfo.project.name !== "shipping-chromium-desktop", "Payload proof is captured once on desktop.");
+  const baseURL = testInfo.project.use.baseURL as string;
+  const root = resolve("runs/checkout-contact-proof", testInfo.project.name);
+  await mkdir(root, { recursive: true });
+  const address = {
+    name: "Proof shopper",
+    line1: "1 Example Way",
+    city: "Testville",
+    postalCode: "00000",
+    country: "US",
+  };
+  const seedCart = () => {
+    localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+      version: 1,
+      lines: [{ id: "fixture-shirt", quantity: 1 }],
+    }));
+  };
+  const fillContact = async (page: import("@playwright/test").Page) => {
+    await page.getByLabel("Email", { exact: true }).fill("proof@example.test");
+    await page.getByLabel("Recipient", { exact: true }).fill(address.name);
+    await page.getByLabel("Address line 1", { exact: true }).fill(address.line1);
+    await page.getByLabel("City", { exact: true }).fill(address.city);
+    await page.getByLabel("Postal code", { exact: true }).fill(address.postalCode);
+    await page.getByLabel("Country code", { exact: true }).fill(address.country);
+  };
+
+  const physicalContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  let physicalBodies: unknown[] = [];
+  try {
+    const page = await physicalContext.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL });
+    await page.addInitScript(seedCart);
+    await page.goto("/cart");
+    await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
+    await fillContact(page);
+    await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect.poll(() => harness.counts().startCalls).toBe(1);
+    physicalBodies = harness.startBodies();
+    expect(physicalBodies).toHaveLength(1);
+    expect((physicalBodies[0] as { contact: unknown }).contact).toEqual({ email: "proof@example.test", delivery: address });
+  } finally {
+    await physicalContext.close();
+  }
+
+  const staleContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  let staleBodies: unknown[] = [];
+  try {
+    const page = await staleContext.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL });
+    await page.addInitScript(seedCart);
+    await page.goto("/cart");
+    await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
+    await fillContact(page);
+    // The same cart becomes digital-only after Commerce's next catalog answer.
+    harness.setDigital(true);
+    await page.getByRole("button", { name: "Retry catalog update" }).click();
+    await expect(page.getByRole("heading", { name: "Delivery address" })).toBeHidden();
+    await expect(page.getByLabel("City", { exact: true })).toHaveValue(address.city);
+    await page.screenshot({ path: resolve(root, "digital-after-physical-stale-fields.png"), fullPage: true, animations: "disabled" });
+    await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect.poll(() => harness.counts().startCalls).toBe(1);
+    staleBodies = harness.startBodies();
+    expect(staleBodies).toHaveLength(1);
+    expect((staleBodies[0] as { contact: unknown }).contact).toEqual({ email: "proof@example.test" });
+  } finally {
+    await staleContext.close();
+  }
+  await writeFile(
+    resolve(root, "checkout-start-contact-bodies.json"),
+    `${JSON.stringify({ physical: physicalBodies, digitalAfterStaleAddress: staleBodies }, null, 2)}\n`,
+  );
 });

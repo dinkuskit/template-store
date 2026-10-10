@@ -131,12 +131,18 @@ function inputValue(root: Element, selector: string): string {
   return input instanceof HTMLInputElement ? input.value.trim() : "";
 }
 
-function readCheckoutContact(root: Element): { contact: GuestCheckoutContact | null; error: string | null } {
+function readCheckoutContact(
+  root: Element,
+  needsDelivery: boolean,
+): { contact: GuestCheckoutContact | null; error: string | null } {
   const email = inputValue(root, "[data-guest-cart-email]");
   if (!email) return { contact: null, error: "Enter your email address to continue." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
     return { contact: null, error: "Enter a valid email address to continue." };
   }
+  // A digital-only cart hides the delivery section; values left there from an
+  // earlier physical cart must never reach Commerce or block checkout.
+  if (!needsDelivery) return { contact: { email }, error: null };
   const fields = {
     name: inputValue(root, "[data-guest-cart-delivery-name]"),
     line1: inputValue(root, "[data-guest-cart-delivery-line1]"),
@@ -502,7 +508,7 @@ export function hydrateGuestCartPage(): void {
     if (target.closest("[data-guest-cart-checkout]")) {
       if (!checkoutController || checkoutLocked() || !view().checkoutEnabled) return;
       const originalIntent = structuredClone(session.intent);
-      const contactInput = readCheckoutContact(root);
+      const contactInput = readCheckoutContact(root, view().needsDelivery);
       if (contactInput.error || !contactInput.contact) {
         setCheckoutMessage(contactInput.error ?? "Complete the checkout contact fields.", true);
         renderCart(root);
