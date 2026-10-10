@@ -23,6 +23,7 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
   assert.deepEqual(policy.commerce.publicRoutes, [
     "/_emdash/api/plugins/dinkus-commerce/catalog/public",
     "/_emdash/api/plugins/dinkus-commerce/catalog/public/item",
+    "/_emdash/api/plugins/dinkus-commerce/policies/public",
     "/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare",
     "/_emdash/api/plugins/dinkus-commerce/checkout/guest/start",
     "/_emdash/api/plugins/dinkus-commerce/checkout/guest/status",

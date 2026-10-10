@@ -27,6 +27,7 @@ export type GuestCartCatalogSnapshot =
       found: true;
       name: string;
       sku: string;
+      fulfillment?: "physical" | "digital";
       price: GuestCartPublicPrice;
       availability: GuestCartPublicAvailability;
     }>;
@@ -63,6 +64,7 @@ export type GuestCartView = Readonly<{
   checkoutLabel: string;
   checkoutReason: string;
   checkoutEnabled: boolean;
+  needsDelivery: boolean;
 }>;
 
 const STORAGE_NOTICES: Record<GuestCartReadNotice, string> = {
@@ -141,6 +143,7 @@ export function presentGuestCart(options: {
       quantity: line.quantity,
       name: snapshot?.found ? snapshot.name : line.id,
       sku: snapshot?.found ? snapshot.sku : null,
+      fulfillment: snapshot?.found ? snapshot.fulfillment ?? "physical" : "physical",
       regularText: snapshot?.found ? snapshot.price.regularText : null,
       saleText: snapshot?.found ? snapshot.price.saleText : null,
       availabilityLabel:
@@ -158,6 +161,7 @@ export function presentGuestCart(options: {
     !options.pending &&
     !options.snapshotFailed &&
     lines.every((line) => line.sellable);
+  const needsDelivery = lines.some((line) => line.fulfillment === "physical");
   return {
     lines,
     empty: lines.length === 0,
@@ -169,6 +173,7 @@ export function presentGuestCart(options: {
       ? "Commerce will confirm the final amount and availability."
       : GUEST_CHECKOUT_REASON,
     checkoutEnabled,
+    needsDelivery,
   };
 }
 
@@ -246,6 +251,7 @@ export function projectGuestCartCatalogSnapshot(value: unknown): GuestCartCatalo
     found: true,
     name: publicName,
     sku: publicSku,
+    fulfillment: value.fulfillment === "digital" ? "digital" : "physical",
     price,
     availability,
   };
