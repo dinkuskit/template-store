@@ -94,17 +94,19 @@ jobs:
           message="template-store=${template_commit} commerce=${commerce_commit}"
           echo "message=${message}" >> "$GITHUB_OUTPUT"
           echo "::notice title=Playground source commits::${message}"
+      # Cloudflare uploads stay off until the owner approves the one-time
+      # Cloudflare setup and sets the PLAYGROUND_DEPLOY_ENABLED variable.
       - name: Upload PR preview version
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.PLAYGROUND_DEPLOY_ENABLED == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
         run: >-
           pnpm exec wrangler versions upload
-          --config wrangler.playground.jsonc
+          --config dist/server/wrangler.json
           --preview-alias pr-${{ github.event.pull_request.number }}
           --message "${{ steps.commits.outputs.message }}"
       - name: Verify PR preview
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.PLAYGROUND_DEPLOY_ENABLED == 'true'
         shell: bash
         env:
           PREVIEW_URL: https://pr-${{ github.event.pull_request.number }}.playground.dinkuskit.com
@@ -121,10 +123,10 @@ jobs:
             --retry-delay 5 "$PREVIEW_URL/checkout" --output "$checkout_body"
           grep -Fqi "Checkout unavailable" "$checkout_body"
       - name: Deploy main playground
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && vars.PLAYGROUND_DEPLOY_ENABLED == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
         run: >-
           pnpm exec wrangler deploy
-          --config wrangler.playground.jsonc
+          --config dist/server/wrangler.json
           --message "${{ steps.commits.outputs.message }}"

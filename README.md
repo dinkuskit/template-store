@@ -127,7 +127,7 @@ demo Worker or its D1 database:
 ```bash
 pnpm exec astro dev --config astro.playground.config.mjs
 pnpm exec astro build --config astro.playground.config.mjs
-pnpm exec wrangler dev --config wrangler.playground.jsonc
+pnpm exec wrangler dev --config dist/server/wrangler.json
 ```
 
 Visit `/playground`. EmDash creates an anonymous admin session backed by a
@@ -157,6 +157,13 @@ still required for the `playground.dinkuskit.com` custom domain, its
 `pr-*.playground.dinkuskit.com` preview hostnames/wildcard DNS, and the two
 rate-limit namespaces. This change intentionally performs no deploy or
 resource creation.
+
+CI always builds the playground, but the upload, preview check and `main`
+deploy steps run only when the repository variable
+`PLAYGROUND_DEPLOY_ENABLED` is `true`. Set it after the one-time Cloudflare
+setup above is approved. Wrangler deploys the build's generated
+`dist/server/wrangler.json` (from `wrangler.playground.jsonc`, whose `main`
+stays `src/playground-worker.ts` so the Astro build can resolve it).
 
 The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build`,
 and the verifiers prepare Commerce's exact source in an ignored checkout, then

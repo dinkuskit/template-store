@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dinkuskit-template-playground",
-  "main": "./dist/server/entry.mjs",
+  "main": "./src/playground-worker.ts",
   "account_id": "cddb32366789cab1bdf4c25584dc1920",
   "workers_dev": false,
   "preview_urls": false,
