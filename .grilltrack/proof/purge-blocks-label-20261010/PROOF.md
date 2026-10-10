@@ -13,6 +13,9 @@ Changes:
 - The copied presentation CSS layer is renamed `dinkus-blocks` to
   `store-blocks` in `global.css` and the three Portable Text components (same
   layer order, so the cascade is unchanged).
+- `docs/implementation/managed-product-availability.md` and
+  `docs/implementation/unmanaged-product-sellability.md` show the provenance
+  contract as Commerce and Inventory only (ClawSweeper P2 on PR #54).
 - `docs/v1-pairing.md` no longer calls the retired commit "historical style
   provenance"; it states the archived repository is not used anywhere.
 - `scripts/check-features.mjs` keeps its guard that refuses
