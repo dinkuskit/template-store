@@ -15,7 +15,7 @@ const commerceSnapshots = await readCommerceCatalogSnapshots(
   productLinks.products.map((product) => product.commerceItemId),
   { runtime: Astro.locals.emdash, request: Astro.request },
 ).catch(() => []);
-const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
+const { profile, collections } = await loadStorefrontRouteContext(
   products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
   categoryEntries.entries,
 );

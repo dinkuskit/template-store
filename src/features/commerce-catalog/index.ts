@@ -43,7 +43,7 @@ export type CommerceCatalogSnapshot =
       sku: string;
       fulfillment: "physical" | "digital";
       price: PublicPriceView;
-      availability: Readonly<{ status: string; sellable: boolean; listable: boolean }>;
+      availability: Readonly<Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">>;
     }>;
 
 async function openCommerceCatalogStorage() {
