@@ -56,6 +56,7 @@
   "devDependencies": {
     "@astrojs/check": "0.9.9",
     "@emdash-cms/auth": "1.2.0",
+    "@emdash-cms/blocks": "1.2.0",
     "@emdash-cms/sandbox-workerd": "0.9.1",
     "@playwright/test": "1.61.1",
     "@types/node": "26.1.1",

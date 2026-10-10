@@ -357,7 +357,7 @@ export async function callGuestCheckout(
     try {
       body = JSON.parse(rawBody);
     } catch {
-      return { result: null, failure: "wrong-shape" };
+      return { result: null, failure: response.ok ? "wrong-shape" : "http" };
     }
     const result = parseGuestCheckoutWireResult(body);
     if (!result) return { result: null, failure: response.ok ? "wrong-shape" : "http" };
