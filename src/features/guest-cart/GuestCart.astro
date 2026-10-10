@@ -14,6 +14,30 @@ const { checkoutAdmission = null } = Astro.props;
   <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
   <div data-guest-cart-lines></div>
   <div class="guest-cart-checkout">
+    <fieldset class="guest-cart-contact" data-guest-cart-contact disabled={!checkoutAdmission}>
+      <legend>Checkout contact</legend>
+      <p>Commerce uses your email for checkout. A delivery address is required only when the basket contains a physical item.</p>
+      <label for="guest-cart-email">Email</label>
+      <input id="guest-cart-email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" />
+      <div class="guest-cart-delivery" data-guest-cart-delivery>
+        <h2>Delivery address</h2>
+        <p>Complete these fields for a physical order. We do not collect a billing address.</p>
+        <label for="guest-cart-delivery-name">Recipient</label>
+        <input id="guest-cart-delivery-name" data-guest-cart-delivery-name maxlength="200" autocomplete="shipping name" />
+        <label for="guest-cart-delivery-line1">Address line 1</label>
+        <input id="guest-cart-delivery-line1" data-guest-cart-delivery-line1 maxlength="200" autocomplete="shipping address-line1" />
+        <label for="guest-cart-delivery-line2">Address line 2 <span>(optional)</span></label>
+        <input id="guest-cart-delivery-line2" data-guest-cart-delivery-line2 maxlength="200" autocomplete="shipping address-line2" />
+        <label for="guest-cart-delivery-city">City</label>
+        <input id="guest-cart-delivery-city" data-guest-cart-delivery-city maxlength="200" autocomplete="shipping address-level2" />
+        <label for="guest-cart-delivery-region">State or region <span>(optional)</span></label>
+        <input id="guest-cart-delivery-region" data-guest-cart-delivery-region maxlength="200" autocomplete="shipping address-level1" />
+        <label for="guest-cart-delivery-postal-code">Postal code</label>
+        <input id="guest-cart-delivery-postal-code" data-guest-cart-delivery-postal-code maxlength="200" autocomplete="shipping postal-code" />
+        <label for="guest-cart-delivery-country">Country code</label>
+        <input id="guest-cart-delivery-country" data-guest-cart-delivery-country maxlength="2" autocomplete="shipping country" />
+      </div>
+    </fieldset>
     <label for="guest-cart-coupon">Coupon code (optional)</label>
     <input id="guest-cart-coupon" data-guest-cart-coupon type="text" maxlength="128" autocomplete="off" disabled={!checkoutAdmission} />
     <button type="button" data-guest-cart-checkout disabled>{GUEST_CHECKOUT_LABEL}</button>
@@ -29,6 +53,12 @@ const { checkoutAdmission = null } = Astro.props;
   [data-guest-cart-status][role="alert"]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
   [data-guest-cart-lines]{display:grid;gap:1rem;margin:1.5rem 0}
   .guest-cart-checkout{margin-top:2rem}
+  .guest-cart-contact{display:grid;gap:.5rem;max-width:34rem;margin:0 0 1rem;padding:1rem;border:1px solid var(--store-line);border-radius:.65rem}
+  .guest-cart-contact p{margin:0 0 .5rem}
+  .guest-cart-contact h2{font-size:1.15rem;margin:.75rem 0 0}
+  .guest-cart-contact span{color:var(--store-muted);font-size:.9em}
+  .guest-cart-contact input{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit}
+  .guest-cart-contact input:focus-visible{outline:3px solid #215cc8;outline-offset:2px}
   .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800}
   [data-guest-cart-checkout]:disabled{color:var(--store-muted);cursor:not-allowed}
   .guest-cart :global([data-guest-cart-line]){padding:1.5rem;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface);min-width:0;overflow-wrap:anywhere}

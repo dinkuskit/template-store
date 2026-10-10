@@ -15,7 +15,7 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "commit": "938cb06cc6c0a1e7f457e514076d608219e38c65"
+        "commit": "00e3544b5de88f952f319e5f9561996826171e54"
       }
     }
   },
@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "0.9.9",
+    "@emdash-cms/auth": "1.2.0",
     "@emdash-cms/sandbox-workerd": "0.9.1",
     "@playwright/test": "1.61.1",
     "@types/node": "26.1.1",

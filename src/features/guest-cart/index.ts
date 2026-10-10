@@ -88,6 +88,8 @@ export type {
   GuestCheckoutCallResult,
   GuestCheckoutController,
   GuestCheckoutProjection,
+  GuestCheckoutContact,
+  GuestCheckoutDelivery,
   GuestCheckoutRetention,
   GuestCheckoutRetentionStorage,
   GuestCheckoutTransport,

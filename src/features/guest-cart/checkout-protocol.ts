@@ -63,8 +63,23 @@ export interface GuestCheckoutTransport {
 
 export type GuestCheckoutCall =
   | Readonly<{ kind: "prepare" }>
-  | Readonly<{ kind: "start"; intent: GuestCartIntent; couponCode?: string }>
+  | Readonly<{ kind: "start"; intent: GuestCartIntent; couponCode?: string; contact?: GuestCheckoutContact }>
   | Readonly<{ kind: "status"; attemptId?: string }>;
+
+export type GuestCheckoutDelivery = Readonly<{
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region?: string;
+  postalCode: string;
+  country: string;
+}>;
+
+export type GuestCheckoutContact = Readonly<{
+  email: string;
+  delivery?: GuestCheckoutDelivery;
+}>;
 
 export type GuestCheckoutCallResult = Readonly<{
   result: GuestCheckoutWireResult | null;
@@ -275,8 +290,8 @@ function requestFor(call: GuestCheckoutCall, retention: GuestCheckoutRetention |
     quantity: line.quantity,
   }));
   const body = call.couponCode
-    ? { lines, couponCode: call.couponCode }
-    : { lines };
+    ? { lines, couponCode: call.couponCode, ...(call.contact ? { contact: call.contact } : {}) }
+    : { lines, ...(call.contact ? { contact: call.contact } : {}) };
   return { endpoint: GUEST_CHECKOUT_START_ENDPOINT, body, capability: retention.capability };
 }
 
@@ -334,7 +349,6 @@ export async function callGuestCheckout(
       redirect: "error",
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
-    if (!response.ok) return { result: null, failure: "http" };
     const rawBody = await readBoundedResponseBody(response);
     if (rawBody === null) {
       return { result: null, failure: "response-too-large" };
@@ -346,7 +360,8 @@ export async function callGuestCheckout(
       return { result: null, failure: "wrong-shape" };
     }
     const result = parseGuestCheckoutWireResult(body);
-    if (!result) return { result: null, failure: "wrong-shape" };
+    if (!result) return { result: null, failure: response.ok ? "wrong-shape" : "http" };
+    if (!response.ok) return { result, failure: null };
     if (retention && result.ok && result.capabilityId !== retention.capabilityId) {
       return { result: null, failure: "association" };
     }
@@ -390,7 +405,7 @@ export function strictStripeCheckoutUrl(value: string | null): string | null {
 
 export type GuestCheckoutController = Readonly<{
   prepare(): Promise<GuestCheckoutCallResult>;
-  start(intent: GuestCartIntent, couponCode?: string): Promise<GuestCheckoutCallResult>;
+  start(intent: GuestCartIntent, couponCode?: string, contact?: GuestCheckoutContact): Promise<GuestCheckoutCallResult>;
   status(): Promise<GuestCheckoutCallResult>;
   canStart(): boolean;
   canPrepareNew(): boolean;
@@ -461,7 +476,7 @@ export function createGuestCheckoutController(options: {
     status,
     canStart: () => startAllowed && !busy,
     canPrepareNew,
-    start: async (intent, couponCode) => {
+    start: async (intent, couponCode, contact) => {
       const retention = readGuestCheckoutRetention(options.storage);
       if (!options.admitted) return { result: null, failure: "storage-unavailable" };
       if (!retention) return { result: null, failure: "storage-unavailable" };
@@ -480,7 +495,18 @@ export function createGuestCheckoutController(options: {
             return { result: null, failure: "storage-unavailable" };
           }
         } catch { return { result: null, failure: "storage-unavailable" }; }
-        const response = await callGuestCheckout(start, retention, options.transport);
+        const response = await callGuestCheckout(
+          contact === undefined
+            ? start
+            : {
+                kind: "start",
+                intent,
+                ...(couponCode ? { couponCode } : {}),
+                contact,
+              },
+          retention,
+          options.transport,
+        );
         if (response.failure || !response.result || !response.result.ok) return response;
         if (!updateGuestCheckoutAttempt(options.storage, response.result)) {
           return { result: null, failure: "association" };

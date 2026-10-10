@@ -35,7 +35,7 @@ import {
 
 const PROVENANCE = {
   blocks: "fe03bfac91798ac0b411b952fe23c26afefbf570",
-  commerce: "938cb06cc6c0a1e7f457e514076d608219e38c65",
+  commerce: "00e3544b5de88f952f319e5f9561996826171e54",
   inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
 } as const;
 

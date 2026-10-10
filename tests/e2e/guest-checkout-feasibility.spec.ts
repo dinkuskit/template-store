@@ -103,6 +103,7 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   harness.releaseInitialPrepare();
   await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
   expect(harness.counts()).toMatchObject({ prepareCalls: 1, startCalls: 0 });
+  await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
   await page.getByRole("button", { name: "Continue to secure checkout" }).click();
   await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
   await expect(page.locator("[data-guest-cart-status]")).toContainText(/pending|Contacting Commerce/i);
@@ -132,6 +133,7 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   await page.reload();
   await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
   await expect(page.locator("[data-guest-cart-qty]")).toBeEnabled();
+  await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
   await page.getByRole("button", { name: "Continue to secure checkout" }).click();
   await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
   expect(harness.counts().prepareCalls).toBe(2);
@@ -161,6 +163,7 @@ test("return status checks stop after the bounded retry budget", async ({ browse
     });
     await page.goto("/cart");
     await expect(page.getByRole("button", { name: "Continue to secure checkout" })).toBeEnabled();
+    await page.getByLabel("Email", { exact: true }).fill("pending@example.test");
     await page.getByRole("button", { name: "Continue to secure checkout" }).click();
     await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
     await page.goto("/checkout/success?success=true&session_id=synthetic-untrusted");

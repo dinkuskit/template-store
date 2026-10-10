@@ -2559,6 +2559,32 @@
       "superseded_by": null,
       "updated_at": "2026-10-09T23:40:07+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Use a two-letter ISO country-code input now, normalize it to upper case, and later replace it with a Commerce-driven selector when supported shipping-country options are public; suggested pick: selector.",
+      "context_ref": "https://github.com/dinkuskit/commerce/pull/88",
+      "created_at": "2026-10-10T13:00:00+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "guest-checkout-return-retry",
+      "history": [],
+      "id": "template-checkout-country-input-001",
+      "implementation_ref": null,
+      "question": "How should the storefront choose a delivery country while Commerce does not expose shipping-country options through the public catalog?",
+      "rationale": "The current public catalog contract has no shipping-country list. A free-form field keeps the template from inventing merchant destinations while Commerce remains authoritative and can return DELIVERY_COUNTRY_UNAVAILABLE.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-10T13:00:00+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -2581,5 +2607,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-09T23:40:07+00:00"
+  "updated_at": "2026-10-10T13:00:00+00:00"
 }

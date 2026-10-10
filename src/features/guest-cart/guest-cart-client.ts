@@ -24,6 +24,7 @@ import {
   type GuestCartIntent,
   type GuestCartReadNotice,
   type GuestCartView,
+  type GuestCheckoutContact,
   type GuestCheckoutTransport,
 } from "./index.js";
 
@@ -123,6 +124,48 @@ function escapeText(value: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function inputValue(root: Element, selector: string): string {
+  const input = root.querySelector(selector);
+  return input instanceof HTMLInputElement ? input.value.trim() : "";
+}
+
+function readCheckoutContact(root: Element): { contact: GuestCheckoutContact | null; error: string | null } {
+  const email = inputValue(root, "[data-guest-cart-email]");
+  if (!email) return { contact: null, error: "Enter your email address to continue." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
+    return { contact: null, error: "Enter a valid email address to continue." };
+  }
+  const fields = {
+    name: inputValue(root, "[data-guest-cart-delivery-name]"),
+    line1: inputValue(root, "[data-guest-cart-delivery-line1]"),
+    line2: inputValue(root, "[data-guest-cart-delivery-line2]"),
+    city: inputValue(root, "[data-guest-cart-delivery-city]"),
+    region: inputValue(root, "[data-guest-cart-delivery-region]"),
+    postalCode: inputValue(root, "[data-guest-cart-delivery-postal-code]"),
+    country: inputValue(root, "[data-guest-cart-delivery-country]").toUpperCase(),
+  };
+  const deliveryEntered = Object.values(fields).some(Boolean);
+  if (!deliveryEntered) return { contact: { email }, error: null };
+  for (const [key, value] of Object.entries(fields)) {
+    if (!value && key !== "line2" && key !== "region") {
+      return { contact: null, error: "Complete the recipient, address, city, postal code, and country fields." };
+    }
+  }
+  if (!/^[A-Z]{2}$/u.test(fields.country)) {
+    return { contact: null, error: "Country must be a two-letter country code, such as US." };
+  }
+  const delivery = {
+    name: fields.name,
+    line1: fields.line1,
+    ...(fields.line2 ? { line2: fields.line2 } : {}),
+    city: fields.city,
+    ...(fields.region ? { region: fields.region } : {}),
+    postalCode: fields.postalCode,
+    country: fields.country,
+  };
+  return { contact: { email, delivery }, error: null };
 }
 
 function lineCopyMarkup(line: GuestCartView["lines"][number]): string {
@@ -431,6 +474,12 @@ export function hydrateGuestCartPage(): void {
     if (target.closest("[data-guest-cart-checkout]")) {
       if (!checkoutController || checkoutLocked() || !view().checkoutEnabled) return;
       const originalIntent = structuredClone(session.intent);
+      const contactInput = readCheckoutContact(root);
+      if (contactInput.error || !contactInput.contact) {
+        setCheckoutMessage(contactInput.error ?? "Complete the checkout contact fields.", true);
+        renderCart(root);
+        return;
+      }
       const couponInput = root.querySelector("[data-guest-cart-coupon]");
       const couponCode = couponInput instanceof HTMLInputElement ? couponInput.value.trim() || undefined : undefined;
       pendingCheckout = true;
@@ -447,11 +496,14 @@ export function hydrateGuestCartPage(): void {
           renderCart(root);
           return;
         }
-        const started = await checkoutController!.start(originalIntent, couponCode);
+        const started = await checkoutController!.start(originalIntent, couponCode, contactInput.contact!);
         pendingCheckout = false;
         if (started.failure || !started.result || !started.result.ok) {
           checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
-          setCheckoutMessage(checkoutFailureText(started.failure), true);
+          setCheckoutMessage(
+            started.result && !started.result.ok ? started.result.error.message : checkoutFailureText(started.failure),
+            true,
+          );
           renderCart(root);
           return;
         }
