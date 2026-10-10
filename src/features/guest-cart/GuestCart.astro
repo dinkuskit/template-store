@@ -14,7 +14,7 @@ const { checkoutAdmission = null } = Astro.props;
   <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
   <div data-guest-cart-lines></div>
   <div class="guest-cart-checkout">
-    <fieldset class="guest-cart-contact" data-guest-cart-contact disabled={!checkoutAdmission}>
+    <fieldset class="guest-cart-contact" data-guest-cart-contact>
       <legend>Checkout contact</legend>
       <p>Commerce uses your email for checkout. A delivery address is required only when the basket contains a physical item.</p>
       <label for="guest-cart-email">Email</label>
