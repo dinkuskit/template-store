@@ -273,6 +273,7 @@ describe("guest cart snapshot presentation", () => {
         found: true,
         name: "Merchant hat",
         sku: "HAT-1",
+        fulfillment: "physical",
         price: { listable: true, regularText: "$24.00", saleText: null },
         availability: { status: "in-stock", sellable: true, listable: true },
       },
