@@ -19,6 +19,10 @@ test("published products are visible in the canonical product catalog", async ({
   await page.goto("/");
   await expect(page.locator("[data-product-catalog]")).toBeVisible();
   await expect(page.locator("[data-product-catalog] h2")).toHaveText("Products");
+  console.log("product-catalog-debug", await page.locator("[data-product-catalog]").evaluate((element) => ({
+    links: element.getAttribute("data-product-links"),
+    snapshots: element.getAttribute("data-commerce-snapshot-ids"),
+  })));
   await expect(page.locator("[data-product-item=everyday-tee] h4")).toHaveText("Everyday Tee");
   await expect(page.locator("[data-product-item=canvas-cap] h4")).toHaveText("Canvas Cap");
   await expect(page.locator("[data-product-item=dinkus-template-unpriced-product]")).toHaveCount(0);
