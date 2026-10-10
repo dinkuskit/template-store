@@ -7,11 +7,13 @@ import { defineConfig } from "astro/config";
 import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
+import { usesNativeCommerceCatalog } from "./src/features/commerce-catalog/profile.ts";
 import { d1, r2 } from "@emdash-cms/cloudflare";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
   process.env.ASTRO_ADAPTER === "cloudflare";
+const useNativeCommerceCatalog = usesNativeCommerceCatalog(process.env);
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
@@ -63,7 +65,7 @@ export default defineConfig({
           version: "1.0.0",
           entrypoint: productUrlEntry,
         },
-        ...(process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
+        ...(useNativeCommerceCatalog ? [
           dinkusCommerce({
             enableLocalStockManagement,
             ...(siteUrl ? { siteUrl } : {}),

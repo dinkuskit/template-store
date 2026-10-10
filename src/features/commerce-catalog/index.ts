@@ -11,6 +11,7 @@ import {
 } from "@dinkuskit/commerce";
 import { readInstalledCommerceCatalog, type InstalledCatalogContext } from "./installed.js";
 import type { PublicCommerceImage } from "./media.js";
+import { usesNativeCommerceCatalog } from "./profile.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
 
 export type { PublicCommerceImage } from "./media.js";
@@ -66,7 +67,7 @@ async function openCommerceCatalogStorage() {
 }
 
 export async function readCommerceCatalog(context?: InstalledCatalogContext): Promise<PublicCommerceProduct[]> {
-  if (process.env.DINKUS_CATALOG_PROFILE !== "native-development") {
+  if (!usesNativeCommerceCatalog(process.env)) {
     if (!context) throw new Error("Installed catalog context unavailable");
     return readInstalledCommerceCatalog(context);
   }
@@ -95,7 +96,7 @@ export async function readCommerceCatalogSnapshots(
   ids: readonly string[],
   context?: InstalledCatalogContext,
 ): Promise<CommerceCatalogSnapshot[]> {
-  if (process.env.DINKUS_CATALOG_PROFILE !== "native-development") {
+  if (!usesNativeCommerceCatalog(process.env)) {
     if (!context) throw new Error("Installed catalog context unavailable");
     const products = await readInstalledCommerceCatalog(context);
     const byId = new Map(products.map(product => [product.id, product]));
