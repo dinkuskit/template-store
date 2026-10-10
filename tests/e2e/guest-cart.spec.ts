@@ -123,9 +123,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
     },
   });
   expect(savedEditorial.ok(), await savedEditorial.text()).toBe(true);
-  const savedEditorialBody = await (await admin.request.get(`/_emdash/api/content/products/${editorialId}`)).json();
-  console.log("guest-cart-product-data", JSON.stringify(savedEditorialBody));
-  const published = await adminPost(admin, `/_emdash/api/content/products/${editorialId}/publish`, {});
+  const published = await adminPost(admin, `/_emdash/api/content/products/${editorialId}/publish?locale=en`, {});
   expect(published.ok(), await published.text()).toBe(true);
 
   const inventoryRequests: string[] = [];
