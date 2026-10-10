@@ -37,6 +37,7 @@
     "verify:quick": "bin/verify-web quick",
     "verify:full": "bin/verify-web full",
     "verify": "bin/verify-web full",
+    "verify:access-routes": "pnpm prepare:sources && node scripts/verify-access-routes.mjs --check",
     "verify:checkout-package": "node scripts/verify-checkout-package.mjs",
     "verify:paired-checkout": "node scripts/verify-paired-checkout.mjs",
     "verify:registry-checkout": "node scripts/verify-registry-checkout.mjs"
