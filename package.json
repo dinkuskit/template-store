@@ -32,6 +32,7 @@
     "pretest:e2e": "pnpm prepare:sources",
     "test:e2e": "playwright test",
     "audit:features": "node scripts/check-features.mjs",
+    "verify:playground-config": "node scripts/verify-playground-config.mjs",
     "seed:bundle": "node scripts/build-seed-bundle.mjs",
     "seed:demo": "node --import ./scripts/cloudflare-workers-hook.mjs .artifacts/seed/seed-synthetic-demo.mjs",
     "verify:quick": "bin/verify-web quick",

@@ -59,3 +59,105 @@ jobs:
             test-results/playwright/**/home-editor-fixture-state.json
           if-no-files-found: ignore
           retention-days: 3
+
+  build-playground:
+    name: Playground build
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          run_install: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify:playground-config
+      - run: pnpm prepare:sources
+      - run: pnpm exec astro build --config astro.playground.config.mjs
+
+  # Cloudflare uploads stay off until the owner approves the one-time
+  # Cloudflare setup and sets the PLAYGROUND_DEPLOY_ENABLED variable. The
+  # token lives only in the `playground` environment. By the owner's choice
+  # (2026-10-10) that environment has no required reviewer: pushes to main
+  # deploy on their own, same-repository pull requests get preview links on
+  # their own, and fork pull requests never run this job.
+  deploy-playground:
+    name: Playground deployment
+    needs: build-playground
+    if: >-
+      vars.PLAYGROUND_DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    environment: playground
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          run_install: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify:playground-config
+      - run: pnpm prepare:sources
+      - run: pnpm exec astro build --config astro.playground.config.mjs
+      - name: Record source commits
+        id: commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          commerce_commit="$(node --input-type=module -e \
+            "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('package.json','utf8')).dinkuskit.sourcePins.commerce.commit)")"
+          message="template-store=${SOURCE_SHA} commerce=${commerce_commit}"
+          echo "message=${message}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Playground source commits::${message}"
+      - name: Upload PR preview version
+        if: github.event_name == 'pull_request'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
+        run: >-
+          pnpm exec wrangler versions upload
+          --config dist/server/wrangler.json
+          --preview-alias pr-${{ github.event.pull_request.number }}
+          --message "${{ steps.commits.outputs.message }}"
+      - name: Verify PR preview
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          PREVIEW_URL: https://pr-${{ github.event.pull_request.number }}.playground.dinkuskit.com
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          curl --fail --silent --show-error --location --retry 12 --retry-all-errors \
+            --retry-delay 5 --dump-header "$headers" "$PREVIEW_URL/" --output "$body"
+          grep -Eiq '^x-robots-tag:.*noindex' "$headers"
+          grep -Eiq 'name=["'\"']robots["'\"'].*noindex|noindex.*name=["'\"']robots["'\"']' "$body"
+          # The playground has no /checkout page; the cart shows checkout as unavailable.
+          cart_body="$(mktemp)"
+          curl --fail --silent --show-error --location --retry 12 --retry-all-errors \
+            --retry-delay 5 "$PREVIEW_URL/cart" --output "$cart_body"
+          grep -Fqi "Checkout unavailable" "$cart_body"
+      - name: Deploy main playground
+        if: github.event_name == 'push'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
+        run: >-
+          pnpm exec wrangler deploy
+          --config dist/server/wrangler.json
+          --message "${{ steps.commits.outputs.message }}"
