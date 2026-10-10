@@ -89,6 +89,8 @@ export type {
   GuestCheckoutController,
   GuestCheckoutProjection,
   GuestCheckoutContact,
+  GuestCheckoutError,
+  GuestCheckoutCouponReason,
   GuestCheckoutDelivery,
   GuestCheckoutRetention,
   GuestCheckoutRetentionStorage,

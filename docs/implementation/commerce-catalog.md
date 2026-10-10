@@ -50,7 +50,7 @@ endpoint is added.
 
 ## Pins and boundaries
 
-Exact Commerce source is `00e3544b5de88f952f319e5f9561996826171e54` (Commerce
+Exact Commerce source is `a3fb49a183f9a3a38676f674219681fbf1a606f2` (Commerce
 #88, merged as `00e3544b`, adds the physical-basket `contact.delivery`
 requirement). EmDash and
 `@emdash-cms/cloudflare` are `1.2.0`. Managed products without a configured

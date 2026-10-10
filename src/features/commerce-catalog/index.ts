@@ -129,7 +129,7 @@ export async function readCommerceCatalogSnapshots(
       found: true,
       name: publicName,
       sku: publicSku,
-      fulfillment: (product as CatalogStorageRecord).fulfillment ?? "physical",
+      fulfillment: (product as unknown as { fulfillment?: "physical" | "digital" }).fulfillment ?? "physical",
       price,
       availability: {
         status: availability.status,

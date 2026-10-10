@@ -41,7 +41,7 @@ export type GuestCheckoutWireResult =
       }>;
       checkout: GuestCheckoutProjection;
     }>
-  | Readonly<{ ok: false; error: { code: string; message: string } }>;
+  | Readonly<{ ok: false; error: GuestCheckoutError }>;
 
 export type GuestCheckoutRetention = Readonly<{
   capabilityId: string;
@@ -79,6 +79,17 @@ export type GuestCheckoutDelivery = Readonly<{
 export type GuestCheckoutContact = Readonly<{
   email: string;
   delivery?: GuestCheckoutDelivery;
+}>;
+
+export type GuestCheckoutCouponReason =
+  | "not-found" | "not-started" | "expired" | "minimum-not-met"
+  | "no-qualifying-items" | "used-up" | "try-later" | "not-applicable";
+
+export type GuestCheckoutError = Readonly<{
+  code: string;
+  message: string;
+  reason?: GuestCheckoutCouponReason;
+  minimum?: Readonly<{ currency: "USD"; minor: string }>;
 }>;
 
 export type GuestCheckoutCallResult = Readonly<{
@@ -160,20 +171,28 @@ function unwrap(body: unknown): unknown {
 }
 
 export function parseGuestCheckoutWireResult(body: unknown): GuestCheckoutWireResult | null {
-  if (isObject(body) && body.success === false && isObject(body.error) &&
-      typeof body.error.code === "string" && typeof body.error.message === "string") {
+  const errorValue = (value: unknown): GuestCheckoutError | null => {
+    if (!isObject(value) || typeof value.code !== "string" || typeof value.message !== "string") return null;
+    const reasons = ["not-found", "not-started", "expired", "minimum-not-met", "no-qualifying-items", "used-up", "try-later", "not-applicable"];
+    if (value.reason !== undefined && (typeof value.reason !== "string" || !reasons.includes(value.reason))) return null;
+    if (value.minimum !== undefined &&
+        (!isObject(value.minimum) || value.minimum.currency !== "USD" ||
+          typeof value.minimum.minor !== "string" || !/^-?[0-9]+$/u.test(value.minimum.minor))) return null;
     return {
-      ok: false,
-      error: { code: body.error.code, message: body.error.message },
+      code: value.code,
+      message: value.message,
+      ...(value.reason === undefined ? {} : { reason: value.reason as GuestCheckoutCouponReason }),
+      ...(value.minimum === undefined ? {} : { minimum: value.minimum as GuestCheckoutError["minimum"] }),
     };
-  }
+  };
+  if (isObject(body) && body.success === false && isObject(body.error) &&
+      errorValue(body.error)) return { ok: false, error: errorValue(body.error)! };
   const value = unwrap(body);
   if (!isObject(value) || typeof value.ok !== "boolean") return null;
   if (!value.ok) {
-    if (!isObject(value.error) ||
-        typeof value.error.code !== "string" ||
-        typeof value.error.message !== "string") return null;
-    return { ok: false, error: { code: value.error.code, message: value.error.message } };
+    const error = errorValue(value.error);
+    if (!error) return null;
+    return { ok: false, error };
   }
   if (typeof value.capabilityId !== "string" || !safeId(value.capabilityId)) return null;
   const checkout = projectCheckout(value.checkout);

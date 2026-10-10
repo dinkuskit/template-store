@@ -300,6 +300,26 @@ function checkoutFailureText(failure: string | null): string {
   return "Checkout is not available yet. Try again when Commerce is available.";
 }
 
+function commerceErrorText(error: { code: string; message: string; reason?: string; minimum?: { currency: string; minor: string } }): string {
+  if (error.code !== "COUPON_UNAVAILABLE") return error.message;
+  const wording: Record<string, string> = {
+    "not-found": "That coupon code isn't valid.",
+    "not-started": "That coupon isn't active yet.",
+    expired: "That coupon has expired.",
+    "no-qualifying-items": "That coupon doesn't apply to the items in your cart.",
+    "used-up": "That coupon has been fully used.",
+    "try-later": "We can't check coupons right now. Try again, or remove the coupon.",
+    "not-applicable": "That coupon can't be used for this order.",
+  };
+  if (error.reason === "minimum-not-met" && error.minimum?.currency === "USD") {
+    const minor = Number(error.minimum.minor);
+    if (Number.isSafeInteger(minor) && minor >= 0) {
+      return `Spend $${(minor / 100).toFixed(2)} on qualifying items to use this coupon.`;
+    }
+  }
+  return wording[error.reason ?? ""] ?? "That coupon can't be used for this order.";
+}
+
 async function probeGuestCheckout(root: Element): Promise<void> {
   // A closed server admission must not trigger a proactive prepare attempt.
   // Recovery remains separate and can still query a retained paid checkout.
@@ -505,7 +525,7 @@ export function hydrateGuestCartPage(): void {
         if (started.failure || !started.result || !started.result.ok) {
           checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
           setCheckoutMessage(
-            started.result && !started.result.ok ? started.result.error.message : checkoutFailureText(started.failure),
+            started.result && !started.result.ok ? commerceErrorText(started.result.error) : checkoutFailureText(started.failure),
             true,
           );
           renderCart(root);
