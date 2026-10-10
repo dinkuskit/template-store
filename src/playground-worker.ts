@@ -2,6 +2,7 @@ import astroHandler from "@astrojs/cloudflare/entrypoints/server";
 import { EmDashPreviewDB } from "@emdash-cms/cloudflare/db/playground";
 import {
   applyPlaygroundNoIndex,
+  dropRewrittenBodyHeaders,
   injectPlaygroundNoIndex,
 } from "./features/playground/contract.js";
 
@@ -35,6 +36,7 @@ export default {
     }
 
     const html = injectPlaygroundNoIndex(await response.text());
+    dropRewrittenBodyHeaders(headers);
     return new Response(html, {
       status: response.status,
       statusText: response.statusText,
