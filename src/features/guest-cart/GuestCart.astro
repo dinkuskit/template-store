@@ -44,8 +44,11 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
         </select>
       </div>
     </fieldset>
-    <label for="guest-cart-coupon">Coupon code (optional)</label>
-    <input id="guest-cart-coupon" data-guest-cart-coupon type="text" maxlength="128" autocomplete="off" disabled={!checkoutAdmission} />
+    <div class="guest-cart-coupon" data-guest-cart-coupon-box aria-disabled="true">
+      <label for="guest-cart-coupon">Coupon code</label>
+      <input id="guest-cart-coupon" data-guest-cart-coupon type="text" placeholder="Coupons coming soon" aria-describedby="guest-cart-coupon-note" autocomplete="off" disabled />
+      <p id="guest-cart-coupon-note">Discount codes can't be used yet.</p>
+    </div>
     <button type="button" data-guest-cart-checkout disabled>{GUEST_CHECKOUT_LABEL}</button>
     <p data-guest-cart-checkout-reason>{GUEST_CHECKOUT_REASON}</p>
     <button type="button" data-guest-cart-retry>Retry catalog update</button>
@@ -65,6 +68,9 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   .guest-cart-contact span{color:var(--store-muted);font-size:.9em}
   .guest-cart-contact input,.guest-cart-contact select{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit}
   .guest-cart-contact input:focus-visible,.guest-cart-contact select:focus-visible{outline:3px solid #215cc8;outline-offset:2px}
+  .guest-cart-coupon{display:grid;gap:.5rem;max-width:34rem;margin:0 0 1rem;padding:1rem;border:1px dashed var(--store-line);border-radius:.65rem;color:var(--store-muted);opacity:.7}
+  .guest-cart-coupon input{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid var(--store-line);border-radius:.35rem;background:transparent;font:inherit;cursor:not-allowed}
+  .guest-cart-coupon p{margin:0;font-size:.9em}
   .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800}
   [data-guest-cart-checkout]:disabled{color:var(--store-muted);cursor:not-allowed}
   .guest-cart :global([data-guest-cart-line]){padding:1.5rem;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface);min-width:0;overflow-wrap:anywhere}

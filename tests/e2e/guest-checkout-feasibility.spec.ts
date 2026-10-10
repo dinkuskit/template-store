@@ -102,6 +102,9 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   });
   harness.releaseInitialPrepare();
   await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+  // Coupons are coming soon: the box stays greyed even once checkout opens.
+  await expect(page.locator("[data-guest-cart-coupon]")).toBeDisabled();
+  await expect(page.locator("[data-guest-cart-coupon]")).toHaveAttribute("placeholder", "Coupons coming soon");
   expect(harness.counts()).toMatchObject({ prepareCalls: 1, startCalls: 0 });
   await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
   await page.getByRole("button", { name: "Continue to secure checkout" }).click();
