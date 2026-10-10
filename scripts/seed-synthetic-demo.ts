@@ -704,7 +704,12 @@ async function seedDemoProducts(): Promise<void> {
         "getPlatformProxy did not provide the configured DB binding.",
       );
     }
-    await seedCanonical(database, cwd, args.proveSentinel, process.env.DINKUS_CATALOG_PROFILE ?? readCatalogProfile(local));
+    await seedCanonical(
+      database,
+      cwd,
+      args.proveSentinel,
+      process.env.DINKUS_CATALOG_PROFILE ?? readCatalogProfile(local) ?? readCatalogProfile(production),
+    );
   } finally {
     await proxy.dispose();
   }
