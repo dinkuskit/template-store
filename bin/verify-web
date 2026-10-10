@@ -25,7 +25,12 @@ if [[ "$MODE" == "full" ]]; then
   export no_proxy="${no_proxy:+$no_proxy,}127.0.0.1,localhost,::1"
   VERIFY_SITE_PORT="${VERIFY_SITE_PORT:-4640}"
   VERIFY_SITE_LOG="${TMPDIR:-/tmp}/dinkuskit-verify-site-${VERIFY_SITE_PORT}.log"
-  pnpm exec astro preview --host 127.0.0.1 --port "$VERIFY_SITE_PORT" >"$VERIFY_SITE_LOG" 2>&1 &
+  DINKUS_STOREFRONT_PROFILE=proof \
+  DINKUS_CATALOG_PROFILE=native-development \
+  DINKUS_TEMPLATE_DB_URL="file:./.artifacts/e2e/content.db" \
+  DINKUS_TEMPLATE_UPLOADS_DIR="./.artifacts/e2e/uploads" \
+  EMDASH_SITE_URL="http://127.0.0.1:${VERIFY_SITE_PORT}" \
+    pnpm exec astro preview --host 127.0.0.1 --port "$VERIFY_SITE_PORT" >"$VERIFY_SITE_LOG" 2>&1 &
   VERIFY_SITE_PID=$!
   cleanup_verify_site() {
     kill "$VERIFY_SITE_PID" 2>/dev/null || true
