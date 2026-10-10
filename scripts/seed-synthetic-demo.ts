@@ -56,6 +56,7 @@ import {
   SeedRefusal,
   type DemoProductSeed,
 } from "./demo-seed-policy.js";
+import { buildDemoProductEntries, type DemoCatalogLink } from "./demo-product-entries.js";
 
 const PLATFORM_ENV = Symbol.for("dinkus.localPlatformEnv");
 const SENTINEL = Object.freeze({
@@ -478,10 +479,50 @@ async function assertNeutralHome(db: EmDashDb, sql: KyselyModule["sql"]): Promis
   });
 }
 
+function readCatalogProfile(configValue: unknown): string | undefined {
+  if (!configValue || typeof configValue !== "object" || Array.isArray(configValue)) return undefined;
+  const vars = (configValue as { vars?: unknown }).vars;
+  if (!vars || typeof vars !== "object" || Array.isArray(vars)) return undefined;
+  const profile = (vars as { DINKUS_CATALOG_PROFILE?: unknown }).DINKUS_CATALOG_PROFILE;
+  return typeof profile === "string" ? profile : undefined;
+}
+
+async function seedDemoProductEntries(
+  db: EmDashDb,
+  profile: string | undefined,
+  catalogRows: readonly CatalogRow[],
+): Promise<void> {
+  const entries = buildDemoProductEntries(
+    profile,
+    catalogRows.map((row): DemoCatalogLink => ({
+      sku: row.sku,
+      catalogItemId: row.catalogItemId,
+    })),
+  );
+  if (entries.length === 0) {
+    emit("seed.cms.demo-products", { profile: profile ?? null, created: 0, skipped: 0 });
+    return;
+  }
+  const result = await applySeed(db, {
+    version: "1",
+    content: { products: entries },
+  } as SeedFile, {
+    includeContent: true,
+    onConflict: "skip",
+  });
+  emit("seed.cms.demo-products", {
+    profile,
+    requested: entries.length,
+    created: result.content.created,
+    skipped: result.content.skipped,
+  });
+}
+
 async function seedCanonical(
   database: D1DatabaseBinding,
   cwd: string,
   proveSentinel: boolean,
+  catalogProfile: string | undefined,
 ): Promise<void> {
   const platformEnv = globalThis as Record<symbol, unknown>;
   platformEnv[PLATFORM_ENV] = { DB: database };
@@ -557,6 +598,7 @@ async function seedCanonical(
       }
 
       const after = snapshot(await readProducts(storage));
+      await seedDemoProductEntries(db, catalogProfile, [...after.values()]);
       const nonDemoAfter = [...after.values()].filter((product) => !isDemoSku(product.sku));
       if (nonDemoBefore.length !== nonDemoAfter.length) {
         throw new SeedRefusal("NON_DEMO_MUTATED", "Non-demo catalog membership changed.");
@@ -619,7 +661,8 @@ async function seedDemoProducts(): Promise<void> {
           "getPlatformProxy did not provide the configured DB binding.",
         );
       }
-      await seedCanonical(database, cwd, false);
+      const remoteConfig = readConfig(resolve(cwd, REMOTE_CONFIG_PATH));
+      await seedCanonical(database, cwd, false, process.env.DINKUS_CATALOG_PROFILE ?? readCatalogProfile(remoteConfig));
     } finally {
       await proxy.dispose();
     }
@@ -661,7 +704,7 @@ async function seedDemoProducts(): Promise<void> {
         "getPlatformProxy did not provide the configured DB binding.",
       );
     }
-    await seedCanonical(database, cwd, args.proveSentinel);
+    await seedCanonical(database, cwd, args.proveSentinel, process.env.DINKUS_CATALOG_PROFILE ?? readCatalogProfile(local));
   } finally {
     await proxy.dispose();
   }
