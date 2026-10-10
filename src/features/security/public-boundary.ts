@@ -14,6 +14,8 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/robots.txt",
   "/sitemap.xml",
   "/api/guest-cart/snapshot",
+  "/_emdash/api/plugins/dinkus-commerce/catalog/public",
+  "/_emdash/api/plugins/dinkus-commerce/catalog/public/item",
 ]);
 
 const ALLOWED_PATH_PATTERNS = [

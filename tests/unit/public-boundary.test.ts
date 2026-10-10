@@ -33,6 +33,12 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/categories/apparel").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/products/hoodie-black").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/api/guest-cart/snapshot").allowed).toBe(true);
+    expect(
+      evaluatePublicBoundary("GET", "/_emdash/api/plugins/dinkus-commerce/catalog/public").allowed,
+    ).toBe(true);
+    expect(
+      evaluatePublicBoundary("GET", "/_emdash/api/plugins/dinkus-commerce/catalog/public/item").allowed,
+    ).toBe(true);
   });
 
   it("allows static assets and public media GET endpoints", () => {
