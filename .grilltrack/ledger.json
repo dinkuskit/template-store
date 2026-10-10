@@ -2559,6 +2559,118 @@
       "superseded_by": null,
       "updated_at": "2026-10-09T23:40:07+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Use a two-letter ISO country-code input now, normalize it to upper case, and rely on Commerce refusals for unsupported countries; replace it with a Commerce-driven selector when supported shipping-country options are public.",
+      "context_ref": "https://github.com/dinkuskit/commerce/pull/88",
+      "created_at": "2026-10-10T13:00:00+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "guest-checkout-return-retry",
+      "history": [
+        {
+          "at": "2026-10-10T14:53:15+00:00",
+          "choice": "Use a two-letter ISO country-code input now, normalize it to upper case, and later replace it with a Commerce-driven selector when supported shipping-country options are public; suggested pick: selector.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-10T14:55:45+00:00",
+          "choice": "Use a two-letter ISO country-code input now, normalize it to upper case, and rely on Commerce refusals for unsupported countries; replace it with a Commerce-driven selector when supported shipping-country options are public.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Ronald asked for United States only with other major countries shown as coming soon.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-checkout-country-input-001",
+      "implementation_ref": null,
+      "question": "How should the storefront choose a delivery country while Commerce does not expose shipping-country options through the public catalog?",
+      "rationale": "Ronald (saariuslystoned) accepted the temporary two-letter country box on 2026-10-10 (decision card on PR #52); Commerce already refuses countries it cannot ship to.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "superseded",
+      "superseded_by": "template-checkout-country-selector-002",
+      "updated_at": "2026-10-10T14:55:45+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Offer a country list where only United States can be chosen; show Canada, United Kingdom, Australia, Germany, France and Japan greyed out as coming soon. Commerce's per-store shippingCountries setting stays the authority and still refuses any country it does not ship to; replace the fixed list with a Commerce-published list when Commerce exposes one.",
+      "context_ref": null,
+      "created_at": "2026-10-10T14:55:45+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-checkout-country-input-001"
+      ],
+      "domain": "guest-checkout-return-retry",
+      "history": [
+        {
+          "at": "2026-10-10T14:55:45+00:00",
+          "choice": "Offer a country list where only United States can be chosen; show Canada, United Kingdom, Australia, Germany, France and Japan greyed out as coming soon. Commerce's per-store shippingCountries setting stays the authority and still refuses any country it does not ship to; replace the fixed list with a Commerce-published list when Commerce exposes one.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-10T14:55:45+00:00",
+          "choice": "Offer a country list where only United States can be chosen; show Canada, United Kingdom, Australia, Germany, France and Japan greyed out as coming soon. Commerce's per-store shippingCountries setting stays the authority and still refuses any country it does not ship to; replace the fixed list with a Commerce-published list when Commerce exposes one.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "dependency template-checkout-country-input-001 changed: Ronald asked for United States only with other major countries shown as coming soon.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-checkout-country-selector-002",
+      "implementation_ref": null,
+      "question": "Which delivery countries should the storefront checkout offer?",
+      "rationale": "Ronald (saariuslystoned) on 2026-10-10 in the Template Store PRs thread: ship inside the United States only to start, and grey out other major e-commerce countries as coming soon if easy. The coming-soon list is the agent's pick and can change.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "needs_reverification",
+      "superseded_by": null,
+      "updated_at": "2026-10-10T14:55:45+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -2581,5 +2693,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-09T23:40:07+00:00"
+  "updated_at": "2026-10-10T14:55:45+00:00"
 }

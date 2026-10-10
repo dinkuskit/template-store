@@ -152,6 +152,16 @@ describe("guest checkout protocol and recovery", () => {
         kind: "start",
         intent: { version: 1, lines: [{ id: "item-1", quantity: 2 }] },
         couponCode: "SAVE10",
+        contact: {
+          email: "shopper@example.test",
+          delivery: {
+            name: "Shopper",
+            line1: "1 Example Way",
+            city: "Testville",
+            postalCode: "00000",
+            country: "US",
+          },
+        },
       },
       { capabilityId: "cap-1", capability: "cap-1.secret", attemptId: null },
       {
@@ -173,6 +183,16 @@ describe("guest checkout protocol and recovery", () => {
     expect(JSON.parse(calls[0]!.body)).toEqual({
       lines: [{ catalogItemId: "item-1", quantity: 2 }],
       couponCode: "SAVE10",
+      contact: {
+        email: "shopper@example.test",
+        delivery: {
+          name: "Shopper",
+          line1: "1 Example Way",
+          city: "Testville",
+          postalCode: "00000",
+          country: "US",
+        },
+      },
     });
   });
 
@@ -234,6 +254,24 @@ describe("guest checkout protocol and recovery", () => {
       retention,
       { fetch: async () => new Response("x".repeat(65 * 1024), { status: 200 }) },
     )).failure).toBe("response-too-large");
+  });
+
+  it("keeps Commerce refusal reasons from a non-2xx response", async () => {
+    const refused = await callGuestCheckout(
+      { kind: "start", intent: { version: 1, lines: [{ id: "item-1", quantity: 1 }] } },
+      retention,
+      {
+        fetch: async () => Response.json(
+          { ok: false, error: { code: "INVALID_CART", message: "Delivery address is required" } },
+          { status: 400 },
+        ),
+      },
+    );
+    expect(refused.failure).toBeNull();
+    expect(refused.result).toEqual({
+      ok: false,
+      error: { code: "INVALID_CART", message: "Delivery address is required" },
+    });
   });
 
   it("preserves the original attempt through timeout and reload, requiring status before retry", async () => {

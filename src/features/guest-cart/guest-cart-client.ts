@@ -24,6 +24,7 @@ import {
   type GuestCartIntent,
   type GuestCartReadNotice,
   type GuestCartView,
+  type GuestCheckoutContact,
   type GuestCheckoutTransport,
 } from "./index.js";
 
@@ -125,6 +126,54 @@ function escapeText(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
+function inputValue(root: Element, selector: string): string {
+  const input = root.querySelector(selector);
+  return input instanceof HTMLInputElement || input instanceof HTMLSelectElement ? input.value.trim() : "";
+}
+
+function readCheckoutContact(
+  root: Element,
+  needsDelivery: boolean,
+): { contact: GuestCheckoutContact | null; error: string | null } {
+  const email = inputValue(root, "[data-guest-cart-email]");
+  if (!email) return { contact: null, error: "Enter your email address to continue." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
+    return { contact: null, error: "Enter a valid email address to continue." };
+  }
+  // A digital-only cart hides the delivery section; values left there from an
+  // earlier physical cart must never reach Commerce or block checkout.
+  if (!needsDelivery) return { contact: { email }, error: null };
+  const fields = {
+    name: inputValue(root, "[data-guest-cart-delivery-name]"),
+    line1: inputValue(root, "[data-guest-cart-delivery-line1]"),
+    line2: inputValue(root, "[data-guest-cart-delivery-line2]"),
+    city: inputValue(root, "[data-guest-cart-delivery-city]"),
+    region: inputValue(root, "[data-guest-cart-delivery-region]"),
+    postalCode: inputValue(root, "[data-guest-cart-delivery-postal-code]"),
+    country: inputValue(root, "[data-guest-cart-delivery-country]").toUpperCase(),
+  };
+  const deliveryEntered = Object.values(fields).some(Boolean);
+  if (!deliveryEntered) return { contact: { email }, error: null };
+  for (const [key, value] of Object.entries(fields)) {
+    if (!value && key !== "line2" && key !== "region") {
+      return { contact: null, error: "Complete the recipient, address, city, postal code, and country fields." };
+    }
+  }
+  if (!/^[A-Z]{2}$/u.test(fields.country)) {
+    return { contact: null, error: "Choose a country this store ships to." };
+  }
+  const delivery = {
+    name: fields.name,
+    line1: fields.line1,
+    ...(fields.line2 ? { line2: fields.line2 } : {}),
+    city: fields.city,
+    ...(fields.region ? { region: fields.region } : {}),
+    postalCode: fields.postalCode,
+    country: fields.country,
+  };
+  return { contact: { email, delivery }, error: null };
+}
+
 function lineCopyMarkup(line: GuestCartView["lines"][number]): string {
   return `<h2>${escapeText(line.name)}</h2>
   ${line.sku ? `<p data-guest-cart-sku>SKU: ${escapeText(line.sku)}</p>` : ""}
@@ -200,7 +249,9 @@ function renderCart(root: Element): void {
   const lines = root.querySelector("[data-guest-cart-lines]");
   const checkout = root.querySelector("[data-guest-cart-checkout]");
   const coupon = root.querySelector("[data-guest-cart-coupon]");
+  const contact = root.querySelector("[data-guest-cart-contact]");
   const reason = root.querySelector("[data-guest-cart-checkout-reason]");
+  const delivery = root.querySelector("[data-guest-cart-delivery]");
   const retry = root.querySelector("[data-guest-cart-retry]");
   const checkoutRecoveryButton = root.querySelector("[data-guest-cart-recover]");
   if (empty instanceof HTMLElement) {
@@ -217,8 +268,14 @@ function renderCart(root: Element): void {
   if (coupon instanceof HTMLInputElement) {
     coupon.disabled = !checkoutAdmitted || checkoutLocked();
   }
+  if (contact instanceof HTMLFieldSetElement) {
+    contact.disabled = !checkoutAdmitted || checkoutLocked();
+  }
   if (reason instanceof HTMLElement) {
     reason.textContent = current.checkoutReason;
+  }
+  if (delivery instanceof HTMLElement) {
+    delivery.hidden = !current.needsDelivery;
   }
   if (retry instanceof HTMLButtonElement) {
     retry.disabled = current.pending;
@@ -251,6 +308,26 @@ function checkoutFailureText(failure: string | null): string {
     return "This checkout is still tied to the original attempt. Check status before retrying.";
   }
   return "Checkout is not available yet. Try again when Commerce is available.";
+}
+
+function commerceErrorText(error: { code: string; message: string; reason?: string; minimum?: { currency: string; minor: string } }): string {
+  if (error.code !== "COUPON_UNAVAILABLE") return error.message;
+  const wording: Record<string, string> = {
+    "not-found": "That coupon code isn't valid.",
+    "not-started": "That coupon isn't active yet.",
+    expired: "That coupon has expired.",
+    "no-qualifying-items": "That coupon doesn't apply to the items in your cart.",
+    "used-up": "That coupon has been fully used.",
+    "try-later": "We can't check coupons right now. Try again, or remove the coupon.",
+    "not-applicable": "That coupon can't be used for this order.",
+  };
+  if (error.reason === "minimum-not-met" && error.minimum?.currency === "USD") {
+    const minor = Number(error.minimum.minor);
+    if (Number.isSafeInteger(minor) && minor >= 0) {
+      return `Spend $${(minor / 100).toFixed(2)} on qualifying items to use this coupon.`;
+    }
+  }
+  return wording[error.reason ?? ""] ?? "That coupon can't be used for this order.";
 }
 
 async function probeGuestCheckout(root: Element): Promise<void> {
@@ -431,6 +508,12 @@ export function hydrateGuestCartPage(): void {
     if (target.closest("[data-guest-cart-checkout]")) {
       if (!checkoutController || checkoutLocked() || !view().checkoutEnabled) return;
       const originalIntent = structuredClone(session.intent);
+      const contactInput = readCheckoutContact(root, view().needsDelivery);
+      if (contactInput.error || !contactInput.contact) {
+        setCheckoutMessage(contactInput.error ?? "Complete the checkout contact fields.", true);
+        renderCart(root);
+        return;
+      }
       const couponInput = root.querySelector("[data-guest-cart-coupon]");
       const couponCode = couponInput instanceof HTMLInputElement ? couponInput.value.trim() || undefined : undefined;
       pendingCheckout = true;
@@ -447,11 +530,14 @@ export function hydrateGuestCartPage(): void {
           renderCart(root);
           return;
         }
-        const started = await checkoutController!.start(originalIntent, couponCode);
+        const started = await checkoutController!.start(originalIntent, couponCode, contactInput.contact!);
         pendingCheckout = false;
         if (started.failure || !started.result || !started.result.ok) {
           checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
-          setCheckoutMessage(checkoutFailureText(started.failure), true);
+          setCheckoutMessage(
+            started.result && !started.result.ok ? commerceErrorText(started.result.error) : checkoutFailureText(started.failure),
+            true,
+          );
           renderCart(root);
           return;
         }
