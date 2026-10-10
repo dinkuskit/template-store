@@ -171,9 +171,9 @@
           "headline": "Welcome to the shop",
           "deck": "Browse products published in Commerce. Checkout is not available yet.",
           "primary_label": "Browse the shop",
-          "primary_href": "#commerce-catalog",
+          "primary_href": "#catalog-title",
           "secondary_label": "View products",
-          "secondary_href": "#commerce-catalog"
+          "secondary_href": "#catalog-title"
         },
         {
           "_type": "dinkus.fact-rail",

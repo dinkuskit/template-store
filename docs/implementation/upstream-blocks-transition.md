@@ -5,7 +5,7 @@ composition. `pages.content` remains Portable Text and is not converted
 implicitly. The homepage prefers a non-empty `pages.layout`; otherwise it keeps
 rendering the existing Portable Text renderer, including local compatibility
 components for the retained legacy page-hero, fact-rail, and query-card nodes.
-The existing Commerce catalog, merchandise demo, and availability panels are
+The existing Commerce-linked Products catalog and availability panels are
 independent of this choice.
 
 ## Page blocks

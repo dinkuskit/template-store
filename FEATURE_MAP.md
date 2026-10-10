@@ -19,7 +19,7 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; explicit native-development proof retains Regular/Sale composition, truthful catalog guidance, and warm-neutral card presentation | `src/features/commerce-catalog/`; `tests/e2e/commerce-catalog.spec.ts`; `tests/e2e/shipping-storefront-profile.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed; bounded 2026-10-09 visual refinement |
+| `dinkus.commerce-catalog` | Linked Commerce snapshot reads for published EmDash products; complete opaque pagination remains available to the cart and product resolver, while the home page renders one CMS-owned Products grid | `src/features/commerce-catalog/`; `tests/e2e/shipping-storefront-profile.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed |
 
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ components through the explicit public `ui.ts` entry.
 | Guest cart presentation | Header Cart on storefront pages; `/cart`; add-to-cart on persisted Shop products only | Create a priced in-stock Commerce product, add it, change quantity, reload, remove to empty, inject malformed storage, change the product to out-of-stock then unpriced, open `/cart?success=1`. Desktop and mobile. | Only sellable priced Shop products can be added. Preview merchandise has no add-to-cart. Browser storage holds version, IDs, and quantities only. `/cart` shows current Commerce name/price/sellability. Missing, unpriced, or unsellable lines keep a readable reason and cannot checkout. Snapshot failure keeps intent and offers retry. Checkout stays disabled with `Checkout unavailable`. A forged success query never confirms a purchase. |
 
 Shipping v1 has Inventory off and uses persisted unmanaged Commerce Products.
-The existing seeded merchandise and stock panels are explicit development
+The existing seeded product and stock panels are explicit development
 integration demonstrations, not persisted merchant products or shipping stock.
 Preserve managed regression proof and existing fail-closed data. The stock
 management Coming soon control belongs to the exact paired Commerce artifact.
@@ -98,7 +98,7 @@ and guest-cart add-to-cart remain `native-development` proof.
 
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |
-| Classic merchandise catalog | Open `/` after EmDash setup. Edit hero in Pages `home`; edit merchandise entries in EmDash Merchandise. | Inspect `data-collection-nav` and `data-merch-catalog` on desktop and mobile; follow collection and product detail links and back links; follow each connected card's View availability link and open its native details by keyboard. | Tees, Hoodies, and Hats group CMS entries. Connected Everyday Tee and Canvas Cap cards lead to compact, focused summaries with live status; technical authority, IDs, and provenance remain in details. Preview cards and product pages state `Preview only · not purchasable`, have no purchase link, and show no price. Missing or draft product/collection routes return 404. |
+| Published Products catalog | Open `/` after EmDash setup. Edit hero and published entries in EmDash `products`. | Inspect `data-collection-nav` and `data-product-catalog` on desktop and mobile; follow collection and product detail links. Each card is backed by a published product entry and resolves its linked Commerce facts. | Tees, Hoodies, and Hats group CMS entries. Missing, draft, unlinked, unpriced, or unavailable entries fail closed. The demo seed produces a populated grid and must never show the empty-grid state. |
 | First-class page composition | After EmDash setup, open Pages `home`. The optional `layout` field offers Home opener, Rich text, and Query card. Existing `content` stays Portable Text and remains the fallback. `/section` continues to apply only to Portable Text. | On desktop and mobile, edit the first-class layout through admin, publish a Query card over a throwaway collection, inspect signed-out public and authenticated Edit-mode views, then remove layout and restore it through revision history. A separate built-server proof registers an allowed missing local renderer through schema APIs and captures the production fallback. | Home opener and published Query Card render from ordered block data; drafts stay absent; an independently copied Home opener is page-owned; original Portable Text survives edits and renders when layout is absent; history retains both shapes. Production `dist/server` renders registered unknown native and nested Portable Text fallbacks. |
 
 ### Availability proof drivers

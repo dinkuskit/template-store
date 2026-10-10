@@ -51,30 +51,27 @@ test("shipping profile uses installed catalog and fail-closes without a native p
 
   await page.goto("/");
   await expect(page.locator("body")).toHaveAttribute("data-storefront-profile", "shipping");
-  await expect(page.locator("#commerce-catalog")).toHaveText("Shop");
+  await expect(page.locator("[data-product-catalog] h2")).toHaveText("Products");
   await expect(page.locator("[data-catalog-guidance]")).toHaveAttribute("data-catalog-guidance-state", "unavailable");
   await expect(page.locator("[data-catalog-guidance]")).toContainText("Products are not shown until the connected store can be reached");
   await expect(page.locator("[data-catalog-guidance]")).not.toContainText("added to your cart");
-  await expect(page.getByRole("alert")).toHaveText("The product catalog is temporarily unavailable.");
-  await expect(page.locator("[data-commerce-product]")).toHaveCount(0);
-  await expect(page.locator("[data-commerce-empty]")).toHaveCount(0);
+  await expect(page.locator("[data-product-catalog] .catalog-empty")).toHaveText("No products are published. Add products in EmDash admin to populate this collection.");
   await expect(page.getByRole("button", { name: "Add to cart", exact: true })).toHaveCount(0);
-  await expect(page.locator(".home-opener__deck")).toContainText("Browse products published in Commerce");
+  await expect(page.locator(".home-opener__deck")).toContainText("Browse products published in EmDash");
   await expect(page.locator(".home-opener__deck")).toContainText("Checkout is not available yet");
   await expect(page.getByText("Two connected styles", { exact: false })).toHaveCount(0);
   await expect(page.getByText("Inventory + manual", { exact: true })).toHaveCount(0);
-  await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#commerce-catalog");
+  await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#catalog-title");
   await expect(page.locator(".home-opener__actions a")).toHaveCount(2);
-  await expect(page.locator('.home-opener__actions a[href="#commerce-catalog"]')).toHaveCount(2);
-  await expect(page.locator('a[href="#catalog-title"]')).toHaveCount(0);
+  await expect(page.locator('.home-opener__actions a[href="#catalog-title"]')).toHaveCount(2);
   await expect(page.locator('a[href="#managed-product"]')).toHaveCount(0);
   await expect(page.locator("[data-integration-demos]")).toHaveCount(0);
   await expect(page.locator("[data-managed-product]")).toHaveCount(0);
   await expect(page.locator("[data-unmanaged-product]")).toHaveCount(0);
   await expect(page.locator("[data-stock-value]")).toHaveCount(0);
   await expect(page.locator("[data-inventory-sku]")).toHaveCount(0);
-  await expect(page.locator("[data-merch-item=everyday-tee]")).toHaveCount(0);
-  await expect(page.locator("[data-merch-item=canvas-cap]")).toHaveCount(0);
+  await expect(page.locator("[data-product-item=everyday-tee]")).toHaveCount(0);
+  await expect(page.locator("[data-product-item=canvas-cap]")).toHaveCount(0);
   await page.screenshot({ path: resolve(root, "public-home.png"), fullPage: true, animations: "disabled" });
 
   await page.goto("/cart");
@@ -85,8 +82,8 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   expect(collectionResponse?.ok()).toBe(true);
   await expect(page.locator("body")).toHaveAttribute("data-storefront-profile", "shipping");
   await expect(page.locator("h1")).toHaveText("Tees");
-  await expect(page.locator("[data-merch-item=boxy-tee-preview]")).toBeVisible();
-  await expect(page.locator("[data-merch-item=everyday-tee]")).toHaveCount(0);
+  await expect(page.locator("[data-product-catalog] .catalog-empty")).toBeVisible();
+  await expect(page.locator("[data-product-item=everyday-tee]")).toHaveCount(0);
   await expect(page.locator("[data-stock-value]")).toHaveCount(0);
   await expect(page.locator("[data-inventory-sku]")).toHaveCount(0);
   await page.screenshot({ path: resolve(root, "public-collection.png"), fullPage: true, animations: "disabled" });
@@ -124,8 +121,8 @@ test("shipping profile uses installed catalog and fail-closes without a native p
         managedDemos: "absent",
         quantityShown: "never",
         inventoryRequests: inventoryRequests.length,
-        homeOpenerHref: "#commerce-catalog",
-        catalogHeading: "commerce-catalog",
+        homeOpenerHref: "#catalog-title",
+        catalogHeading: "Products",
         staleDemoCopy: false,
       },
       null,

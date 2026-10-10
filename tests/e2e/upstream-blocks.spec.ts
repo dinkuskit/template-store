@@ -155,7 +155,7 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
   const originalLayout = original.layout as Array<Record<string, unknown>>;
   expect(Array.isArray(originalContent)).toBe(true);
   const legacyHero = (originalContent as Array<Record<string, unknown>>).find((block) => block._type === "dinkus.page-hero");
-  expect(legacyHero).toMatchObject({ primaryLabel: "Shop the collection", primaryHref: "#commerce-catalog", secondaryLabel: "View products", secondaryHref: "#commerce-catalog" });
+  expect(legacyHero).toMatchObject({ primaryLabel: "Shop the collection", primaryHref: "#catalog-title", secondaryLabel: "View products", secondaryHref: "#catalog-title" });
   expect(originalLayout[0]?._type).toBe("home_opener");
   const originalFactRails = (originalContent as Array<Record<string, unknown>>).filter((block) => block._type === "dinkus.fact-rail");
   expect(originalFactRails).toHaveLength(1);
@@ -209,7 +209,7 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
     overrides: Record<string, unknown> = {},
   ): Promise<string> {
     const created = await admin.request.post(`/_emdash/api/content/${collection}`, {
-      headers, data: { slug, status: "draft", data: { title, text: "Current published editorial content.", image: "/merch/cap.svg", link: "/products/canvas-cap", ...overrides } },
+      headers, data: { slug, status: "draft", data: { title, text: "Current published editorial content.", image: "/products/cap.svg", link: "/products/canvas-cap", ...overrides } },
     });
     expect(created.status(), await created.text()).toBe(201);
     const id = (await created.json()).data.item.id as string;
@@ -256,7 +256,7 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
     await expect(cards.locator("article")).toHaveCount(1);
     await expect(cards.getByRole("link", { name: "First block notice" })).toHaveAttribute("href", "/products/canvas-cap");
     await expect(cards.getByText("Draft block notice", { exact: true })).toHaveCount(0);
-    await expect(cards.locator("img")).toHaveAttribute("src", "/merch/cap.svg");
+    await expect(cards.locator("img")).toHaveAttribute("src", "/products/cap.svg");
     await expect(cards.locator('a[href^="javascript:"]')).toHaveCount(0);
     await page.screenshot({ path: resolve(evidence, "public-query-card.png"), fullPage: true, animations: "disabled" });
 
@@ -442,11 +442,11 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
     expect(migrated.content).toEqual(originalContent);
     const migratedLayout = migrated.layout as Array<Record<string, unknown>>;
     expect(migratedLayout[0]?._type).toBe("home_opener");
-    expect(migratedLayout[0]).toMatchObject({ primary_label: "Shop the collection", primary_href: "#commerce-catalog", secondary_label: "View products", secondary_href: "#commerce-catalog" });
+  expect(migratedLayout[0]).toMatchObject({ primary_label: "Shop the collection", primary_href: "#catalog-title", secondary_label: "View products", secondary_href: "#catalog-title" });
     await page.goto("/");
     await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");
-    await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#commerce-catalog");
-    await expect(page.locator('.home-opener__actions a[href="#commerce-catalog"]')).toHaveText(["Shop the collection", "View products"]);
+  await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#catalog-title");
+  await expect(page.locator('.home-opener__actions a[href="#catalog-title"]')).toHaveText(["Shop the collection", "View products"]);
 
     await writeFile(resolve(evidence, "revision-assertions.json"), JSON.stringify({
       revisionRetainedBlocks: true,

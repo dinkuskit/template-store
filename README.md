@@ -15,7 +15,7 @@ Regular to list it, optionally save Sale, or clear prices to hide it publicly
 while retaining it in admin. Canonical product details require a published
 EmDash Product at `/products/<slug>`; Commerce-only items have no detail URL.
 See [operator steps and upgrade boundaries](docs/implementation/commerce-catalog.md).
-The default storefront has Inventory off. Existing seeded merchandise and
+The default storefront has Inventory off. Existing seeded product and
 Inventory proof run only in the explicit development integration profile,
 not as merchant products. The authorized guest-cart extension adds browser identity/quantity intent and current Commerce presentation. Checkout and production readiness remain release gates.
 
@@ -25,7 +25,7 @@ Run `DINKUS_STOREFRONT_PROFILE=proof pnpm dev` to view the demonstrations.
 The default profile keeps them off the home and excludes connected fixture
 products from collection and product routes. This remains a native source pilot.
 
-The explicit development integration profile adds EmDash-managed merchandise entries and
+The explicit development integration profile adds EmDash-managed product entries and
 collection navigation for tees, hoodies, and hats, with collection and individual product pages. The hero and product grid are
 neutral; preview cards say they are not purchasable. Two connected styles carry
 real availability in compact summaries below the grid; card availability links jump to those
@@ -46,7 +46,7 @@ The browser verifier observes an opening managed quantity of eight, applies a
 real Inventory adjustment to five, then restores eight. It also observes the
 unmanaged product default to In stock, then Out of stock, Available on
 backorder, and back to In stock, with no quantity. Edit the hero in EmDash Pages → home, and edit names, collection names,
-descriptions, and illustration styles in Merchandise. Connected status is reserved
+descriptions, and illustration styles in Products. Connected status is resolved
 for the exact seeded Everyday Tee and Canvas Cap entry IDs; all other entries
 are non-purchasable previews.
 The two connected Commerce identities, Regular/Sale prices, and availability are
@@ -64,8 +64,8 @@ owner inserts the section with `/section`, then owns that copy.
 
 ## Upgrade an initialized local starter
 
-The #34 URL contract deliberately breaks databases initialized with the old
-`merchandise` collection. No template-store sites accept real orders, so there
+The #34 URL contract deliberately breaks databases initialized with the legacy
+pre-products schema. No template-store sites accept real orders, so there
 is no live-store migration path to preserve. An old database fails closed: the
 new `products` and `categories` routes have no records to publish, rather than
 silently treating old records as canonical products or crashing.
@@ -73,8 +73,8 @@ silently treating old records as canonical products or crashing.
 For a local site, back up the database and use the easiest manual upgrade:
 reseed or re-bootstrap the site from the current `seed/seed.json`, then review
 the new Products and Collections in EmDash. Preserve any copy you need by
-exporting it first and re-entering it into the new schema; do not run an
-automatic `merchandise` → `products` migration and do not use `update` to
+exporting it first and re-entering it into the new schema; no automatic
+migration is provided, and do not use `update` to
 replace edited content.
 
 ```bash

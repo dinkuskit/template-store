@@ -8,15 +8,14 @@ Canonical path: `design.md`
 Provide a neutral, legible proving ground where a store builder can see EmDash
 composition, Commerce identity, and Inventory truth operating on
 one storefront surface. The first audience is DinkusKit maintainers and early
-adopters evaluating the stack, not shoppers on a production store. The classic
-merch-catalog first slice provides collection navigation and a product grid.
+adopters evaluating the stack, not shoppers on a production store. The product
+catalog slice provides collection navigation and one product grid.
 
 ## Merchant catalog
 
-The Shop above the separate integration demonstrations is driven by persisted
-Commerce Products. Name/SKU and Regular/Sale are operated in native EmDash
-Products admin. Missing Regular hides both listing and detail; Sale strikes
-Regular. Render truthful Commerce availability without inventing quantity.
+The Products grid is driven by published EmDash `products` entries. Each entry
+links to a Commerce item; Commerce supplies name/SKU, Regular/Sale, and
+availability at render time. Missing or unresolvable links fail closed.
 The catalog may be empty. Shop cards and product pages show the primary image Commerce projects from EmDash's Media Library: the projected alt text, responsive `/_image` srcset, and Commerce's store placeholder when that projection sets `placeholder: true`. A missing or unresolvable image is the text placeholder "No image", never another product's photo, a filename, or a URL from the catalog payload. Prices, availability, and add-to-cart stay on the card. The earlier catalog-only scope is superseded for the authorized guest-cart slice below; checkout remains unavailable until the exact Commerce guest runtime is paired. Preserve
 the existing neutral visual language, keyboard links, and narrow-screen fit.
 The approved shipping v1 profile has Inventory off. Managed demonstrations
@@ -34,7 +33,7 @@ Coming soon stock management; preserve existing managed data/fail-closed reads.
   Unmanaged availability never shows a quantity or Inventory identity.
 - Keep unpriced Commerce products off the public home. Preserve EmDash admin editing.
 - Distinguish CMS-authored merchandising from transactional Inventory facts.
-- Let a human edit the hero and merchandise titles, collection names, descriptions,
+- Let a human edit the hero and product titles, collection names, descriptions,
   and visual labels in EmDash admin. Preview cards explicitly say they cannot be
   purchased, and contain no purchase links.
 - Ship a seeded first-class Home opener block in Pages `layout`, with neutral
@@ -55,14 +54,14 @@ Coming soon stock management; preserve existing managed data/fail-closed reads.
 ## Unresolved visual language
 
 The first slice uses a restrained warm-neutral catalog scaffold, text-only
-merchandise visual placeholders, and a responsive three-to-one-column grid.
+product visual placeholders, and a responsive three-to-one-column grid.
 Photography, final typography, and the selected design system remain unresolved;
 a later GrillTrack visual cycle will present five materially distinct candidates
 on the verified real page.
 
 ## Component contract
 
-- EmDash Merchandise entries render grouped catalog cards; category names link
+- Published EmDash product entries render grouped catalog cards; category names link
   to collection pages, and every card links to its product page. The card status reads the connected runtime or
   says preview only; it never stores an editorial stock quantity.
 - A shop owner may add a first-class Query Card to Pages `layout` to list up to
