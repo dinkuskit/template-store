@@ -353,13 +353,14 @@ async function ensureProduct(
   existing: CatalogRow | undefined,
   product: DemoProductSeed | typeof SENTINEL,
 ): Promise<"created" | "updated"> {
+  const variant = "variant" in product ? product.variant : undefined;
   let catalogItemId = existing?.catalogItemId;
   let action: "created" | "updated" = existing ? "updated" : "created";
   if (!catalogItemId) {
     const created = await createCatalogItem(storage.catalog, {
       commandId: product.commandId,
       manageStock: false,
-      ...(product.variant ? { fulfillment: "physical" as const } : {}),
+      ...(variant ? { fulfillment: "physical" as const } : {}),
       name: product.name,
       sku: product.sku,
     });
@@ -367,20 +368,20 @@ async function ensureProduct(
     action = created.created ? "created" : "updated";
   }
 
-  if (product.variant) {
+  if (variant) {
     await addCatalogVariantOption(
       { catalog: storage.catalog },
       {
         productId: catalogItemId,
-        optionId: product.variant.optionId,
-        optionLabel: product.variant.optionLabel,
+        optionId: variant.optionId,
+        optionLabel: variant.optionLabel,
         values: [
           {
-            valueId: product.variant.values[0]!.valueId,
-            label: product.variant.values[0]!.label,
+            valueId: variant.values[0]!.valueId,
+            label: variant.values[0]!.label,
             member: { catalogItemId, fulfillment: "physical" },
           },
-          ...product.variant.values.slice(1).map((value) => ({
+          ...variant.values.slice(1).map((value) => ({
             valueId: value.valueId,
             label: value.label,
             member: {
@@ -397,7 +398,7 @@ async function ensureProduct(
   }
 
   const itemIds = [catalogItemId];
-  if (product.variant) {
+  if (variant) {
     const parent = await storage.catalog.get(catalogItemId);
     if (parent && "variantProduct" in parent && parent.variantProduct) {
       itemIds.push(
