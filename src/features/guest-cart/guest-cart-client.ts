@@ -248,7 +248,6 @@ function renderCart(root: Element): void {
   const empty = root.querySelector("[data-guest-cart-empty]");
   const lines = root.querySelector("[data-guest-cart-lines]");
   const checkout = root.querySelector("[data-guest-cart-checkout]");
-  const coupon = root.querySelector("[data-guest-cart-coupon]");
   const contact = root.querySelector("[data-guest-cart-contact]");
   const reason = root.querySelector("[data-guest-cart-checkout-reason]");
   const delivery = root.querySelector("[data-guest-cart-delivery]");
@@ -264,9 +263,6 @@ function renderCart(root: Element): void {
   if (checkout instanceof HTMLButtonElement) {
     checkout.disabled = !current.checkoutEnabled || checkoutLocked();
     checkout.textContent = current.checkoutLabel;
-  }
-  if (coupon instanceof HTMLInputElement) {
-    coupon.disabled = !checkoutAdmitted || checkoutLocked();
   }
   if (contact instanceof HTMLFieldSetElement) {
     contact.disabled = !checkoutAdmitted || checkoutLocked();
@@ -514,8 +510,9 @@ export function hydrateGuestCartPage(): void {
         renderCart(root);
         return;
       }
-      const couponInput = root.querySelector("[data-guest-cart-coupon]");
-      const couponCode = couponInput instanceof HTMLInputElement ? couponInput.value.trim() || undefined : undefined;
+      // Coupons are coming soon: Registry Commerce refuses every code for v1,
+      // so checkout never sends one. COUPON_UNAVAILABLE stays handled below.
+      const couponCode = undefined;
       pendingCheckout = true;
       checkoutRecovery = false;
       checkoutMessage = null;
