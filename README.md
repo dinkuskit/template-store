@@ -125,9 +125,10 @@ The public playground is a separate Worker application and does not use the
 demo Worker or its D1 database:
 
 ```bash
+pnpm prepare:sources
 pnpm exec astro dev --config astro.playground.config.mjs
 pnpm exec astro build --config astro.playground.config.mjs
-pnpm exec wrangler dev --config wrangler.playground.jsonc
+pnpm exec wrangler dev --config dist/server/wrangler.json
 ```
 
 Visit `/playground`. EmDash creates an anonymous admin session backed by a
@@ -137,12 +138,41 @@ continues to render the existing unavailable state; the playground has no
 payment or coupon bindings. Every response is noindex.
 
 Before a public preview is enabled, infra-keeper must add a Cloudflare Rate
-Limit binding named `PLAYGROUND_CREATION_LIMITER` to
-`wrangler.playground.jsonc` (a modest per-IP limit for `/_playground/init`).
-The project-owned hook in `src/playground-middleware.ts` consumes it. CI must
-build with `astro.playground.config.mjs`, deploy only the preview Worker with
-`wrangler.playground.jsonc`, and pass `--preview-alias pr-N` so Wrangler can
-serve `pr-N.demo.dinkuskit.com`. This change intentionally performs no deploy.
+Limit bindings named `PLAYGROUND_CREATION_LIMITER` and
+`PLAYGROUND_GLOBAL_LIMITER` to `wrangler.playground.jsonc` (per-IP and global
+caps for `/_playground/init`). The project-owned hook in
+`src/playground-middleware.ts` consumes both and returns a friendly 429.
+
+GitHub Actions builds with `astro.playground.config.mjs`. On a PR it uploads
+the preview Worker with `wrangler versions upload --preview-alias pr-N`; on
+`main` it deploys the same separate Worker to `playground.dinkuskit.com`. Each
+deployment message records the template-store SHA and the pinned Commerce
+commit. The preview check is intentionally the custom-domain URL
+`https://pr-N.playground.dinkuskit.com`, never a `workers.dev` URL.
+
+The only CI secret is `CLOUDFLARE_PLAYGROUND_API_TOKEN`. Ryan should create a
+Cloudflare API token with exactly `Account > Workers Scripts > Edit`, limited
+to account `cddb32366789cab1bdf4c25584dc1920`; it needs no Zone DNS, account
+read, payment, coupon, or secret permissions. Cloudflare-side approval is
+still required for the `playground.dinkuskit.com` custom domain, its
+`pr-*.playground.dinkuskit.com` preview hostnames/wildcard DNS, and the two
+rate-limit namespaces. This change intentionally performs no deploy or
+resource creation.
+
+CI always builds the playground in the secret-free `Playground build` job.
+The upload, preview check and `main` deploy run in a separate `Playground
+deployment` job only when the repository variable `PLAYGROUND_DEPLOY_ENABLED`
+is `true`. That job uses the GitHub environment `playground`, which must be
+the only place `CLOUDFLARE_PLAYGROUND_API_TOKEN` is stored (never a repository
+secret). By the owner's decision the environment has no required reviewer, so
+pushes to `main` deploy and same-repository pull requests upload `pr-N`
+previews without a click; fork pull requests never run the job. Anyone who can
+push a branch to this repository can therefore run code with the token, which
+the owner accepted. Create the environment, move the token into it, and set the
+variable after the one-time Cloudflare setup above
+is approved. Wrangler deploys the build's generated
+`dist/server/wrangler.json` (from `wrangler.playground.jsonc`, whose `main`
+stays `src/playground-worker.ts` so the Astro build can resolve it).
 
 The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build`,
 and the verifiers prepare Commerce's exact source in an ignored checkout, then
