@@ -281,22 +281,24 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
 
     await physical.getByLabel("Email", { exact: true }).fill("proof@example.test");
     await physical.getByLabel("Recipient", { exact: true }).fill("Proof shopper");
-    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
-    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Complete the recipient");
-    await physical.screenshot({ path: resolve(root, "physical-validation-error.png"), fullPage: true, animations: "disabled" });
-
-    await physical.getByLabel("Recipient", { exact: true }).fill("");
-    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
-    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Delivery address is required");
-    await physical.screenshot({ path: resolve(root, "physical-commerce-refusal.png"), fullPage: true, animations: "disabled" });
-
-    await physical.goto("/cart");
-    await physical.getByLabel("Recipient", { exact: true }).fill("Proof shopper");
     await physical.getByLabel("Address line 1", { exact: true }).fill("1 Example Way");
     await physical.getByLabel("City", { exact: true }).fill("Testville");
     await physical.getByLabel("Postal code", { exact: true }).fill("00000");
     await physical.getByLabel("Country code", { exact: true }).fill("US");
     await physical.screenshot({ path: resolve(root, "physical-filled.png"), fullPage: true, animations: "disabled" });
+
+    await physical.getByLabel("City", { exact: true }).fill("");
+    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Complete the recipient");
+    await physical.screenshot({ path: resolve(root, "physical-validation-error.png"), fullPage: true, animations: "disabled" });
+
+    await physical.getByLabel("Recipient", { exact: true }).fill("");
+    await physical.getByLabel("Address line 1", { exact: true }).fill("");
+    await physical.getByLabel("Postal code", { exact: true }).fill("");
+    await physical.getByLabel("Country code", { exact: true }).fill("");
+    await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Delivery address is required");
+    await physical.screenshot({ path: resolve(root, "physical-commerce-refusal.png"), fullPage: true, animations: "disabled" });
 
     const digital = await context.newPage();
     await installOfflineCheckoutHarness(digital, {
