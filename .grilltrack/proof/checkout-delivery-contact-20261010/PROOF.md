@@ -1,0 +1,74 @@
+# Checkout delivery contact proof (PR #52)
+
+Branch `cursor/checkout-delivery-address-7f98`, follow-up commit on top of
+`c4ac5d4` addressing ClawSweeper's P1 "Ignore hidden delivery fields for
+digital carts".
+
+## What changed
+
+`readCheckoutContact` now receives the cart's current `needsDelivery` value.
+When the cart is digital-only it returns `{ email }` and never reads the
+hidden delivery inputs, so an address typed while the cart needed delivery
+can neither reach Commerce nor block checkout after the cart becomes
+digital-only.
+
+## Evidence (local, Node 22.23.2, shipping-chromium-desktop)
+
+New browser test `checkout start sends delivery only while the cart needs it,
+even after fields go stale` records the real checkout-start request body that
+the browser sends to Commerce's `/start` route (offline harness):
+
+- Physical cart, address filled: body `contact` is
+  `{ email, delivery: { name, line1, city, postalCode, country: "US" } }`.
+- Same address filled, then Commerce's next catalog answer marks the item
+  digital (Retry catalog update): the delivery section hides, its inputs still
+  hold the old address, and the start body `contact` is exactly `{ email }`.
+- Bodies are written to
+  `runs/checkout-contact-proof/shipping-chromium-desktop/checkout-start-contact-bodies.json`
+  with a screenshot `digital-after-physical-stale-fields.png`.
+
+Reproduced first: with the previous `guest-cart-client.ts` the same test fails
+(`Received + "delivery": Object {...}`); with the fix it passes.
+
+Commerce refusals are still surfaced: the existing test
+`checkout contact proof covers physical validation, Commerce refusal, filled
+address, and digital omission` passes (shows "Delivery address is required").
+
+Other local checks: `astro check` 0 errors; `vitest` 173 passed, 1 failed
+(`seed-demo-repeat`, which fails identically on main in this sandbox because
+fonts.google.com is unreachable); CI on the pushed head runs the full
+`pnpm verify`.
+
+## Country list (decision `template-checkout-country-selector-002`)
+
+The free-text two-letter country box is replaced by a country list. Only
+"United States" (value `US`) can be chosen; Canada, United Kingdom,
+Australia, Germany, France and Japan are listed as disabled
+"(coming soon)" options with an empty value, so they can never be submitted.
+Commerce's per-store `shippingCountries` setting stays the authority and
+still refuses any country the store does not ship to.
+
+Evidence: both contact browser tests now choose the country with
+`selectOption("US")` / `selectOption("")` and assert the Canada option is
+disabled; `guest-checkout-feasibility.spec.ts` passes 12 of 12 (2 skipped)
+on shipping-chromium-desktop and shipping-chromium-mobile; the start body
+still carries `country: "US"`. `astro check` 0 errors; `vitest` unchanged
+(173 passed, `seed-demo-repeat` fails only for the sandbox font fetch);
+`check-features` ok; `grilltrack validate` valid.
+
+## Site crawl stays on the shipping profile
+
+`bin/verify-web`, `bin/verify-site` and `tests/workflows/verify-site-crawl.test.mjs`
+are back to main's versions. An earlier commit on this branch made the
+crawl fail on the catalog-unavailable notice and then pointed the crawl at
+the proof/native-development catalog to pass. The shipping profile
+fail-closes without a paired installed Commerce artifact, so that notice is
+its expected state; the crawl must keep exercising it (ClawSweeper P1 on
+`84e4efa`). CI run 38055645476 shows the only crawl failure on the shipping
+profile was that new check. Workflow tests 28 of 28 pass.
+
+## Authority boundary
+
+The Commerce source pin (`8655f0c`, Commerce main containing #88 and #90) proves
+development integration only. It is not installed Commerce artifact identity
+or digest, and nothing here claims paired installed-Commerce readiness.

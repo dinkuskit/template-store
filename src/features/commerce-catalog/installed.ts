@@ -28,6 +28,10 @@ function product(value: unknown): PublicCommerceProduct {
       typeof value.availability.sellable !== "boolean") throw new Error("Invalid installed catalog projection");
   return {
     id: value.id, name: value.name, sku: value.sku,
+    // Commerce's installed public projection does not expose simple-item
+    // fulfillment yet; fail closed to physical so checkout never omits a
+    // required delivery address.
+    fulfillment: "physical",
     // Commerce projects customerPays only; never reconstruct a regular/sale pair.
     price: { listable: true, regularText: formatUsdMinor(value.price.minor), saleText: null },
     availability: {

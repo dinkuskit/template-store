@@ -184,16 +184,28 @@ function createFixtureExecution(paymentLookupOutcome: "paid" | "open" | "unknown
     },
     now: () => 1727800000,
     createAttemptId: () => "att_canonical_123",
+    loadCheckoutContactRequirements: async () => ({
+      requirePhoneNumber: false,
+      shippingCountries: ["US"],
+      revision: null,
+    }),
   };
 
   const execution = rawExecution as unknown as CheckoutExecutionCandidate;
 
-  const cartInput = [
-    {
-      catalogItemId: "one",
-      quantity: 1,
+  const cartInput = {
+    lines: [{ catalogItemId: "one", quantity: 1 }],
+    contact: {
+      email: "scheduler@example.test",
+      delivery: {
+        name: "Scheduler",
+        line1: "1 Example Way",
+        city: "Testville",
+        postalCode: "00000",
+        country: "US",
+      },
     },
-  ];
+  };
 
   return {
     execution,
