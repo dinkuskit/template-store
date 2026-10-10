@@ -45,7 +45,6 @@ export type UnmanagedProductSellability = Readonly<{
   }>;
   storefront: StorefrontAvailabilityResult;
   provenance: Readonly<{
-    blocks: string;
     commerce: string;
     inventory: string;
   }>;
