@@ -103,11 +103,11 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
     status: "draft",
     data: {
       title: name,
-      categories: ["hats"],
       commerce_item_id: id,
       description: "A product entry created for the cart proof.",
       visual_label: "CAP",
     },
+    references: { categories: ["hats"] },
   });
   expect(editorial.status(), await editorial.text()).toBe(201);
   const editorialId = unwrap<{ item: { id: string } }>(await editorial.json()).item.id;
