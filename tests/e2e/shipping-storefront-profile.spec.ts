@@ -52,6 +52,9 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await page.goto("/");
   await expect(page.locator("body")).toHaveAttribute("data-storefront-profile", "shipping");
   await expect(page.locator("#commerce-catalog")).toHaveText("Shop");
+  await expect(page.locator("[data-catalog-guidance]")).toHaveAttribute("data-catalog-guidance-state", "unavailable");
+  await expect(page.locator("[data-catalog-guidance]")).toContainText("Products are not shown until the connected store can be reached");
+  await expect(page.locator("[data-catalog-guidance]")).not.toContainText("added to your cart");
   await expect(page.getByRole("alert")).toHaveText("The product catalog is temporarily unavailable.");
   await expect(page.locator("[data-commerce-product]")).toHaveCount(0);
   await expect(page.locator("[data-commerce-empty]")).toHaveCount(0);

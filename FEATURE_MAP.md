@@ -18,7 +18,7 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; explicit native-development proof retains Regular/Sale composition | `src/features/commerce-catalog/`; `tests/e2e/commerce-catalog.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed |
+| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; explicit native-development proof retains Regular/Sale composition, truthful catalog guidance, and warm-neutral card presentation | `src/features/commerce-catalog/`; `tests/e2e/commerce-catalog.spec.ts`; `tests/e2e/shipping-storefront-profile.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed; bounded 2026-10-09 visual refinement |
 
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |

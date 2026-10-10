@@ -17,6 +17,7 @@ const profile = readStorefrontProfile();
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store">
+        <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
         <GuestCartNav />
       </nav>
     </header>
