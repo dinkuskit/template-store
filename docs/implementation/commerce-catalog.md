@@ -50,9 +50,8 @@ endpoint is added.
 
 ## Pins and boundaries
 
-Exact Commerce source is `8655f0c38dbb63f48137a822d4d6827eae122abe` (Commerce
-#90, merged as `8655f0c`, retains the physical-basket `contact.delivery`
-requirement and coupon refusal reasons). EmDash and
+Exact Commerce source is `fca668447473a05dbe4c32897dc77d7e87ffac9a` (Commerce
+#91, merged as `fca6684`, adding native public catalog routes). EmDash and
 `@emdash-cms/cloudflare` are `1.2.0`. Managed products without a configured
 provider fail closed as availability unavailable. No managed-stock admin or
 provider transport is introduced. Inventory `8 → 5 → 8` remains the explicit
