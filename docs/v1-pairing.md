@@ -8,7 +8,7 @@ Current Commerce source identity updated 2026-10-06 to match the template manife
 | TemplateStore | private package `0.0.0`; this candidate source | Development pilot, no approved release |
 | Commerce | reviewed source `45ced324bfb2c39c0a1fe200e5d8ceda7c5581ef`; unmerged pre-release candidate; npm archive `e0d1c88ca5cf805f3795aa61ef598f1c50c893be35fd4b41aa0ac867d554e4df`, Registry archive `79b64463dbb7c80012bb13fca613be0954b2387ee5ec5709a4656293dd5cfa3a` | Exact Commerce49 default Registry service assembly adopted for bounded runtime proof; owner artifacts remain pre-release and local admission inputs |
 | Payments | reviewed source `37842220fddb10dc5294af084110cd33804715be`; merged `1d7b5521f9986df7b7f92866b43cf7814826d607` | Immutable Payments12 HTTP/JWT/SQLite Worker paired locally with intercepted issuer/provider transport |
-| Blocks | EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks | No `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
+| Blocks | EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks | No `@dinkuskit/blocks` dependency or registration. The archived `dinkuskit/blocks` repository is not used anywhere |
 | Inventory | source `5889c7d59398376da51ac400d5c1f1214aba2c6b` | Development managed regression only; off in shipping v1 |
 | EmDash | package `1.0.1` | Actual tested package; registry-installed pair remains unqualified |
 
@@ -58,7 +58,7 @@ registry bundle or released tarball digest.
 | Promotions | Coupons owner | Basic coupons required for v1; owner public interface and accepted checkout/usage evidence pending (separate dedicated Coupons owner now working) |
 | Bundles | Commerce / relevant owner contract | Not a blocker for this bounded native qualification; unimplemented with no bundle affordance |
 | Registry pair | Commerce + Template release artifact owners | Exact qualified pre-release artifacts adopted locally; official Registry release/delivery/install proof pending |
-| Blocks runtime | Template composition / EmDash public native Blocks | Current candidate uses EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks; no `@dinkuskit/blocks` dependency or registration. Retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is historical style provenance only, not a shipping requirement |
+| Blocks runtime | Template composition / EmDash public native Blocks | Current candidate uses EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks; no `@dinkuskit/blocks` dependency or registration. The archived `dinkuskit/blocks` repository is not used anywhere |
 | Hosted demo | Template exact working pair, isolated synthetic state | Plan only; no approved deploy or verified URL |
 
 Current composition uses EmDash 1.0.1 public native Blocks and collection APIs
@@ -67,10 +67,9 @@ for first-class `layout` renderers. `astro.config.mjs` registers native
 Portable Text uses local presentation components for retained page-hero,
 fact-rail, and query-card nodes, with local Unknown fallbacks for missing
 native and unsupported Portable Text. Preserve that fallback and edited
-content. The retired pin `fe03bfac91798ac0b411b952fe23c26afefbf570` is
-historical style provenance for copied `@layer dinkus-blocks` presentation
-only. It is not an active dependency or shipping requirement. No
-`@dinkuskit/blocks` owner source is changed by this correction. Remaining
+content. The archived `dinkuskit/blocks` repository is reference only: no
+dependency, source pin, storefront provenance line or CSS layer names it.
+Remaining
 Commerce public-mount/artifact, Payments transport, shipping, promotions,
 registry-pair, and hosted-demo gates stay with their owners and are not
 cleared here.
