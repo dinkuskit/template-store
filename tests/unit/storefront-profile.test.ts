@@ -92,6 +92,8 @@ describe("storefront profile", () => {
     expect(context.demonstrations).toBeNull();
     expect(await readProofDemonstrations({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBeNull();
     expect(context.collections.flatMap((group) => group.items.map((item) => item.id))).toEqual([
+      "canvas-cap",
+      "everyday-tee",
       "boxy-tee-preview",
     ]);
   });
