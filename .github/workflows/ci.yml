@@ -139,7 +139,7 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         env:
-          PREVIEW_URL: https://pr-${{ github.event.pull_request.number }}.playground.dinkuskit.com
+          PREVIEW_URL: https://pr-${{ github.event.pull_request.number }}-playground.dinkuskit.com
         run: |
           set -euo pipefail
           headers="$(mktemp)"
