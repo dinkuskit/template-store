@@ -7,3 +7,4 @@
 {"action": "decision_proposed", "at": "2026-10-10T14:55:45+00:00", "data": {"decision_id": "template-checkout-country-selector-002"}, "event_id": "5013f89a-e427-4e69-b534-5cf155490d45"}
 {"action": "decision_locked", "at": "2026-10-10T14:55:45+00:00", "data": {"decision_id": "template-checkout-country-selector-002"}, "event_id": "a3ed5443-5f7d-467b-9488-3841a8aa627a"}
 {"action": "decision_superseded", "at": "2026-10-10T14:55:45+00:00", "data": {"affected": ["template-checkout-country-selector-002"], "decision_id": "template-checkout-country-input-001", "replacement_id": "template-checkout-country-selector-002"}, "event_id": "3eb7f70c-7aab-408c-a9f9-90b96e17a2a1"}
+{"action": "decision_proposed", "at": "2026-10-10T17:18:03+00:00", "data": {"decision_id": "commerce-main-canary-001"}, "event_id": "da652b53-d529-4231-b0fa-bf9351e1e2d1"}
