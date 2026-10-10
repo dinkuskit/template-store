@@ -20,7 +20,7 @@ const visibleCollections = collections.map((collection) => ({
   }),
 })).filter((collection) => collection.items.length > 0);
 ---
-<section class="product-catalog" aria-labelledby={collectionOnly ? undefined : "catalog-title"} aria-label={collectionOnly ? "Product collection" : undefined} data-product-catalog data-product-links={collections.flatMap((collection) => collection.items.map((item) => item.commerceItemId)).join(",")} data-commerce-snapshot-ids={commerceSnapshots.map((snapshot) => snapshot.id).join(",")}>
+<section class="product-catalog" aria-labelledby={collectionOnly ? undefined : "catalog-title"} aria-label={collectionOnly ? "Product collection" : undefined} data-product-catalog data-product-links={collections.flatMap((collection) => collection.items.map((item) => item.commerceItemId)).join(",")} data-commerce-snapshot-ids={commerceSnapshots.map((snapshot) => snapshot.found ? `${snapshot.id}:${snapshot.price.listable}:${snapshot.availability.listable}` : `${snapshot.id}:missing`).join(",")}>
   {!collectionOnly && <div class="catalog-heading">
     <div>
       <p class="catalog-kicker">The collection</p>
