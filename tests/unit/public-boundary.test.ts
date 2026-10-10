@@ -14,6 +14,7 @@ vi.mock("@emdash-cms/cloudflare/worker", () => ({
 import {
   applySecurityHeaders,
   demoNoIndexEnabled,
+  emdashAdminEnabled,
   evaluatePublicBoundary,
   slashlessRedirectPath,
 } from "../../src/features/security/public-boundary.js";
@@ -167,6 +168,22 @@ describe("public boundary access evaluation", () => {
     expect(scheduled.allowed).toBe(false);
     expect(scheduled.status).toBe(404);
     expect(evaluatePublicBoundary("POST", "/__scheduled").allowed).toBe(false);
+  });
+
+  it("keeps EmDash admin and auth routes blocked unless explicitly enabled", () => {
+    expect(emdashAdminEnabled({})).toBe(false);
+    expect(evaluatePublicBoundary("GET", "/_emdash/admin", "", undefined, {}).status).toBe(403);
+    expect(evaluatePublicBoundary("POST", "/_emdash/api/auth/sign-in", "", undefined, {}).status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/_emdash/api/content/pages/home", "", undefined, {}).status).toBe(404);
+  });
+
+  it("passes EmDash admin and auth routes when explicitly enabled", () => {
+    const env = { DINKUS_EMDASH_ADMIN_ENABLED: "1" };
+    expect(emdashAdminEnabled(env)).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/_emdash/admin", "", undefined, env).allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/_emdash/api/auth/sign-in", "", undefined, env).allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", "/_emdash/api/auth/sign-in", "", undefined, env).allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", "/_emdash/api/content/pages/home", "", undefined, env).allowed).toBe(true);
   });
 
   it("denies dev-bypass in path or query with 403", () => {
@@ -335,6 +352,19 @@ describe("worker boundary handler", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
+  it("delegates EmDash admin requests only when the Worker flag is enabled", async () => {
+    astroFetch.mockClear();
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const headers = { "cf-connecting-ip": "198.51.100.1" };
+    const res = await worker.fetch(
+      new Request("http://demo.dinkuskit.com/_emdash/admin", { headers }),
+      { RATE_LIMITER: limiter, DINKUS_EMDASH_ADMIN_ENABLED: "1" },
+      dummyCtx,
+    );
+    expect(res.status).toBe(200);
+    expect(astroFetch).toHaveBeenCalledTimes(1);
   });
 
   it("rejects slash variants before Astro handles built-in redirects", async () => {
