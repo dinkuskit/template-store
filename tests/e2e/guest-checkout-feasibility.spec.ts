@@ -43,7 +43,7 @@ test("guest checkout stays closed and return pages never trust browser claims", 
     "/checkout/success?success=true&session_id=forged&redirect_status=succeeded",
   );
   await expect(page.getByRole("heading", { name: "We couldn’t find that order" })).toBeVisible();
-  await expect(page.getByText("We couldn’t confirm this order")).toBeVisible();
+  await expect(page.getByText("This return could not be matched")).toBeVisible();
 
   await page.goto("/checkout/cancel?session_id=forged");
   await expect(page).toHaveURL(/\/cart\/?$/);
