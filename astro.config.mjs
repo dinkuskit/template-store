@@ -36,7 +36,7 @@ const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
 
 export default defineConfig({
   output: "server",
-  trailingSlash: "never",
+  trailingSlash: "ignore",
   adapter: isCloudflare
     ? cloudflare({
         ...(process.env.DINKUS_WRANGLER_CONFIG
