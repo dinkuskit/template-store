@@ -2,7 +2,7 @@
 import type { CommerceCatalogSnapshot } from "../commerce-catalog/index.js";
 import { AddToCart } from "../guest-cart/ui.ts";
 import { availabilityLabels } from "../commerce-catalog/index.js";
-import { categoryAnchor, categoryPath, productPath, type ProductCollection } from "./product-catalog.js";
+import { categoryAnchor, categoryPath, isCommerceSnapshotVisible, productPath, type ProductCollection } from "./product-catalog.js";
 
 interface Props {
   collections: readonly ProductCollection[];
@@ -16,7 +16,7 @@ const visibleCollections = collections.map((collection) => ({
   ...collection,
   items: collection.items.filter((item) => {
     const commerce = commerceById.get(item.commerceItemId);
-    return commerce !== undefined && commerce.found && commerce.price.listable;
+    return isCommerceSnapshotVisible(commerce);
   }),
 })).filter((collection) => collection.items.length > 0);
 ---

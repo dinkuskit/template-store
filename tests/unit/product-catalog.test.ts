@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProductCollections, publicProductCollections, categoryAnchor, categoryPath, productPath } from "../../src/features/store-shell/product-catalog.js";
+import { buildProductCollections, publicProductCollections, categoryAnchor, categoryPath, isCommerceSnapshotVisible, productPath } from "../../src/features/store-shell/product-catalog.js";
 
 const categories = [
   { id: "tees", data: { title: "Tees" } },
@@ -29,5 +29,17 @@ describe("CMS product grouping", () => {
       { id: "dinkus-template-unpriced-product", data: { title: "Draft", categories: ["tees"], commerce_item_id: "preview", visual_label: "tee" } },
     ], categories);
     expect(groups.find((group) => group.slug === "tees")?.items).toMatchObject([{ id: "new-preview", description: "" }]);
+  });
+
+  it("keeps a priced out-of-stock Commerce product on the grid for sold-out rendering", () => {
+    expect(isCommerceSnapshotVisible({
+      found: true,
+      price: { listable: true },
+      availability: { listable: false },
+    })).toBe(true);
+    expect(isCommerceSnapshotVisible({
+      found: true,
+      price: { listable: false },
+    })).toBe(false);
   });
 });

@@ -17,6 +17,12 @@ export type ProductCollection = Readonly<{
   items: readonly ProductRecord[];
 }>;
 
+export function isCommerceSnapshotVisible(
+  snapshot: { found: boolean; price?: { listable: boolean } } | undefined,
+): boolean {
+  return snapshot?.found === true && snapshot.price?.listable === true;
+}
+
 /** Editorial content comes from EmDash; Commerce links are validated by the page resolver. */
 export function buildProductCollections(
   entries: readonly { id: string; data: Record<string, unknown> }[],
