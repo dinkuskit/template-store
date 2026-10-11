@@ -37,7 +37,7 @@ export const PLAYGROUND_PRODUCT_SEED: SeedFile = {
       status: "published" as const,
       data: {
         title,
-        categories: [category],
+        categories: [category, ...(id === "demo-hosted-tote" ? ["hats"] : [])],
         commerce_item_id: commerceItemId,
         description,
         visual_label: visualLabel,

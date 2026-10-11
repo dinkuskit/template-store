@@ -22,11 +22,14 @@ import {
   setCatalogItemManualAvailability,
   setCatalogItemRegularPrice,
   setCatalogItemSalePrice,
+  saveCatalogItemMedia,
   CATALOG_COLLECTION,
   CATALOG_MANUAL_AVAILABILITY_COLLECTION,
+  CATALOG_MEDIA_COLLECTION,
   CATALOG_PRICES_COLLECTION,
   COMMERCE_PLUGIN_ID,
   type CatalogManualAvailabilityRecord,
+  type CatalogMediaRecord,
   type CatalogPriceRecord,
   type CatalogStorageRecord,
 } from "@dinkuskit/commerce";
@@ -440,6 +443,12 @@ async function ensureProduct(
       catalogItemId: itemId,
       status: product.availability,
     });
+    if (product.gallery) {
+      await saveCatalogItemMedia(storage, {
+        catalogItemId: itemId,
+        gallery: product.gallery,
+      });
+    }
   }
   return action;
 }
@@ -619,6 +628,11 @@ async function seedCanonical(
           db,
           CATALOG_MANUAL_AVAILABILITY_COLLECTION,
           storageMap[CATALOG_MANUAL_AVAILABILITY_COLLECTION],
+        ),
+        media: repository<CatalogMediaRecord>(
+          db,
+          CATALOG_MEDIA_COLLECTION,
+          storageMap[CATALOG_MEDIA_COLLECTION],
         ),
       };
 

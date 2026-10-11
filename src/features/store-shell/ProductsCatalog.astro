@@ -16,7 +16,7 @@ const visibleCollections = collections.map((collection) => ({
   ...collection,
   items: collection.items.filter((item) => {
     const commerce = commerceById.get(item.commerceItemId);
-    return commerce !== undefined && commerce.found && commerce.price.listable && commerce.availability.listable;
+    return commerce !== undefined && commerce.found && commerce.price.listable;
   }),
 })).filter((collection) => collection.items.length > 0);
 ---

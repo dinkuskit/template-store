@@ -172,6 +172,10 @@ describe("demo seed resource identity", () => {
       "DEMO-HOSTED-BOTTLE",
     ]);
     expect(DEMO_SKUS.has("DEMO-HOSTED-HOODIE-M")).toBe(true);
+    expect(DEMO_SKUS.has("DEMO-HOSTED-SHIRT-XXL")).toBe(true);
+    expect(DEMO_SKUS.has("DEMO-HOSTED-CAP-BLUE")).toBe(true);
+    expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-SHIRT")?.variant?.values).toHaveLength(5);
+    expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-CAP")?.variant?.values).toHaveLength(3);
     expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-HOODIE-S")?.variant).toEqual(
       expect.objectContaining({
         optionId: "size",
@@ -186,7 +190,7 @@ describe("demo seed resource identity", () => {
       "2400",
     );
     expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-SHIRT")?.saleMinor).toBe(
-      null,
+      "2800",
     );
   });
 

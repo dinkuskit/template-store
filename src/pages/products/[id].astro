@@ -3,6 +3,7 @@ import { getEmDashCollection } from "emdash";
 import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { AddToCart } from "../../features/guest-cart/ui.ts";
 import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
+import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
@@ -48,7 +49,7 @@ if (item && profile === "shipping" && item.availabilitySource !== "preview") {
 }
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
-const status = managed ? `${managed.inventory.available} available` : unmanaged ? ({
+const status = linkedProduct ? (availabilityLabels[linkedProduct.availability.status] ?? "Availability unavailable") : managed ? `${managed.inventory.available} available` : unmanaged ? ({
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
 } as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
@@ -76,7 +77,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
             <h1>{item.title}</h1>
             <p class="product-detail__description">{item.description}</p>
-            {linkedProduct && <p class="product-detail__price" data-product-price><strong data-regular-price>{linkedProduct.price.regularText}</strong></p>}
+            {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price>{linkedProduct.price.regularText}</strong>}</p>}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={unmanaged?.storefront.status}>{status}</p>

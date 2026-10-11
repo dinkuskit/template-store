@@ -40,6 +40,8 @@ export interface DemoProductSeed {
   regularMinor: string;
   saleMinor: string | null;
   availability: "in-stock" | "out-of-stock";
+  categories?: readonly string[];
+  gallery?: readonly string[];
   variant?: {
     optionId: string;
     optionLabel: string;
@@ -60,8 +62,19 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
     description: "A substantial cotton tee with an easy everyday fit.",
     sku: "DEMO-HOSTED-SHIRT",
     regularMinor: "3200",
-    saleMinor: null,
+    saleMinor: "2800",
     availability: "in-stock",
+    variant: {
+      optionId: "size",
+      optionLabel: "Size",
+      values: [
+        { valueId: "small", label: "Small", commandId: "seed-demo-shirt-small", name: "Dinkus Demo Heavyweight T-Shirt", sku: "DEMO-HOSTED-SHIRT" },
+        { valueId: "medium", label: "Medium", commandId: "seed-demo-shirt-medium", name: "Dinkus Demo Heavyweight T-Shirt", sku: "DEMO-HOSTED-SHIRT-M" },
+        { valueId: "large", label: "Large", commandId: "seed-demo-shirt-large", name: "Dinkus Demo Heavyweight T-Shirt", sku: "DEMO-HOSTED-SHIRT-L" },
+        { valueId: "xl", label: "XL", commandId: "seed-demo-shirt-xl", name: "Dinkus Demo Heavyweight T-Shirt", sku: "DEMO-HOSTED-SHIRT-XL" },
+        { valueId: "xxl", label: "XXL", commandId: "seed-demo-shirt-xxl", name: "Dinkus Demo Heavyweight T-Shirt", sku: "DEMO-HOSTED-SHIRT-XXL" },
+      ],
+    },
   },
   {
     commandId: "seed-demo-cap",
@@ -71,6 +84,15 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
     regularMinor: "2800",
     saleMinor: "2400",
     availability: "in-stock",
+    variant: {
+      optionId: "color",
+      optionLabel: "Color",
+      values: [
+        { valueId: "black", label: "Black", commandId: "seed-demo-cap-black", name: "Dinkus Demo Structured Cap", sku: "DEMO-HOSTED-CAP" },
+        { valueId: "red", label: "Red", commandId: "seed-demo-cap-red", name: "Dinkus Demo Structured Cap", sku: "DEMO-HOSTED-CAP-RED" },
+        { valueId: "blue", label: "Blue", commandId: "seed-demo-cap-blue", name: "Dinkus Demo Structured Cap", sku: "DEMO-HOSTED-CAP-BLUE" },
+      ],
+    },
   },
   {
     commandId: "seed-demo-mug",
@@ -118,6 +140,7 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
     regularMinor: "2600",
     saleMinor: null,
     availability: "in-stock",
+    categories: ["tees", "hats"],
   },
   {
     commandId: "seed-demo-throw",
@@ -127,6 +150,7 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
     regularMinor: "4800",
     saleMinor: "4200",
     availability: "in-stock",
+    gallery: ["demo-throw-front", "demo-throw-detail"],
   },
   {
     commandId: "seed-demo-tray",

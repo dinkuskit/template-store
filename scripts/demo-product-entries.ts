@@ -21,6 +21,7 @@ export type DemoProductEntry = Readonly<{
 }>;
 
 function categoryFor(product: DemoProductSeed): string {
+  if (product.categories?.length) return product.categories[0]!;
   if (product.variant) return "hoodies";
   if (product.sku.endsWith("CAP")) return "hats";
   return "tees";
@@ -55,7 +56,7 @@ export function buildDemoProductEntries(
       status: "published" as const,
       data: {
         title: product.name,
-        categories: [categoryFor(product)],
+        categories: product.categories ? [...product.categories] : [categoryFor(product)],
         commerce_item_id: commerceItemId,
         description: product.description,
         visual_label: visualLabelFor(product),
