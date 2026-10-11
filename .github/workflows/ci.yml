@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, closed]
   push:
     branches: [main]
 
@@ -87,14 +88,16 @@ jobs:
   # token lives only in the `playground` environment. By the owner's choice
   # (2026-10-10) that environment has no required reviewer: pushes to main
   # deploy on their own, same-repository pull requests get preview links on
-  # their own, and fork pull requests never run this job.
+  # their own, and fork pull requests never run this job. Preview URLs use
+  # Cloudflare Worker Previews on pr-N.playground.dinkuskit.com.
   deploy-playground:
     name: Playground deployment
     needs: build-playground
     if: >-
       vars.PLAYGROUND_DEPLOY_ENABLED == 'true' &&
       (github.event_name == 'push' ||
-      github.event.pull_request.head.repo.full_name == github.repository)
+      (github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository))
     environment: playground
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -126,20 +129,30 @@ jobs:
           message="template-store=${SOURCE_SHA} commerce=${commerce_commit}"
           echo "message=${message}" >> "$GITHUB_OUTPUT"
           echo "::notice title=Playground source commits::${message}"
-      - name: Upload PR preview version
-        if: github.event_name == 'pull_request'
+      - name: Publish PR preview
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        id: preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
-        run: >-
-          pnpm exec wrangler versions upload
-          --config dist/server/wrangler.json
-          --preview-alias pr-${{ github.event.pull_request.number }}
-          --message "${{ steps.commits.outputs.message }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          preview_json="$(mktemp)"
+          npx wrangler preview \
+            --config dist/server/wrangler.json \
+            --name "pr-${{ github.event.pull_request.number }}" \
+            --message "${{ steps.commits.outputs.message }}" \
+            --json > "$preview_json"
+          preview_url="$(jq -er '.preview.urls[0]' "$preview_json")"
+          expected_url="https://pr-${{ github.event.pull_request.number }}.playground.dinkuskit.com"
+          test "$preview_url" = "$expected_url"
+          echo "url=${preview_url}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Playground preview::${preview_url}"
       - name: Verify PR preview
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         shell: bash
         env:
-          PREVIEW_URL: https://pr-${{ github.event.pull_request.number }}-playground.dinkuskit.com
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
         run: |
           set -euo pipefail
           headers="$(mktemp)"
@@ -161,3 +174,35 @@ jobs:
           pnpm exec wrangler deploy
           --config dist/server/wrangler.json
           --message "${{ steps.commits.outputs.message }}"
+
+  cleanup-playground-preview:
+    name: Delete closed PR playground preview
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      vars.PLAYGROUND_DEPLOY_ENABLED == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    environment: playground
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          run_install: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Delete PR preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
+        run: >-
+          npx wrangler preview delete
+          --config wrangler.playground.jsonc
+          --name "pr-${{ github.event.pull_request.number }}"
+          --skip-confirmation

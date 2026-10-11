@@ -16,6 +16,8 @@ for (const required of [
   '"pattern": "playground.dinkuskit.com"',
   '"custom_domain": true',
   '"previews_enabled": true',
+  '"previews": {',
+  '"DINKUS_DEMO_NOINDEX": "1"',
   '"name": "PLAYGROUND_CREATION_LIMITER"',
   '"name": "PLAYGROUND_GLOBAL_LIMITER"',
 ]) {

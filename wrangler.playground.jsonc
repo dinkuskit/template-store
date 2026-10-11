@@ -59,6 +59,9 @@
     }
   ],
   "previews": {
+    "vars": {
+      "DINKUS_DEMO_NOINDEX": "1"
+    },
     "durable_objects": {
       "bindings": [
         {
@@ -66,6 +69,24 @@
           "class_name": "EmDashPreviewDB"
         }
       ]
+    },
+    "ratelimits": [
+      {
+        "name": "PLAYGROUND_CREATION_LIMITER",
+        "namespace_id": "2026101011",
+        "simple": {
+          "limit": 5,
+          "period": 60
+        }
+      },
+      {
+        "name": "PLAYGROUND_GLOBAL_LIMITER",
+        "namespace_id": "2026101012",
+        "simple": {
+          "limit": 100,
+          "period": 60
+        }
+      }
     }
   }
 }
