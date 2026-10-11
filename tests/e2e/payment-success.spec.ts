@@ -74,8 +74,8 @@ test("success page renders a server-fetched test order and a safe not-found stat
     });
 
     await page.goto("/checkout/success?session_id=cs_missing");
-    await expect(page.getByRole("heading", { name: "We couldn't find that order" })).toBeVisible();
-    await expect(page.getByText("We couldn't confirm this order")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "We couldn’t find that order" })).toBeVisible();
+    await expect(page.getByText("We couldn’t confirm this order")).toBeVisible();
     await expect(page.getByText("Order #1001")).toBeHidden();
     await page.screenshot({
       path: resolve("runs/payment-success", `${testInfo.project.name}-not-found.png`),
