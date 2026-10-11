@@ -100,6 +100,7 @@ jobs:
     timeout-minutes: 15
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      PLAYGROUND_PREVIEW_HOST_PATTERN: https://pr-{N}-dinkuskit-template-playground.growfunkybeans.workers.dev
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -142,6 +143,11 @@ jobs:
           preview_url="$(sed -nE 's/.*Version Preview Alias URL: (https:\/\/[^[:space:]]+\.workers\.dev).*/\1/p' "$upload_log" | tail -n 1)"
           if [[ -z "$preview_url" ]]; then
             echo "Wrangler did not report a workers.dev preview alias URL." >&2
+            exit 1
+          fi
+          expected_preview_url="${PLAYGROUND_PREVIEW_HOST_PATTERN/\{N\}/${{ github.event.pull_request.number }}}"
+          if [[ "$preview_url" != "$expected_preview_url" ]]; then
+            echo "Unexpected playground preview URL: $preview_url (expected $expected_preview_url)." >&2
             exit 1
           fi
           echo "url=$preview_url" >> "$GITHUB_OUTPUT"
