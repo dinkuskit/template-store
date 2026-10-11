@@ -19,8 +19,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     applySecurityHeaders(response.headers);
     return response;
   }
-  if (pathForms.includes("/cart/")) {
-    const response = Response.redirect(new URL("/cart", context.url), 302);
+  if (context.url.pathname === "/cart/") {
+    const response = new Response(null, {
+      status: 302,
+      headers: { Location: new URL("/cart", context.url).href },
+    });
     applySecurityHeaders(response.headers);
     return response;
   }
