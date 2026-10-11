@@ -23,6 +23,7 @@
     "prepare:sources": "node scripts/prepare-source-deps.mjs",
     "predev": "pnpm prepare:sources",
     "dev": "astro dev",
+    "dev:fresh": "bash scripts/dev-fresh.sh",
     "prebuild": "pnpm prepare:sources",
     "build": "node scripts/build-demo.mjs",
     "pretypecheck": "pnpm prepare:sources",
