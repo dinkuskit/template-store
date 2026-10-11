@@ -61,7 +61,7 @@ test("success page renders a server-fetched test order and a safe not-found stat
     await expect(page.getByText("TEST", { exact: true })).toBeVisible();
     await expect(page.getByText("Everyday Tee")).toBeVisible();
     await expect(page.getByText("$29.00")).toBeVisible();
-    await expect(page.getByText("A confirmation email is coming")).toBeVisible();
+    await expect(page.getByText("A confirmation email is coming now.", { exact: false })).toBeVisible();
     expect(seen).toEqual({
       authorization: "Bearer browser-test-only",
       sessionId: "cs_test_123",
