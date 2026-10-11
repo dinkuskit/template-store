@@ -22,7 +22,8 @@ const contactHref = (() => {
       if (url.protocol === "https:" || url.protocol === "http:") return url.href;
     } catch {}
   }
-  if (typeof settings.url === "string") return settings.url;
+  const siteUrl = (settings as { url?: unknown }).url;
+  if (typeof siteUrl === "string") return siteUrl;
   return "/";
 })();
 const runtimeEnv = (Astro.locals as unknown as { runtime?: { env?: Record<string, string> } }).runtime?.env;

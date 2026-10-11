@@ -102,17 +102,17 @@ export function parsePaymentReceipt(value: unknown): PaymentReceipt | null {
     return null;
   }
   return {
-    orderNumber: value.orderNumber,
-    test: value.test,
+    orderNumber: value.orderNumber as number,
+    test: value.test as boolean,
     status: "paid",
-    items: value.items,
-    subtotalCents: value.subtotalCents,
-    shippingCents: value.shippingCents,
-    taxCents: value.taxCents,
-    totalCents: value.totalCents,
-    currency: value.currency,
-    shipTo: value.shipTo,
-    email: value.email,
+    items: value.items as PaymentReceiptItem[],
+    subtotalCents: value.subtotalCents as number,
+    shippingCents: value.shippingCents as number,
+    taxCents: value.taxCents as number,
+    totalCents: value.totalCents as number,
+    currency: value.currency as string,
+    shipTo: value.shipTo as PaymentReceiptAddress,
+    email: value.email as string,
   };
 }
 
