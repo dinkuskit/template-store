@@ -195,7 +195,12 @@ jobs:
             --name "pr-${{ github.event.pull_request.number }}" \
             --message "${{ steps.commits.outputs.message }}" \
             --json > "$preview_json"
-          preview_url="$(jq -er '.preview.urls[0]' "$preview_json")"
+          # wrangler can print banner/warning lines before the JSON; keep only the JSON document.
+          sed -n '/^[[:space:]]*[{[]/,$p' "$preview_json" > "${preview_json}.clean"
+          if ! preview_url="$(jq -er '.preview.urls[0] // .urls[0] // .preview_url // .url' "${preview_json}.clean")"; then
+            echo "::error title=Unparseable wrangler preview output::$(head -c 2000 "$preview_json" | tr '\n' ' ')"
+            exit 1
+          fi
           expected_url="https://pr-${{ github.event.pull_request.number }}.playground.dinkuskit.com"
           test "$preview_url" = "$expected_url"
           echo "url=${preview_url}" >> "$GITHUB_OUTPUT"
