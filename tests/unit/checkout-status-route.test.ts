@@ -29,7 +29,7 @@ describe("checkout status browser proxy", () => {
       request: new Request("http://store.test/api/checkout/status", { method: "POST", body: "{}" }),
     } as never);
     expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ ok: false, error: { code: "CAPABILITY_REQUIRED" } });
+    expect(await response.json()).toMatchObject({ ok: false, error: { code: "CHECKOUT_UNAVAILABLE" } });
     expect(transport).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
