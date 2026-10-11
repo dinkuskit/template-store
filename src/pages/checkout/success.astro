@@ -1,15 +1,42 @@
 ---
-import { GuestCartNav, GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
+import { getSiteSettings } from "emdash";
+import { GuestCartNav } from "../../features/guest-cart/ui.ts";
+import PaymentSuccess from "../../features/payment-receipt/PaymentSuccess.astro";
+import { loadPaymentReceipt } from "../../features/payment-receipt/index.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
+const settings = await getSiteSettings().catch(() => ({}));
+const rawSettings = settings as typeof settings & {
+  contactEmail?: unknown;
+  contactUrl?: unknown;
+};
+const contactHref = (() => {
+  if (typeof rawSettings.contactEmail === "string" && rawSettings.contactEmail.includes("@")) {
+    return `mailto:${rawSettings.contactEmail}`;
+  }
+  if (typeof rawSettings.contactUrl === "string") {
+    try {
+      const url = new URL(rawSettings.contactUrl);
+      if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+    } catch {}
+  }
+  if (typeof settings.url === "string") return settings.url;
+  return "/";
+})();
+const runtimeEnv = (Astro.locals as unknown as { runtime?: { env?: Record<string, string> } }).runtime?.env;
+const result = await loadPaymentReceipt(
+  Astro.url.searchParams.get("session_id"),
+  { environment: runtimeEnv ?? process.env },
+);
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex, nofollow" />
     <title>Checkout return | {STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
@@ -18,6 +45,6 @@ const profile = readStorefrontProfile();
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav>
     </header>
-    <main><GuestCheckoutReturn kind="success" /></main>
+    <main><PaymentSuccess result={result} contactHref={contactHref} /></main>
   </body>
 </html>

@@ -67,6 +67,8 @@ export default defineConfig({
         DINKUS_STOREFRONT_PROFILE: "proof",
         DINKUS_PROOF_MODE: "1",
         DINKUS_CATALOG_PROFILE: "native-development",
+        PAYMENTS_BASE_URL: "http://127.0.0.1:4661",
+        PAYMENTS_STORE_KEY: "browser-test-only",
       }),
     },
     {
@@ -77,6 +79,8 @@ export default defineConfig({
       env: (() => {
         const env = childEnv({
           DINKUS_SHIPPING_E2E_PORT: shippingPort,
+          PAYMENTS_BASE_URL: "http://127.0.0.1:4661",
+          PAYMENTS_STORE_KEY: "browser-test-only",
         });
         delete env.DINKUS_CATALOG_PROFILE;
         return env;
