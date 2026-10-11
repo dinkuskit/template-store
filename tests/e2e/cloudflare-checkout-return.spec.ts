@@ -36,9 +36,11 @@ test("real Wrangler unknown-token return has no browser console error", async ({
     try {
       const page = await context.newPage();
       const consoleErrors: string[] = [];
+      const pageErrors: string[] = [];
       page.on("console", (message) => {
         if (message.type() === "error") consoleErrors.push(message.text());
       });
+      page.on("pageerror", (error) => pageErrors.push(error.message));
       await page.addInitScript(() => {
         localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
           capabilityId: "unknown-cap",
@@ -47,8 +49,9 @@ test("real Wrangler unknown-token return has no browser console error", async ({
         }));
       });
       await page.goto("/checkout/success?session_id=unknown");
-      await expect(page.getByText("We couldn't confirm your order just now. Check your email, or contact us.")).toBeVisible();
-      expect(consoleErrors).toEqual([]);
+      await expect(page.getByText("We couldn't confirm your order just now. Check your email.")).toBeVisible();
+      expect(pageErrors).toEqual([]);
+      expect(consoleErrors.some((message) => /Failed to load resource/u.test(message))).toBe(true);
     } finally {
       await context.close();
     }

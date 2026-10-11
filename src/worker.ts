@@ -69,6 +69,7 @@ function createErrorResponse(
 ): Response {
   const headers = new Headers({
     "Content-Type": "application/json",
+    ...(status === 405 ? { "Cache-Control": "no-store" } : {}),
     ...extraHeaders,
   });
   applySecurityHeaders(headers, env);

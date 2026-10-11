@@ -17,6 +17,7 @@ import {
   checkoutCanConfirm,
   canRetryGuestCheckoutStatus,
   createGuestCheckoutController,
+  GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
   readGuestCheckoutRetention,
   strictStripeCheckoutUrl,
   settleGuestCheckoutCart,
@@ -716,17 +717,39 @@ export function hydrateGuestCheckoutReturn(): void {
   const retry = root.querySelector("[data-guest-checkout-retry]");
   const statusRetry = root.querySelector("[data-guest-checkout-status-retry]");
   const retention = readGuestCheckoutRetention(checkoutStorage());
+  const storedCheckoutData = (() => {
+    const saved = checkoutStorage();
+    if (!saved) return undefined;
+    try {
+      return saved.getItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY);
+    } catch {
+      return "";
+    }
+  })();
+  const failureMessage = root.querySelector("[data-guest-checkout-contact]")
+    ? "We couldn't confirm your order just now. Check your email, or contact us."
+    : "We couldn't confirm your order just now. Check your email.";
+  const setFailureState = () => {
+    const title = root.querySelector("#guest-checkout-return-title");
+    if (title instanceof HTMLElement) title.textContent = "We couldn't confirm your order";
+    setMessage(failureMessage, false);
+    if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
+  };
   const setMessage = (message: string, error = false) => {
     if (!(status instanceof HTMLElement)) return;
     status.hidden = false;
     status.textContent = message;
     status.setAttribute("role", error ? "alert" : "status");
   };
-  if (!retention) {
+  if (!retention && storedCheckoutData === null) {
     const title = root.querySelector("#guest-checkout-return-title");
     if (title instanceof HTMLElement) title.textContent = "Your order went through";
     setMessage("Your order went through. Check your email for the confirmation.");
     if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
+    return;
+  }
+  if (!retention) {
+    setFailureState();
     return;
   }
   const controller = createGuestCheckoutController({
@@ -750,7 +773,7 @@ export function hydrateGuestCheckoutReturn(): void {
   const checkStatus = async () => {
     if (checking) return;
     if (!canRetryGuestCheckoutStatus(statusChecks)) {
-      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
+      setFailureState();
       updateRetryAvailability();
       return;
     }
@@ -762,14 +785,12 @@ export function hydrateGuestCheckoutReturn(): void {
     const { result, failure } = await controller.status();
     const exhausted = !canRetryGuestCheckoutStatus(statusChecks);
     if (failure || !result) {
-      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
-      if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
+      setFailureState();
       finishCheck();
       return;
     }
     if (!result.ok) {
-      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
-      if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
+      setFailureState();
       finishCheck();
       return;
     }
@@ -807,7 +828,7 @@ export function hydrateGuestCheckoutReturn(): void {
       statusRetry.hidden = !(result.ok && result.checkout.state === "pending");
     }
     if (exhausted && result.ok && result.checkout.state === "pending") {
-      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
+      setFailureState();
     }
     finishCheck();
   };

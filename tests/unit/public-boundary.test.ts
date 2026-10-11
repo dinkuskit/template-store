@@ -350,6 +350,7 @@ describe("worker boundary handler", () => {
     });
     const res = await worker.fetch(request, { RATE_LIMITER: limiter }, dummyCtx);
     expect(res.status).toBe(405);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
   it("delegates allowed public GET requests to Astro handler and adds security headers", async () => {

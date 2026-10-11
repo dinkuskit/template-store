@@ -175,7 +175,7 @@ test("unknown checkout token gives a safe status-failure message", async ({ brow
       }));
     });
     await page.goto("/checkout/success?session_id=well-formed-but-unknown");
-    await expect(page.getByText("We couldn't confirm your order just now. Check your email, or contact us.")).toBeVisible();
+    await expect(page.getByText("We couldn't confirm your order just now. Check your email.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Check status again" })).toBeHidden();
     expect(consoleErrors).toEqual([]);
     await page.screenshot({
@@ -183,6 +183,31 @@ test("unknown checkout token gives a safe status-failure message", async ({ brow
       fullPage: true,
       animations: "disabled",
     });
+  } finally {
+    await context.close();
+  }
+});
+
+test("corrupt stored checkout data does not imply a completed order", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string,
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-checkout.v1", "{corrupt");
+    });
+    await page.goto("/checkout/success");
+    await expect(page.getByRole("heading", { name: "We couldn't confirm your order" })).toBeVisible();
+    await expect(page.getByText("We couldn't confirm your order just now. Check your email.")).toBeVisible();
+    expect(harness.counts().statusCalls).toBe(0);
   } finally {
     await context.close();
   }
