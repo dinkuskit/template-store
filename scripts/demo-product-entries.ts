@@ -1,6 +1,6 @@
 import { DEMO_PRODUCTS, type DemoProductSeed } from "./demo-seed-policy.js";
 
-export const DEMO_CATALOG_PROFILES = new Set(["native-development", "demo"]);
+export const DEMO_CATALOG_PROFILES = new Set(["native-development", "demo", "playground"]);
 
 export type DemoCatalogLink = Readonly<{
   sku: string;

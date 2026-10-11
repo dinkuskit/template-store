@@ -43,8 +43,13 @@ describe("demo EmDash product entries", () => {
     ]);
   });
 
+  it("also builds the published entries for the explicit playground profile", () => {
+    expect(buildDemoProductEntries("playground", links)).toHaveLength(9);
+  });
+
   it("creates nothing outside the demo catalog profiles", () => {
     expect(buildDemoProductEntries("shipping", links)).toEqual([]);
+    expect(buildDemoProductEntries("smokychill", links)).toEqual([]);
     expect(buildDemoProductEntries(undefined, links)).toEqual([]);
   });
 });

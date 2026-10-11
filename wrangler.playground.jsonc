@@ -12,7 +12,8 @@
   "compatibility_date": "2026-09-30",
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
-    "DINKUS_DEMO_NOINDEX": "1"
+    "DINKUS_DEMO_NOINDEX": "1",
+    "DINKUS_CATALOG_PROFILE": "playground"
   },
   "assets": {
     "binding": "ASSETS",

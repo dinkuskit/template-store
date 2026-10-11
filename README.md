@@ -135,7 +135,10 @@ Visit `/playground`. EmDash creates an anonymous admin session backed by a
 private Durable Object SQLite database, applies this repository's
 `seed/seed.json`, and expires the database after about one hour. Checkout
 continues to render the existing unavailable state; the playground has no
-payment or coupon bindings. Every response is noindex.
+payment or coupon bindings. The playground middleware then create-only seeds
+nine published demo `products` entries and their categories, linked by stable
+`DEMO-HOSTED-*` identifiers, so the Products grid is populated. Every response
+is noindex.
 
 Before a public preview is enabled, infra-keeper must add a Cloudflare Rate
 Limit bindings named `PLAYGROUND_CREATION_LIMITER` and

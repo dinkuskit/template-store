@@ -9,6 +9,7 @@ import {
   injectPlaygroundNoIndex,
   playgroundDatabaseKey,
 } from "../../src/features/playground/contract.js";
+import { PLAYGROUND_PRODUCT_SEED } from "../../src/features/playground/products.js";
 
 describe("TemplateStore playground", () => {
   it("maps each visitor token to a distinct private database name", () => {
@@ -35,6 +36,22 @@ describe("TemplateStore playground", () => {
     expect(config).toContain('"pattern": "playground.dinkuskit.com"');
     expect(config).toContain('"previews_enabled": true');
     expect(config).toContain('"head_sampling_rate": 1');
+  });
+
+  it("adds the published demo Products entries to each fresh playground database", () => {
+    const content = PLAYGROUND_PRODUCT_SEED.content as {
+      categories?: Array<{ status: string }>;
+      products?: Array<{ status: string; data: { commerce_item_id?: string } }>;
+    };
+    expect(content.categories).toHaveLength(3);
+    expect(content.products).toHaveLength(9);
+    expect(content.products?.every((entry) =>
+      entry.status === "published" &&
+      entry.data.commerce_item_id?.startsWith("DEMO-HOSTED-"),
+    )).toBe(true);
+    expect(readFileSync("src/playground-middleware.ts", "utf8")).toContain(
+      "PLAYGROUND_PRODUCT_SEED",
+    );
   });
 
   it("rate-limits creation per client IP and globally with friendly 429s", async () => {
