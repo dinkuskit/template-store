@@ -12,7 +12,10 @@ const productUrlEntry = fileURLToPath(
 export default defineConfig({
   output: "server",
   trailingSlash: "never",
-  adapter: cloudflare({ configPath: "./wrangler.playground.jsonc" }),
+  adapter: cloudflare({
+    configPath: "./wrangler.playground.jsonc",
+    session: false,
+  }),
   integrations: [
     react(),
     emdash({
