@@ -81,6 +81,13 @@ function entryExportsScheduled() {
   return /\bscheduled\s*:/.test(text);
 }
 
+function assertSqliteCli() {
+  const sqliteProbe = spawnSync("sqlite3", ["--version"], { encoding: "utf8" });
+  if (sqliteProbe.error?.code === "ENOENT") {
+    throw new Error("The scheduled index harness requires the sqlite3 CLI. Install sqlite3 and rerun.");
+  }
+}
+
 function ensureCloudflareBuild() {
   spawnSync(process.execPath, ["scripts/write-local-wrangler.mjs"], {
     cwd: root,
@@ -122,10 +129,6 @@ function walkSqlite(directory, found) {
 }
 
 function indexPresent(persistPath) {
-  const sqliteProbe = spawnSync("sqlite3", ["--version"], { encoding: "utf8" });
-  if (sqliteProbe.error?.code === "ENOENT") {
-    throw new Error("The scheduled index harness requires the sqlite3 CLI. Install sqlite3 and rerun.");
-  }
   const files = [];
   walkSqlite(persistPath, files);
   for (const file of files) {
@@ -208,6 +211,7 @@ async function waitForIndex(persistPath) {
 
 async function main() {
   const persistPath = readPersistArg(process.argv);
+  assertSqliteCli();
   ensureCloudflareBuild();
   writeHarnessConfig();
   mkdirSync(persistPath, { recursive: true });

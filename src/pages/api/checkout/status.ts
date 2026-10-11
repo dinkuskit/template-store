@@ -54,7 +54,14 @@ async function boundedText(response: Response): Promise<string | null> {
 
 async function boundedRequestText(request: Request): Promise<string | null> {
   const declared = request.headers.get("content-length");
-  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_REQUEST_BYTES)) return null;
+  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_REQUEST_BYTES)) {
+    try {
+      await request.body?.cancel();
+    } catch {
+      // The body is already unusable; the caller still receives the bounded error.
+    }
+    return null;
+  }
   if (!request.body) return "";
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];

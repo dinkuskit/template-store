@@ -32,6 +32,23 @@ test("real Wrangler unknown-token return handles the expected 503", async ({ bro
       headers: { "cf-connecting-ip": "198.51.100.1" },
     });
     expect(successResponse.headers.get("cache-control")).toBe("no-store");
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const oversized = await fetch(`${workerUrl}/api/checkout/status`, {
+        method: "POST",
+        headers: {
+          "content-length": "5000",
+          "content-type": "application/json",
+          "cf-connecting-ip": "198.51.100.1",
+          "x-commerce-guest-capability": "oversized-cap.secret",
+        },
+        body: "x".repeat(5000),
+      });
+      expect(oversized.status).toBe(413);
+      expect(oversized.headers.get("cache-control")).toBe("no-store");
+      expect(await oversized.json()).toMatchObject({
+        error: { code: "CHECKOUT_UNAVAILABLE" },
+      });
+    }
     const context = await browser.newContext({
       baseURL: workerUrl,
       viewport: testInfo.project.use.viewport,
