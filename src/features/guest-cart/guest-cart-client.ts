@@ -26,6 +26,7 @@ import {
   type GuestCartView,
   type GuestCheckoutContact,
   type GuestCheckoutTransport,
+  type GuestCheckoutWireResult,
 } from "./index.js";
 
 const SNAPSHOT_TIMEOUT_MS = 5_000;

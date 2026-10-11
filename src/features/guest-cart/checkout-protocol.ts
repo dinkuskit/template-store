@@ -156,8 +156,10 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
     const purchased = parseGuestCartIntent({ version: 1, lines: value.order.lines.map((line) =>
       isObject(line) ? { id: line.catalogItemId, quantity: line.quantity } : null) });
     if (!purchased || purchased.lines.length === 0) return null;
+    const rawOrder = value.order as Record<string, unknown>;
+    const rawLines = rawOrder.lines as unknown[];
     const lines = purchased.lines.map((line, index) => {
-      const raw = value.order!.lines[index];
+      const raw = rawLines[index];
       if (!isObject(raw)) return line;
       const name = typeof raw.name === "string" && raw.name.length <= 1024 ? raw.name : undefined;
       const variant = typeof raw.variant === "string" && raw.variant.length <= 256 ? raw.variant : undefined;
@@ -169,11 +171,12 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
         : undefined;
       return { ...line, ...(name ? { name } : {}), ...(variant ? { variant } : {}), ...(unitPrice ? { unitPrice } : {}) };
     });
-    const total = isObject(value.order.total) &&
-      typeof value.order.total.currency === "string" &&
-      typeof value.order.total.minor === "string" &&
-      /^-?\d+$/u.test(value.order.total.minor)
-      ? { currency: value.order.total.currency, minor: value.order.total.minor }
+    const rawTotal = rawOrder.total;
+    const total = isObject(rawTotal) &&
+      typeof rawTotal.currency === "string" &&
+      typeof rawTotal.minor === "string" &&
+      /^-?\d+$/u.test(rawTotal.minor)
+      ? { currency: rawTotal.currency, minor: rawTotal.minor }
       : undefined;
     order = { orderId: value.order.orderId, receiptId: value.order.receiptId, lines, ...(total ? { total } : {}) };
   }
