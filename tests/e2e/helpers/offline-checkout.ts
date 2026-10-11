@@ -4,7 +4,7 @@ import type { Browser, BrowserContext, BrowserContextOptions, Page, Route } from
 export const RUNTIME_ID = "r_gshdrqaldna3r7sn";
 export const RUNTIME_PREPARE = `/_emdash/api/plugins/${RUNTIME_ID}/checkout/guest/prepare`;
 export const RUNTIME_START = RUNTIME_PREPARE.replace("prepare", "start");
-export const RUNTIME_STATUS = RUNTIME_PREPARE.replace("prepare", "status");
+export const RUNTIME_STATUS = "/api/checkout/status";
 export const NATIVE_PREPARE = "/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare";
 export const SYNTHETIC_PAYMENT_URL = "https://offline-payment.invalid/session/synthetic";
 
@@ -36,13 +36,16 @@ export async function freshOfflineContext(
   });
 }
 
-type ProjectionState = "pending" | "paid";
+type ProjectionState = "pending" | "paid" | "recoverable-failure";
 type HarnessOptions = {
   baseURL: string;
   mutateCart?: boolean;
   synthetic?: boolean;
   gateInitialPrepare?: boolean;
   statusAlwaysPending?: boolean;
+  statusUnknown?: boolean;
+  /** Status returns a retryable recoverable-failure carrying this hosted-checkout redirect. */
+  statusRetryRedirect?: string;
   digital?: boolean;
   refuseDelivery?: boolean;
 };
@@ -59,10 +62,19 @@ function projection(state: ProjectionState, attemptId: string | null) {
       unitPrice: { currency: "USD", minor: "2400" },
     }],
     total: { currency: "USD", minor: "2400" },
-    pricing: { finalTotal: { currency: "USD", minor: "2400" } },
+    pricing: {
+      merchandiseSubtotal: { currency: "USD", minor: "2400" },
+      shipping: { charge: { currency: "USD", minor: "0" } },
+      finalTotal: { currency: "USD", minor: "2400" },
+    },
     redirectUrl: null,
     order: state === "paid"
-      ? { orderId: "order:fixture", receiptId: "receipt:fixture", lines: [{ catalogItemId: "fixture-shirt", quantity: 1 }] }
+      ? {
+        orderId: "order:fixture",
+        receiptId: "receipt:fixture",
+        lines: [{ catalogItemId: "fixture-shirt", name: "Synthetic fixture shirt", quantity: 1, unitPrice: { currency: "USD", minor: "2400" } }],
+        total: { currency: "USD", minor: "2400" },
+      }
       : null,
     retryAfter: null,
     unavailable: null,
@@ -79,7 +91,7 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, digital = false, refuseDelivery = false }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, statusRetryRedirect, digital = false, refuseDelivery = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
@@ -146,6 +158,21 @@ export async function installOfflineCheckoutHarness(
       }
       if (synthetic && path === RUNTIME_STATUS && route.request().method() === "POST") {
         statusCalls += 1;
+        if (statusUnknown) {
+          await json(route, { ok: false, error: { code: "ORDER_NOT_FOUND", message: "Checkout not found" } });
+          return;
+        }
+        if (statusRetryRedirect) {
+          await json(route, {
+            success: true,
+            data: {
+              ok: true,
+              capabilityId,
+              checkout: { ...projection("recoverable-failure", "fixture-attempt-retry"), redirectUrl: statusRetryRedirect },
+            },
+          });
+          return;
+        }
         await json(route, {
           success: true,
           data: {

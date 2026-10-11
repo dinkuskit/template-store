@@ -72,6 +72,7 @@ export {
   readGuestCheckoutRetention,
   retainGuestCheckoutCapability,
   strictStripeCheckoutUrl,
+  guestCheckoutRetryUrl,
   updateGuestCheckoutAttempt,
 } from "./checkout-protocol.js";
 export {

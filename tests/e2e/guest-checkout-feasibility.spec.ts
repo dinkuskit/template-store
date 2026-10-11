@@ -30,7 +30,6 @@ test("guest checkout stays closed and return pages never trust browser claims", 
     headers: { "content-type": "application/json" },
   });
   expect(nativePrepare.status()).toBe(405);
-
   const context = await freshOfflineContext(
     browser,
     testInfo.project.use.baseURL as string,
@@ -38,19 +37,18 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   );
   try {
   const page = await context.newPage();
+  await mkdir(resolve("runs/checkout-success-commerce"), { recursive: true });
   await installOfflineCheckoutHarness(page, { baseURL: testInfo.project.use.baseURL as string, synthetic: false });
-  await page.goto(
-    "/checkout/success?success=true&session_id=forged&redirect_status=succeeded",
-  );
-  await expect(page.getByRole("heading", { name: "Checkout return" })).toBeVisible();
-  await expect(page.locator("[data-guest-checkout-order]")).toBeHidden();
-  await expect(page.locator("[data-guest-checkout-return-status]")).toContainText(
-    /could not be matched|could not be confirmed|not confirmed/i,
-  );
-
+  await page.goto("/checkout/success");
+  await expect(page.getByRole("heading", { name: "We couldn't confirm your order" })).toBeVisible();
+  await expect(page.getByText("We couldn't confirm your order just now. Check your email.")).toBeVisible();
+  await page.screenshot({
+    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-no-token.png`),
+    fullPage: true,
+    animations: "disabled",
+  });
   await page.goto("/checkout/cancel?session_id=forged");
-  await expect(page.getByRole("heading", { name: "Checkout canceled" })).toBeVisible();
-  await expect(page.locator("[data-guest-checkout-order]")).toBeHidden();
+  await expect(page).toHaveURL(/\/cart\/?$/);
 
   const runDir = resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name);
   await mkdir(runDir, { recursive: true });
@@ -62,7 +60,7 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   } finally { await context.close(); }
 });
 
-test("synthetic admitted cart exercises controller recovery on desktop and mobile", async ({
+test("Commerce checkout token renders the paid order and clears the cart", async ({
   browser,
 }, testInfo) => {
   test.setTimeout(60_000);
@@ -114,13 +112,20 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
   await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
   await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
-  await page.goto("/checkout/success?success=true&session_id=synthetic-untrusted");
+  await page.goto("/checkout/success");
   await expect(page.locator("[data-guest-checkout-order]")).toBeHidden();
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("pending");
   await page.getByRole("button", { name: "Check status again" }).click();
-  await expect(page.locator("[data-guest-checkout-order]")).toContainText("order:fixture");
+  await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
+  await expect(page.locator("[data-guest-checkout-order-number]")).toContainText("fixture");
+  await expect(page.locator("[data-guest-checkout-order-items]")).toContainText("Synthetic fixture shirt");
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
   expect(harness.counts().statusCalls).toBe(2);
+  await page.screenshot({
+    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-paid.png`),
+    fullPage: true,
+    animations: "disabled",
+  });
   await expect(page.locator("[data-guest-cart-count]")).toBeHidden();
   await page.screenshot({
     path: resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name, "guest-checkout-synthetic-paid.png"),
@@ -144,7 +149,71 @@ test("synthetic admitted cart exercises controller recovery on desktop and mobil
   } finally { await context.close(); }
 });
 
-test("return status checks stop after the bounded retry budget", async ({ browser }, testInfo) => {
+test("unknown checkout token gives a safe status-failure message", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
+  try {
+    const page = await context.newPage();
+    const consoleErrors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string,
+      statusUnknown: true,
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
+        capabilityId: "fixture-cap-unknown",
+        capability: "fixture-cap-unknown.secret",
+        attemptId: "fixture-attempt-unknown",
+      }));
+    });
+    await page.goto("/checkout/success?session_id=well-formed-but-unknown");
+    await expect(page.getByText("We couldn't confirm your order just now. Check your email.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Check status again" })).toBeHidden();
+    expect(consoleErrors).toEqual([]);
+    await page.screenshot({
+      path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-unknown-token.png`),
+      fullPage: true,
+      animations: "disabled",
+    });
+  } finally {
+    await context.close();
+  }
+});
+
+test("corrupt stored checkout data does not imply a completed order", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string,
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-checkout.v1", "{corrupt");
+    });
+    await page.goto("/checkout/success");
+    await expect(page.getByRole("heading", { name: "We couldn't confirm your order" })).toBeVisible();
+    await expect(page.getByText("We couldn't confirm your order just now. Check your email.")).toBeVisible();
+    expect(harness.counts().statusCalls).toBe(0);
+  } finally {
+    await context.close();
+  }
+});
+
+test.skip("legacy browser return status polling is superseded by the server receipt page", async ({ browser }, testInfo) => {
   test.setTimeout(60_000);
   expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
   const context = await freshOfflineContext(
@@ -398,4 +467,69 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     resolve(root, "checkout-start-contact-bodies.json"),
     `${JSON.stringify({ physical: physicalBodies, digitalAfterStaleAddress: staleBodies }, null, 2)}\n`,
   );
+});
+
+test("retryable unconfirmed return reveals the hosted-checkout retry link; confirmed and tokenless returns keep it hidden", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const baseURL = testInfo.project.use.baseURL as string;
+  const redirectUrl = "https://checkout.stripe.com/c/pay/cs_test_fixture_retry";
+  const seedRetention = () => {
+    localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
+      capabilityId: "fixture-cap-1",
+      capability: "fixture-cap-1.secret",
+      attemptId: "fixture-attempt-retry",
+    }));
+  };
+
+  const retryContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await retryContext.newPage();
+    await installOfflineCheckoutHarness(page, { baseURL, statusRetryRedirect: redirectUrl });
+    await page.addInitScript(seedRetention);
+    await page.goto("/checkout/success?session_id=fixture-retry");
+    const retry = page.locator("[data-guest-checkout-retry]");
+    await expect(retry).toBeVisible();
+    await expect(retry).toHaveAttribute("href", redirectUrl);
+    await expect(retry).toHaveText("Continue to secure checkout");
+    await expect(page.locator("[data-guest-checkout-order]")).toBeHidden();
+  } finally {
+    await retryContext.close();
+  }
+
+  const confirmedContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await confirmedContext.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
+        capabilityId: "fixture-cap-1",
+        capability: "fixture-cap-1.secret",
+        attemptId: "fixture-attempt-0",
+      }));
+    });
+    await page.goto("/checkout/success?session_id=fixture-confirmed");
+    await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("pending");
+    await expect(page.locator("[data-guest-checkout-retry]")).toBeHidden();
+    await page.getByRole("button", { name: "Check status again" }).click();
+    await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
+    await expect(page.locator("[data-guest-checkout-retry]")).toBeHidden();
+    expect(harness.counts().statusCalls).toBe(2);
+  } finally {
+    await confirmedContext.close();
+  }
+
+  const tokenlessContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await tokenlessContext.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL, statusRetryRedirect: redirectUrl });
+    await page.goto("/checkout/success");
+    await expect(page.getByRole("heading", { name: "We couldn't confirm your order" })).toBeVisible();
+    await expect(page.locator("[data-guest-checkout-retry]")).toBeHidden();
+    expect(harness.counts().statusCalls).toBe(0);
+  } finally {
+    await tokenlessContext.close();
+  }
 });

@@ -14,6 +14,7 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/robots.txt",
   "/sitemap.xml",
   "/api/guest-cart/snapshot",
+  "/api/checkout/status",
 ]);
 
 const ALLOWED_PATH_PATTERNS = [
@@ -27,9 +28,13 @@ const ALLOWED_PATH_PATTERNS = [
 
 const GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
+const LOCAL_CHECKOUT_STATUS_POST_PATH = /^\/api\/checkout\/status$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 function slashlessCollectionPath(pathname: string): string | undefined {
   if (!pathname.endsWith("/") || pathname === "/") return undefined;
+  if (pathname === "/checkout/success/" || pathname === "/checkout/cancel/") {
+    return pathname.slice(0, -1);
+  }
   if (/^\/(?:products|categories)\/[^/]+\/$/.test(pathname)) {
     return pathname.slice(0, -1);
   }
@@ -194,13 +199,14 @@ export function evaluatePublicBoundary(
   }
 
   const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
+  const isLocalCheckoutStatusPost = pathForms.some((path) => LOCAL_CHECKOUT_STATUS_POST_PATH.test(path));
   const isAllowedEmdashAdminRequest = allowEmdashAdmin;
 
   // 2. Reject mutations and non-read HTTP methods, except the three exact
   // Commerce guest POSTs admitted below.
   if (
     !isAllowedEmdashAdminRequest &&
-    ((normalizedMethod === "POST" && !isGuestCheckoutPost) ||
+    ((normalizedMethod === "POST" && !isGuestCheckoutPost && !isLocalCheckoutStatusPost) ||
       normalizedMethod === "PUT" ||
       normalizedMethod === "PATCH" ||
       normalizedMethod === "DELETE")
@@ -216,7 +222,8 @@ export function evaluatePublicBoundary(
     !isAllowedEmdashAdminRequest &&
     normalizedMethod !== "GET" &&
     normalizedMethod !== "HEAD" &&
-    !isGuestCheckoutPost
+    !isGuestCheckoutPost &&
+    !isLocalCheckoutStatusPost
   ) {
     return {
       allowed: false,
@@ -236,6 +243,11 @@ export function evaluatePublicBoundary(
       return { allowed: false, status: 405, reason: "Method not allowed." };
     }
     return { allowed: true, status: 200 };
+  }
+  if (LOCAL_CHECKOUT_STATUS_POST_PATH.test(decodedPath)) {
+    return normalizedMethod === "POST"
+      ? { allowed: true, status: 200 }
+      : { allowed: false, status: 405, reason: "Method not allowed." };
   }
 
   // 3. Validate the canonical decoded path against the strict route allowlist

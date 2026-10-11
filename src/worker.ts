@@ -69,6 +69,7 @@ function createErrorResponse(
 ): Response {
   const headers = new Headers({
     "Content-Type": "application/json",
+    ...(status === 405 ? { "Cache-Control": "no-store" } : {}),
     ...extraHeaders,
   });
   applySecurityHeaders(headers, env);
@@ -116,12 +117,25 @@ export default {
 
     // 4. Strict route and method boundary evaluation
     const url = new URL(request.url);
+    if (url.pathname === "/cart/" && (request.method === "GET" || request.method === "HEAD")) {
+      const redirectUrl = new URL(request.url);
+      redirectUrl.pathname = "/cart";
+      const response = new Response(null, {
+        status: 302,
+        headers: {
+          Location: redirectUrl.href,
+          "Cache-Control": "no-store",
+        },
+      });
+      applySecurityHeaders(response.headers, env);
+      return response;
+    }
     const slashlessPath = slashlessRedirectPath(url.pathname);
     if (slashlessPath && (request.method === "GET" || request.method === "HEAD")) {
       const redirectUrl = new URL(request.url);
       redirectUrl.pathname = slashlessPath;
       const response = new Response(null, {
-        status: 302,
+        status: 301,
         headers: {
           Location: redirectUrl.href,
           "Cache-Control": "no-store",

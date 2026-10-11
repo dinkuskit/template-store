@@ -12,6 +12,7 @@ import {
   readGuestCheckoutRetention,
   retainGuestCheckoutCapability,
   strictStripeCheckoutUrl,
+  guestCheckoutRetryUrl,
   updateGuestCheckoutAttempt,
   type GuestCheckoutRetentionStorage,
 } from "../../src/features/guest-cart/index.js";
@@ -108,6 +109,10 @@ describe("guest checkout protocol and recovery", () => {
       checkout: projection,
     })).toBeNull();
     expect(readGuestCheckoutRetention(null)).toBeNull();
+    expect(readGuestCheckoutRetention(storage())).toBeNull();
+    const corrupt = storage();
+    corrupt.setItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY, "{corrupt");
+    expect(readGuestCheckoutRetention(corrupt)).toBeNull();
   });
 
   it("updates only the retained attempt association and never treats a return URL as payment", () => {
@@ -396,5 +401,31 @@ describe("guest checkout protocol and recovery", () => {
     })!;
     expect(retainGuestCheckoutCapability(failingStorage, prepared)).toBeNull();
     expect(strictStripeCheckoutUrl("https://checkout.stripe.com:444/pay")).toBeNull();
+  });
+
+  it("offers the hosted-checkout retry link only for retryable, unconfirmed statuses with a redirect", () => {
+    const redirectUrl = "https://checkout.stripe.com/c/pay/cs_test_retry";
+    const parse = (overrides: Record<string, unknown>) => parseGuestCheckoutWireResult(wire(overrides));
+    expect(guestCheckoutRetryUrl(parse({ state: "recoverable-failure", attemptId: "att-1", redirectUrl })))
+      .toBe(redirectUrl);
+    expect(guestCheckoutRetryUrl(parse({ state: "pending", attemptId: "att-1", redirectUrl }))).toBe(redirectUrl);
+    // Confirmed orders never show retry.
+    expect(guestCheckoutRetryUrl(parse({
+      state: "paid",
+      attemptId: "att-1",
+      redirectUrl,
+      order: { orderId: "order:1", receiptId: "receipt:1", lines: [] },
+    }))).toBeNull();
+    // Released attempts restart from the cart instead.
+    expect(guestCheckoutRetryUrl(parse({
+      state: "released-retry", attemptId: "att-1", retryAfter: "att-1", redirectUrl,
+    }))).toBeNull();
+    // No redirect, non-Stripe redirect, Commerce refusal, or no result at all (tokenless return).
+    expect(guestCheckoutRetryUrl(parse({ state: "recoverable-failure", attemptId: "att-1" }))).toBeNull();
+    expect(guestCheckoutRetryUrl(parse({
+      state: "recoverable-failure", attemptId: "att-1", redirectUrl: "https://evil.example/pay",
+    }))).toBeNull();
+    expect(guestCheckoutRetryUrl({ ok: false, error: { code: "ORDER_NOT_FOUND", message: "x" } } as never)).toBeNull();
+    expect(guestCheckoutRetryUrl(null)).toBeNull();
   });
 });
