@@ -22,14 +22,14 @@ export type DemoProductEntry = Readonly<{
 
 function categoryFor(product: DemoProductSeed): string {
   if (product.categories?.length) return product.categories[0]!;
-  if (product.variant) return "hoodies";
   if (product.sku.endsWith("CAP")) return "hats";
+  if (product.variant) return "hoodies";
   return "tees";
 }
 
 function visualLabelFor(product: DemoProductSeed): string {
-  if (product.variant) return "HOODIE";
   if (product.sku.endsWith("CAP")) return "CAP";
+  if (product.variant) return "HOODIE";
   return "TEE";
 }
 
