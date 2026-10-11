@@ -32,6 +32,9 @@ const LOCAL_CHECKOUT_STATUS_POST_PATH = /^\/api\/checkout\/status$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 function slashlessCollectionPath(pathname: string): string | undefined {
   if (!pathname.endsWith("/") || pathname === "/") return undefined;
+  if (pathname === "/checkout/success/" || pathname === "/checkout/cancel/") {
+    return pathname.slice(0, -1);
+  }
   if (/^\/(?:products|categories)\/[^/]+\/$/.test(pathname)) {
     return pathname.slice(0, -1);
   }

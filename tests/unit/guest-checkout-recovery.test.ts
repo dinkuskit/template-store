@@ -108,6 +108,10 @@ describe("guest checkout protocol and recovery", () => {
       checkout: projection,
     })).toBeNull();
     expect(readGuestCheckoutRetention(null)).toBeNull();
+    expect(readGuestCheckoutRetention(storage())).toBeNull();
+    const corrupt = storage();
+    corrupt.setItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY, "{corrupt");
+    expect(readGuestCheckoutRetention(corrupt)).toBeNull();
   });
 
   it("updates only the retained attempt association and never treats a return URL as payment", () => {

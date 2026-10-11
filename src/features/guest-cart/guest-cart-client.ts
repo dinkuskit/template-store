@@ -743,10 +743,7 @@ export function hydrateGuestCheckoutReturn(): void {
     status.setAttribute("role", error ? "alert" : "status");
   };
   if (!retention && storedCheckoutData === null) {
-    const title = root.querySelector("#guest-checkout-return-title");
-    if (title instanceof HTMLElement) title.textContent = "Your order went through";
-    setMessage("Your order went through. Check your email for the confirmation.");
-    if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
+    setFailureState();
     return;
   }
   if (!retention) {

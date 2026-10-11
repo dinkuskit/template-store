@@ -32,6 +32,18 @@ test("real Wrangler unknown-token return handles the expected 503", async ({ bro
       headers: { "cf-connecting-ip": "198.51.100.1" },
     });
     expect(successResponse.headers.get("cache-control")).toBe("no-store");
+    for (const [path, status, target] of [
+      ["/cart/", 302, "/cart"],
+      ["/checkout/success/", 301, "/checkout/success"],
+      ["/products/everyday-tee/", 301, "/products/everyday-tee"],
+    ] as const) {
+      const redirect = await fetch(`${workerUrl}${path}`, {
+        redirect: "manual",
+        headers: { "cf-connecting-ip": "198.51.100.1" },
+      });
+      expect(redirect.status).toBe(status);
+      expect(new URL(redirect.headers.get("location")!, workerUrl).pathname).toBe(target);
+    }
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const oversized = await fetch(`${workerUrl}/api/checkout/status`, {
         method: "POST",

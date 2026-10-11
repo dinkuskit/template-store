@@ -135,7 +135,7 @@ export default {
       const redirectUrl = new URL(request.url);
       redirectUrl.pathname = slashlessPath;
       const response = new Response(null, {
-        status: 302,
+        status: 301,
         headers: {
           Location: redirectUrl.href,
           "Cache-Control": "no-store",

@@ -45,10 +45,11 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/robots.txt").allowed).toBe(true);
   });
 
-  it("leaves slash variants to Astro's built-in 301 handler", () => {
+  it("identifies only scoped slash variants for 301 redirects", () => {
     expect(slashlessRedirectPath("/cart/")).toBeUndefined();
-    expect(slashlessRedirectPath("/checkout/success/")).toBeUndefined();
-    expect(slashlessRedirectPath("/checkout/cancel/")).toBeUndefined();
+    expect(slashlessRedirectPath("/checkout/success/")).toBe("/checkout/success");
+    expect(slashlessRedirectPath("/checkout/cancel/")).toBe("/checkout/cancel");
+    expect(slashlessRedirectPath("/products/hoodie-black/")).toBe("/products/hoodie-black");
     expect(slashlessRedirectPath("/checkout/other/")).toBeUndefined();
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(true);
@@ -389,6 +390,19 @@ describe("worker boundary handler", () => {
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("http://demo.dinkuskit.com/cart?from=bookmark");
     expect(astroFetch).not.toHaveBeenCalled();
+  });
+
+  it("permanently redirects scoped non-cart slash variants before the route allowlist", async () => {
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const headers = { "cf-connecting-ip": "198.51.100.1" };
+    for (const [from, to] of [
+      ["/checkout/success/", "/checkout/success"],
+      ["/products/hoodie-black/", "/products/hoodie-black"],
+    ]) {
+      const res = await worker.fetch(new Request(`http://demo.dinkuskit.com${from}`, { headers }), { RATE_LIMITER: limiter }, dummyCtx);
+      expect(res.status).toBe(301);
+      expect(new URL(res.headers.get("location")!, "http://demo.dinkuskit.com").pathname).toBe(to);
+    }
   });
 
   it("keeps non-read methods on /cart/ behind the route allowlist", async () => {
