@@ -51,6 +51,13 @@ test("guest checkout stays closed and return pages never trust browser claims", 
     fullPage: true,
     animations: "disabled",
   });
+  await page.goto("/cart/");
+  await expect(page).toHaveURL(/\/cart$/);
+  await page.screenshot({
+    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-cart-slash.png`),
+    fullPage: true,
+    animations: "disabled",
+  });
 
   await page.goto("/checkout/cancel?session_id=forged");
   await expect(page).toHaveURL(/\/cart\/?$/);
