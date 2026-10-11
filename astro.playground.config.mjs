@@ -4,7 +4,15 @@ import react from "@astrojs/react";
 import { playgroundDatabase } from "@emdash-cms/cloudflare";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
+import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 
+// The playground always serves the synthetic native catalog; the playground
+// middleware seeds it into each per-visitor DB. Checkout stays unavailable
+// (src/middleware.ts refuses guest checkout and native checkout POSTs).
+
+const commerceEntry = fileURLToPath(
+  new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
+);
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
 );
@@ -33,8 +41,22 @@ export default defineConfig({
           version: "1.0.0",
           entrypoint: productUrlEntry,
         },
+        dinkusCommerce({ enableLocalStockManagement: false }),
       ],
     }),
   ],
+  vite: {
+    resolve: {
+      alias: {
+        "@dinkuskit/commerce/features/checkout": fileURLToPath(
+          new URL("./.artifacts/source-deps/commerce/src/features/checkout/index.ts", import.meta.url),
+        ),
+        "@dinkuskit/commerce/admin": fileURLToPath(
+          new URL("./.artifacts/source-deps/commerce/src/admin/native.ts", import.meta.url),
+        ),
+        "@dinkuskit/commerce": commerceEntry,
+      },
+    },
+  },
   devToolbar: { enabled: false },
 });
