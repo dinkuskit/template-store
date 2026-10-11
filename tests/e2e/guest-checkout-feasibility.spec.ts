@@ -46,7 +46,7 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   await expect(page.getByText("We couldn’t confirm this order")).toBeVisible();
 
   await page.goto("/checkout/cancel?session_id=forged");
-  await expect(page).toHaveURL(/\/cart$/);
+  await expect(page).toHaveURL(/\/cart\/?$/);
 
   const runDir = resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name);
   await mkdir(runDir, { recursive: true });
