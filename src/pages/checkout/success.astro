@@ -20,9 +20,7 @@ const contactHref = (() => {
       if (url.protocol === "https:" || url.protocol === "http:") return url.href;
     } catch {}
   }
-  const siteUrl = (settings as { url?: unknown }).url;
-  if (typeof siteUrl === "string") return siteUrl;
-  return "/";
+  return undefined;
 })();
 ---
 <!doctype html>
@@ -39,6 +37,6 @@ const contactHref = (() => {
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav>
     </header>
-    <main><GuestCheckoutReturn contactHref={contactHref} testOrder={profile === "proof"} /></main>
+    <main><GuestCheckoutReturn contactHref={contactHref} /></main>
   </body>
 </html>

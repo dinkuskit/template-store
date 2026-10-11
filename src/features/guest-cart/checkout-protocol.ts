@@ -25,12 +25,20 @@ export type GuestCheckoutOrderLine = GuestCartLine & Readonly<{
   unitPrice?: Readonly<{ currency: string; minor: string }>;
 }>;
 
+export type GuestCheckoutMoney = Readonly<{ currency: string; minor: string }>;
+
 export type GuestCheckoutProjection = Readonly<{
   schema: typeof GUEST_CHECKOUT_PROJECTION_SCHEMA;
   state: "pending" | "paid" | "recoverable-failure" | "released-retry";
   attemptId: string | null;
   redirectUrl: string | null;
-  order: Readonly<{ orderId: string; receiptId: string; lines: readonly GuestCheckoutOrderLine[]; total?: Readonly<{ currency: string; minor: string }> }> | null;
+  order: Readonly<{
+    orderId: string;
+    receiptId: string;
+    lines: readonly GuestCheckoutOrderLine[];
+    total?: GuestCheckoutMoney;
+    test?: boolean;
+  }> | null;
   retryAfter: string | null;
   [key: string]: unknown;
 }>;
@@ -178,7 +186,13 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
       /^-?\d+$/u.test(rawTotal.minor)
       ? { currency: rawTotal.currency, minor: rawTotal.minor }
       : undefined;
-    order = { orderId: value.order.orderId, receiptId: value.order.receiptId, lines, ...(total ? { total } : {}) };
+    order = {
+      orderId: value.order.orderId,
+      receiptId: value.order.receiptId,
+      lines,
+      ...(total ? { total } : {}),
+      ...(typeof rawOrder.test === "boolean" ? { test: rawOrder.test } : {}),
+    };
   }
   if (value.state === "paid" && !order) return null;
   if (value.state === "released-retry" &&

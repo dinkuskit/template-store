@@ -43,6 +43,7 @@ type HarnessOptions = {
   synthetic?: boolean;
   gateInitialPrepare?: boolean;
   statusAlwaysPending?: boolean;
+  statusUnknown?: boolean;
   digital?: boolean;
   refuseDelivery?: boolean;
 };
@@ -88,7 +89,7 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, digital = false, refuseDelivery = false }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, digital = false, refuseDelivery = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
@@ -155,6 +156,10 @@ export async function installOfflineCheckoutHarness(
       }
       if (synthetic && path === RUNTIME_STATUS && route.request().method() === "POST") {
         statusCalls += 1;
+        if (statusUnknown) {
+          await json(route, { ok: false, error: { code: "ORDER_NOT_FOUND", message: "Checkout not found" } }, 404);
+          return;
+        }
         await json(route, {
           success: true,
           data: {

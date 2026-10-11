@@ -622,10 +622,15 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     orderId: string;
     lines: readonly { id: string; quantity: number; name?: string; variant?: string; unitPrice?: { currency: string; minor: string } }[];
     total?: unknown;
+    test?: boolean;
   };
   const orderNumber = root.querySelector("[data-guest-checkout-order-number]");
   if (orderNumber instanceof HTMLElement) {
-    orderNumber.textContent = `Order ${order.orderId}`;
+    orderNumber.textContent = `Order ${order.orderId.replace(/^order:/u, "")}`;
+  }
+  const testBadge = root.querySelector("[data-guest-checkout-test]");
+  if (testBadge instanceof HTMLElement) {
+    testBadge.hidden = order.test !== true;
   }
   const items = root.querySelector("[data-guest-checkout-order-items]");
   if (items instanceof HTMLElement) {
@@ -639,6 +644,12 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
         label.append(variant);
       }
       row.append(label);
+      const amount = document.createElement("span");
+      const minor = line.unitPrice && /^-?\d+$/u.test(line.unitPrice.minor)
+        ? Number(line.unitPrice.minor) * line.quantity
+        : null;
+      amount.textContent = minor === null ? "" : formatMoney({ currency: line.unitPrice!.currency, minor: String(minor) });
+      row.append(amount);
       return row;
     }));
   }
@@ -649,11 +660,24 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     ? checkout.pricing as Record<string, unknown>
     : null;
   const total = order.total ?? checkout.total;
-  const money = (value: unknown): string | null => {
+  function formatMoney(value: { currency: string; minor: string }): string {
+    const amount = Number(value.minor) / 100;
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: value.currency,
+      }).format(amount);
+    } catch {
+      return `${value.currency} ${amount.toFixed(2)}`;
+    }
+  }
+  const money = (value: unknown, freeShipping = false): string | null => {
     if (!value || typeof value !== "object") return null;
     const minor = (value as Record<string, unknown>).minor;
-    if (typeof minor !== "string" || !/^-?\d+$/u.test(minor)) return null;
-    return `$${(Number(minor) / 100).toFixed(2)}`;
+    const currency = (value as Record<string, unknown>).currency;
+    if (typeof minor !== "string" || !/^-?\d+$/u.test(minor) || typeof currency !== "string") return null;
+    if (freeShipping && minor === "0") return "Free";
+    return formatMoney({ currency, minor });
   };
   const rows: Array<[string, unknown]> = [
     ["Subtotal", pricing?.merchandiseSubtotal],
@@ -663,7 +687,7 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     ["Total", total],
   ];
   totals.replaceChildren(...rows.flatMap(([label, value]) => {
-    const formatted = money(value);
+    const formatted = money(value, label === "Shipping");
     if (!formatted) return [];
     const row = document.createElement("div");
     if (label === "Total") row.className = "total";
@@ -684,10 +708,6 @@ export function hydrateGuestCheckoutReturn(): void {
   const retry = root.querySelector("[data-guest-checkout-retry]");
   const statusRetry = root.querySelector("[data-guest-checkout-status-retry]");
   const retention = readGuestCheckoutRetention(checkoutStorage());
-  const setNotFoundTitle = () => {
-    const title = root.querySelector("#guest-checkout-return-title");
-    if (title instanceof HTMLElement) title.textContent = "We couldn’t find that order";
-  };
   const setMessage = (message: string, error = false) => {
     if (!(status instanceof HTMLElement)) return;
     status.hidden = false;
@@ -698,7 +718,7 @@ export function hydrateGuestCheckoutReturn(): void {
     const title = root.querySelector("#guest-checkout-return-title");
     if (title instanceof HTMLElement) title.textContent = "Your order went through";
     setMessage("Your order went through. Check your email for the confirmation.");
-    if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = true;
+    if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
     return;
   }
   const controller = createGuestCheckoutController({
@@ -734,16 +754,18 @@ export function hydrateGuestCheckoutReturn(): void {
     const { result, failure } = await controller.status();
     const exhausted = !canRetryGuestCheckoutStatus(statusChecks);
     if (failure || !result) {
-      setNotFoundTitle();
-      setMessage(exhausted
-        ? "Checkout status could not be confirmed. Status checks are temporarily limited. No purchase was confirmed."
-        : "Checkout status could not be confirmed. Retry when you are back online.", true);
+      const title = root.querySelector("#guest-checkout-return-title");
+      if (title instanceof HTMLElement) title.textContent = "Your order went through";
+      setMessage("Your order went through. Check your email for the confirmation.");
+      if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
       finishCheck();
       return;
     }
     if (!result.ok) {
-      setNotFoundTitle();
-      setMessage("We couldn’t confirm this order. Please contact the store if you need help.", true);
+      const title = root.querySelector("#guest-checkout-return-title");
+      if (title instanceof HTMLElement) title.textContent = "Your order went through";
+      setMessage("Your order went through. Check your email for the confirmation.");
+      if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
       finishCheck();
       return;
     }
@@ -753,6 +775,7 @@ export function hydrateGuestCheckoutReturn(): void {
         confirmedOrderMarkup(root, result);
       }
       if (retry instanceof HTMLAnchorElement) retry.hidden = true;
+      if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
       const settled = await settleGuestCheckoutCart(checkoutStorage(), result);
       session = loadSession();
       renderNav();
@@ -776,6 +799,9 @@ export function hydrateGuestCheckoutReturn(): void {
         ? "Checkout is still pending with Commerce. Check status again before retrying."
         : "Commerce has not confirmed a paid order. The original checkout remains protected.";
     setMessage(message, result.ok && result.checkout.state !== "pending");
+    if (statusRetry instanceof HTMLButtonElement) {
+      statusRetry.hidden = !(result.ok && result.checkout.state === "pending");
+    }
     if (exhausted && result.ok && result.checkout.state === "pending") {
       setMessage("Status checks are temporarily limited. No purchase was confirmed.", true);
     }

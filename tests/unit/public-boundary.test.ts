@@ -377,18 +377,19 @@ describe("worker boundary handler", () => {
     expect(astroFetch).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects slash variants before Astro handles built-in redirects", async () => {
+  it("temporarily redirects /cart/ before the Cloudflare route allowlist", async () => {
     astroFetch.mockClear();
     const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
     const request = new Request("http://demo.dinkuskit.com/cart/?from=bookmark", {
       headers: { "cf-connecting-ip": "198.51.100.1" },
     });
     const res = await worker.fetch(request, { RATE_LIMITER: limiter }, dummyCtx);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("http://demo.dinkuskit.com/cart?from=bookmark");
     expect(astroFetch).not.toHaveBeenCalled();
   });
 
-  it("rejects non-read methods on slash variants with 405", async () => {
+  it("keeps non-read methods on /cart/ behind the route allowlist", async () => {
     astroFetch.mockClear();
     const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
     const request = new Request("http://demo.dinkuskit.com/cart/", {

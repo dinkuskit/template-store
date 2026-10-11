@@ -122,7 +122,7 @@ test("Commerce checkout token renders the paid order and clears the cart", async
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("pending");
   await page.getByRole("button", { name: "Check status again" }).click();
   await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
-  await expect(page.locator("[data-guest-checkout-order-number]")).toContainText("order:fixture");
+  await expect(page.locator("[data-guest-checkout-order-number]")).toContainText("fixture");
   await expect(page.locator("[data-guest-checkout-order-items]")).toContainText("Synthetic fixture shirt");
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
   expect(harness.counts().statusCalls).toBe(2);
@@ -152,6 +152,46 @@ test("Commerce checkout token renders the paid order and clears the cart", async
   expect(harness.counts().prepareCalls).toBe(2);
   expect(harness.counts().startCalls).toBe(2);
   } finally { await context.close(); }
+});
+
+test("unknown checkout token gives a quiet email-confirmation reassurance", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const context = await freshOfflineContext(
+    browser,
+    testInfo.project.use.baseURL as string,
+    testInfo.project.use.viewport,
+  );
+  try {
+    const page = await context.newPage();
+    const consoleErrors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string,
+      statusUnknown: true,
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
+        capabilityId: "fixture-cap-unknown",
+        capability: "fixture-cap-unknown.secret",
+        attemptId: "fixture-attempt-unknown",
+      }));
+    });
+    await page.goto("/checkout/success?session_id=well-formed-but-unknown");
+    await expect(page.getByRole("heading", { name: "Your order went through" })).toBeVisible();
+    await expect(page.getByText("Your order went through. Check your email for the confirmation.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Check status again" })).toBeHidden();
+    expect(consoleErrors).toEqual([]);
+    await page.screenshot({
+      path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-unknown-token.png`),
+      fullPage: true,
+      animations: "disabled",
+    });
+  } finally {
+    await context.close();
+  }
 });
 
 test.skip("legacy browser return status polling is superseded by the server receipt page", async ({ browser }, testInfo) => {
