@@ -119,6 +119,18 @@ pnpm verify
 pnpm dev
 ```
 
+For a disposable local demo with a fresh Wrangler state, run:
+
+```bash
+pnpm dev:fresh
+```
+
+This removes `.wrangler/state`, prepares and builds the pinned sources,
+initializes the Commerce catalog index, bundles and seeds the demo data, and
+starts `wrangler dev` with `DINKUS_CATALOG_PROFILE=native-development`.
+Stale local Wrangler state can otherwise leave the catalog empty and produce
+`uidx_plugin_dinkus-commerce_catalogItems_skuKey was not created` errors.
+
 ### Disposable playground
 
 The public playground is a separate Worker application and does not use the

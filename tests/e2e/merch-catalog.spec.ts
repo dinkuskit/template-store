@@ -18,6 +18,8 @@ test("products are visible in the canonical category catalog", async ({ page, re
 
   await page.goto("/");
   await expect(page.locator("[data-merch-catalog]")).toBeVisible();
+  await expect(page.locator("[data-merch-catalog]")).not.toContainText(/catalog is unavailable/i);
+  await expect(page.locator("[data-merch-item]")).not.toHaveCount(0);
   await expect(page.locator("[data-merch-item=everyday-tee] h4")).toHaveText("Everyday Tee");
   await expect(page.locator("[data-merch-item=canvas-cap] h4")).toHaveText("Canvas Cap");
   await expect(page.locator("[data-merch-source=preview]")).toHaveCount(3);
