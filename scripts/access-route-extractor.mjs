@@ -256,7 +256,7 @@ export function extractCommerceRoutes(commercePlugin) {
       unsupported.push({ name: null, path: null, diagnostic: key.diagnostic });
       continue;
     }
-    const path = `/_emdash/api/plugins/dinkus-commerce/${key.name}`;
+    const path = `/_emdash/api/plugins/r_gshdrqaldna3r7sn/${key.name}`;
     if (seenRoutes.has(key.name)) {
       unsupported.push({ name: key.name, path, diagnostic: diagnostic(commercePlugin, property, "duplicate route key is unsupported") });
       for (let index = result.length - 1; index >= 0; index -= 1) {
