@@ -32,7 +32,7 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   expect(nativePrepare.status()).toBe(405);
   const cartSlash = await request.get("/cart/", { maxRedirects: 0 });
   expect(cartSlash.status()).toBe(302);
-  expect(cartSlash.headers().location).toBe("/cart");
+  expect(new URL(cartSlash.headers().location!, testInfo.project.use.baseURL as string).pathname).toBe("/cart");
 
   const context = await freshOfflineContext(
     browser,
