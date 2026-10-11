@@ -2,13 +2,12 @@
 import { env } from "cloudflare:workers";
 import { defineMiddleware } from "astro:middleware";
 import { onRequest as emdashPlayground } from "@emdash-cms/cloudflare/db/playground-middleware";
-import { applySeed, type SeedFile } from "emdash/seed";
 import {
   checkPlaygroundCreationLimit,
   PLAYGROUND_CREATION_LIMITER_BINDING,
   PLAYGROUND_GLOBAL_LIMITER_BINDING,
 } from "./features/playground/contract.js";
-import { PLAYGROUND_PRODUCT_SEED } from "./features/playground/products.js";
+import { seedPlaygroundCommerce } from "./features/playground/commerce.js";
 
 /**
  * Thin project-owned hook around EmDash's playground middleware.
@@ -40,11 +39,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const response = await emdashPlayground(context, async () => {
     const db = (context.locals as { __playgroundDb?: unknown }).__playgroundDb;
     if (db) {
-      await applySeed(db as Parameters<typeof applySeed>[0], PLAYGROUND_PRODUCT_SEED as SeedFile, {
-        includeContent: true,
-        onConflict: "skip",
-        skipMediaDownload: true,
-      });
+      await seedPlaygroundCommerce(db as Parameters<typeof seedPlaygroundCommerce>[0]);
     }
     return next();
   });

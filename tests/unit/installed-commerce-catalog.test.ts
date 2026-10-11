@@ -82,6 +82,35 @@ describe("installed Commerce public catalog consumer", () => {
     ]);
   });
 
+  it("projects Commerce variant options and member availability for product pages", async () => {
+    const ctx = context([{
+      products: [{
+        ...item("shirt"),
+        variants: {
+          schema: "dinkuskit.commerce.product-variants/v1",
+          productId: "shirt",
+          options: [{ optionId: "size", label: "Size", values: [
+            { valueId: "small", label: "Small" },
+            { valueId: "large", label: "Large" },
+          ] }],
+          members: [{
+            catalogItemId: "shirt-small",
+            selections: [{ optionId: "size", optionLabel: "Size", valueId: "small", valueLabel: "Small" }],
+            price: { currency: "USD", minor: "125" },
+            availability: { status: "in-stock", sellable: true, listable: true },
+            fulfillment: "physical",
+          }],
+        },
+      }],
+    }]);
+    const [product] = await readInstalledCommerceCatalog(ctx);
+    expect(product?.variants?.options[0]?.label).toBe("Size");
+    expect(product?.variants?.members[0]).toMatchObject({
+      catalogItemId: "shirt-small",
+      selections: [{ valueLabel: "Small" }],
+    });
+  });
+
   it("distinguishes a missing item from a temporary lookup failure", async () => {
     const missing = context([null]);
     await expect(readInstalledCommerceProduct("missing", missing)).resolves.toBeNull();

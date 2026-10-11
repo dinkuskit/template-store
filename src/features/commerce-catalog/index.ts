@@ -2,10 +2,12 @@ import { PluginStorageRepository } from "emdash";
 import { getDb } from "emdash/runtime";
 import {
   COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, CATALOG_PRICES_COLLECTION,
+  CATALOG_MEDIA_COLLECTION,
   CATALOG_MANUAL_AVAILABILITY_COLLECTION, CATALOG_BACKORDER_POLICIES_COLLECTION,
   STORE_INVENTORY_CONFIGURATIONS_COLLECTION, STOREFRONT_AVAILABILITY_SETTINGS_COLLECTION,
   listCatalogProducts, resolveCatalogItemPrice, resolveStorefrontAvailability,
   type CatalogStorageRecord, type CatalogPriceRecord, type CatalogManualAvailabilityRecord,
+  type CatalogMediaRecord,
   type CatalogBackorderPolicyRecord, type StoreInventoryConfigurationRecord,
   type StorefrontAvailabilitySettingsRecord, type StorefrontAvailabilityResult,
 } from "@dinkuskit/commerce";
@@ -24,6 +26,29 @@ export interface PublicCommerceProduct {
   availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
   image: PublicCommerceImage | null;
   gallery: readonly PublicCommerceImage[];
+  variants?: CommerceProductVariants;
+}
+
+export interface CommerceProductVariants {
+  schema: "dinkuskit.commerce.product-variants/v1";
+  productId: string;
+  options: readonly {
+    optionId: string;
+    label: string;
+    values: readonly { valueId: string; label: string }[];
+  }[];
+  members: readonly {
+    catalogItemId: string;
+    selections: readonly {
+      optionId: string;
+      optionLabel: string;
+      valueId: string;
+      valueLabel: string;
+    }[];
+    price: PublicPriceView;
+    availability: Readonly<Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">>;
+    fulfillment: "physical" | "digital";
+  }[];
 }
 
 export const availabilityLabels: Record<string, string> = {
@@ -42,9 +67,50 @@ export type CommerceCatalogSnapshot =
       name: string;
       sku: string;
       fulfillment: "physical" | "digital";
+      image: PublicCommerceImage | null;
+      gallery: readonly PublicCommerceImage[];
+      variants?: CommerceProductVariants;
       price: PublicPriceView;
       availability: Readonly<Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">>;
     }>;
+
+async function nativeVariants(
+  variant: NonNullable<Awaited<ReturnType<typeof listCatalogProducts>>["products"][number]["variantProduct"]>,
+): Promise<CommerceProductVariants> {
+  return {
+    schema: "dinkuskit.commerce.product-variants/v1",
+    productId: variant.productId,
+    options: variant.options,
+    members: variant.members.map((member) => ({
+      catalogItemId: member.catalogItemId,
+      selections: member.selections,
+      price: {
+        listable: member.regular !== null,
+        regularText: member.regular,
+        saleText: member.sale,
+      },
+      availability: {
+        status: member.stockStatus === "on-backorder" ? "available-on-backorder" : member.stockStatus ?? "availability-unavailable",
+        sellable: member.stockStatus !== "out-of-stock",
+        listable: member.stockStatus !== null,
+      },
+      fulfillment: member.fulfillment,
+    })),
+  };
+}
+
+async function nativeGallery(
+  storage: Awaited<ReturnType<typeof openCommerceCatalogStorage>>,
+  itemId: string,
+  name: string,
+): Promise<PublicCommerceImage[]> {
+  const record = await storage.media.get(itemId) as CatalogMediaRecord | null;
+  if (!record || !Array.isArray(record.gallery)) return [];
+  return record.gallery.flatMap((entry) => {
+    const id = entry?.mediaId;
+    return typeof id === "string" ? [{ id, alt: name, width: null, height: null, placeholder: false }] : [];
+  });
+}
 
 async function openCommerceCatalogStorage() {
   const db = await getDb();
@@ -57,6 +123,7 @@ async function openCommerceCatalogStorage() {
   return {
     catalog: new PluginStorageRepository<CatalogStorageRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, []),
     prices: new PluginStorageRepository<CatalogPriceRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_PRICES_COLLECTION, []),
+    media: new PluginStorageRepository<CatalogMediaRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_MEDIA_COLLECTION, []),
     availability: manualAvailability,
     manualAvailability,
     backorderPolicies: new PluginStorageRepository<CatalogBackorderPolicyRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_BACKORDER_POLICIES_COLLECTION, []),
@@ -85,7 +152,8 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
       price,
       availability,
       image: null,
-      gallery: [],
+      gallery: await nativeGallery(storage, product.catalogItemId, product.name),
+      ...(product.variantProduct ? { variants: await nativeVariants(product.variantProduct) } : {}),
     });
   }
   return visible;
@@ -130,12 +198,15 @@ export async function readCommerceCatalogSnapshots(
       name: publicName,
       sku: publicSku,
       fulfillment: (product as unknown as { fulfillment?: "physical" | "digital" }).fulfillment ?? "physical",
+      image: null,
+      gallery: await nativeGallery(storage, product.catalogItemId, product.name),
       price,
       availability: {
         status: availability.status,
         sellable: availability.sellable,
         listable: availability.listable,
       },
+      ...(product.variantProduct ? { variants: await nativeVariants(product.variantProduct) } : {}),
     });
   }
   return snapshots;

@@ -50,8 +50,9 @@ describe("TemplateStore playground", () => {
       entry.data.commerce_item_id?.startsWith("DEMO-HOSTED-"),
     )).toBe(true);
     expect(readFileSync("src/playground-middleware.ts", "utf8")).toContain(
-      "PLAYGROUND_PRODUCT_SEED",
+      "seedPlaygroundCommerce",
     );
+    expect(readFileSync("astro.playground.config.mjs", "utf8")).toContain("dinkusCommerce");
   });
 
   it("rate-limits creation per client IP and globally with friendly 429s", async () => {

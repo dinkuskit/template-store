@@ -4,9 +4,13 @@ import react from "@astrojs/react";
 import { playgroundDatabase } from "@emdash-cms/cloudflare";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
+import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
+);
+const commerceEntry = fileURLToPath(
+  new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
 );
 
 export default defineConfig({
@@ -26,6 +30,7 @@ export default defineConfig({
         middlewareEntrypoint: "./src/playground-middleware.ts",
       },
       plugins: [
+        dinkusCommerce({ enableLocalStockManagement: false }),
         {
           id: "dinkus-template-product-urls",
           version: "1.0.0",
@@ -35,4 +40,20 @@ export default defineConfig({
     }),
   ],
   devToolbar: { enabled: false },
+  vite: {
+    resolve: {
+      alias: [
+        {
+          find: "@dinkuskit/commerce/admin",
+          replacement: fileURLToPath(
+          new URL("./.artifacts/source-deps/commerce/src/admin/native.ts", import.meta.url),
+          ),
+        },
+        { find: "@dinkuskit/commerce", replacement: commerceEntry },
+      ],
+    },
+    define: {
+      "process.env.DINKUS_CATALOG_PROFILE": JSON.stringify("playground"),
+    },
+  },
 });

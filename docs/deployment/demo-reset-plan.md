@@ -69,6 +69,14 @@ Catalog writes stay on Commerce `createCatalogItem`, `setCatalogItemRegularPrice
 
    The passing proxy call, which this slice does not invoke, is `getPlatformProxy({ configPath: <repo>/.artifacts/wrangler.remote.jsonc, remoteBindings: true, envFiles: [], persist: false })`. The command rejects preview ids, a local UUID presented as remote, a database file path, any other worker or database name, `--prove-sentinel`, a missing or wrong confirmation, and committed `account_id` / `database_id` / `remote` in `wrangler.jsonc`. Account and database ids stay in those ignored files only. A remote database also needs the same built-Worker scheduled initialization against that approved remote binding before Commerce writes. That remote initialization has not been run. Actual remote seeding remains unproved.
 
+The hosted demo catalog is not seeded automatically on Worker start or on a
+public request. An authorized operator must run the explicit local or remote
+seed command above. It writes only the nine namespaced demo product families
+(`DEMO-HOSTED-*`) in Commerce, their prices, manual availability, variant
+options, gallery metadata, and the matching published EmDash `products`
+entries when those entries are missing. Existing EmDash entries are skipped;
+non-demo SKUs and unrelated collections are not rewritten or deleted.
+
 4. **Verification**:
    After the local scheduled harness and seed, all nine `DEMO-HOSTED-*` products (ten SKUs, counting both hoodie sizes) are at the baseline prices and availability. The repeat run reports the non-demo sentinel unchanged and the neutral home page published. Remote verification is not claimed.
 

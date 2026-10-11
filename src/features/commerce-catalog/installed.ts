@@ -1,5 +1,5 @@
 import { formatUsdMinor } from "../store-shell/price.js";
-import type { PublicCommerceProduct } from "./index.js";
+import type { CommerceProductVariants, PublicCommerceProduct } from "./index.js";
 import { readCommerceGallery, readCommerceImage } from "./media.js";
 
 const ROUTE = "catalog/public";
@@ -19,6 +19,15 @@ function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function variants(value: unknown): CommerceProductVariants | undefined {
+  if (value === undefined) return undefined;
+  if (!object(value) || value.schema !== "dinkuskit.commerce.product-variants/v1" ||
+      typeof value.productId !== "string" || !Array.isArray(value.options) || !Array.isArray(value.members)) {
+    throw new Error("Invalid installed catalog variants");
+  }
+  return value as unknown as CommerceProductVariants;
+}
+
 function product(value: unknown): PublicCommerceProduct {
   if (!object(value) || typeof value.id !== "string" || !/^[a-zA-Z0-9_-]+$/.test(value.id) ||
       typeof value.name !== "string" || typeof value.sku !== "string" ||
@@ -26,6 +35,7 @@ function product(value: unknown): PublicCommerceProduct {
       !object(value.availability) || typeof value.availability.status !== "string" ||
       !STATUSES.has(value.availability.status) || value.availability.listable !== true ||
       typeof value.availability.sellable !== "boolean") throw new Error("Invalid installed catalog projection");
+  const parsedVariants = variants(value.variants);
   return {
     id: value.id, name: value.name, sku: value.sku,
     // Commerce's installed public projection does not expose simple-item
@@ -41,6 +51,7 @@ function product(value: unknown): PublicCommerceProduct {
     // A bad image degrades to a placeholder. It must not hide the price.
     image: readCommerceImage(value.image, value.name),
     gallery: readCommerceGallery(value.gallery, value.name),
+    ...(parsedVariants ? { variants: parsedVariants } : {}),
   };
 }
 

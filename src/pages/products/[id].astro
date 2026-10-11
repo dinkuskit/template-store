@@ -4,7 +4,7 @@ import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { AddToCart } from "../../features/guest-cart/ui.ts";
 import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
 import { availabilityLabels } from "../../features/commerce-catalog/index.js";
-import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
+import { readCommerceCatalogSnapshots } from "../../features/commerce-catalog/index.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
@@ -34,17 +34,18 @@ const category = linked?.categorySlugs[0]
 if (!item) Astro.response.status = 404;
 let lookupUnavailable = false;
 let linkedProduct = null;
-if (item && profile === "shipping") {
+if (item) {
   try {
-    linkedProduct = await readInstalledCommerceProduct(
-      (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
+    const [snapshot] = await readCommerceCatalogSnapshots(
+      [(productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? ""],
       { runtime: Astro.locals.emdash, request: Astro.request },
     );
+    linkedProduct = snapshot?.found ? snapshot : null;
   } catch {
     lookupUnavailable = true;
   }
 }
-if (item && profile === "shipping" && item.availabilitySource !== "preview") {
+if (item && item.availabilitySource !== "preview" && profile === "shipping") {
   Astro.response.status = lookupUnavailable ? 503 : linkedProduct ? 200 : 404;
 }
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
@@ -53,6 +54,12 @@ const status = linkedProduct ? (availabilityLabels[linkedProduct.availability.st
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
 } as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
+const selectedVariant = linkedProduct?.variants?.members[0] ?? null;
+const initialPrice = selectedVariant?.price ?? linkedProduct?.price;
+const initialAvailability = selectedVariant?.availability ?? linkedProduct?.availability;
+const initialProduct = linkedProduct && selectedVariant
+  ? { ...linkedProduct, id: selectedVariant.catalogItemId, price: selectedVariant.price, availability: selectedVariant.availability }
+  : linkedProduct;
 ---
 <!doctype html>
 <html lang="en">
@@ -71,18 +78,42 @@ const status = linkedProduct ? (availabilityLabels[linkedProduct.availability.st
       {item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} /> : <img src={`/products/${item.illustration}.svg`} alt={`${item.title} product illustration`} width="640" height="480" />}
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={`/products/${item.illustration}.svg`} fallbackAlt={`${item.title} product illustration`} /> : <img src={`/products/${item.illustration}.svg`} alt={`${item.title} product illustration`} width="640" height="480" />}
+              {linkedProduct?.gallery.length ? <div class="product-detail__gallery" data-commerce-gallery aria-label="Product images">
+                {linkedProduct.gallery.map((image, index) => <ProductMedia image={image} productId={`${linkedProduct!.id}-gallery-${index}`} fallbackSrc={`/products/${item.illustration}.svg`} fallbackAlt={`${item.title} gallery image ${index + 1}`} />)}
+              </div> : null}
             </div>
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
             <h1>{item.title}</h1>
             <p class="product-detail__description">{item.description}</p>
-            {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price>{linkedProduct.price.regularText}</strong>}</p>}
+            {linkedProduct?.variants && <fieldset class="product-variants" data-product-variants>
+              {linkedProduct.variants.options.map((option) => <div>
+                <legend>{option.label}</legend>
+                <div class="product-variants__choices">
+                  {option.values.map((value) => {
+                    const member = linkedProduct!.variants!.members.find((candidate) => candidate.selections.some((selection) => selection.valueId === value.valueId));
+                    return member ? <button
+                      type="button"
+                      class="product-variant-choice"
+                      data-variant-choice
+                      data-variant-id={member.catalogItemId}
+                      data-variant-regular={member.price.regularText ?? ""}
+                      data-variant-sale={member.price.saleText ?? ""}
+                      data-variant-status={availabilityLabels[member.availability.status] ?? "Availability unavailable"}
+                      data-variant-sellable={String(member.availability.sellable)}
+                      aria-pressed={member === selectedVariant}
+                    >{value.label}</button> : null;
+                  })}
+                </div>
+              </div>)}
+            </fieldset>}
+            {initialPrice && <p class="product-detail__price" data-product-price>{initialPrice.saleText ? <><s data-regular-price>{initialPrice.regularText}</s> <strong data-sale-price>{initialPrice.saleText}</strong></> : <strong data-regular-price>{initialPrice.regularText}</strong>}</p>}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
-            <p class="product-detail__status" data-product-status data-availability-status={unmanaged?.storefront.status}>{status}</p>
-            {linkedProduct && <AddToCart product={linkedProduct} />}
-            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            <p class="product-detail__status" data-product-status data-availability-status={initialAvailability?.status}>{linkedProduct ? (availabilityLabels[initialAvailability?.status ?? ""] ?? status) : status}</p>
+            {initialProduct && <AddToCart product={initialProduct} />}
+            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : linkedProduct ? <p class="product-detail__notice">Purchases and checkout are unavailable in this demo.</p> : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>
@@ -91,12 +122,41 @@ const status = linkedProduct ? (availabilityLabels[linkedProduct.availability.st
     <footer class="store-footer">Product copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
   </body>
 </html>
+<script>
+  const variants = document.querySelector("[data-product-variants]");
+  if (variants instanceof HTMLElement) {
+    const price = document.querySelector("[data-product-price]");
+    const status = document.querySelector("[data-product-status]");
+    const add = document.querySelector("[data-add-to-cart]");
+    variants.querySelectorAll("[data-variant-choice]").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        variants.querySelectorAll("[data-variant-choice]").forEach((button) => button.setAttribute("aria-pressed", String(button === choice)));
+        const regularText = choice.getAttribute("data-variant-regular") ?? "";
+        const saleText = choice.getAttribute("data-variant-sale") ?? "";
+        if (price) {
+          price.innerHTML = saleText
+            ? `<s data-regular-price>${regularText}</s> <strong data-sale-price>${saleText}</strong>`
+            : `<strong data-regular-price>${regularText}</strong>`;
+        }
+        if (status instanceof HTMLElement) {
+          status.textContent = choice.getAttribute("data-variant-status") ?? "Availability unavailable";
+          status.dataset.availabilityStatus = choice.getAttribute("data-variant-status") ?? "";
+        }
+        if (add instanceof HTMLElement) {
+          add.setAttribute("data-add-to-cart", choice.getAttribute("data-variant-id") ?? "");
+          add.hidden = choice.getAttribute("data-variant-sellable") !== "true";
+        }
+      });
+    });
+  }
+</script>
 <style>
   .product-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}
   .browse-breadcrumb{display:flex;flex-wrap:wrap;gap:.7rem;padding:2rem 0;color:var(--store-muted)}
   .browse-breadcrumb a{color:inherit;text-underline-offset:.2em}
   .product-detail{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(1.5rem,5vw,5rem);align-items:center;margin:1rem 0 5rem}
-  .product-detail__visual{min-width:0;aspect-ratio:4/3;overflow:hidden;border-radius:1rem;background:#e9e8df}
+  .product-detail__visual{min-width:0;aspect-ratio:4/3;overflow:visible;border-radius:1rem;background:#e9e8df}
+  .product-detail__gallery{display:flex;gap:.5rem;overflow:auto;margin-top:.5rem}.product-detail__gallery .commerce-product-media{flex:0 0 7rem;aspect-ratio:1}
   .product-detail__visual--hoodie{background:#dce2df}.product-detail__visual--cap{background:#e6ddd1}.product-detail__visual--beanie{background:#e2e1d6}
   .product-detail__visual img{display:block;width:100%;height:100%;object-fit:cover}
   .product-detail__body{min-width:0;overflow-wrap:anywhere}
@@ -106,6 +166,7 @@ const status = linkedProduct ? (availabilityLabels[linkedProduct.availability.st
   .product-detail__price{display:flex;gap:.7rem;align-items:baseline;font-size:1.5rem}.product-detail__price s{color:var(--store-muted)}
   .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
   .product-detail__notice{line-height:1.5;color:var(--store-muted)}
+  .product-variants{border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}.product-variants__choices{display:flex;flex-wrap:wrap;gap:.5rem}.product-variant-choice{padding:.55rem .8rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit;cursor:pointer}.product-variant-choice[aria-pressed="true"]{background:var(--dinkus-action-background);color:var(--dinkus-action-color)}
   .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
   @media(max-width:40rem){.product-detail{grid-template-columns:1fr;gap:1.5rem}}
 </style>

@@ -18,11 +18,13 @@ const products = [
   ["demo-hosted-bottle", "Dinkus Demo Steel Bottle", "DEMO-HOSTED-BOTTLE", "TEE", "tees", "A simple insulated bottle sized for a day on the move."],
 ] as const;
 
-/**
- * The playground has no Commerce mount. These published editorial previews
- * use stable demo SKUs as their links and remain non-purchasable previews.
- */
-export const PLAYGROUND_PRODUCT_SEED: SeedFile = {
+export type PlaygroundCommerceLink = Readonly<{ sku: string; catalogItemId: string }>;
+
+export function buildPlaygroundProductSeed(
+  links: readonly PlaygroundCommerceLink[],
+): SeedFile {
+  const bySku = new Map(links.map((link) => [link.sku, link.catalogItemId]));
+  return {
   version: "1",
   content: {
     categories: categories.map(([id, title]) => ({
@@ -31,7 +33,9 @@ export const PLAYGROUND_PRODUCT_SEED: SeedFile = {
       status: "published" as const,
       data: { title, description: `Demo ${title.toLowerCase()} collection.` },
     })),
-    products: products.map(([id, title, commerceItemId, visualLabel, category, description]) => ({
+    products: products.flatMap(([id, title, sku, visualLabel, category, description]) => {
+      const commerceItemId = bySku.get(sku);
+      return commerceItemId ? [{
       id,
       slug: id,
       status: "published" as const,
@@ -42,6 +46,12 @@ export const PLAYGROUND_PRODUCT_SEED: SeedFile = {
         description,
         visual_label: visualLabel,
       },
-    })),
+      }] : [];
+    }),
   },
-};
+  };
+}
+
+export const PLAYGROUND_PRODUCT_SEED = buildPlaygroundProductSeed(
+  products.map(([, , sku]) => ({ sku, catalogItemId: sku })),
+);
