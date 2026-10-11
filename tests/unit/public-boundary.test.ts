@@ -34,6 +34,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/categories/apparel").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/products/hoodie-black").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/api/guest-cart/snapshot").allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", "/api/checkout/status").allowed).toBe(true);
   });
 
   it("allows static assets and public media GET endpoints", () => {

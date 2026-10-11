@@ -645,10 +645,15 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
       }
       row.append(label);
       const amount = document.createElement("span");
-      const minor = line.unitPrice && /^-?\d+$/u.test(line.unitPrice.minor)
-        ? Number(line.unitPrice.minor) * line.quantity
+      const unitMinor = line.unitPrice && /^-?\d+$/u.test(line.unitPrice.minor)
+        ? Number(line.unitPrice.minor)
+        : NaN;
+      const minor = Number.isSafeInteger(unitMinor) && Number.isSafeInteger(unitMinor * line.quantity)
+        ? unitMinor * line.quantity
         : null;
-      amount.textContent = minor === null ? "" : formatMoney({ currency: line.unitPrice!.currency, minor: String(minor) });
+      amount.textContent = minor === null || !line.unitPrice
+        ? ""
+        : formatMoney({ currency: line.unitPrice.currency, minor: String(minor) }) ?? "";
       row.append(amount);
       return row;
     }));
@@ -660,8 +665,10 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     ? checkout.pricing as Record<string, unknown>
     : null;
   const total = order.total ?? checkout.total;
-  function formatMoney(value: { currency: string; minor: string }): string {
-    const amount = Number(value.minor) / 100;
+  function formatMoney(value: { currency: string; minor: string }): string | null {
+    const minor = Number(value.minor);
+    if (!Number.isSafeInteger(minor)) return null;
+    const amount = minor / 100;
     try {
       return new Intl.NumberFormat(undefined, {
         style: "currency",
@@ -743,7 +750,7 @@ export function hydrateGuestCheckoutReturn(): void {
   const checkStatus = async () => {
     if (checking) return;
     if (!canRetryGuestCheckoutStatus(statusChecks)) {
-      setMessage("Status checks are temporarily limited. No purchase was confirmed.", true);
+      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
       updateRetryAvailability();
       return;
     }
@@ -755,17 +762,13 @@ export function hydrateGuestCheckoutReturn(): void {
     const { result, failure } = await controller.status();
     const exhausted = !canRetryGuestCheckoutStatus(statusChecks);
     if (failure || !result) {
-      const title = root.querySelector("#guest-checkout-return-title");
-      if (title instanceof HTMLElement) title.textContent = "Your order went through";
-      setMessage("Your order went through. Check your email for the confirmation.");
+      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
       if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
       finishCheck();
       return;
     }
     if (!result.ok) {
-      const title = root.querySelector("#guest-checkout-return-title");
-      if (title instanceof HTMLElement) title.textContent = "Your order went through";
-      setMessage("Your order went through. Check your email for the confirmation.");
+      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
       if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
       finishCheck();
       return;
@@ -804,7 +807,7 @@ export function hydrateGuestCheckoutReturn(): void {
       statusRetry.hidden = !(result.ok && result.checkout.state === "pending");
     }
     if (exhausted && result.ok && result.checkout.state === "pending") {
-      setMessage("Status checks are temporarily limited. No purchase was confirmed.", true);
+      setMessage("We couldn't confirm your order just now. Check your email, or contact us.", true);
     }
     finishCheck();
   };

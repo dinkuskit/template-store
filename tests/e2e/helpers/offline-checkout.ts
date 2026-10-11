@@ -4,7 +4,7 @@ import type { Browser, BrowserContext, BrowserContextOptions, Page, Route } from
 export const RUNTIME_ID = "r_gshdrqaldna3r7sn";
 export const RUNTIME_PREPARE = `/_emdash/api/plugins/${RUNTIME_ID}/checkout/guest/prepare`;
 export const RUNTIME_START = RUNTIME_PREPARE.replace("prepare", "start");
-export const RUNTIME_STATUS = RUNTIME_PREPARE.replace("prepare", "status");
+export const RUNTIME_STATUS = "/api/checkout/status";
 export const NATIVE_PREPARE = "/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare";
 export const SYNTHETIC_PAYMENT_URL = "https://offline-payment.invalid/session/synthetic";
 

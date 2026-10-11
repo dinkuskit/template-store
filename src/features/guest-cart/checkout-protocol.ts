@@ -8,6 +8,8 @@ export const GUEST_CHECKOUT_PREPARE_ENDPOINT =
 export const GUEST_CHECKOUT_START_ENDPOINT =
   `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/start`;
 export const GUEST_CHECKOUT_STATUS_ENDPOINT =
+  "/api/checkout/status";
+export const COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT =
   `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/status`;
 export const GUEST_CHECKOUT_PROJECTION_SCHEMA =
   "dinkuskit.commerce.guest-checkout-projection/v1";

@@ -1,0 +1,62 @@
+import { spawn } from "node:child_process";
+
+import { expect, test } from "@playwright/test";
+
+test.use({ trace: "off", video: "off", serviceWorkers: "block" });
+
+test("real Wrangler unknown-token return has no browser console error", async ({ browser }, testInfo) => {
+  test.skip(process.env.CLOUDFLARE_E2E !== "1", "Run with CLOUDFLARE_E2E=1 after a Cloudflare build.");
+  test.setTimeout(60_000);
+  const port = 8799;
+  const worker = spawn("pnpm", [
+    "exec", "wrangler", "dev", "--local", "--port", String(port),
+    "--show-interactive-dev-session=false",
+  ], {
+    cwd: process.cwd(),
+    env: { ...process.env, PATH: process.env.PATH },
+    stdio: "ignore",
+  });
+  const workerUrl = `http://127.0.0.1:${port}`;
+  try {
+    await expect.poll(async () => {
+      try {
+        const response = await fetch(`${workerUrl}/checkout/success`, {
+          headers: { "cf-connecting-ip": "198.51.100.1" },
+        });
+        return response.status;
+      } catch {
+        return 0;
+      }
+    }, { timeout: 30_000 }).toBe(200);
+    const context = await browser.newContext({
+      baseURL: workerUrl,
+      viewport: testInfo.project.use.viewport,
+      serviceWorkers: "block",
+    });
+    try {
+      const page = await context.newPage();
+      const consoleErrors: string[] = [];
+      page.on("console", (message) => {
+        if (message.type() === "error") consoleErrors.push(message.text());
+      });
+      await page.addInitScript(() => {
+        localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
+          capabilityId: "unknown-cap",
+          capability: "unknown-cap.secret",
+          attemptId: "unknown-attempt",
+        }));
+      });
+      await page.goto("/checkout/success?session_id=unknown");
+      await expect(page.getByText("We couldn't confirm your order just now. Check your email, or contact us.")).toBeVisible();
+      expect(consoleErrors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    worker.kill("SIGTERM");
+    await new Promise<void>((resolve) => {
+      worker.once("exit", () => resolve());
+      setTimeout(resolve, 2_000);
+    });
+  }
+});
