@@ -18,7 +18,7 @@ export type ProductCollection = Readonly<{
 }>;
 
 export function isCommerceSnapshotVisible(
-  snapshot: { found: boolean; price?: { listable: boolean } } | undefined,
+  snapshot: { found: boolean; price?: { listable: boolean }; availability?: { listable: boolean } } | undefined,
 ): boolean {
   return snapshot?.found === true && snapshot.price?.listable === true;
 }
