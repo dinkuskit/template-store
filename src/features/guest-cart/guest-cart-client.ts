@@ -684,6 +684,7 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     ["Shipping", pricing?.shipping && typeof pricing.shipping === "object"
       ? (pricing.shipping as Record<string, unknown>).charge
       : undefined],
+    ["Tax", pricing?.tax ?? pricing?.taxTotal],
     ["Total", total],
   ];
   totals.replaceChildren(...rows.flatMap(([label, value]) => {
