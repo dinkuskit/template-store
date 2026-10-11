@@ -66,16 +66,24 @@ describe("synthetic demo D1 seed", () => {
         },
       );
       expect(harness).toContain("uidx_plugin_dinkus-commerce_catalogItems_skuKey");
-      const first = runSeed(["--prove-sentinel", "--persist", persist]);
+      const first = runSeed(["--prove-sentinel", "--persist", persist], {
+        DINKUS_SEED_TEST_LEGACY: "1",
+      });
       expect(first.status, first.stderr || first.stdout).toBe(0);
+      expect(first.stdout).toContain("\"merchandiseOnly\":true");
+      expect(first.stdout).toContain("\"event\":\"seed.cms.schema\"");
+      expect(first.stdout).toContain("\"collectionsCreated\":3");
       expect(first.stdout).toContain("DEMO-HOSTED-SHIRT");
       expect(first.stdout).toContain("DEMO-HOSTED-CAP");
       expect(first.stdout).toContain("DEMO-HOSTED-MUG");
       expect(first.stdout).toContain("\"nonDemo\":1");
       expect(first.stdout).toContain("\"event\":\"seed.cms.demo-products\"");
       expect(first.stdout).toContain("\"created\":9");
-      const second = runSeed(["--prove-sentinel", "--persist", persist]);
+      const second = runSeed(["--prove-sentinel", "--persist", persist], {
+        DINKUS_SEED_TEST_LEGACY: "1",
+      });
       expect(second.status, second.stderr || second.stdout).toBe(0);
+      expect(second.stdout).toContain("\"collectionsCreated\":0");
       expect(second.stdout).toContain("\"unchanged\":true");
       expect(second.stdout).toContain("\"home\":\"home\"");
       expect(second.stdout).toContain("DEMO-HOSTED-CAP");

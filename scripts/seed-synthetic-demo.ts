@@ -68,6 +68,16 @@ const SENTINEL = Object.freeze({
   availability: "in-stock" as const,
 });
 
+const LEGACY_SCHEMA_SEED: SeedFile = {
+  version: "1",
+  collections: [{
+    slug: "merchandise",
+    label: "Legacy merchandise",
+    labelSingular: "Legacy merchandise item",
+    fields: [{ slug: "title", label: "Title", type: "string", required: true }],
+  }],
+};
+
 type EmDashDb = Parameters<typeof runMigrations>[0];
 type SqlQuery<T> = { execute(db: EmDashDb): Promise<{ rows: T[] }> };
 
@@ -518,6 +528,22 @@ async function seedDemoProductEntries(
   });
 }
 
+async function ensureCmsSchema(db: EmDashDb, seedData: SeedFile): Promise<void> {
+  const schemaSeed: SeedFile = { ...seedData, content: undefined };
+  const applied = await applySeed(db, schemaSeed, {
+    includeContent: false,
+    onConflict: "skip",
+    skipMediaDownload: true,
+  });
+  emit("seed.cms.schema", {
+    collectionsCreated: applied.collections.created,
+    collectionsSkipped: applied.collections.skipped,
+    fieldsCreated: applied.fields.created,
+    relationsCreated: applied.relations.created,
+    menusCreated: applied.menus.created,
+  });
+}
+
 async function seedCanonical(
   database: D1DatabaseBinding,
   cwd: string,
@@ -540,6 +566,14 @@ async function seedCanonical(
     if (!validation.valid) {
       throw new SeedRefusal("CMS_SEED_INVALID", validation.errors.join("; "));
     }
+    if (process.env.DINKUS_SEED_TEST_LEGACY === "1") {
+      await applySeed(db, LEGACY_SCHEMA_SEED, {
+        includeContent: false,
+        onConflict: "skip",
+      });
+      emit("seed.test.legacy-schema", { merchandiseOnly: true });
+    }
+    await ensureCmsSchema(db, seedData as SeedFile);
     const applied = await applySeed(db, seedData as SeedFile, {
       includeContent: true,
       onConflict: "skip",
