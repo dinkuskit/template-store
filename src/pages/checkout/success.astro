@@ -29,7 +29,7 @@ const contactHref = (() => {
 const runtimeEnv = (Astro.locals as unknown as { runtime?: { env?: Record<string, string> } }).runtime?.env;
 const result = await loadPaymentReceipt(
   Astro.url.searchParams.get("session_id"),
-  { environment: runtimeEnv ?? process.env },
+  { environment: { ...process.env, ...runtimeEnv } },
 );
 ---
 <!doctype html>
