@@ -155,30 +155,32 @@ Limit bindings named `PLAYGROUND_CREATION_LIMITER` and
 caps for `/_playground/init`). The project-owned hook in
 `src/playground-middleware.ts` consumes both and returns a friendly 429.
 
-GitHub Actions builds with `astro.playground.config.mjs`. On a PR it uploads
-the preview Worker with `wrangler versions upload --preview-alias pr-N`; on
-`main` it deploys the same separate Worker to `playground.dinkuskit.com`. Each
-deployment message records the template-store SHA and the pinned Commerce
-commit. The preview check is intentionally the custom-domain URL
-`https://pr-N-playground.dinkuskit.com`, never a `workers.dev` URL.
+GitHub Actions builds with `astro.playground.config.mjs`. On a PR it publishes
+a Worker Preview named `pr-N`; Cloudflare serves it at the custom-domain URL
+`https://pr-N.playground.dinkuskit.com`. On `main` it deploys the same
+separate Worker to `playground.dinkuskit.com`. Each deployment message records
+the template-store SHA and the pinned Commerce commit. Preview responses send
+`X-Robots-Tag: noindex, nofollow` as well as the HTML robots meta tag.
 
 The only CI secret is `CLOUDFLARE_PLAYGROUND_API_TOKEN`. Ryan should create a
 Cloudflare API token with exactly `Account > Workers Scripts > Edit`, limited
 to account `cddb32366789cab1bdf4c25584dc1920`; it needs no Zone DNS, account
 read, payment, coupon, or secret permissions. Cloudflare-side approval is
 still required for the `playground.dinkuskit.com` custom domain, its
-`pr-*-playground.dinkuskit.com` preview hostnames/wildcard DNS, and the two
-rate-limit namespaces. This change intentionally performs no deploy or
-resource creation.
+`pr-*.playground.dinkuskit.com` preview hostnames/wildcard DNS, and the two
+rate-limit namespaces. Cloudflare manages the preview wildcard DNS and
+certificate for the custom domain. This change intentionally performs no
+deploy or resource creation.
 
 CI always builds the playground in the secret-free `Playground build` job.
-The upload, preview check and `main` deploy run in a separate `Playground
+The preview publish, preview check and `main` deploy run in a separate `Playground
 deployment` job only when the repository variable `PLAYGROUND_DEPLOY_ENABLED`
 is `true`. That job uses the GitHub environment `playground`, which must be
 the only place `CLOUDFLARE_PLAYGROUND_API_TOKEN` is stored (never a repository
 secret). By the owner's decision the environment has no required reviewer, so
-pushes to `main` deploy and same-repository pull requests upload `pr-N`
-previews without a click; fork pull requests never run the job. Anyone who can
+pushes to `main` deploy and same-repository pull requests publish `pr-N`
+previews without a click; closed same-repository pull requests delete their
+preview; fork pull requests never run the job. Anyone who can
 push a branch to this repository can therefore run code with the token, which
 the owner accepted. Create the environment, move the token into it, and set the
 variable after the one-time Cloudflare setup above
