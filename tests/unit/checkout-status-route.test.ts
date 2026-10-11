@@ -94,4 +94,53 @@ describe("checkout status browser proxy", () => {
     expect(transport).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
+  it("drains a chunked 9 KB body without content-length and answers 413, not a dropped connection", async () => {
+    const transport = vi.fn();
+    vi.stubGlobal("fetch", transport);
+    let pulls = 0;
+    let cancelled = false;
+    const chunk = new Uint8Array(1024).fill(120);
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (pulls >= 9) { controller.close(); return; }
+        pulls += 1;
+        controller.enqueue(chunk);
+      },
+      cancel() { cancelled = true; },
+    });
+    const response = await POST({
+      request: new Request("http://store.test/api/checkout/status", {
+        method: "POST",
+        headers: { "x-commerce-guest-capability": "cap.secret" },
+        body,
+        duplex: "half",
+      } as RequestInit),
+    } as never);
+    expect(response.status).toBe(413);
+    expect(pulls).toBe(9);
+    expect(cancelled).toBe(false);
+    expect(transport).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("stops draining an endless chunked body after the 64 KiB discard cap", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    let pulls = 0;
+    const chunk = new Uint8Array(1024);
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) { pulls += 1; controller.enqueue(chunk); },
+    });
+    const response = await POST({
+      request: new Request("http://store.test/api/checkout/status", {
+        method: "POST",
+        headers: { "x-commerce-guest-capability": "cap.secret" },
+        body,
+        duplex: "half",
+      } as RequestInit),
+    } as never);
+    expect(response.status).toBe(413);
+    expect(pulls).toBeLessThanOrEqual(70);
+    vi.unstubAllGlobals();
+  });
 });

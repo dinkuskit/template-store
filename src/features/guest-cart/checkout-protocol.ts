@@ -474,6 +474,17 @@ export type GuestCheckoutController = Readonly<{
   canPrepareNew(): boolean;
 }>;
 
+/**
+ * Hosted-checkout retry target for the return page: only a Commerce-provided
+ * Stripe redirect on a retryable, unconfirmed status. Confirmed orders and
+ * released attempts (which must restart from the cart) never get a retry link.
+ */
+export function guestCheckoutRetryUrl(result: GuestCheckoutWireResult | null): string | null {
+  if (!result?.ok || checkoutCanConfirm(result)) return null;
+  if (result.checkout.state === "paid" || result.checkout.state === "released-retry") return null;
+  return strictStripeCheckoutUrl(result.checkout.redirectUrl);
+}
+
 export function createGuestCheckoutController(options: {
   storage: GuestCheckoutRetentionStorage | null;
   transport: GuestCheckoutTransport;

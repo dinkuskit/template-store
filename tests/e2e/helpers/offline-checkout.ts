@@ -36,7 +36,7 @@ export async function freshOfflineContext(
   });
 }
 
-type ProjectionState = "pending" | "paid";
+type ProjectionState = "pending" | "paid" | "recoverable-failure";
 type HarnessOptions = {
   baseURL: string;
   mutateCart?: boolean;
@@ -44,6 +44,8 @@ type HarnessOptions = {
   gateInitialPrepare?: boolean;
   statusAlwaysPending?: boolean;
   statusUnknown?: boolean;
+  /** Status returns a retryable recoverable-failure carrying this hosted-checkout redirect. */
+  statusRetryRedirect?: string;
   digital?: boolean;
   refuseDelivery?: boolean;
 };
@@ -89,7 +91,7 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, digital = false, refuseDelivery = false }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, statusRetryRedirect, digital = false, refuseDelivery = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
@@ -158,6 +160,17 @@ export async function installOfflineCheckoutHarness(
         statusCalls += 1;
         if (statusUnknown) {
           await json(route, { ok: false, error: { code: "ORDER_NOT_FOUND", message: "Checkout not found" } });
+          return;
+        }
+        if (statusRetryRedirect) {
+          await json(route, {
+            success: true,
+            data: {
+              ok: true,
+              capabilityId,
+              checkout: { ...projection("recoverable-failure", "fixture-attempt-retry"), redirectUrl: statusRetryRedirect },
+            },
+          });
           return;
         }
         await json(route, {
