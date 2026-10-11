@@ -82,6 +82,24 @@ jobs:
       - run: pnpm verify:playground-config
       - run: pnpm prepare:sources
       - run: pnpm exec astro build --config astro.playground.config.mjs
+      - name: Remove unused Astro session binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+
+          const path = "dist/server/wrangler.json";
+          const config = JSON.parse(readFileSync(path, "utf8"));
+          const bindings = config.kv_namespaces ?? [];
+          config.kv_namespaces = bindings.filter(({ binding }) => binding !== "SESSION");
+          if (config.kv_namespaces.length !== bindings.length) {
+            writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+          }
+          if (config.kv_namespaces.some(({ binding }) => binding === "SESSION")) {
+            throw new Error("Generated playground Wrangler config still contains SESSION.");
+          }
+          NODE
 
   # Cloudflare uploads stay off until the owner approves the one-time
   # Cloudflare setup and sets the PLAYGROUND_DEPLOY_ENABLED variable. The
@@ -119,6 +137,24 @@ jobs:
       - run: pnpm verify:playground-config
       - run: pnpm prepare:sources
       - run: pnpm exec astro build --config astro.playground.config.mjs
+      - name: Remove unused Astro session binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+
+          const path = "dist/server/wrangler.json";
+          const config = JSON.parse(readFileSync(path, "utf8"));
+          const bindings = config.kv_namespaces ?? [];
+          config.kv_namespaces = bindings.filter(({ binding }) => binding !== "SESSION");
+          if (config.kv_namespaces.length !== bindings.length) {
+            writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+          }
+          if (config.kv_namespaces.some(({ binding }) => binding === "SESSION")) {
+            throw new Error("Generated playground Wrangler config still contains SESSION.");
+          }
+          NODE
       - name: Record source commits
         id: commits
         shell: bash
