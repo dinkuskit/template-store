@@ -79,9 +79,7 @@ describe("synthetic demo D1 seed", () => {
       expect(first.stdout).toContain("\"nonDemo\":1");
       expect(first.stdout).toContain("\"event\":\"seed.cms.demo-products\"");
       expect(first.stdout).toContain("\"created\":9");
-      const second = runSeed(["--prove-sentinel", "--persist", persist], {
-        DINKUS_SEED_TEST_LEGACY: "1",
-      });
+      const second = runSeed(["--prove-sentinel", "--persist", persist]);
       expect(second.status, second.stderr || second.stdout).toBe(0);
       expect(second.stdout).toContain("\"collectionsCreated\":0");
       expect(second.stdout).toContain("\"unchanged\":true");
