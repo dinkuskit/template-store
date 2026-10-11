@@ -31,11 +31,11 @@ async function startReceiptServer() {
     seen.authorization = request.headers.authorization;
     seen.sessionId = url.searchParams.get("session_id") ?? undefined;
     if (seen.sessionId === "cs_missing") {
-      response.writeHead(404, { "content-type": "application/json" });
+      response.writeHead(404, { "content-type": "application/json", connection: "close" });
       response.end(JSON.stringify({ error: "not_found" }));
       return;
     }
-    response.writeHead(200, { "content-type": "application/json" });
+    response.writeHead(200, { "content-type": "application/json", connection: "close" });
     response.end(JSON.stringify(paidReceipt));
   });
   await new Promise<void>((resolveListen, reject) => {
