@@ -127,6 +127,19 @@ describe("installed Commerce public catalog consumer", () => {
     expect(product?.price.regularText).toBe("$40.00");
   });
 
+  it("projects size members with their own Commerce price and availability for the picker", async () => {
+    const value = hoodie([{ id: "hoodie-s", minor: "5600" }, { id: "hoodie-m", minor: "6000" }]);
+    value.variants.members[0]!.selections = [{ optionId: "size", optionLabel: "Size", valueId: "small", valueLabel: "Small" }] as never;
+    value.variants.members[1]!.selections = [{ optionId: "size", optionLabel: "Size", valueId: "medium", valueLabel: "Medium" }] as never;
+    value.variants.members[1]!.availability = { status: "out-of-stock", sellable: false, listable: true };
+    const product = await readInstalledCommerceProduct("hoodie", context([value]));
+    expect(product?.price.regularText).toBe("from $56.00");
+    expect(product?.variants).toEqual([
+      { id: "hoodie-s", selections: [["Size", "Small"]], priceText: "$56.00", availability: { status: "in-stock", sellable: true } },
+      { id: "hoodie-m", selections: [["Size", "Medium"]], priceText: "$60.00", availability: { status: "out-of-stock", sellable: false } },
+    ]);
+  });
+
   it.each([
     [{ ...item("bad"), price: { currency: "USD", minor: "1.25" } }, "invalid price"],
     [{ ...item("bad"), availability: { status: "in-stock", sellable: true, listable: false } }, "invalid availability"],

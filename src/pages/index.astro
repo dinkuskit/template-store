@@ -16,7 +16,7 @@ import {
   STORE_TITLE,
   loadStorefrontRouteContext,
 } from "../features/store-shell/index.js";
-import { hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
+import { canonicalProductPath, hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
 import "../features/store-shell/global.css";
 
 const { entry: page } = await getEmDashEntry("pages", "home");
@@ -37,6 +37,7 @@ const { profile, demonstrations, collections } = await loadStorefrontRouteContex
 );
 let catalogUnavailable = false;
 const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
+const productPaths = new Map(productLinks.products.map((product) => [product.commerceItemId, canonicalProductPath(product.slug)]));
 const availability = demonstrations?.managed;
 const unmanaged = demonstrations?.unmanaged;
 ---
@@ -87,7 +88,7 @@ const unmanaged = demonstrations?.unmanaged;
             ? "Products will appear here when they are published. Checkout is unavailable."
             : "Eligible products can be added to your cart. Checkout is unavailable, so no purchase will be completed."}</p>
       </section>
-      <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} />
+      <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} productPaths={productPaths} />
       {demonstrations && availability && unmanaged && (
       <section aria-label="Separate integration demonstrations" data-integration-demos>
       <h2 class="demo-heading">Integration demonstrations</h2>

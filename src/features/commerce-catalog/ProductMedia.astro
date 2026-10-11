@@ -6,9 +6,12 @@ import { resolveCommerceImage, type PublicCommerceImage, type ResolvedCommerceIm
 interface Props {
   image: PublicCommerceImage | null;
   productId: string;
+  /** Local placeholder shown when Commerce has no image (seeded demo products only). */
+  fallbackSrc?: string | null;
+  fallbackAlt?: string;
 }
 
-const { image, productId } = Astro.props;
+const { image, productId, fallbackSrc = null, fallbackAlt = "" } = Astro.props;
 const emdash = Astro.locals.emdash as { getPublicMediaUrl?: (storageKey: string) => string } | undefined;
 const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image, {
   origin: Astro.url.origin,
@@ -35,6 +38,8 @@ const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image,
       data-commerce-image={productId}
       data-placeholder={String(resolved.placeholder)}
     />
+  ) : fallbackSrc ? (
+    <img src={fallbackSrc} alt={fallbackAlt} width="640" height="480" loading="lazy" decoding="async" data-commerce-image={productId} data-placeholder="true" data-demo-placeholder />
   ) : (
     <p data-commerce-image-placeholder={productId}>No image</p>
   )}

@@ -4,6 +4,8 @@ import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { AddToCart } from "../../features/guest-cart/ui.ts";
 import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
 import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
+import { availabilityLabels } from "../../features/commerce-catalog/index.js";
+import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
@@ -33,22 +35,32 @@ const category = linked?.categorySlugs[0]
 if (!item) Astro.response.status = 404;
 let lookupUnavailable = false;
 let linkedProduct = null;
-if (item && profile === "shipping") {
+// Shipping pages always resolve Commerce; other profiles resolve plain linked
+// entries (e.g. seeded demo products) and fall back to preview on failure.
+if (item && (profile === "shipping" || item.availabilitySource === "preview")) {
   try {
     linkedProduct = await readInstalledCommerceProduct(
       (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
       { runtime: Astro.locals.emdash, request: Astro.request },
     );
   } catch {
-    lookupUnavailable = true;
+    lookupUnavailable = profile === "shipping";
   }
 }
 if (item && profile === "shipping" && item.availabilitySource !== "preview") {
   Astro.response.status = lookupUnavailable ? 503 : linkedProduct ? 200 : 404;
 }
+// The playground never offers cart or checkout.
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const variants = linkedProduct?.variants ?? [];
+const selectedVariant = variants.find((member) => member.availability.sellable) ?? variants[0] ?? null;
+const cartProduct = linkedProduct && selectedVariant
+  ? { ...linkedProduct, id: selectedVariant.id, availability: { ...selectedVariant.availability, listable: true } }
+  : linkedProduct;
+const linkedStatus = selectedVariant?.availability.status ?? linkedProduct?.availability.status;
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
-const status = managed ? `${managed.inventory.available} available` : unmanaged ? ({
+const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability unavailable" : managed ? `${managed.inventory.available} available` : unmanaged ? ({
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
 } as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
@@ -70,18 +82,29 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
       {item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku)} fallbackAlt={`${item.title} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
             </div>
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
             <h1>{item.title}</h1>
             <p class="product-detail__description">{item.description}</p>
-            {linkedProduct && <p class="product-detail__price" data-product-price><strong data-regular-price>{linkedProduct.price.regularText}</strong></p>}
+            {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price data-variant-price>{selectedVariant?.priceText ?? linkedProduct.price.regularText}</strong>}</p>}
+            {variants.length > 0 && <p class="product-detail__from" data-product-from-price>{linkedProduct!.price.regularText}</p>}
+            {variants.length > 0 && <fieldset class="product-variants" data-product-variants>
+              <legend>{[...new Set(variants.flatMap((member) => member.selections.map(([option]) => option)))].join(" / ")}</legend>
+              {variants.map((member) => <label class="product-variant">
+                <input type="radio" name="variant" value={member.id} checked={member === selectedVariant}
+                  data-variant-choice data-choice-price={member.priceText}
+                  data-variant-status={availabilityLabels[member.availability.status] ?? "Availability unavailable"}
+                  data-variant-sellable={String(member.availability.sellable)} />
+                <span>{member.selections.map(([, value]) => value).join(" / ")}</span>
+              </label>)}
+            </fieldset>}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
-            <p class="product-detail__status" data-product-status data-availability-status={unmanaged?.storefront.status}>{status}</p>
-            {linkedProduct && <AddToCart product={linkedProduct} />}
-            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
+            {cartProduct && !isPlayground && <AddToCart product={cartProduct} />}
+            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>Demo product. Cart and checkout are unavailable.</p> : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>
@@ -90,6 +113,22 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
     <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
   </body>
 </html>
+<script>
+  // Variant picker: show the chosen member's Commerce price and availability.
+  for (const input of document.querySelectorAll<HTMLInputElement>("[data-variant-choice]")) {
+    input.addEventListener("change", () => {
+      const price = document.querySelector("[data-variant-price]");
+      const status = document.querySelector("[data-product-status]");
+      const add = document.querySelector<HTMLElement>("[data-add-to-cart]");
+      if (price) price.textContent = input.dataset.choicePrice ?? "";
+      if (status) status.textContent = input.dataset.variantStatus ?? "";
+      if (add) {
+        add.dataset.addToCart = input.value;
+        add.closest<HTMLElement>(".guest-cart-add")!.hidden = input.dataset.variantSellable !== "true";
+      }
+    });
+  }
+</script>
 <style>
   .product-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}
   .browse-breadcrumb{display:flex;flex-wrap:wrap;gap:.7rem;padding:2rem 0;color:var(--store-muted)}
@@ -106,5 +145,7 @@ const status = managed ? `${managed.inventory.available} available` : unmanaged 
   .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
   .product-detail__notice{line-height:1.5;color:var(--store-muted)}
   .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
+  .product-variants{display:flex;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}
+  .product-variant{display:inline-flex;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1px solid var(--store-line);border-radius:.4rem;cursor:pointer}
   @media(max-width:40rem){.product-detail{grid-template-columns:1fr;gap:1.5rem}}
 </style>

@@ -49,6 +49,8 @@ export interface DemoProductSeed {
       commandId: string;
       name: string;
       sku: string;
+      /** Member regular price; defaults to the product's regularMinor. */
+      regularMinor?: string;
     }[];
   };
 }
@@ -106,6 +108,7 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
           commandId: "seed-demo-hoodie-medium",
           name: "Dinkus Demo Everyday Hoodie",
           sku: "DEMO-HOSTED-HOODIE-M",
+          regularMinor: "6000",
         },
       ],
     },
@@ -585,6 +588,12 @@ export function assertCommerceSkuIndexPresent(indexNames: readonly string[]): vo
   if (!indexNames.includes(COMMERCE_SKU_UNIQUE_INDEX)) {
     throw new SeedRefusal("INDEX_INIT_REQUIRED", INDEX_INIT_MESSAGE);
   }
+}
+
+/** Regular price for one demo SKU, including variant members. */
+export function demoRegularMinorForSku(product: DemoProductSeed, sku: string): string {
+  return product.variant?.values.find((value) => value.sku === sku.toUpperCase())?.regularMinor
+    ?? product.regularMinor;
 }
 
 export function isDemoSku(sku: string): boolean {

@@ -54,6 +54,7 @@ import {
   REMOTE_CONFIG_PATH,
   REMOTE_TARGET_MANIFEST_PATH,
   SeedRefusal,
+  demoRegularMinorForSku,
   type DemoProductSeed,
 } from "./demo-seed-policy.js";
 
@@ -413,9 +414,13 @@ async function ensureProduct(
     if (product.saleMinor === null) {
       await clearCatalogItemSalePrice(storage, { catalogItemId: itemId });
     }
+    const memberSku = itemId === catalogItemId ? product.sku : (await storage.catalog.get(itemId))?.sku ?? product.sku;
     await setCatalogItemRegularPrice(storage, {
       catalogItemId: itemId,
-      amount: { currency: "USD", minor: product.regularMinor },
+      amount: {
+        currency: "USD",
+        minor: "variant" in product ? demoRegularMinorForSku(product, memberSku) : product.regularMinor,
+      },
     });
     if (product.saleMinor === null) {
       await clearCatalogItemSalePrice(storage, { catalogItemId: itemId });

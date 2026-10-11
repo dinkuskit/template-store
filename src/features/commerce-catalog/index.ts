@@ -24,6 +24,16 @@ export interface PublicCommerceProduct {
   availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
   image: PublicCommerceImage | null;
   gallery: readonly PublicCommerceImage[];
+  /** Server-projected variant members (e.g. sizes/colors); absent for simple items. */
+  variants?: readonly PublicCommerceVariant[];
+}
+
+export interface PublicCommerceVariant {
+  id: string;
+  /** Option label to value label, e.g. [["Size", "Small"]]. */
+  selections: readonly (readonly [string, string])[];
+  priceText: string;
+  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable">;
 }
 
 export const availabilityLabels: Record<string, string> = {

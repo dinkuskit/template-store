@@ -9,6 +9,7 @@
  * if-missing (keyed by SKU), and never touches checkout configuration.
  */
 import {
+  addCatalogVariantOption,
   createCatalogItem,
   createPlugin,
   listCatalogProducts,
@@ -24,9 +25,11 @@ import {
   type CatalogStorageRecord,
 } from "@dinkuskit/commerce";
 import { PluginStorageRepository } from "emdash";
+import { applySeed, type SeedFile } from "emdash/seed";
 import { sql } from "kysely";
 
-import { DEMO_PRODUCTS, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
+import { DEMO_PRODUCTS, demoRegularMinorForSku, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
+import { buildDemoProductEntries } from "./demo-products.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 interface StorageDeclaration {
@@ -89,29 +92,51 @@ export async function ensureCommerceStorageIndexes(db: Db): Promise<void> {
 type Storage = ReturnType<typeof playgroundCommerceStorage>;
 
 async function createProduct(storage: Storage, product: DemoProductSeed): Promise<void> {
+  const variant = product.variant;
   const created = await createCatalogItem(storage.catalog, {
     commandId: product.commandId,
     manageStock: false,
+    ...(variant ? { fulfillment: "physical" as const } : {}),
     name: product.name,
     sku: product.sku,
   });
-  const catalogItemId = created.item.itemId;
-  await setCatalogItemRegularPrice(storage, { catalogItemId, amount: { currency: "USD", minor: product.regularMinor } });
-  if (product.saleMinor !== null) {
-    await setCatalogItemSalePrice(storage, { catalogItemId, amount: { currency: "USD", minor: product.saleMinor } });
+  const parentId = created.item.itemId;
+  const items = [{ catalogItemId: parentId, sku: product.sku }];
+  if (variant) {
+    await addCatalogVariantOption({ catalog: storage.catalog }, {
+      productId: parentId,
+      optionId: variant.optionId,
+      optionLabel: variant.optionLabel,
+      values: variant.values.map((value, index) => ({
+        valueId: value.valueId,
+        label: value.label,
+        member: index === 0
+          ? { catalogItemId: parentId, fulfillment: "physical" as const }
+          : { commandId: value.commandId, name: value.name, sku: value.sku, fulfillment: "physical" as const },
+      })),
+    }, { collection: CATALOG_COLLECTION, pluginId: COMMERCE_PLUGIN_ID });
+    const parent = await storage.catalog.get(parentId) as { variantProduct?: { members: { catalogItemId: string }[] } } | null;
+    for (const member of parent?.variantProduct?.members ?? []) {
+      if (member.catalogItemId === parentId) continue;
+      const record = await storage.catalog.get(member.catalogItemId);
+      items.push({ catalogItemId: member.catalogItemId, sku: record?.sku ?? product.sku });
+    }
   }
-  await setCatalogItemManualAvailability(storage, { catalogItemId, status: product.availability });
+  for (const { catalogItemId, sku } of items) {
+    await setCatalogItemRegularPrice(storage, {
+      catalogItemId, amount: { currency: "USD", minor: demoRegularMinorForSku(product, sku) },
+    });
+    if (product.saleMinor !== null) {
+      await setCatalogItemSalePrice(storage, { catalogItemId, amount: { currency: "USD", minor: product.saleMinor } });
+    }
+    await setCatalogItemManualAvailability(storage, { catalogItemId, status: product.availability });
+  }
 }
 
-/**
- * Simple (non-variant) demo products. Commerce projects a variant parent
- * without a top-level price, which the storefront's installed-catalog reader
- * rejects as a whole ("Invalid installed catalog projection"), so the
- * playground leaves variant demo products out.
- */
-export const PLAYGROUND_DEMO_PRODUCTS = DEMO_PRODUCTS.filter((product) => !product.variant);
+/** Every demo product, including the size-variant hoodie. */
+export const PLAYGROUND_DEMO_PRODUCTS = DEMO_PRODUCTS;
 
-/** Creates missing demo catalog items. Existing SKUs are left untouched. */
+/** Creates missing demo catalog items and product entries. Existing SKUs and entries are left untouched. */
 export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: string[] }> {
   await ensureCommerceStorageIndexes(db);
   const storage = playgroundCommerceStorage(db);
@@ -121,6 +146,16 @@ export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: st
     if (existing.has(product.sku.toUpperCase())) continue;
     await createProduct(storage, product);
     created.push(product.sku);
+  }
+  // Link each demo Commerce item to a published EmDash product page.
+  // onConflict "skip" never changes or republishes an existing entry.
+  const links = (await listCatalogProducts(storage)).products
+    .map((p) => ({ sku: p.sku, catalogItemId: p.catalogItemId }));
+  const entries = buildDemoProductEntries(links);
+  if (entries.length > 0) {
+    await applySeed(db as Parameters<typeof applySeed>[0], { version: "1", content: { products: entries } } as SeedFile, {
+      includeContent: true, onConflict: "skip", skipMediaDownload: true,
+    });
   }
   return { created };
 }
