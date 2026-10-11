@@ -59,10 +59,19 @@ function projection(state: ProjectionState, attemptId: string | null) {
       unitPrice: { currency: "USD", minor: "2400" },
     }],
     total: { currency: "USD", minor: "2400" },
-    pricing: { finalTotal: { currency: "USD", minor: "2400" } },
+    pricing: {
+      merchandiseSubtotal: { currency: "USD", minor: "2400" },
+      shipping: { charge: { currency: "USD", minor: "0" } },
+      finalTotal: { currency: "USD", minor: "2400" },
+    },
     redirectUrl: null,
     order: state === "paid"
-      ? { orderId: "order:fixture", receiptId: "receipt:fixture", lines: [{ catalogItemId: "fixture-shirt", quantity: 1 }] }
+      ? {
+        orderId: "order:fixture",
+        receiptId: "receipt:fixture",
+        lines: [{ catalogItemId: "fixture-shirt", name: "Synthetic fixture shirt", quantity: 1, unitPrice: { currency: "USD", minor: "2400" } }],
+        total: { currency: "USD", minor: "2400" },
+      }
       : null,
     retryAfter: null,
     unavailable: null,

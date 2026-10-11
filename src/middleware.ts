@@ -19,6 +19,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     applySecurityHeaders(response.headers);
     return response;
   }
+  if (pathForms.includes("/cart/")) {
+    const response = Response.redirect(new URL("/cart", context.url), 308);
+    applySecurityHeaders(response.headers);
+    return response;
+  }
   const isCloudflare =
     process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
     process.env.ASTRO_ADAPTER === "cloudflare" ||

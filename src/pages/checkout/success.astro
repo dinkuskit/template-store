@@ -1,8 +1,6 @@
 ---
 import { getSiteSettings } from "emdash";
-import { GuestCartNav } from "../../features/guest-cart/ui.ts";
-import PaymentSuccess from "../../features/payment-receipt/PaymentSuccess.astro";
-import { loadPaymentReceipt } from "../../features/payment-receipt/index.ts";
+import { GuestCartNav, GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
@@ -26,11 +24,6 @@ const contactHref = (() => {
   if (typeof siteUrl === "string") return siteUrl;
   return "/";
 })();
-const runtimeEnv = (Astro.locals as unknown as { runtime?: { env?: Record<string, string> } }).runtime?.env;
-const result = await loadPaymentReceipt(
-  Astro.url.searchParams.get("session_id"),
-  { environment: { ...process.env, ...runtimeEnv } },
-);
 ---
 <!doctype html>
 <html lang="en">
@@ -38,7 +31,7 @@ const result = await loadPaymentReceipt(
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>Checkout return | {STORE_TITLE}</title>
+    <title>Order confirmation | {STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner role="status">Demo checkout &mdash; No real payments or fulfillment.</div>
@@ -46,6 +39,6 @@ const result = await loadPaymentReceipt(
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav>
     </header>
-    <main><PaymentSuccess result={result} contactHref={contactHref} /></main>
+    <main><GuestCheckoutReturn contactHref={contactHref} testOrder={profile === "proof"} /></main>
   </body>
 </html>

@@ -67,10 +67,6 @@ export function buildOfflineE2EEnvironment(inherited, options) {
     DINKUS_TEMPLATE_DB_URL: `file:./${validated.relativeDir}/content.db`,
     DINKUS_TEMPLATE_UPLOADS_DIR: `./${validated.relativeDir}/uploads`,
     EMDASH_SITE_URL: validated.siteOrigin,
-    ...(inherited?.DINKUS_PAYMENT_RECEIPT_E2E === "1" ? {
-      PAYMENTS_BASE_URL: "http://127.0.0.1:4661",
-      PAYMENTS_STORE_KEY: "browser-test-only",
-    } : {}),
   };
 }
 

@@ -58,7 +58,7 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   } finally { await context.close(); }
 });
 
-test.skip("legacy browser return controller is superseded by the server receipt page", async ({
+test("Commerce checkout token renders the paid order and clears the cart", async ({
   browser,
 }, testInfo) => {
   test.setTimeout(60_000);
@@ -110,11 +110,13 @@ test.skip("legacy browser return controller is superseded by the server receipt 
   await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
   await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
   await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
-  await page.goto("/checkout/success?success=true&session_id=synthetic-untrusted");
+  await page.goto("/checkout/success");
   await expect(page.locator("[data-guest-checkout-order]")).toBeHidden();
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("pending");
   await page.getByRole("button", { name: "Check status again" }).click();
-  await expect(page.locator("[data-guest-checkout-order]")).toContainText("order:fixture");
+  await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
+  await expect(page.locator("[data-guest-checkout-order-number]")).toContainText("order:fixture");
+  await expect(page.locator("[data-guest-checkout-order-items]")).toContainText("Synthetic fixture shirt");
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
   expect(harness.counts().statusCalls).toBe(2);
   await expect(page.locator("[data-guest-cart-count]")).toBeHidden();

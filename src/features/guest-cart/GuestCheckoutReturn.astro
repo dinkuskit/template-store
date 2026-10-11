@@ -1,22 +1,45 @@
 ---
-const { kind } = Astro.props;
-const title = kind === "success" ? "Checkout return" : "Checkout canceled";
+const { contactHref = "/", testOrder = false } = Astro.props;
 ---
 <section class="guest-checkout-return" data-guest-checkout-return aria-labelledby="guest-checkout-return-title">
-  <h1 id="guest-checkout-return-title">{title}</h1>
+  <h1 id="guest-checkout-return-title">Order confirmation</h1>
   <p data-guest-checkout-return-status role="status">Checking the saved checkout status.</p>
-  <p data-guest-checkout-order hidden></p>
+  <p>Need help? <a href={contactHref}>Contact the store</a>.</p>
+  <div data-guest-checkout-order hidden>
+    <div class="guest-checkout-order-heading">
+      <h2 data-guest-checkout-order-number>Order confirmed</h2>
+      {testOrder && <span class="guest-checkout-test-badge">TEST</span>}
+    </div>
+    <h3>Items</h3>
+    <ul data-guest-checkout-order-items></ul>
+    <dl data-guest-checkout-order-totals></dl>
+    <h3>What happens next</h3>
+    <p>A confirmation email is coming. When your order ships, a shipping email with tracking will arrive.</p>
+    <p>Questions? <a href={contactHref}>Contact the store</a>.</p>
+  </div>
   <a data-guest-checkout-retry hidden rel="noopener noreferrer">Continue to secure checkout</a>
   <button type="button" data-guest-checkout-status-retry>Check status again</button>
   <p><a href="/cart">Back to cart</a></p>
 </section>
 <style>
-  .guest-checkout-return{width:min(44rem,calc(100% - 2rem));margin:4rem auto;min-height:55vh}
+  .guest-checkout-return{width:min(52rem,calc(100% - 2rem));margin:4rem auto;min-height:55vh}
   h1{font-size:clamp(2.25rem,6vw,4rem);letter-spacing:-.05em}
+  h2{font-size:1.5rem}
+  h3{margin:2rem 0 .7rem;font-size:1.05rem}
   p{line-height:1.6;color:var(--store-muted)}
   [data-guest-checkout-return-status][role="alert"]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
   a{color:inherit;font-weight:800}
   a:focus-visible{outline:3px solid #215cc8;outline-offset:3px}
+  .guest-checkout-order-heading{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+  .guest-checkout-test-badge{padding:.25rem .5rem;border-radius:.35rem;background:#f8ecd3;color:#6b3f08;font-size:.8rem;font-weight:900;letter-spacing:.08em}
+  [data-guest-checkout-order-items]{list-style:none;margin:0;padding:0;border-top:1px solid var(--store-line)}
+  [data-guest-checkout-order-items] li{display:flex;justify-content:space-between;gap:1rem;padding:.8rem 0;border-bottom:1px solid var(--store-line)}
+  [data-guest-checkout-order-items] small{display:block;color:var(--store-muted)}
+  [data-guest-checkout-order-totals]{max-width:25rem;margin:1rem 0 0}
+  [data-guest-checkout-order-totals] div{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}
+  [data-guest-checkout-order-totals] dt{color:var(--store-muted)}
+  [data-guest-checkout-order-totals] dd{margin:0}
+  [data-guest-checkout-order-totals] .total{border-top:2px solid var(--store-line);font-weight:900;padding-top:.6rem}
   button{min-height:44px;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
   button:focus-visible{outline:3px solid #215cc8;outline-offset:3px}
   button:disabled{color:var(--store-muted);cursor:not-allowed}

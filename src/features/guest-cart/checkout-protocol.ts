@@ -19,12 +19,18 @@ const MAX_RESPONSE_BYTES = 64 * 1024;
 const REQUEST_TIMEOUT_MS = 8_000;
 export const MAX_GUEST_CHECKOUT_STATUS_CHECKS = 5;
 
+export type GuestCheckoutOrderLine = GuestCartLine & Readonly<{
+  name?: string;
+  variant?: string;
+  unitPrice?: Readonly<{ currency: string; minor: string }>;
+}>;
+
 export type GuestCheckoutProjection = Readonly<{
   schema: typeof GUEST_CHECKOUT_PROJECTION_SCHEMA;
   state: "pending" | "paid" | "recoverable-failure" | "released-retry";
   attemptId: string | null;
   redirectUrl: string | null;
-  order: Readonly<{ orderId: string; receiptId: string; lines: readonly GuestCartLine[] }> | null;
+  order: Readonly<{ orderId: string; receiptId: string; lines: readonly GuestCheckoutOrderLine[]; total?: Readonly<{ currency: string; minor: string }> }> | null;
   retryAfter: string | null;
   [key: string]: unknown;
 }>;
@@ -150,7 +156,26 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
     const purchased = parseGuestCartIntent({ version: 1, lines: value.order.lines.map((line) =>
       isObject(line) ? { id: line.catalogItemId, quantity: line.quantity } : null) });
     if (!purchased || purchased.lines.length === 0) return null;
-    order = { orderId: value.order.orderId, receiptId: value.order.receiptId, lines: purchased.lines };
+    const lines = purchased.lines.map((line, index) => {
+      const raw = value.order!.lines[index];
+      if (!isObject(raw)) return line;
+      const name = typeof raw.name === "string" && raw.name.length <= 1024 ? raw.name : undefined;
+      const variant = typeof raw.variant === "string" && raw.variant.length <= 256 ? raw.variant : undefined;
+      const unitPrice = isObject(raw.unitPrice) &&
+        typeof raw.unitPrice.currency === "string" &&
+        typeof raw.unitPrice.minor === "string" &&
+        /^-?\d+$/u.test(raw.unitPrice.minor)
+        ? { currency: raw.unitPrice.currency, minor: raw.unitPrice.minor }
+        : undefined;
+      return { ...line, ...(name ? { name } : {}), ...(variant ? { variant } : {}), ...(unitPrice ? { unitPrice } : {}) };
+    });
+    const total = isObject(value.order.total) &&
+      typeof value.order.total.currency === "string" &&
+      typeof value.order.total.minor === "string" &&
+      /^-?\d+$/u.test(value.order.total.minor)
+      ? { currency: value.order.total.currency, minor: value.order.total.minor }
+      : undefined;
+    order = { orderId: value.order.orderId, receiptId: value.order.receiptId, lines, ...(total ? { total } : {}) };
   }
   if (value.state === "paid" && !order) return null;
   if (value.state === "released-retry" &&

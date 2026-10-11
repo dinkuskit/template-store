@@ -615,6 +615,66 @@ function checkoutStorage() {
   }
 }
 
+function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult): void {
+  if (!result.ok || !checkoutCanConfirm(result)) return;
+  const order = result.checkout.order! as {
+    orderId: string;
+    lines: readonly { id: string; quantity: number; name?: string; variant?: string; unitPrice?: { currency: string; minor: string } }[];
+    total?: unknown;
+  };
+  const orderNumber = root.querySelector("[data-guest-checkout-order-number]");
+  if (orderNumber instanceof HTMLElement) {
+    orderNumber.textContent = `Order ${order.orderId}`;
+  }
+  const items = root.querySelector("[data-guest-checkout-order-items]");
+  if (items instanceof HTMLElement) {
+    items.replaceChildren(...order.lines.map((line) => {
+      const row = document.createElement("li");
+      const label = document.createElement("span");
+      label.textContent = `${line.name ?? line.id} × ${line.quantity}`;
+      if (line.variant) {
+        const variant = document.createElement("small");
+        variant.textContent = line.variant;
+        label.append(variant);
+      }
+      row.append(label);
+      return row;
+    }));
+  }
+  const totals = root.querySelector("[data-guest-checkout-order-totals]");
+  if (!(totals instanceof HTMLElement)) return;
+  const checkout = result.checkout as unknown as Record<string, unknown>;
+  const pricing = checkout.pricing && typeof checkout.pricing === "object"
+    ? checkout.pricing as Record<string, unknown>
+    : null;
+  const total = order.total ?? checkout.total;
+  const money = (value: unknown): string | null => {
+    if (!value || typeof value !== "object") return null;
+    const minor = (value as Record<string, unknown>).minor;
+    if (typeof minor !== "string" || !/^-?\d+$/u.test(minor)) return null;
+    return `$${(Number(minor) / 100).toFixed(2)}`;
+  };
+  const rows: Array<[string, unknown]> = [
+    ["Subtotal", pricing?.merchandiseSubtotal],
+    ["Shipping", pricing?.shipping && typeof pricing.shipping === "object"
+      ? (pricing.shipping as Record<string, unknown>).charge
+      : undefined],
+    ["Total", total],
+  ];
+  totals.replaceChildren(...rows.flatMap(([label, value]) => {
+    const formatted = money(value);
+    if (!formatted) return [];
+    const row = document.createElement("div");
+    if (label === "Total") row.className = "total";
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const amount = document.createElement("dd");
+    amount.textContent = formatted;
+    row.append(term, amount);
+    return [row];
+  }));
+}
+
 export function hydrateGuestCheckoutReturn(): void {
   const root = document.querySelector("[data-guest-checkout-return]");
   if (!(root instanceof HTMLElement)) return;
@@ -623,6 +683,10 @@ export function hydrateGuestCheckoutReturn(): void {
   const retry = root.querySelector("[data-guest-checkout-retry]");
   const statusRetry = root.querySelector("[data-guest-checkout-status-retry]");
   const retention = readGuestCheckoutRetention(checkoutStorage());
+  const setNotFoundTitle = () => {
+    const title = root.querySelector("#guest-checkout-return-title");
+    if (title instanceof HTMLElement) title.textContent = "We couldn’t find that order";
+  };
   const setMessage = (message: string, error = false) => {
     if (!(status instanceof HTMLElement)) return;
     status.hidden = false;
@@ -630,6 +694,7 @@ export function hydrateGuestCheckoutReturn(): void {
     status.setAttribute("role", error ? "alert" : "status");
   };
   if (!retention) {
+    setNotFoundTitle();
     setMessage("This return could not be matched to a saved checkout. No purchase was confirmed.", true);
     if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = true;
     return;
@@ -667,16 +732,23 @@ export function hydrateGuestCheckoutReturn(): void {
     const { result, failure } = await controller.status();
     const exhausted = !canRetryGuestCheckoutStatus(statusChecks);
     if (failure || !result) {
+      setNotFoundTitle();
       setMessage(exhausted
         ? "Checkout status could not be confirmed. Status checks are temporarily limited. No purchase was confirmed."
         : "Checkout status could not be confirmed. Retry when you are back online.", true);
       finishCheck();
       return;
     }
+    if (!result.ok) {
+      setNotFoundTitle();
+      setMessage("We couldn’t confirm this order. Please contact the store if you need help.", true);
+      finishCheck();
+      return;
+    }
     if (result.ok && checkoutCanConfirm(result)) {
       if (order instanceof HTMLElement) {
         order.hidden = false;
-        order.textContent = `Order confirmed: ${result.checkout.order!.orderId}. Receipt: ${result.checkout.order!.receiptId}.`;
+        confirmedOrderMarkup(root, result);
       }
       if (retry instanceof HTMLAnchorElement) retry.hidden = true;
       const settled = await settleGuestCheckoutCart(checkoutStorage(), result);
