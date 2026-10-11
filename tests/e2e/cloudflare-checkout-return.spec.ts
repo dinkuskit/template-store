@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 
 test.use({ trace: "off", video: "off", serviceWorkers: "block" });
 
-test("real Wrangler unknown-token return has no browser console error", async ({ browser }, testInfo) => {
+test("real Wrangler unknown-token return handles the expected 503", async ({ browser }, testInfo) => {
   test.skip(process.env.CLOUDFLARE_E2E !== "1", "Run with CLOUDFLARE_E2E=1 after a Cloudflare build.");
   test.setTimeout(60_000);
   const port = 8799;
