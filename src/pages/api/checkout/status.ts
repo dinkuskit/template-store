@@ -69,7 +69,16 @@ async function boundedRequestText(request: Request): Promise<string | null> {
       if (next.done) break;
       size += next.value.byteLength;
       if (size > MAX_REQUEST_BYTES) {
-        await reader.cancel();
+        // Drain instead of cancelling: cancelling a chunked request body mid-stream
+        // makes workerd drop the connection, so the client sees a 500 "Network
+        // connection lost" instead of our 413. Draining is capped at 64 KiB
+        // (MAX_DISCARD_BYTES) so an oversized or endless body cannot hold the
+        // Worker reading forever; past that cap we stop reading and still reply 413.
+        while (size <= MAX_DISCARD_BYTES) {
+          const extra = await reader.read();
+          if (extra.done) break;
+          size += extra.value.byteLength;
+        }
         return null;
       }
       chunks.push(next.value);

@@ -20,6 +20,7 @@ import {
   GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
   readGuestCheckoutRetention,
   strictStripeCheckoutUrl,
+  guestCheckoutRetryUrl,
   settleGuestCheckoutCart,
   type GuestCartCatalogSnapshot,
   type GuestCartIntent,
@@ -811,9 +812,8 @@ export function hydrateGuestCheckoutReturn(): void {
       finishCheck();
       return;
     }
-    const redirect = result.ok ? strictStripeCheckoutUrl(result.checkout.redirectUrl) : null;
-    if (redirect && retry instanceof HTMLAnchorElement &&
-        result.ok && result.checkout.state !== "released-retry") {
+    const redirect = guestCheckoutRetryUrl(result);
+    if (redirect && retry instanceof HTMLAnchorElement) {
       retry.hidden = false;
       retry.href = redirect;
     }

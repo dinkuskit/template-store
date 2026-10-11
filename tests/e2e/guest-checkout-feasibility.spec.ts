@@ -468,3 +468,68 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     `${JSON.stringify({ physical: physicalBodies, digitalAfterStaleAddress: staleBodies }, null, 2)}\n`,
   );
 });
+
+test("retryable unconfirmed return reveals the hosted-checkout retry link; confirmed and tokenless returns keep it hidden", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const baseURL = testInfo.project.use.baseURL as string;
+  const redirectUrl = "https://checkout.stripe.com/c/pay/cs_test_fixture_retry";
+  const seedRetention = () => {
+    localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
+      capabilityId: "fixture-cap-1",
+      capability: "fixture-cap-1.secret",
+      attemptId: "fixture-attempt-retry",
+    }));
+  };
+
+  const retryContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await retryContext.newPage();
+    await installOfflineCheckoutHarness(page, { baseURL, statusRetryRedirect: redirectUrl });
+    await page.addInitScript(seedRetention);
+    await page.goto("/checkout/success?session_id=fixture-retry");
+    const retry = page.locator("[data-guest-checkout-retry]");
+    await expect(retry).toBeVisible();
+    await expect(retry).toHaveAttribute("href", redirectUrl);
+    await expect(retry).toHaveText("Continue to secure checkout");
+    await expect(page.locator("[data-guest-checkout-order]")).toBeHidden();
+  } finally {
+    await retryContext.close();
+  }
+
+  const confirmedContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await confirmedContext.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({
+        capabilityId: "fixture-cap-1",
+        capability: "fixture-cap-1.secret",
+        attemptId: "fixture-attempt-0",
+      }));
+    });
+    await page.goto("/checkout/success?session_id=fixture-confirmed");
+    await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("pending");
+    await expect(page.locator("[data-guest-checkout-retry]")).toBeHidden();
+    await page.getByRole("button", { name: "Check status again" }).click();
+    await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
+    await expect(page.locator("[data-guest-checkout-retry]")).toBeHidden();
+    expect(harness.counts().statusCalls).toBe(2);
+  } finally {
+    await confirmedContext.close();
+  }
+
+  const tokenlessContext = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await tokenlessContext.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL, statusRetryRedirect: redirectUrl });
+    await page.goto("/checkout/success");
+    await expect(page.getByRole("heading", { name: "We couldn't confirm your order" })).toBeVisible();
+    await expect(page.locator("[data-guest-checkout-retry]")).toBeHidden();
+    expect(harness.counts().statusCalls).toBe(0);
+  } finally {
+    await tokenlessContext.close();
+  }
+});
