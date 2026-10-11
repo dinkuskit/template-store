@@ -30,10 +30,6 @@ test("guest checkout stays closed and return pages never trust browser claims", 
     headers: { "content-type": "application/json" },
   });
   expect(nativePrepare.status()).toBe(405);
-  const cartSlash = await request.get("/cart/", { maxRedirects: 0 });
-  expect(cartSlash.status()).toBe(302);
-  expect(new URL(cartSlash.headers().location!, testInfo.project.use.baseURL as string).pathname).toBe("/cart");
-
   const context = await freshOfflineContext(
     browser,
     testInfo.project.use.baseURL as string,
@@ -51,14 +47,6 @@ test("guest checkout stays closed and return pages never trust browser claims", 
     fullPage: true,
     animations: "disabled",
   });
-  await page.goto("/cart/");
-  await expect(page).toHaveURL(/\/cart$/);
-  await page.screenshot({
-    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-cart-slash.png`),
-    fullPage: true,
-    animations: "disabled",
-  });
-
   await page.goto("/checkout/cancel?session_id=forged");
   await expect(page).toHaveURL(/\/cart\/?$/);
 

@@ -157,7 +157,7 @@ export async function installOfflineCheckoutHarness(
       if (synthetic && path === RUNTIME_STATUS && route.request().method() === "POST") {
         statusCalls += 1;
         if (statusUnknown) {
-          await json(route, { ok: false, error: { code: "ORDER_NOT_FOUND", message: "Checkout not found" } }, 404);
+          await json(route, { ok: false, error: { code: "ORDER_NOT_FOUND", message: "Checkout not found" } });
           return;
         }
         await json(route, {
