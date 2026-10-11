@@ -91,12 +91,20 @@ jobs:
 
           const path = "dist/server/wrangler.json";
           const config = JSON.parse(readFileSync(path, "utf8"));
-          const bindings = config.kv_namespaces ?? [];
-          config.kv_namespaces = bindings.filter(({ binding }) => binding !== "SESSION");
-          if (config.kv_namespaces.length !== bindings.length) {
+          let changed = false;
+          for (const section of [config, config.previews]) {
+            const bindings = section?.kv_namespaces;
+            if (!Array.isArray(bindings)) continue;
+            const filtered = bindings.filter(({ binding }) => binding !== "SESSION");
+            changed ||= filtered.length !== bindings.length;
+            section.kv_namespaces = filtered;
+          }
+          if (changed) {
             writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
           }
-          if (config.kv_namespaces.some(({ binding }) => binding === "SESSION")) {
+          if ([config, config.previews].some((section) =>
+            section?.kv_namespaces?.some(({ binding }) => binding === "SESSION")
+          )) {
             throw new Error("Generated playground Wrangler config still contains SESSION.");
           }
           NODE
@@ -146,12 +154,20 @@ jobs:
 
           const path = "dist/server/wrangler.json";
           const config = JSON.parse(readFileSync(path, "utf8"));
-          const bindings = config.kv_namespaces ?? [];
-          config.kv_namespaces = bindings.filter(({ binding }) => binding !== "SESSION");
-          if (config.kv_namespaces.length !== bindings.length) {
+          let changed = false;
+          for (const section of [config, config.previews]) {
+            const bindings = section?.kv_namespaces;
+            if (!Array.isArray(bindings)) continue;
+            const filtered = bindings.filter(({ binding }) => binding !== "SESSION");
+            changed ||= filtered.length !== bindings.length;
+            section.kv_namespaces = filtered;
+          }
+          if (changed) {
             writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
           }
-          if (config.kv_namespaces.some(({ binding }) => binding === "SESSION")) {
+          if ([config, config.previews].some((section) =>
+            section?.kv_namespaces?.some(({ binding }) => binding === "SESSION")
+          )) {
             throw new Error("Generated playground Wrangler config still contains SESSION.");
           }
           NODE
