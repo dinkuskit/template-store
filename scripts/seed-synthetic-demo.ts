@@ -363,6 +363,7 @@ async function ensureProduct(
     catalog: PluginStorageRepository<CatalogStorageRecord>;
     prices: PluginStorageRepository<CatalogPriceRecord>;
     availability: PluginStorageRepository<CatalogManualAvailabilityRecord>;
+    media: PluginStorageRepository<CatalogMediaRecord>;
   },
   existing: CatalogRow | undefined,
   product: DemoProductSeed | typeof SENTINEL,
@@ -443,7 +444,7 @@ async function ensureProduct(
       catalogItemId: itemId,
       status: product.availability,
     });
-    if (product.gallery) {
+    if ("gallery" in product && product.gallery) {
       await saveCatalogItemMedia(storage, {
         catalogItemId: itemId,
         gallery: product.gallery,
