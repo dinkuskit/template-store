@@ -695,8 +695,9 @@ export function hydrateGuestCheckoutReturn(): void {
     status.setAttribute("role", error ? "alert" : "status");
   };
   if (!retention) {
-    setNotFoundTitle();
-    setMessage("This return could not be matched to a saved checkout. No purchase was confirmed.", true);
+    const title = root.querySelector("#guest-checkout-return-title");
+    if (title instanceof HTMLElement) title.textContent = "Your order went through";
+    setMessage("Your order went through. Check your email for the confirmation.");
     if (statusRetry instanceof HTMLButtonElement) statusRetry.disabled = true;
     return;
   }

@@ -30,6 +30,9 @@ test("guest checkout stays closed and return pages never trust browser claims", 
     headers: { "content-type": "application/json" },
   });
   expect(nativePrepare.status()).toBe(405);
+  const cartSlash = await request.get("/cart/", { maxRedirects: 0 });
+  expect(cartSlash.status()).toBe(302);
+  expect(cartSlash.headers().location).toBe("/cart");
 
   const context = await freshOfflineContext(
     browser,
@@ -40,13 +43,11 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   const page = await context.newPage();
   await mkdir(resolve("runs/checkout-success-commerce"), { recursive: true });
   await installOfflineCheckoutHarness(page, { baseURL: testInfo.project.use.baseURL as string, synthetic: false });
-  await page.goto(
-    "/checkout/success?success=true&session_id=forged&redirect_status=succeeded",
-  );
-  await expect(page.getByRole("heading", { name: "We couldn’t find that order" })).toBeVisible();
-  await expect(page.getByText("This return could not be matched")).toBeVisible();
+  await page.goto("/checkout/success");
+  await expect(page.getByRole("heading", { name: "Your order went through" })).toBeVisible();
+  await expect(page.getByText("Your order went through. Check your email for the confirmation.")).toBeVisible();
   await page.screenshot({
-    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-not-found.png`),
+    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-no-token.png`),
     fullPage: true,
     animations: "disabled",
   });

@@ -20,7 +20,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
   if (pathForms.includes("/cart/")) {
-    const response = Response.redirect(new URL("/cart", context.url), 308);
+    const response = Response.redirect(new URL("/cart", context.url), 302);
     applySecurityHeaders(response.headers);
     return response;
   }
