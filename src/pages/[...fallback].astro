@@ -1,0 +1,6 @@
+---
+if (Astro.url.pathname === "/cart/") {
+  return Astro.redirect("/cart", 302);
+}
+Astro.response.status = 404;
+---
