@@ -30,7 +30,7 @@ describe("TemplateStore playground", () => {
     expect(config).not.toMatch(/(?:secret|payments|coupon|stripe)/i);
     expect(config).toContain("PLAYGROUND_DB");
     expect(config).toContain('"workers_dev": false');
-    expect(config).toContain('"preview_urls": false');
+    expect(config).toContain('"preview_urls": true');
     expect(config).toContain('"account_id": "cddb32366789cab1bdf4c25584dc1920"');
     expect(config).toContain('"pattern": "playground.dinkuskit.com"');
     expect(config).toContain('"previews_enabled": true');

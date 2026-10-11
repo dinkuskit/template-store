@@ -12,7 +12,7 @@ if (forbidden.test(config)) {
 for (const required of [
   '"account_id": "cddb32366789cab1bdf4c25584dc1920"',
   '"workers_dev": false',
-  '"preview_urls": false',
+  '"preview_urls": true',
   '"pattern": "playground.dinkuskit.com"',
   '"custom_domain": true',
   '"previews_enabled": true',

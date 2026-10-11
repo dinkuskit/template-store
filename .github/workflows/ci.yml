@@ -128,18 +128,38 @@ jobs:
           echo "::notice title=Playground source commits::${message}"
       - name: Upload PR preview version
         if: github.event_name == 'pull_request'
+        id: upload-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
-        run: >-
-          pnpm exec wrangler versions upload
-          --config dist/server/wrangler.json
-          --preview-alias pr-${{ github.event.pull_request.number }}
-          --message "${{ steps.commits.outputs.message }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          upload_log="$RUNNER_TEMP/playground-preview-upload.log"
+          pnpm exec wrangler versions upload \
+          --config dist/server/wrangler.json \
+          --preview-alias pr-${{ github.event.pull_request.number }} \
+          --message "${{ steps.commits.outputs.message }}" 2>&1 | tee "$upload_log"
+          preview_url="$(sed -nE 's/.*Version Preview Alias URL: (https:\/\/[^[:space:]]+\.workers\.dev).*/\1/p' "$upload_log" | tail -n 1)"
+          if [[ -z "$preview_url" ]]; then
+            echo "Wrangler did not report a workers.dev preview alias URL." >&2
+            exit 1
+          fi
+          echo "url=$preview_url" >> "$GITHUB_OUTPUT"
+      - name: Publish PR preview URL
+        if: github.event_name == 'pull_request'
+        env:
+          PREVIEW_URL: ${{ steps.upload-preview.outputs.url }}
+        run: |
+          {
+            echo "### Playground preview"
+            echo
+            echo "$PREVIEW_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Verify PR preview
         if: github.event_name == 'pull_request'
         shell: bash
         env:
-          PREVIEW_URL: https://pr-${{ github.event.pull_request.number }}-playground.dinkuskit.com
+          PREVIEW_URL: ${{ steps.upload-preview.outputs.url }}
         run: |
           set -euo pipefail
           headers="$(mktemp)"
