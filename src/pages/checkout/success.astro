@@ -22,6 +22,7 @@ const contactHref = (() => {
   }
   return undefined;
 })();
+Astro.response.headers.set("Cache-Control", "no-store");
 ---
 <!doctype html>
 <html lang="en">

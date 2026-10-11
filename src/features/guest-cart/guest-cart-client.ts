@@ -714,6 +714,7 @@ export function hydrateGuestCheckoutReturn(): void {
   if (!(root instanceof HTMLElement)) return;
   const status = root.querySelector("[data-guest-checkout-return-status]");
   const order = root.querySelector("[data-guest-checkout-order]");
+  const initialContact = root.querySelector("[data-guest-checkout-contact]");
   const retry = root.querySelector("[data-guest-checkout-retry]");
   const statusRetry = root.querySelector("[data-guest-checkout-status-retry]");
   const retention = readGuestCheckoutRetention(checkoutStorage());
@@ -799,6 +800,7 @@ export function hydrateGuestCheckoutReturn(): void {
         order.hidden = false;
         confirmedOrderMarkup(root, result);
       }
+      if (initialContact instanceof HTMLElement) initialContact.hidden = true;
       if (retry instanceof HTMLAnchorElement) retry.hidden = true;
       if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = true;
       const settled = await settleGuestCheckoutCart(checkoutStorage(), result);

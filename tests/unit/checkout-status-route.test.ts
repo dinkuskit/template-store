@@ -74,4 +74,24 @@ describe("checkout status browser proxy", () => {
     expect(response.status).toBe(503);
     vi.unstubAllGlobals();
   });
+
+  it("rejects a 2 MB request body before calling Commerce", async () => {
+    const transport = vi.fn();
+    vi.stubGlobal("fetch", transport);
+    const response = await POST({
+      request: new Request("http://store.test/api/checkout/status", {
+        method: "POST",
+        headers: {
+          "content-length": String(2 * 1024 * 1024),
+          "x-commerce-guest-capability": "cap.secret",
+        },
+        body: "x",
+      }),
+    } as never);
+    expect(response.status).toBe(413);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toMatchObject({ error: { code: "CHECKOUT_UNAVAILABLE" } });
+    expect(transport).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });

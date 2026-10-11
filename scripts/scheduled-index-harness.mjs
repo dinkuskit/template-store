@@ -122,6 +122,10 @@ function walkSqlite(directory, found) {
 }
 
 function indexPresent(persistPath) {
+  const sqliteProbe = spawnSync("sqlite3", ["--version"], { encoding: "utf8" });
+  if (sqliteProbe.error?.code === "ENOENT") {
+    throw new Error("The scheduled index harness requires the sqlite3 CLI. Install sqlite3 and rerun.");
+  }
   const files = [];
   walkSqlite(persistPath, files);
   for (const file of files) {

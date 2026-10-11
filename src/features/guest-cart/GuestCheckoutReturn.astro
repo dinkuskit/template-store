@@ -15,7 +15,7 @@ const { contactHref } = Astro.props;
     <dl data-guest-checkout-order-totals></dl>
     <h3>What happens next</h3>
     <p>A confirmation email is coming. When your order ships, a shipping email with tracking will arrive.</p>
-    {contactHref && <p>Questions? <a href={contactHref}>Contact the store</a>.</p>}
+    {contactHref && <p data-guest-checkout-contact>Questions? <a href={contactHref}>Contact the store</a>.</p>}
   </div>
   <a class="guest-checkout-continue" href="/">Continue shopping</a>
   <button type="button" data-guest-checkout-status-retry hidden>Check status again</button>

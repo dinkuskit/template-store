@@ -28,6 +28,10 @@ test("real Wrangler unknown-token return handles the expected 503", async ({ bro
         return 0;
       }
     }, { timeout: 30_000 }).toBe(200);
+    const successResponse = await fetch(`${workerUrl}/checkout/success`, {
+      headers: { "cf-connecting-ip": "198.51.100.1" },
+    });
+    expect(successResponse.headers.get("cache-control")).toBe("no-store");
     const context = await browser.newContext({
       baseURL: workerUrl,
       viewport: testInfo.project.use.viewport,
