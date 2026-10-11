@@ -1,16 +1,36 @@
 ---
+import { getSiteSettings } from "emdash";
 import { GuestCartNav, GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
+const settings = await getSiteSettings().catch(() => ({}));
+const rawSettings = settings as typeof settings & {
+  contactEmail?: unknown;
+  contactUrl?: unknown;
+};
+const contactHref = (() => {
+  if (typeof rawSettings.contactEmail === "string" && rawSettings.contactEmail.includes("@")) {
+    return `mailto:${rawSettings.contactEmail}`;
+  }
+  if (typeof rawSettings.contactUrl === "string") {
+    try {
+      const url = new URL(rawSettings.contactUrl);
+      if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+    } catch {}
+  }
+  return undefined;
+})();
+Astro.response.headers.set("Cache-Control", "no-store");
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>Checkout return | {STORE_TITLE}</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Order confirmation | {STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner role="status">Demo checkout &mdash; No real payments or fulfillment.</div>
@@ -18,6 +38,6 @@ const profile = readStorefrontProfile();
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav>
     </header>
-    <main><GuestCheckoutReturn kind="success" /></main>
+    <main><GuestCheckoutReturn contactHref={contactHref} /></main>
   </body>
 </html>
