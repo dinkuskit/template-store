@@ -8,6 +8,7 @@ import {
 
 export const prerender = false;
 const MAX_REQUEST_BYTES = 4 * 1024;
+const MAX_DISCARD_BYTES = 64 * 1024;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 
 function unavailable(status = 503): Response {
@@ -55,11 +56,7 @@ async function boundedText(response: Response): Promise<string | null> {
 async function boundedRequestText(request: Request): Promise<string | null> {
   const declared = request.headers.get("content-length");
   if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_REQUEST_BYTES)) {
-    try {
-      await request.body?.cancel();
-    } catch {
-      // The body is already unusable; the caller still receives the bounded error.
-    }
+    await discardRequestBody(request);
     return null;
   }
   if (!request.body) return "";
@@ -89,6 +86,27 @@ async function boundedRequestText(request: Request): Promise<string | null> {
     offset += chunk.byteLength;
   }
   return new TextDecoder().decode(bytes);
+}
+
+async function discardRequestBody(request: Request): Promise<void> {
+  if (!request.body) return;
+  const reader = request.body.getReader();
+  let size = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) return;
+      size += next.value.byteLength;
+      if (size > MAX_DISCARD_BYTES) {
+        await reader.cancel();
+        return;
+      }
+    }
+  } catch {
+    // The body may already be disconnected; the bounded response is still safe.
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export const POST: APIRoute = async ({ request }) => {
