@@ -38,12 +38,18 @@ test("guest checkout stays closed and return pages never trust browser claims", 
   );
   try {
   const page = await context.newPage();
+  await mkdir(resolve("runs/checkout-success-commerce"), { recursive: true });
   await installOfflineCheckoutHarness(page, { baseURL: testInfo.project.use.baseURL as string, synthetic: false });
   await page.goto(
     "/checkout/success?success=true&session_id=forged&redirect_status=succeeded",
   );
   await expect(page.getByRole("heading", { name: "We couldn’t find that order" })).toBeVisible();
   await expect(page.getByText("This return could not be matched")).toBeVisible();
+  await page.screenshot({
+    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-not-found.png`),
+    fullPage: true,
+    animations: "disabled",
+  });
 
   await page.goto("/checkout/cancel?session_id=forged");
   await expect(page).toHaveURL(/\/cart\/?$/);
@@ -119,6 +125,11 @@ test("Commerce checkout token renders the paid order and clears the cart", async
   await expect(page.locator("[data-guest-checkout-order-items]")).toContainText("Synthetic fixture shirt");
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
   expect(harness.counts().statusCalls).toBe(2);
+  await page.screenshot({
+    path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-paid.png`),
+    fullPage: true,
+    animations: "disabled",
+  });
   await expect(page.locator("[data-guest-cart-count]")).toBeHidden();
   await page.screenshot({
     path: resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name, "guest-checkout-synthetic-paid.png"),
