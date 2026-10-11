@@ -567,6 +567,9 @@ async function seedCanonical(
       throw new SeedRefusal("CMS_SEED_INVALID", validation.errors.join("; "));
     }
     if (process.env.DINKUS_SEED_TEST_LEGACY === "1") {
+      await db.deleteFrom("_emdash_media_usage_index_status")
+        .where("scope_type", "=", "collection")
+        .execute();
       await db.deleteFrom("_emdash_fields").execute();
       await db.deleteFrom("_emdash_collections").where("slug", "!=", "merchandise").execute();
       await applySeed(db, LEGACY_SCHEMA_SEED, {
