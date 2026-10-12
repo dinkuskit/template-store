@@ -63,7 +63,7 @@ function bypassProblem(route) {
     return "route must declare explicit HTTP methods";
   }
   if (surface === "registry") {
-    if (!/^\/_emdash\/api\/plugins\/[a-z0-9-]+\/[^/]/u.test(path)) {
+    if (!/^\/_emdash\/api\/plugins\/[a-z0-9_-]+\/[^/]/u.test(path)) {
       return "registry route must be one exact route under a named plugin";
     }
     if (route.source === "payments" && !/^\/_emdash\/api\/plugins\/dinkus-payments\/[^/]/u.test(path)) {
@@ -91,7 +91,7 @@ function wildcardBypassExists() {
     ? resolve(process.env.ACCESS_ROUTES_POLICY_ROOT)
     : root;
   const policyFiles = ["DEPLOY.md", "wrangler.jsonc"];
-  const wildcard = /\/_emdash\/api\/plugins\/(?:\*|(?:[a-z0-9-]+|<plugin>|\{plugin\})\/\*)/u;
+  const wildcard = /\/_emdash\/api\/plugins\/(?:\*|(?:[a-z0-9_-]+|<plugin>|\{plugin\})\/\*)/u;
   return policyFiles.some((file) => {
     const path = resolve(policyRoot, file);
     try {
