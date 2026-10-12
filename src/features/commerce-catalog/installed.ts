@@ -1,5 +1,5 @@
 import { formatUsdMinor } from "../store-shell/price.js";
-import type { PublicCommerceProduct } from "./index.js";
+import type { PublicCommerceProduct, PublicCommerceVariant } from "./index.js";
 import { readCommerceGallery, readCommerceImage } from "./media.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
 
@@ -17,7 +17,7 @@ function installedPluginId(): string {
 export interface InstalledCatalogContext {
   request: Request;
   runtime: {
-    getPluginRouteMeta(pluginId: string, path: string): { public?: boolean; methods?: readonly string[] } | null;
+    getPluginRouteMeta?(pluginId: string, path: string): { public?: boolean; methods?: readonly string[] } | null;
     handlePublicPluginApiRoute(pluginId: string, method: string, path: string, request: Request): Promise<{ success: boolean; data?: unknown }>;
   } | null | undefined;
 }
@@ -50,6 +50,42 @@ function variantPriceText(variants: unknown): string | null {
   const lowest = minors.reduce((a, b) => (b < a ? b : a));
   const text = formatUsdMinor(lowest.toString());
   return minors.some(minor => minor !== lowest) ? `from ${text}` : text;
+}
+
+/** Members with a valid id, USD price, selections, and listable availability. */
+function variantMembers(variants: unknown): PublicCommerceVariant[] {
+  if (!object(variants) || !Array.isArray(variants.members)) return [];
+  const members: PublicCommerceVariant[] = [];
+  for (const member of variants.members) {
+    if (!object(member) || typeof member.catalogItemId !== "string" || !/^[a-zA-Z0-9_-]+$/.test(member.catalogItemId)) continue;
+    const minor = usdMinor(member.price);
+    const availability = member.availability;
+    if (minor === null || !object(availability) || typeof availability.status !== "string" ||
+        !STATUSES.has(availability.status) || availability.listable !== true || typeof availability.sellable !== "boolean") continue;
+    if (!Array.isArray(member.selections)) continue;
+    const selections = member.selections.flatMap((s): [string, string][] =>
+      object(s) && typeof s.optionLabel === "string" && typeof s.valueLabel === "string" ? [[s.optionLabel, s.valueLabel]] : []);
+    if (!selections.length) continue;
+    members.push({
+      id: member.catalogItemId,
+      selections,
+      priceText: formatUsdMinor(minor),
+      availability: { status: availability.status as PublicCommerceVariant["availability"]["status"], sellable: availability.sellable },
+    });
+  }
+  return members;
+}
+
+/**
+ * EmDash's anonymous fast path exposes only handlePublicPluginApiRoute, which
+ * itself refuses non-public routes. When route metadata is exposed, also
+ * require a public GET route before dispatching.
+ */
+function publicGetRoute(runtime: NonNullable<InstalledCatalogContext["runtime"]>, pluginId: string, route: string): boolean {
+  if (typeof runtime.handlePublicPluginApiRoute !== "function") return false;
+  if (typeof runtime.getPluginRouteMeta !== "function") return true;
+  const metadata = runtime.getPluginRouteMeta(pluginId, route);
+  return metadata?.public === true && metadata.methods?.includes("GET") === true;
 }
 
 type ProductResult = { product: PublicCommerceProduct } | { id: string | null; reason: string };
@@ -88,14 +124,14 @@ function product(value: unknown): ProductResult {
     // A bad image degrades to a placeholder. It must not hide the price.
     image: readCommerceImage(value.image, value.name),
     gallery: readCommerceGallery(value.gallery, value.name),
+    ...(value.variants !== undefined ? { variants: variantMembers(value.variants) } : {}),
   } };
 }
 
 /** Public-only SSR dispatch preserves the installed plugin's original context. */
 export async function readInstalledCommerceCatalog({ runtime, request }: InstalledCatalogContext): Promise<PublicCommerceProduct[]> {
   const pluginId = installedPluginId();
-  const metadata = runtime?.getPluginRouteMeta(pluginId, ROUTE);
-  if (!runtime || metadata?.public !== true || !metadata.methods?.includes("GET")) {
+  if (!runtime || !publicGetRoute(runtime, pluginId, ROUTE)) {
     throw new Error("Installed public catalog unavailable");
   }
   const products: PublicCommerceProduct[] = [];
@@ -138,8 +174,7 @@ export async function readInstalledCommerceProduct(
   { runtime, request }: InstalledCatalogContext,
 ): Promise<PublicCommerceProduct | null> {
   const pluginId = installedPluginId();
-  const metadata = runtime?.getPluginRouteMeta(pluginId, ITEM_ROUTE);
-  if (!runtime || metadata?.public !== true || !metadata.methods?.includes("GET")) {
+  if (!runtime || !publicGetRoute(runtime, pluginId, ITEM_ROUTE)) {
     throw new Error("Installed public product lookup unavailable");
   }
   const url = new URL(`/_emdash/api/plugins/${pluginId}/${ITEM_ROUTE}`, request.url);

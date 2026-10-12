@@ -155,3 +155,12 @@ export async function resolvePublishedProduct(
     return null;
   }
 }
+
+/**
+ * Product pages offer Add to cart only where checkout can actually run: a
+ * shipping storefront outside the playground. Demo/proof profiles and the
+ * playground show the checkout-unavailable notice instead.
+ */
+export function productPageOffersCart({ profile, isPlayground }: { profile: string; isPlayground: boolean }): boolean {
+  return profile === "shipping" && !isPlayground;
+}

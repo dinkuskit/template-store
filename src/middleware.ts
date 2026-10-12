@@ -7,9 +7,12 @@ import {
 } from "./features/security/public-boundary.js";
 import { resolveGuestCheckoutAdmission } from "./features/guest-cart/checkout-admission.js";
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
+import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
+let demoProfileSeeded = false;
+
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|start|status)$/;
@@ -51,6 +54,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       await ensurePlaygroundDemoCatalog(db);
       seededPlaygroundSessions.add(session);
     }
+  } else if (isDemoCatalogProfile() && !demoProfileSeeded) {
+    // The demo profile (native-development catalog + proof storefront) gets the
+    // same create-only-if-missing demo catalog. Shipping stores never do.
+    demoProfileSeeded = true;
+    const { getDb } = await import("emdash/runtime");
+    await ensurePlaygroundDemoCatalog(await getDb() as Parameters<typeof ensurePlaygroundDemoCatalog>[0])
+      .catch((error: unknown) => { demoProfileSeeded = false; console.error("[demo-seed] failed", error); });
   }
 
   if (isCloudflare && !isProofMode && !isPlayground) {
