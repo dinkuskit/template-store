@@ -14,8 +14,8 @@ function parseJsonc(text) {
   );
 }
 
-export function readDemoCatalogProfile() {
-  const config = parseJsonc(readFileSync(wranglerConfigPath, "utf8"));
+export function readDemoCatalogProfile(configPath = wranglerConfigPath) {
+  const config = parseJsonc(readFileSync(configPath, "utf8"));
   const profile = config.vars?.DINKUS_CATALOG_PROFILE;
   if (typeof profile !== "string" || profile.length === 0) {
     throw new Error("wrangler.jsonc must define vars.DINKUS_CATALOG_PROFILE.");
@@ -29,10 +29,13 @@ export function isCloudflareBuild(env) {
 }
 
 if (import.meta.main) {
+  const configPath = process.env.DINKUS_WRANGLER_CONFIG
+    ? resolve(root, process.env.DINKUS_WRANGLER_CONFIG)
+    : wranglerConfigPath;
   const env = {
     ...process.env,
     ...(isCloudflareBuild(process.env)
-      ? { DINKUS_CATALOG_PROFILE: readDemoCatalogProfile() }
+      ? { DINKUS_CATALOG_PROFILE: readDemoCatalogProfile(configPath) }
       : {}),
   };
   const build = spawnSync("pnpm", ["exec", "astro", "build"], {

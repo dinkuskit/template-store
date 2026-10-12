@@ -7,7 +7,8 @@ import { defineConfig } from "astro/config";
 import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
-import { d1, r2 } from "@emdash-cms/cloudflare";
+import { d1, r2, sandbox } from "@emdash-cms/cloudflare";
+import { unstable_readConfig } from "wrangler";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
@@ -34,6 +35,21 @@ const enableLocalStockManagement =
 
 const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
 
+// EmDash 1.2.0's sandbox() only reads the default Wrangler file. Keep a
+// dedicated deployment's runner aligned with the adapter's selected config.
+function cloudflareSandbox() {
+  if (!process.env.DINKUS_WRANGLER_CONFIG) return sandbox();
+  const config = unstable_readConfig({
+    config: process.env.DINKUS_WRANGLER_CONFIG,
+    ...(process.env.CLOUDFLARE_ENV ? { env: process.env.CLOUDFLARE_ENV } : {}),
+  }, { hideWarnings: true });
+  if (!config.worker_loaders?.some(({ binding }) => binding === "LOADER")) {
+    if (config.vars?.DINKUS_CATALOG_PROFILE === "native-development") return undefined;
+    throw new Error("The selected Cloudflare config must provide LOADER for Registry plugins.");
+  }
+  return "@emdash-cms/cloudflare/sandbox";
+}
+
 export default defineConfig({
   output: "server",
   trailingSlash: "never",
@@ -57,6 +73,7 @@ export default defineConfig({
             baseUrl: "/_emdash/api/media/file",
           }),
       ...(siteUrl ? { siteUrl } : {}),
+      ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : {}),
       plugins: [
         {
           id: "dinkus-template-product-urls",

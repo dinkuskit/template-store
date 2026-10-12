@@ -146,12 +146,16 @@ describe("TestPaymentsWakeClient Configuration", () => {
     });
     expect(client).toBeDefined();
 
+    const credentialedOrigin = new URL("https://payments.example.test");
+    credentialedOrigin.username = "user";
+    credentialedOrigin.password = "pass";
+
     for (const badOrigin of [
       "http://payments.example.test",
       "https://payments.example.test/path",
       "https://payments.example.test?query=1",
       "https://payments.example.test#hash",
-      "https://user:pass@payments.example.test",
+      credentialedOrigin.href,
       "not-a-url",
       "",
     ]) {
