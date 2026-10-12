@@ -9,8 +9,7 @@ const expectedPins = {
   "@dinkuskit/inventory":
     "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
 };
-const expectedCommerceCommit =
-  "fca668447473a05dbe4c32897dc77d7e87ffac9a";
+const expectedCommerceCommit = "c3fdf5749993d044829c6571c09565ba95199f74";
 
 const failures = [];
 for (const feature of [
@@ -28,8 +27,7 @@ for (const feature of [
 if (
   manifest.dinkuskit?.sourcePins?.commerce?.repository !==
     "https://github.com/dinkuskit/commerce.git" ||
-  manifest.dinkuskit?.sourcePins?.commerce?.commit !==
-    expectedCommerceCommit
+  manifest.dinkuskit?.sourcePins?.commerce?.commit !== expectedCommerceCommit
 ) {
   failures.push("Commerce source preparation must retain its exact repository and commit");
 }

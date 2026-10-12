@@ -5,7 +5,7 @@ import {
   evaluatePublicBoundary,
   isExactGuestCheckoutPath,
 } from "./features/security/public-boundary.js";
-import { resolveGuestCheckoutAdmission } from "./features/guest-cart/checkout-admission.js";
+import { acquireGuestCheckoutAdmission } from "./features/guest-cart/checkout-admission.js";
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 
@@ -83,12 +83,35 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return response;
     }
 
-    if (isExactGuestCheckoutPath(url.pathname) &&
-        !resolveGuestCheckoutAdmission({
-          runtime: context.locals.emdash,
-          // Core has not supplied the same-namespace catalog/config authority.
-          catalog: null,
-        })) {
+    if (isExactGuestCheckoutPath(url.pathname)) {
+      const admission = await acquireGuestCheckoutAdmission({
+        runtime: context.locals.emdash,
+        request: context.request,
+      });
+      if (!admission) {
+        const response = new Response(
+          JSON.stringify({ error: "Checkout is not available yet." }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+          },
+        );
+        applySecurityHeaders(response.headers);
+        return response;
+      }
+    }
+
+    const response = await next();
+    applySecurityHeaders(response.headers);
+    return response;
+  }
+
+  if (isExactGuestCheckoutPath(context.url.pathname)) {
+    const admission = await acquireGuestCheckoutAdmission({
+      runtime: context.locals.emdash,
+      request: context.request,
+    });
+    if (!admission) {
       const response = new Response(
         JSON.stringify({ error: "Checkout is not available yet." }),
         {
@@ -99,26 +122,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       applySecurityHeaders(response.headers);
       return response;
     }
-
-    const response = await next();
-    applySecurityHeaders(response.headers);
-    return response;
-  }
-
-  if (isExactGuestCheckoutPath(context.url.pathname) &&
-      !resolveGuestCheckoutAdmission({
-        runtime: context.locals.emdash,
-        catalog: null,
-      })) {
-    const response = new Response(
-      JSON.stringify({ error: "Checkout is not available yet." }),
-      {
-        status: 503,
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-      },
-    );
-    applySecurityHeaders(response.headers);
-    return response;
   }
 
   if (pathForms.some((path) => NATIVE_GUEST_CHECKOUT_POST_PATH.test(path))) {

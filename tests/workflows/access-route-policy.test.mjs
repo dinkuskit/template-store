@@ -27,21 +27,41 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/readiness",
   ]);
   assert.deepEqual(policy.payments.publicRoutes, []);
-  assert.deepEqual(policy.undeclaredRoutes, [
-    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/admin",
-  ]);
+  assert.deepEqual(policy.undeclaredRoutes, []);
 });
 
 test("check mode fails closed when an upstream route is undeclared", async () => {
-  await assert.rejects(
-    execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs", "--check"], {
-      cwd: root,
-      encoding: "utf8",
-    }),
-    (error) => /lack an explicit public\/admin declaration/u.test(`${error.stdout}\n${error.stderr}`),
-  );
+  const commerce = await mkdtemp(join(tmpdir(), "access-routes-undeclared-"));
+  try {
+    await mkdir(join(commerce, "src"), { recursive: true });
+    await writeFile(join(commerce, "src/plugin.ts"), [
+      'import { pluginRoute } from "emdash/plugin";',
+      "const plugin = {",
+      "  routes: {",
+      '    "undeclared": pluginRoute({ methods: ["POST"] }),',
+      "  },",
+      "};",
+      "export default plugin;",
+      "",
+    ].join("\n"));
+    const env = {
+      ...process.env,
+      ACCESS_ROUTES_COMMERCE_ROOT: commerce,
+    };
+    await assert.rejects(
+      execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs", "--check"], {
+        cwd: root,
+        encoding: "utf8",
+        env,
+      }),
+      (error) => /lack an explicit public\/admin declaration/u.test(`${error.stdout}\n${error.stderr}`),
+    );
+  } finally {
+    await rm(commerce, { recursive: true, force: true });
+  }
 });
 
 test("wildcard audit checks only deployment policy inputs and catches named-plugin wildcards", async () => {

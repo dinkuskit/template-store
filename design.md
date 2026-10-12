@@ -122,3 +122,11 @@ CMS composition, published editorial content, Commerce authority, guest-cart
 behavior, and the closed checkout boundary are unchanged. This is a bounded
 presentation refinement, not a new visual candidate round or a design-ledger
 closure.
+
+## Registry merchant TEST admission (2026-10-12)
+
+The authorized checkout extension consumes Commerce PR106's versioned readiness
+response through the same installed public dispatcher as the catalog. The cart
+shows its existing checkout flow only for supported TEST readiness; unavailable
+or native-development contexts remain closed. This local candidate does not
+establish Registry publication, deployment or a real hosted purchase.
