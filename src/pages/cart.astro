@@ -1,9 +1,15 @@
 ---
 import { GuestCart, GuestCartNav } from "../features/guest-cart/ui.ts";
+import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
 import "../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
+Astro.response.headers.set("Cache-Control", "no-store");
+const checkoutAdmission = await acquireGuestCheckoutAdmission({
+  runtime: Astro.locals.emdash,
+  request: Astro.request,
+}).catch(() => null);
 ---
 <!doctype html>
 <html lang="en">
@@ -13,7 +19,7 @@ const profile = readStorefrontProfile();
     <title>Cart | {STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <div class="store-demo-banner" data-store-demo-banner role="status">Demo / Test Store &mdash; Synthetic demonstration. Purchases and checkout are unavailable.</div>
+    <div class="store-demo-banner" data-store-demo-banner role="status">{checkoutAdmission ? "Test checkout is available. No live purchases." : "Demo / Test Store — Purchases and checkout are unavailable."}</div>
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store">
@@ -22,7 +28,7 @@ const profile = readStorefrontProfile();
       </nav>
     </header>
     <main>
-      <GuestCart />
+      <GuestCart checkoutAdmission={checkoutAdmission} />
     </main>
   </body>
 </html>

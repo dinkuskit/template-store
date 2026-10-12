@@ -15,7 +15,7 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "commit": "fca668447473a05dbe4c32897dc77d7e87ffac9a"
+        "commit": "c3fdf5749993d044829c6571c09565ba95199f74"
       }
     }
   },
@@ -43,7 +43,8 @@
     "verify:access-routes": "pnpm prepare:sources && node scripts/verify-access-routes.mjs --check",
     "verify:checkout-package": "node scripts/verify-checkout-package.mjs",
     "verify:paired-checkout": "node scripts/verify-paired-checkout.mjs",
-    "verify:registry-checkout": "node scripts/verify-registry-checkout.mjs"
+    "verify:registry-checkout": "node scripts/verify-registry-checkout.mjs",
+    "verify:merchant-checkout": "node scripts/verify-merchant-checkout.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "14.1.7",
