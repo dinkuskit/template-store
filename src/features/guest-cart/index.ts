@@ -42,6 +42,7 @@ export {
   projectGuestCartCatalogSnapshot,
   projectGuestCartCatalogSnapshots,
   snapshotErrorText,
+  guestCartRetryControlState,
   storageNoticeText,
 } from "./present.js";
 export type {

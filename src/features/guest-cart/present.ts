@@ -81,7 +81,18 @@ export function storageNoticeText(notice: GuestCartReadNotice | null): string | 
 }
 
 export function snapshotErrorText(): string {
-  return "Current product details could not be loaded. Your cart was kept. Try again.";
+  return "We couldn't load the latest prices.";
+}
+
+/**
+ * The retry control is only offered after a failed price/stock refresh, and is
+ * held disabled while a refresh is in flight.
+ */
+export function guestCartRetryControlState(view: Pick<GuestCartView, "snapshotError" | "pending">): {
+  hidden: boolean;
+  disabled: boolean;
+} {
+  return { hidden: !view.snapshotError, disabled: view.pending };
 }
 
 export function lineBlockReason(snapshot: GuestCartCatalogSnapshot | undefined): {

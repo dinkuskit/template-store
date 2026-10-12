@@ -14,6 +14,7 @@ import {
   saveGuestCartIntent,
   setGuestCartLineQuantity,
   storageNoticeText,
+  guestCartRetryControlState,
   checkoutCanConfirm,
   canRetryGuestCheckoutStatus,
   createGuestCheckoutController,
@@ -242,7 +243,7 @@ function focusAfterRemove(root: Element, removedId: string): void {
     return;
   }
   const retry = root.querySelector("[data-guest-cart-retry]");
-  if (retry instanceof HTMLElement) retry.focus();
+  if (retry instanceof HTMLElement && !retry.hidden) retry.focus();
   void removedId;
 }
 
@@ -277,7 +278,9 @@ function renderCart(root: Element): void {
     delivery.hidden = !current.needsDelivery;
   }
   if (retry instanceof HTMLButtonElement) {
-    retry.disabled = current.pending;
+    const retryState = guestCartRetryControlState(current);
+    retry.hidden = retryState.hidden;
+    retry.disabled = retryState.disabled;
   }
   if (checkoutRecoveryButton instanceof HTMLButtonElement) {
     checkoutRecoveryButton.hidden = !checkoutRecovery;

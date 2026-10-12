@@ -451,7 +451,11 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     await fillContact(page);
     // The same cart becomes digital-only after Commerce's next catalog answer.
     harness.setDigital(true);
-    await page.getByRole("button", { name: "Retry catalog update" }).click();
+    // The retry control is only offered after a failed refresh: fail one refresh, then retry.
+    await expect(page.locator("[data-guest-cart-retry]")).toBeHidden();
+    await page.route("**/api/guest-cart/snapshot**", (route) => route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "catalog_unavailable" }) }), { times: 1 });
+    await page.locator("[data-guest-cart-retry]").dispatchEvent("click");
+    await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeHidden();
     await expect(page.getByLabel("City", { exact: true })).toHaveValue(address.city);
     await page.screenshot({ path: resolve(root, "digital-after-physical-stale-fields.png"), fullPage: true, animations: "disabled" });
