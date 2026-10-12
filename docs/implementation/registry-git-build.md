@@ -1,9 +1,10 @@
 # Registry builds from Git
 
-Use a dedicated Worker for this branch. The repository's default `pnpm build`
-and `wrangler.jsonc` remain the separate native demo; they are not the Registry
-deployment path. Keep automatic builds disabled until the target resources,
-build inputs and commands are configured.
+Use a dedicated Worker for this branch. Plain `pnpm build` selects the default
+Node shipping profile; it does not select Cloudflare. A Cloudflare build using
+the default `wrangler.jsonc` selects the separate native demo. Neither is this
+dedicated Registry deployment path. Keep automatic builds disabled until the
+target resources, build inputs and commands are configured.
 
 ## Cloudflare Workers Builds settings
 
