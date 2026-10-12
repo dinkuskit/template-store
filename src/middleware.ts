@@ -6,6 +6,10 @@ import {
   isExactGuestCheckoutPath,
 } from "./features/security/public-boundary.js";
 import { resolveGuestCheckoutAdmission } from "./features/guest-cart/checkout-admission.js";
+import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
+
+/** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
+const seededPlaygroundSessions = new Set<string>();
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|start|status)$/;
@@ -37,6 +41,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
     process.env.DINKUS_PROOF_MODE === "1";
   const isPlayground =
     Boolean((context.locals as { __playgroundDb?: unknown }).__playgroundDb);
+
+  if (isPlayground) {
+    // EmDash seeds CMS content into each per-visitor DB; Commerce items live in
+    // plugin storage, so create the synthetic demo catalog once per session.
+    const session = context.cookies.get("emdash_playground")?.value;
+    if (session && !seededPlaygroundSessions.has(session)) {
+      const db = (context.locals as { __playgroundDb: Parameters<typeof ensurePlaygroundDemoCatalog>[0] }).__playgroundDb;
+      await ensurePlaygroundDemoCatalog(db);
+      seededPlaygroundSessions.add(session);
+    }
+  }
 
   if (isCloudflare && !isProofMode && !isPlayground) {
     const { request, url } = context;

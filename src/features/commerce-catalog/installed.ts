@@ -19,29 +19,69 @@ function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function product(value: unknown): PublicCommerceProduct {
-  if (!object(value) || typeof value.id !== "string" || !/^[a-zA-Z0-9_-]+$/.test(value.id) ||
-      typeof value.name !== "string" || typeof value.sku !== "string" ||
-      !object(value.price) || value.price.currency !== "USD" || typeof value.price.minor !== "string" ||
-      !object(value.availability) || typeof value.availability.status !== "string" ||
+const MINOR = /^(0|[1-9][0-9]*)$/u;
+
+function usdMinor(value: unknown): string | null {
+  return object(value) && value.currency === "USD" && typeof value.minor === "string" && MINOR.test(value.minor)
+    ? value.minor : null;
+}
+
+/**
+ * Display price for a variant product that Commerce projects without a
+ * top-level price. Uses only server-projected member prices (customerPays);
+ * the lowest is shown, prefixed "from" when members differ.
+ */
+function variantPriceText(variants: unknown): string | null {
+  if (!object(variants) || !Array.isArray(variants.members)) return null;
+  const minors: bigint[] = [];
+  for (const member of variants.members) {
+    if (!object(member)) continue;
+    const minor = usdMinor(member.price);
+    if (minor !== null) minors.push(BigInt(minor));
+  }
+  if (!minors.length) return null;
+  const lowest = minors.reduce((a, b) => (b < a ? b : a));
+  const text = formatUsdMinor(lowest.toString());
+  return minors.some(minor => minor !== lowest) ? `from ${text}` : text;
+}
+
+type ProductResult = { product: PublicCommerceProduct } | { id: string | null; reason: string };
+
+function product(value: unknown): ProductResult {
+  const id = object(value) && typeof value.id === "string" && /^[a-zA-Z0-9_-]+$/.test(value.id) ? value.id : null;
+  const fail = (reason: string): ProductResult => ({ id, reason });
+  if (!object(value) || id === null) return fail("invalid id");
+  if (typeof value.name !== "string" || typeof value.sku !== "string") return fail("invalid name or sku");
+  if (!object(value.availability) || typeof value.availability.status !== "string" ||
       !STATUSES.has(value.availability.status) || value.availability.listable !== true ||
-      typeof value.availability.sellable !== "boolean") throw new Error("Invalid installed catalog projection");
-  return {
-    id: value.id, name: value.name, sku: value.sku,
+      typeof value.availability.sellable !== "boolean") return fail("invalid availability");
+  let regularText: string | null;
+  if (value.price !== undefined) {
+    const minor = usdMinor(value.price);
+    regularText = minor === null ? null : formatUsdMinor(minor);
+    if (regularText === null) return fail("invalid price");
+  } else {
+    regularText = variantPriceText(value.variants);
+    if (regularText === null) return fail("missing price");
+  }
+  return { product: {
+    id, name: value.name, sku: value.sku,
     // Commerce's installed public projection does not expose simple-item
     // fulfillment yet; fail closed to physical so checkout never omits a
     // required delivery address.
     fulfillment: "physical",
     // Commerce projects customerPays only; never reconstruct a regular/sale pair.
-    price: { listable: true, regularText: formatUsdMinor(value.price.minor), saleText: null },
+    price: { listable: true, regularText, saleText: null },
     availability: {
       status: value.availability.status as PublicCommerceProduct["availability"]["status"],
+      // Commerce reports a variant parent as not sellable; the parent id is
+      // never added to the cart, and checkout reprices server-side.
       sellable: value.availability.sellable, listable: true,
     },
     // A bad image degrades to a placeholder. It must not hide the price.
     image: readCommerceImage(value.image, value.name),
     gallery: readCommerceGallery(value.gallery, value.name),
-  };
+  } };
 }
 
 /** Public-only SSR dispatch preserves the installed plugin's original context. */
@@ -65,7 +105,13 @@ export async function readInstalledCommerceCatalog({ runtime, request }: Install
       throw new Error("Installed public catalog unavailable");
     }
     for (const value of result.data.products) {
-      const item = product(value);
+      const parsed = product(value);
+      if (!("product" in parsed)) {
+        // Skip one bad item; the rest of the catalog still renders. Id and reason only.
+        console.warn("Skipping invalid installed catalog item", { id: parsed.id, reason: parsed.reason });
+        continue;
+      }
+      const item = parsed.product;
       if (ids.has(item.id)) throw new Error("Duplicate installed catalog identity");
       ids.add(item.id); products.push(item);
     }
@@ -100,5 +146,7 @@ export async function readInstalledCommerceProduct(
   }
   if (result.data === null) return null;
   if (!object(result.data)) throw new Error("Invalid installed product projection");
-  return product(result.data);
+  const parsed = product(result.data);
+  if (!("product" in parsed)) throw new Error("Invalid installed product projection");
+  return parsed.product;
 }
