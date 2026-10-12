@@ -8,7 +8,7 @@ import {
   demoProductKind,
   isDemoCatalogProfile,
 } from "../../src/features/playground/demo-products.js";
-import { readProductEntries } from "../../src/features/store-shell/product-routes.js";
+import { productPageOffersCart, readProductEntries } from "../../src/features/store-shell/product-routes.js";
 
 const links = DEMO_PRODUCTS.map((product, index) => ({ sku: product.sku, catalogItemId: `item-${index}` }));
 
@@ -62,5 +62,17 @@ describe("demo EmDash product entries", () => {
     const card = readFileSync("src/features/commerce-catalog/CommerceCatalog.astro", "utf8");
     expect(card).toMatch(/<a class="shop-card shop-card--link" href=\{href\}/);
     expect(card).toContain("{!href && <AddToCart");
+  });
+
+  it("hides Add to cart on product pages whenever checkout is unavailable", () => {
+    expect(productPageOffersCart({ profile: "shipping", isPlayground: false })).toBe(true);
+    expect(productPageOffersCart({ profile: "shipping", isPlayground: true })).toBe(false);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: false })).toBe(false);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: true })).toBe(false);
+    const page = readFileSync("src/pages/products/[id].astro", "utf8");
+    expect(page).toContain("const offersCart = productPageOffersCart({ profile, isPlayground });");
+    expect(page).toContain("{cartProduct && offersCart && <AddToCart");
+    expect(page).not.toMatch(/!isPlayground && <AddToCart/);
+    expect(page).toContain("data-checkout-unavailable>Demo product. Cart and checkout are unavailable.");
   });
 });
