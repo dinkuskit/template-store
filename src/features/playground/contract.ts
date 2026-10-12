@@ -154,6 +154,10 @@ export async function isPlaygroundInitFailure(response: Response): Promise<boole
   }
 }
 
+const PLAYGROUND_INIT_FAILED_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="robots" content="noindex, nofollow" /><title>Playground unavailable</title></head>
+<body><h1>The playground couldn't start</h1><p><a href="/playground">Try again</a></p></body></html>`;
+
 /**
  * A session whose store failed to initialize (for example an init cut off
  * part-way through its migrations) fails again on every request. Drop the
@@ -164,10 +168,22 @@ export function recoverFromPlaygroundInitFailure(
   failure: Response,
 ): Response {
   if (request.method === "GET" || request.method === "HEAD") {
+    // One retry only: a fresh session that fails init again would loop.
+    if (new URL(request.url).searchParams.get("retry") === "1") {
+      return new Response(PLAYGROUND_INIT_FAILED_HTML, {
+        status: 503,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Set-Cookie": CLEAR_PLAYGROUND_COOKIE,
+          "Cache-Control": "no-store",
+          "X-Robots-Tag": "noindex, nofollow",
+        },
+      });
+    }
     return new Response(null, {
       status: 302,
       headers: {
-        Location: "/playground",
+        Location: "/playground?retry=1",
         "Set-Cookie": CLEAR_PLAYGROUND_COOKIE,
         "Cache-Control": "no-store",
       },

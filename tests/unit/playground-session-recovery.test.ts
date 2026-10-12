@@ -57,7 +57,7 @@ describe("playground session recovery", () => {
       initError(),
     );
     expect(get.status).toBe(302);
-    expect(get.headers.get("location")).toBe("/playground");
+    expect(get.headers.get("location")).toBe("/playground?retry=1");
     expect(get.headers.get("set-cookie")).toBe(CLEAR_PLAYGROUND_COOKIE);
 
     const post = recoverFromPlaygroundInitFailure(
@@ -65,6 +65,30 @@ describe("playground session recovery", () => {
       initError(),
     );
     expect(post.status).toBe(500);
+    expect(post.headers.get("set-cookie")).toBe(CLEAR_PLAYGROUND_COOKIE);
+  });
+
+  it("stops after one retry with a no-store 503 page that clears the cookie", async () => {
+    const retry = recoverFromPlaygroundInitFailure(
+      new Request("https://playground.dinkuskit.com/playground?retry=1"),
+      initError(),
+    );
+    expect(retry.status).toBe(503);
+    expect(retry.headers.get("location")).toBeNull();
+    expect(retry.headers.get("set-cookie")).toBe(CLEAR_PLAYGROUND_COOKIE);
+    expect(retry.headers.get("cache-control")).toBe("no-store");
+    const html = await retry.text();
+    expect(html).toContain('content="noindex, nofollow"');
+    expect(html).toContain('href="/playground"');
+  });
+
+  it("leaves a failed POST as a 500 even with retry=1", () => {
+    const post = recoverFromPlaygroundInitFailure(
+      new Request("https://playground.dinkuskit.com/_playground/init?retry=1", { method: "POST" }),
+      initError(),
+    );
+    expect(post.status).toBe(500);
+    expect(post.headers.get("location")).toBeNull();
     expect(post.headers.get("set-cookie")).toBe(CLEAR_PLAYGROUND_COOKIE);
   });
 });
