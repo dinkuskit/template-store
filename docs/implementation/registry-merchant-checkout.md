@@ -40,3 +40,12 @@ checked before execution. The fixture uses disposable SDK storage, process-only
 synthetic signing material and intercepted service/DNS transport, permitting
 only the local workerd communication. It reads the real compiled catalog and
 readiness handlers, then prepares, retries and settles one canonical order.
+
+### Verification-only pull requests
+
+Apply the `verification-only` label before pushing a PR that must run checks
+without Cloudflare changes. CI still runs workflow validation, store verification,
+and the playground build. Both playground deployment and closed-PR preview
+cleanup skip labeled PRs. Keep the label on PR81 through review; removing it
+allows the existing preview policy on a subsequent PR event. The label does not
+change the main-branch deployment policy.

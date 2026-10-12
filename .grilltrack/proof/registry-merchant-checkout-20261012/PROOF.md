@@ -68,3 +68,15 @@ PR80's seven owned files and all Ship PR27 files remain untouched. Source change
 use the existing guest cart component's admission prop. External exact-head
 OpenClaw/native ClawSweeper review is a separate delivery gate, recorded on the PR
 and in the local run proof; local checks do not imply that clearance.
+
+## PR81 verification-only CI follow-up
+
+The owner requested checks without deployment or merge. CI now excludes PRs
+labeled `verification-only` from playground deployment and closed-PR preview
+cleanup while retaining workflow validation, store verification, and playground
+build. PR81 received that label before this follow-up was pushed.
+
+Local checks: three workflow policy tests passed, including labeled open/sync/
+reopen/close events, fork and disabled-variable boundaries, and unchanged main
+push behavior. Actionlint and `git diff --check` passed. Remote terminal results
+are recorded in the ignored run proof after the pushed revision completes.
