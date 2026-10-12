@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { registryBuildEnv, registryConfig } from "../../scripts/build-registry.mjs";
+import { assertBuildSource, registryBuildEnv, registryConfig } from "../../scripts/build-registry.mjs";
 
 const env = {
   CLOUDFLARE_ACCOUNT_ID: "a".repeat(32), DINKUS_WORKER_NAME: "test-registry-store",
@@ -8,6 +8,16 @@ const env = {
   DINKUS_R2_BUCKET_NAME: "test-registry-media", DINKUS_SESSION_KV_ID: "b".repeat(32),
   DINKUS_RATE_LIMIT_NAMESPACE_ID: "12345", EMDASH_SITE_URL: "https://store.example.test",
 };
+
+test("Workers Builds refuses an unselected branch or unexpected commit", () => {
+  assert.doesNotThrow(() => assertBuildSource({}));
+  assert.throws(() => assertBuildSource({ WORKERS_CI: "1" }), /DINKUS_EXPECTED_BRANCH/);
+  const source = { WORKERS_CI: "1", DINKUS_EXPECTED_BRANCH: "codex/test-store", DINKUS_EXPECTED_COMMIT: "a".repeat(40),
+    WORKERS_CI_BRANCH: "codex/test-store", WORKERS_CI_COMMIT_SHA: "a".repeat(40) };
+  assert.doesNotThrow(() => assertBuildSource(source));
+  assert.throws(() => assertBuildSource({ ...source, WORKERS_CI_BRANCH: "main" }), /branch does not match/);
+  assert.throws(() => assertBuildSource({ ...source, WORKERS_CI_COMMIT_SHA: "b".repeat(40) }), /commit does not match/);
+});
 
 test("requires preprovisioned identities instead of inheriting demo defaults", () => {
   for (const name of Object.keys(env)) {

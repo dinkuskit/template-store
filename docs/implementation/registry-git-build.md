@@ -15,6 +15,14 @@ build inputs and commands are configured.
   production store's Worker for this test branch.
 - Use Node 22.23.2 and pnpm 11.9.0, matching `.nvmrc` and `packageManager`.
 
+Do not assume a Git setup form selects the intended branch. Workers Builds
+provides `WORKERS_CI_BRANCH` and `WORKERS_CI_COMMIT_SHA`; this command requires
+them to match private `DINKUS_EXPECTED_BRANCH` and `DINKUS_EXPECTED_COMMIT`
+inputs before writing a config or building. Set the expected commit to the
+reviewed full SHA. An absent branch selector is a setup blocker, not permission
+to deploy the default branch. A subsequent source change deliberately fails
+until the expected SHA is updated after review.
+
 `build:registry` prepares the pinned source dependency, validates the inputs
 below, writes ignored `runs/registry/wrangler.jsonc`, and builds with that exact
 config. It forces the shipping profile, Inventory/proof mode off, LOADER on,
@@ -36,6 +44,8 @@ non-secret inputs are serialized into the generated deployment config:
 | `DINKUS_RATE_LIMIT_NAMESPACE_ID` | Dedicated numeric rate-limit namespace ID |
 | `EMDASH_SITE_URL` | Exact HTTPS origin, without path, query, fragment or credentials |
 | `DINKUS_EMDASH_ADMIN_ENABLED` | Optional: defaults to `0`; only set `1` after the outer admin/setup guard is verified |
+| `DINKUS_EXPECTED_BRANCH` | Required on Workers Builds: exact intended branch |
+| `DINKUS_EXPECTED_COMMIT` | Required on Workers Builds: reviewed full 40-character source SHA |
 
 Keep real account/resource identifiers in private build settings. Do not add
 secret values to these inputs. In particular, `EMDASH_ENCRYPTION_KEY` belongs in

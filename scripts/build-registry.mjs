@@ -12,6 +12,14 @@ function required(env, name, pattern) {
   return value;
 }
 
+export function assertBuildSource(env) {
+  if (!env.WORKERS_CI) return;
+  const branch = required(env, "DINKUS_EXPECTED_BRANCH", /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/);
+  const commit = required(env, "DINKUS_EXPECTED_COMMIT", /^[a-f0-9]{40}$/i);
+  if (env.WORKERS_CI_BRANCH !== branch) throw new Error("Workers Builds branch does not match DINKUS_EXPECTED_BRANCH");
+  if (env.WORKERS_CI_COMMIT_SHA !== commit) throw new Error("Workers Builds commit does not match DINKUS_EXPECTED_COMMIT");
+}
+
 export function registryConfig(env) {
   const resourceName = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
   const accountId = required(env, "CLOUDFLARE_ACCOUNT_ID", /^[a-f0-9]{32}$/i);
@@ -77,6 +85,7 @@ if (import.meta.main) {
     try {
       if (args.some(arg => !["--dry-run", "--config-only", "--json"].includes(arg)) ||
           (args.includes("--dry-run") && args.includes("--config-only"))) throw new Error("Invalid arguments; use --help");
+      assertBuildSource(process.env);
       const config = registryConfig(process.env);
       const dryRun = args.includes("--dry-run");
       let status = dryRun ? "validated" : "configured";
