@@ -29,3 +29,11 @@ DirectPdsClient verified the publisher's signed records. The official registry-v
 Run `pnpm verify` for repository checks, including desktop/mobile browser fixtures. Run a selected-config Cloudflare build, then exercise that built Worker against fresh local D1 before any remote deployment. Hosted acceptance additionally requires actual signed Registry installs, anonymous admin denial, authorized admin operation, and independent exact-head review.
 
 Private deployment configuration, logs, resource identities and current verification outcomes stay in the operator run packet. No deployment, installed plugin, merchant connection, payment, or production readiness is claimed by this source proof. The existing historical package scripts target older immutable artifacts and cannot be reused as proof of these releases. This change does not alter the separately owned Access extraction work.
+
+## Local verification result
+
+`pnpm verify` passed: 204 unit tests, workflow checks, 31 desktop/mobile browser tests passed with 9 declared skips, and the site crawler checked 7 URLs with zero failures and 4 declared skips. The browser fixtures include the native development profile and absent-Registry fail-closed behavior; skipped checkout cases do not establish a successful transaction or installed Registry host.
+
+A selected-config Cloudflare build with EmDash 1.2.0 and compatibility date 2026-10-07 passed. The built Worker ran against fresh local D1: 90 migrations, zero users, and only the config-owned URL plugin. The public page rendered an unavailable catalog with zero product cards; admin/setup were denied with 403; the local scheduled handler returned 200. Wrangler deploy dry-run passed at 4729.36 KiB gzip. These are local build/runtime checks, not edge deployment, signed host installation, or Access proof.
+
+The first independent review identified stale Registry wording in the implementation guide; that documentation is corrected in this revision. Final exact-head reviews and CI are tracked on the PR. Merge and deployment remain separate gates.
