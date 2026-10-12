@@ -7,8 +7,9 @@ import { defineConfig } from "astro/config";
 import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
-import { d1, r2, sandbox } from "@emdash-cms/cloudflare";
+import { access, d1, r2, sandbox } from "@emdash-cms/cloudflare";
 import { unstable_readConfig } from "wrangler";
+import { selectedRegistryAccessOptions } from "./scripts/registry-access.mjs";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
@@ -34,6 +35,7 @@ const enableLocalStockManagement =
   process.env.DINKUS_STOREFRONT_PROFILE === "proof";
 
 const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
+const accessOptions = selectedRegistryAccessOptions(process.env);
 
 // EmDash 1.2.0's sandbox() only reads the default Wrangler file. Keep a
 // dedicated deployment's runner aligned with the adapter's selected config.
@@ -73,6 +75,7 @@ export default defineConfig({
             baseUrl: "/_emdash/api/media/file",
           }),
       ...(siteUrl ? { siteUrl } : {}),
+      ...(accessOptions ? { auth: access(accessOptions) } : {}),
       ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : {}),
       plugins: [
         {
