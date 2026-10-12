@@ -44,3 +44,19 @@ test("build and runtime stay shipping with a loader and closed bootstrap", () =>
   assert.equal(child.DINKUS_HOSTING_PROFILE, "cloudflare");
   assert.equal(child.DINKUS_WRANGLER_CONFIG, "runs/registry/wrangler.jsonc");
 });
+
+
+test("Registry Access is opt-in and never serializes runtime secrets", () => {
+  assert.equal(registryConfig(env).vars.DINKUS_REGISTRY_ACCESS_ENABLED, "0");
+  const opted = { ...env, DINKUS_REGISTRY_ACCESS_ENABLED: "1", DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN: "test-team.cloudflareaccess.com" };
+  const config = registryConfig(opted);
+  assert.equal(config.vars.DINKUS_REGISTRY_ACCESS_ENABLED, "1");
+  assert.equal(config.vars.DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN, opted.DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN);
+  assert.equal(Object.hasOwn(config.vars, "CF_ACCESS_AUDIENCE"), false);
+  assert.equal(Object.hasOwn(config.vars, "EMDASH_ENCRYPTION_KEY"), false);
+  assert.throws(() => registryConfig({ ...env, DINKUS_REGISTRY_ACCESS_ENABLED: "true" }), /DINKUS_REGISTRY_ACCESS_ENABLED/);
+  for (const domain of [undefined, "https://test-team.cloudflareaccess.com", "test-team.cloudflareaccess.com/path", "test.example.com"]) {
+    assert.throws(() => registryConfig({ ...opted, DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN: domain }), /DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN/);
+  }
+  assert.equal(registryBuildEnv(opted, registryConfig(env)).DINKUS_REGISTRY_ACCESS_ENABLED, "0");
+});

@@ -1,9 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
+import { registryAccessOptions, registryConfigPath } from "./registry-access.mjs";
 
 const root = resolve(import.meta.dirname, "..");
-const configRelativePath = "runs/registry/wrangler.jsonc";
+const configRelativePath = registryConfigPath;
 const configPath = resolve(root, configRelativePath);
 
 function required(env, name, pattern) {
@@ -42,6 +43,7 @@ export function registryConfig(env) {
   }
   const adminEnabled = env.DINKUS_EMDASH_ADMIN_ENABLED ?? "0";
   if (adminEnabled !== "0" && adminEnabled !== "1") throw new Error("Invalid DINKUS_EMDASH_ADMIN_ENABLED");
+  const accessOptions = registryAccessOptions(env);
   return {
     $schema: "../../node_modules/wrangler/config-schema.json",
     name: workerName,
@@ -58,6 +60,8 @@ export function registryConfig(env) {
       DINKUS_LAUNCH_INDEXABLE: "0",
       DINKUS_EMDASH_ADMIN_ENABLED: adminEnabled,
       EMDASH_SITE_URL: siteUrl.origin,
+      DINKUS_REGISTRY_ACCESS_ENABLED: accessOptions ? "1" : "0",
+      ...(accessOptions ? { DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN: accessOptions.teamDomain } : {}),
     },
     assets: { binding: "ASSETS", directory: "../../dist/client", run_worker_first: true },
     d1_databases: [{ binding: "DB", database_name: databaseName, database_id: databaseId }],
