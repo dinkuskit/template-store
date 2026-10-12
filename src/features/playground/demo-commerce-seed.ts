@@ -159,3 +159,5 @@ export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: st
   }
   return { created };
 }
+
+export { PLAYGROUND_FLAT_RATE_SHIPPING } from "./flat-rate-shipping.js";

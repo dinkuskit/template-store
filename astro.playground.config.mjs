@@ -7,11 +7,15 @@ import emdash from "emdash/astro";
 import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 
 // The playground always serves the synthetic native catalog; the playground
-// middleware seeds it into each per-visitor DB. Checkout stays unavailable
-// (src/middleware.ts refuses guest checkout and native checkout POSTs).
+// middleware seeds it into each per-visitor DB. Sandbox checkout stays closed
+// unless DINKUS_CHECKOUT_ENABLED="1" and the Payments env is present; then the
+// native Commerce plugin gets the playground's host-side Payments port.
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
+);
+const playgroundCommerceEntry = fileURLToPath(
+  new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
 );
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
@@ -41,7 +45,10 @@ export default defineConfig({
           version: "1.0.0",
           entrypoint: productUrlEntry,
         },
-        dinkusCommerce({ enableLocalStockManagement: false }),
+        // Commerce's own descriptor, served through the playground entry that
+        // adds build-time checkout options (binding "playground", flat-rate
+        // shipping, host-side Payments port). Commerce is unchanged.
+        { ...dinkusCommerce({ enableLocalStockManagement: false }), entrypoint: playgroundCommerceEntry },
       ],
     }),
   ],

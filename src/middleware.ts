@@ -8,6 +8,19 @@ import {
 import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
+import { playgroundCheckoutConfigured, withCheckoutVisitor } from "./features/playground-checkout/payments-port.js";
+import {
+  checkoutJsonError,
+  checkoutLimited,
+  checkoutRouteKind,
+  nativeCheckoutPath,
+  isCheckoutEnabled,
+  MAX_CHECKOUT_BODY_BYTES,
+  SANDBOX_CLIENT_IP_MESSAGE,
+  SANDBOX_RATE_LIMITED_MESSAGE,
+  visitorIp,
+  validateCheckoutBody,
+} from "./features/playground-checkout/index.js";
 
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
@@ -54,6 +67,18 @@ export const onRequest = defineMiddleware(async (context, next) => {
       : canDispatchInstalledGuestCheckout(installed);
   }
 
+  // Sandbox checkout guard (playground/demo): flag, limiter and body
+  // validation run before the per-visitor DO/database is touched below.
+  const checkoutKind = checkoutRouteKind(context.url.pathname);
+  if (checkoutKind && (isPlayground || isDemoCatalogProfile())) {
+    const guarded = await guardSandboxCheckout(context.request, checkoutKind,
+      (context.locals as { __playgroundCheckoutLimiter?: unknown }).__playgroundCheckoutLimiter, isPlayground);
+    if (guarded) {
+      applySecurityHeaders(guarded.headers);
+      return guarded;
+    }
+  }
+
   if (isPlayground) {
     // EmDash seeds CMS content into each per-visitor DB; Commerce items live in
     // plugin storage, so create the synthetic demo catalog once per session.
@@ -70,6 +95,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const { getDb } = await import("emdash/runtime");
     await ensurePlaygroundDemoCatalog(await getDb() as Parameters<typeof ensurePlaygroundDemoCatalog>[0])
       .catch((error: unknown) => { demoProfileSeeded = false; console.error("[demo-seed] failed", error); });
+  }
+
+  // Sandbox checkout opens ONLY for a playground session with the flag on and
+  // every Payments value present; the request has already passed body
+  // validation, the visitor-IP check and the limiter above. Registry-path calls
+  // from the cart are served by the playground's native Commerce routes.
+  if (checkoutKind && isPlayground && playgroundCheckoutConfigured()) {
+    const clientIp = visitorIp(context.request);
+    if (!clientIp && checkoutKind === "start") {
+      const refused = checkoutJsonError(400, SANDBOX_CLIENT_IP_MESSAGE);
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
+    const response = await withCheckoutVisitor(clientIp ?? "", () => next(nativeCheckoutPath(checkoutKind)));
+    applySecurityHeaders(response.headers);
+    return response;
   }
 
   if (isCloudflare && !isProofMode && !isPlayground) {
@@ -143,3 +184,64 @@ export const onRequest = defineMiddleware(async (context, next) => {
   applySecurityHeaders(response.headers);
   return response;
 });
+
+async function guardSandboxCheckout(
+  request: Request,
+  kind: NonNullable<ReturnType<typeof checkoutRouteKind>>,
+  limiter: unknown,
+  isPlayground: boolean,
+): Promise<Response | null> {
+  // Flag off: fall through to today's closed gates unchanged.
+  if (!isCheckoutEnabled()) return null;
+  if (request.method !== "POST") return checkoutJsonError(405, "Method not allowed.");
+  const declared = request.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_CHECKOUT_BODY_BYTES)) {
+    return checkoutJsonError(413, "Checkout request is too large.");
+  }
+  const raw = await boundedCheckoutBody(request);
+  if (raw === null || !validateCheckoutBody(kind, raw).ok) {
+    return checkoutJsonError(400, "Checkout request is invalid.");
+  }
+  // Payments needs the visitor IP for its per-visitor limit; refuse locally without one.
+  if (kind === "start" && isPlayground && !visitorIp(request)) {
+    return checkoutJsonError(400, SANDBOX_CLIENT_IP_MESSAGE);
+  }
+  // The playground limiter applies per visitor; the demo profile has no binding.
+  if (kind === "start" && isPlayground && await checkoutLimited(request, limiter)) {
+    const limited = checkoutJsonError(429, SANDBOX_RATE_LIMITED_MESSAGE);
+    limited.headers.set("Retry-After", "600");
+    return limited;
+  }
+  return null;
+}
+
+async function boundedCheckoutBody(request: Request): Promise<string | null> {
+  if (!request.body) return "";
+  const reader = request.clone().body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.byteLength;
+      if (size > MAX_CHECKOUT_BODY_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(next.value);
+    }
+  } catch {
+    return null;
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}

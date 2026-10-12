@@ -7,6 +7,7 @@ import {
   PLAYGROUND_CREATION_LIMITER_BINDING,
   PLAYGROUND_GLOBAL_LIMITER_BINDING,
 } from "./features/playground/contract.js";
+import { PLAYGROUND_CHECKOUT_LIMITER_BINDING } from "./features/playground-checkout/index.js";
 
 /**
  * Thin project-owned hook around EmDash's playground middleware.
@@ -16,6 +17,10 @@ import {
  * without the binding; when present, it limits only database initialization.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
+  // Hand the sandbox checkout limiter binding to the store middleware, which
+  // applies it to checkout starts before the per-visitor database is touched.
+  (context.locals as { __playgroundCheckoutLimiter?: unknown }).__playgroundCheckoutLimiter =
+    (env as Record<string, unknown>)[PLAYGROUND_CHECKOUT_LIMITER_BINDING];
   if (
     context.url.pathname === "/_playground/init" &&
     context.request.method === "POST"
