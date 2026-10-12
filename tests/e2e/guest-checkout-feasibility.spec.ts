@@ -445,11 +445,37 @@ test("checkout start sends delivery only while the cart needs it, even after fie
   try {
     const page = await staleContext.newPage();
     const harness = await installOfflineCheckoutHarness(page, { baseURL });
-    await page.addInitScript(seedCart);
+    // Two physical lines, so removing one triggers a catalog refresh without a reload
+    // (a reload would clear the unsaved address and leave the form disabled while the catalog is down).
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+        version: 1,
+        lines: [{ id: "fixture-shirt", quantity: 1 }, { id: "fixture-mug", quantity: 1 }],
+      }));
+    });
+    const physicalProduct = (id: string, name: string) => ({
+      id,
+      found: true,
+      name,
+      sku: id.toUpperCase(),
+      price: { listable: true, regularText: "$24.00", saleText: null },
+      availability: { status: "in-stock", sellable: true, listable: true },
+    });
+    await page.route("**/api/guest-cart/snapshot**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          products: [physicalProduct("fixture-shirt", "Synthetic fixture shirt"), physicalProduct("fixture-mug", "Synthetic fixture mug")],
+        }),
+      }),
+    );
     await page.goto("/cart");
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
     await fillContact(page);
-    // The same cart becomes digital-only after Commerce's next catalog answer.
+    await page.unroute("**/api/guest-cart/snapshot**");
+    // The remaining line becomes digital-only after Commerce's next catalog answer,
+    // but the first refresh after removing the mug fails.
     harness.setDigital(true);
     await page.route("**/api/guest-cart/snapshot**", (route) =>
       route.fulfill({
@@ -458,7 +484,7 @@ test("checkout start sends delivery only while the cart needs it, even after fie
         body: JSON.stringify({ error: "catalog_unavailable" }),
       }),
     );
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("article").filter({ hasText: "Synthetic fixture mug" }).getByRole("button", { name: "Remove" }).click();
     await expect(page.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.");
     await page.unroute("**/api/guest-cart/snapshot**");
 
@@ -468,7 +494,8 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     });
     await page.route("**/api/guest-cart/snapshot**", async (route) => {
       await retryGate;
-      await route.continue();
+      // fallback(), not continue(): continue() skips the offline harness's context route and hits the real server.
+      await route.fallback();
     });
 
     const retryButton = page.getByRole("button", { name: "Try again" });
