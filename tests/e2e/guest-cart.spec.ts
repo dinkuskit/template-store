@@ -213,9 +213,11 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   });
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
   await shopper.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeDisabled();
-  await expect(shopper.locator("[data-guest-cart-retry]")).toBeHidden();
   await expect(shopper.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.", { timeout: 8_000 });
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeEnabled();
   await expect(qty).not.toBeDisabled();
   await shopper.unroute("**/api/guest-cart/snapshot**");
 

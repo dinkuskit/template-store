@@ -303,4 +303,30 @@ describe("guest cart retry control", () => {
     const failed = presentGuestCart({ intent, snapshotFailed: true });
     expect(guestCartRetryControlState({ ...failed, pending: true })).toEqual({ hidden: false, disabled: true });
   });
+
+  it("stays visible and disabled while pending after an error", () => {
+    const pendingRetry = presentGuestCart({ intent, pending: true, retrying: true });
+    expect(pendingRetry.snapshotError).toBeNull();
+    expect(guestCartRetryControlState(pendingRetry)).toEqual({ hidden: false, disabled: true });
+    expect(guestCartRetryControlState({ snapshotError: null, pending: true, retrying: true })).toEqual({
+      hidden: false,
+      disabled: true,
+    });
+    expect(guestCartRetryControlState({ snapshotError: null, pending: true, retryPending: true })).toEqual({
+      hidden: false,
+      disabled: true,
+    });
+  });
+
+  it("hides once a refresh succeeds", () => {
+    const success = presentGuestCart({ intent, snapshots: [] });
+    expect(success.snapshotError).toBeNull();
+    expect(guestCartRetryControlState(success)).toEqual({ hidden: true, disabled: false });
+  });
+
+  it("stays visible and becomes enabled when retry fails again", () => {
+    const failedAgain = presentGuestCart({ intent, snapshotFailed: true, retrying: false });
+    expect(failedAgain.snapshotError).toBe("We couldn't load the latest prices.");
+    expect(guestCartRetryControlState(failedAgain)).toEqual({ hidden: false, disabled: false });
+  });
 });

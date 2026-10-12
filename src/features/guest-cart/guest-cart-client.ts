@@ -43,6 +43,7 @@ let session: Session = { intent: emptyGuestCartIntent(), notice: null };
 let snapshots: GuestCartCatalogSnapshot[] | null = null;
 let snapshotFailed = false;
 let pending = false;
+let retrying = false;
 let pendingCheckout = false;
 let checkoutRecovery = false;
 let checkoutController: ReturnType<typeof createGuestCheckoutController> | null = null;
@@ -84,6 +85,7 @@ function view(): GuestCartView {
     intent: session.intent,
     snapshots,
     pending,
+    retrying,
     snapshotFailed,
     storageNotice: session.notice,
     checkoutAdmitted,
@@ -402,11 +404,17 @@ async function refreshSnapshot(root?: Element): Promise<void> {
   if (session.intent.lines.length === 0) {
     snapshots = [];
     snapshotFailed = false;
+    retrying = false;
     pending = false;
     if (root) renderCart(root);
     else renderNav();
     return;
   }
+  const retryBtn = root?.querySelector("[data-guest-cart-retry]");
+  const retryHadFocus = Boolean(
+    retryBtn && (document.activeElement === retryBtn || retryBtn.contains(document.activeElement)),
+  );
+  retrying = snapshotFailed || retrying;
   pending = true;
   snapshotFailed = false;
   if (root) renderCart(root);
@@ -426,8 +434,18 @@ async function refreshSnapshot(root?: Element): Promise<void> {
     snapshotFailed = true;
   } finally {
     pending = false;
-    if (root) renderCart(root);
-    else renderNav();
+    retrying = false;
+    if (root) {
+      renderCart(root);
+      if (retryHadFocus && snapshotFailed) {
+        const retry = root.querySelector("[data-guest-cart-retry]");
+        if (retry instanceof HTMLElement && !retry.hidden && !("disabled" in retry && retry.disabled)) {
+          retry.focus();
+        }
+      }
+    } else {
+      renderNav();
+    }
   }
 }
 
@@ -494,7 +512,8 @@ export function hydrateGuestCartPage(): void {
     } satisfies GuestCheckoutTransport,
   });
   pendingCheckout = false;
-  checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
+  const initialRetention = readGuestCheckoutRetention(checkoutStorage());
+  checkoutRecovery = Boolean(initialRetention?.attemptId || initialRetention?.cartSettlement);
   checkoutMessage = checkoutRecovery ? "You have a saved checkout. Check its status before trying again." : null;
   checkoutMessageError = false;
   checkoutProbePending = false;
@@ -502,6 +521,7 @@ export function hydrateGuestCartPage(): void {
   const retry = root.querySelector("[data-guest-cart-retry]");
   retry?.addEventListener("click", () => {
     if (pending) return;
+    retrying = true;
     void refreshSnapshot(root);
   });
   root.addEventListener("click", (event) => {
