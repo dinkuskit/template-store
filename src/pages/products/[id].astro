@@ -82,7 +82,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
       {item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku)} fallbackAlt={`${item.title} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${item.title} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
             </div>
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}

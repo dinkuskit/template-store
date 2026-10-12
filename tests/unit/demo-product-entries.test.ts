@@ -5,6 +5,7 @@ import { DEMO_PRODUCTS, demoRegularMinorForSku } from "../../scripts/demo-seed-p
 import {
   buildDemoProductEntries,
   demoPlaceholderImage,
+  demoProductKind,
   isDemoCatalogProfile,
 } from "../../src/features/playground/demo-products.js";
 import { readProductEntries } from "../../src/features/store-shell/product-routes.js";
@@ -29,11 +30,17 @@ describe("demo EmDash product entries", () => {
 
   it("gives every demo product a local placeholder image and no other SKU one", () => {
     for (const product of DEMO_PRODUCTS) {
-      const src = demoPlaceholderImage(product.sku);
+      const src = demoPlaceholderImage(product.sku, `demo-${demoProductKind(product)}`);
       expect(src).toMatch(/^\/products\/[a-z]+\.svg$/);
       expect(existsSync(`public${src}`)).toBe(true);
     }
-    expect(demoPlaceholderImage("MERCHANT-HAT")).toBeNull();
+    expect(demoPlaceholderImage("MERCHANT-HAT", "demo-shirt")).toBeNull();
+  });
+
+  it("gives no placeholder to a non-demo product that reuses a demo SKU", () => {
+    expect(demoPlaceholderImage("DEMO-HOSTED-SHIRT", "merchant-shirt")).toBeNull();
+    expect(demoPlaceholderImage("DEMO-HOSTED-SHIRT", undefined)).toBeNull();
+    expect(demoPlaceholderImage("DEMO-HOSTED-SHIRT", "demo-cap")).toBeNull();
   });
 
   it("prices hoodie sizes differently so the card shows a from-price", () => {

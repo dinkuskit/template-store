@@ -15,10 +15,16 @@ export function demoProductKind(product: Pick<DemoProductSeed, "sku" | "variant"
 
 const VISUAL: Record<string, string> = { shirt: "TEE", cap: "CAP", hoodie: "HOODIE" };
 
-/** Local placeholder image for a seeded demo SKU, or null for every other SKU. */
-export function demoPlaceholderImage(sku: string): string | null {
+/**
+ * Local placeholder image for a seeded demo product, or null otherwise.
+ * The SKU alone is not proof: the product must also be linked to the seeded
+ * `demo-<kind>` EmDash entry, so a merchant item reusing a demo SKU gets none.
+ */
+export function demoPlaceholderImage(sku: string, entryId: string | null | undefined): string | null {
   const product = DEMO_PRODUCTS.find((candidate) => candidate.sku === sku.toUpperCase());
-  return product ? `/products/${demoProductKind(product)}.svg` : null;
+  if (!product) return null;
+  const kind = demoProductKind(product);
+  return entryId === `demo-${kind}` ? `/products/${kind}.svg` : null;
 }
 
 export function buildDemoProductEntries(links: readonly DemoCatalogLink[]) {

@@ -17,7 +17,7 @@ const { products, unavailable = false, productPaths = new Map() } = Astro.props;
     {products.map(product => {
       const href = productPaths.get(product.id);
       const body = <>
-      <ProductMedia image={product.image} productId={product.id} fallbackSrc={demoPlaceholderImage(product.sku)} fallbackAlt={`${product.name} placeholder image`} />
+      <ProductMedia image={product.image} productId={product.id} fallbackSrc={demoPlaceholderImage(product.sku, href?.split("/").pop())} fallbackAlt={`${product.name} placeholder image`} />
       <div class="shop-card__body">
         <h3>{product.name}</h3>
         <div class="shop-card__facts">
