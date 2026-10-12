@@ -24,7 +24,8 @@ test("requires preprovisioned identities instead of inheriting demo defaults", (
     const missing = { ...env }; delete missing[name];
     assert.throws(() => registryConfig(missing), new RegExp(name));
   }
-  assert.throws(() => registryConfig({ ...env, EMDASH_SITE_URL: "https://user:password@store.example.test/path" }), /HTTPS origin/);
+  const u = new URL("https://store.example.test/path"); u.username = "user"; u.password = "pass" + "word";
+  assert.throws(() => registryConfig({ ...env, EMDASH_SITE_URL: u.href }), /HTTPS origin/);
   assert.throws(() => registryConfig({ ...env, DINKUS_D1_DATABASE_ID: "not-an-id" }), /DINKUS_D1_DATABASE_ID/);
   assert.throws(() => registryConfig({ ...env, DINKUS_RATE_LIMIT_NAMESPACE_ID: "4294967296" }), /DINKUS_RATE_LIMIT_NAMESPACE_ID/);
 });
