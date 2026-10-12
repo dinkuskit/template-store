@@ -21,16 +21,16 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
   assert.equal(policy.wildcardPluginBypass, false);
   assert.deepEqual(policy.checkoutDisabled.bypasses, []);
   assert.deepEqual(policy.commerce.publicRoutes, [
-    "/_emdash/api/plugins/dinkus-commerce/catalog/public",
-    "/_emdash/api/plugins/dinkus-commerce/catalog/public/item",
-    "/_emdash/api/plugins/dinkus-commerce/policies/public",
-    "/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare",
-    "/_emdash/api/plugins/dinkus-commerce/checkout/guest/start",
-    "/_emdash/api/plugins/dinkus-commerce/checkout/guest/status",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public/item",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/policies/public",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status",
   ]);
   assert.deepEqual(policy.payments.publicRoutes, []);
   assert.deepEqual(policy.undeclaredRoutes, [
-    "/_emdash/api/plugins/dinkus-commerce/admin",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/admin",
   ]);
 });
 
@@ -137,7 +137,7 @@ test("route ids resolve from any Commerce module and unresolved ids fail closed"
     const env = { ...process.env, ACCESS_ROUTES_COMMERCE_ROOT: commerce };
     const result = await execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs"], { cwd: root, encoding: "utf8", env });
     const policy = JSON.parse(result.stdout);
-    assert.deepEqual(policy.commerce.publicRoutes, ["/_emdash/api/plugins/dinkus-commerce/policies/public"]);
+    assert.deepEqual(policy.commerce.publicRoutes, ["/_emdash/api/plugins/r_gshdrqaldna3r7sn/policies/public"]);
     assert.deepEqual(policy.unresolvedRouteIds, ["MISSING_ROUTE"]);
     assert.equal(policy.checkoutEnabled.bypasses.some(({ path }) => path.includes("MISSING_ROUTE")), false);
     await assert.rejects(
@@ -172,10 +172,10 @@ test("quoted Commerce route keys are included and undeclared keys fail check mod
     );
     const policy = JSON.parse(result.stdout);
     assert.deepEqual(policy.commerce.publicRoutes, [
-      "/_emdash/api/plugins/dinkus-commerce/catalog/public",
+      "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public",
     ]);
     assert.deepEqual(policy.undeclaredRoutes, [
-      "/_emdash/api/plugins/dinkus-commerce/admin",
+      "/_emdash/api/plugins/r_gshdrqaldna3r7sn/admin",
     ]);
     await assert.rejects(
       execFileAsync(
@@ -183,7 +183,7 @@ test("quoted Commerce route keys are included and undeclared keys fail check mod
         ["scripts/verify-access-routes.mjs", "--check"],
         { cwd: root, encoding: "utf8", env },
       ),
-      (error) => /lack an explicit public\/admin declaration: \/_emdash\/api\/plugins\/dinkus-commerce\/admin/u.test(
+      (error) => /lack an explicit public\/admin declaration: \/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/admin/u.test(
         `${error.stdout}\n${error.stderr}`,
       ),
     );
@@ -323,9 +323,9 @@ test("route ids follow plugin import bindings and do not use colliding filesyste
     });
     const policy = JSON.parse(result.stdout);
     assert.deepEqual(policy.commerce.publicRoutes, [
-      "/_emdash/api/plugins/dinkus-commerce/catalog/from-a",
+      "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/from-a",
     ]);
-    assert.equal(policy.commerce.publicRoutes.includes("/_emdash/api/plugins/dinkus-commerce/catalog/from-b"), false);
+    assert.equal(policy.commerce.publicRoutes.includes("/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/from-b"), false);
     assert.deepEqual(policy.unresolvedRouteIds, []);
   } finally {
     await rm(commerce, { recursive: true, force: true });
@@ -354,7 +354,7 @@ test("AST extraction ignores formatting, comments, and nested handler text", asy
     const result = await execFileAsync(process.execPath, ["scripts/verify-access-routes.mjs"], { cwd: root, encoding: "utf8", env });
     const policy = JSON.parse(result.stdout);
     assert.deepEqual(policy.commerce.publicRoutes, [
-      "/_emdash/api/plugins/dinkus-commerce/catalog/public",
+      "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public",
     ]);
     assert.deepEqual(policy.unsupportedDeclarations, []);
   } finally {

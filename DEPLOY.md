@@ -33,11 +33,11 @@ store's installed release.
 
 Preview from the current pin (review only):
 
-   - `/_emdash/api/plugins/dinkus-commerce/catalog/public` (`GET`)
-   - `/_emdash/api/plugins/dinkus-commerce/catalog/public/item` (`GET`)
-   - `/_emdash/api/plugins/dinkus-commerce/checkout/guest/prepare` (`POST`)
-   - `/_emdash/api/plugins/dinkus-commerce/checkout/guest/start` (`POST`)
-   - `/_emdash/api/plugins/dinkus-commerce/checkout/guest/status` (`POST`)
+   - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public` (`GET`)
+   - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public/item` (`GET`)
+   - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare` (`POST`)
+   - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start` (`POST`)
+   - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status` (`POST`)
 
    These are generated from `src/plugin.ts` and its route-id exports; the list
    above is only a review snapshot. The script fails if the source exposes a
