@@ -37,3 +37,18 @@ Private deployment configuration, logs, resource identities and current verifica
 A selected-config Cloudflare build with EmDash 1.2.0 and compatibility date 2026-10-07 passed. The built Worker ran against fresh local D1: 90 migrations, zero users, and only the config-owned URL plugin. The public page rendered an unavailable catalog with zero product cards; admin/setup were denied with 403; the local scheduled handler returned 200. Wrangler deploy dry-run passed at 4729.36 KiB gzip. These are local build/runtime checks, not edge deployment, signed host installation, or Access proof.
 
 The first independent review identified stale Registry wording in the implementation guide; that documentation is corrected in this revision. Final exact-head reviews and CI are tracked on the PR. Merge and deployment remain separate gates.
+
+## Git build entry point
+
+`pnpm run build:registry` generates an ignored configuration from validated,
+non-secret deployment inputs. D1 and KV IDs are mandatory; it never provisions
+resources and cannot fall back to the native demo. Build/runtime profiles and
+site origin match, LOADER is explicit, and bootstrap plus preview URLs default
+to disabled. Operator settings are documented in
+`docs/implementation/registry-git-build.md`.
+
+Focused workflow tests passed. The actual command built successfully with
+synthetic resource identities, and its generated Cloudflare config passed
+Wrangler deploy dry-run. No remote deployment was performed. The full verifier
+is rerun for this extension; its final result and exact-head review remain on
+the PR and operator proof packet.
