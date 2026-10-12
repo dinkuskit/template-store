@@ -4,9 +4,11 @@
 
 Shop on `/` consumes installed Commerce
 `catalog/public` through EmDash public-only SSR dispatch
-(`handlePublicPluginApiRoute`). The native Commerce plugin identity is
-`dinkus-commerce`; the old registry runtime ID is legacy and is not used for
-this catalog consumer. The request is a fresh public GET: no incoming cookies,
+(`handlePublicPluginApiRoute`). The shipping Commerce Registry identity is
+`r_gshdrqaldna3r7sn`, derived from publisher
+`did:plc:ekk4pjmkh3k3ql2kfoex3qt4` and slug `dinkus-commerce`. The native
+`dinkus-commerce` identity is reserved for the explicit native-development
+profile; shipping does not fall back to it. The request is a fresh public GET: no incoming cookies,
 credentials, query parameters, or shopper capability. Every opaque cursor is
 followed, including empty filtered pages. Display price is Commerce's projected
 customer price; this template does not reconstruct a Regular/Sale pair.
