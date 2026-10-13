@@ -198,7 +198,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   });
   await shopper.reload({ waitUntil: "domcontentloaded" });
   await expect(shopper.locator("[data-guest-cart-status]")).toContainText("Updating current product details");
-  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("could not be loaded", { timeout: 8_000 });
+  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.", { timeout: 8_000 });
   await expect(shopper.locator(`[data-guest-cart-line="${id}"]`)).toBeVisible();
   await expect(shopper.locator("[data-guest-cart-empty]")).toBeHidden();
   await shopper.unroute("**/api/guest-cart/snapshot**");
@@ -211,10 +211,13 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
       body: JSON.stringify({ products: [] }),
     });
   });
-  await shopper.getByRole("button", { name: "Retry catalog update", exact: true }).click();
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
+  await shopper.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeDisabled();
-  await shopper.getByRole("button", { name: "Retry catalog update", exact: true }).click({ force: true });
-  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("could not be loaded", { timeout: 8_000 });
+  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.", { timeout: 8_000 });
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeEnabled();
   await expect(qty).not.toBeDisabled();
   await shopper.unroute("**/api/guest-cart/snapshot**");
 
@@ -226,11 +229,12 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
     });
   });
   await shopper.reload({ waitUntil: "domcontentloaded" });
-  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("could not be loaded");
+  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.");
   await expect(shopper.locator(`[data-guest-cart-line="${id}"]`)).toBeVisible();
   await shopper.unroute("**/api/guest-cart/snapshot**");
-  await shopper.getByRole("button", { name: "Retry catalog update", exact: true }).click();
+  await shopper.getByRole("button", { name: "Try again", exact: true }).click();
   await expect(shopper.getByRole("heading", { name, exact: true })).toBeVisible();
+  await expect(shopper.locator("[data-guest-cart-retry]")).toBeHidden();
   await expect(shopper.locator("[data-regular-price]")).toHaveText("$24.00");
 
   await shopper.goto("/cart?success=1&session_id=forged");

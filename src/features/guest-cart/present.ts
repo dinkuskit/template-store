@@ -59,6 +59,7 @@ export type GuestCartView = Readonly<{
   lines: readonly GuestCartLineView[];
   empty: boolean;
   pending: boolean;
+  retrying: boolean;
   snapshotError: string | null;
   storageNotice: string | null;
   checkoutLabel: string;
@@ -81,7 +82,31 @@ export function storageNoticeText(notice: GuestCartReadNotice | null): string | 
 }
 
 export function snapshotErrorText(): string {
-  return "Current product details could not be loaded. Your cart was kept. Try again.";
+  return "We couldn't load the latest prices.";
+}
+
+export type GuestCartRetryControlInput = {
+  snapshotError?: string | null;
+  pending?: boolean;
+  retrying?: boolean;
+  retryPending?: boolean;
+};
+
+/**
+ * The retry control is only offered after a failed price/stock refresh, and
+ * remains visible and disabled while a retry is pending. It hides once a
+ * refresh succeeds, and remains visible and enabled if a retry fails again.
+ */
+export function guestCartRetryControlState(view: GuestCartRetryControlInput): {
+  hidden: boolean;
+  disabled: boolean;
+} {
+  const isRetrying = Boolean(view.retrying ?? view.retryPending);
+  const visible = Boolean(view.snapshotError || isRetrying);
+  return {
+    hidden: !visible,
+    disabled: Boolean(view.pending || isRetrying),
+  };
 }
 
 export function lineBlockReason(snapshot: GuestCartCatalogSnapshot | undefined): {
@@ -124,6 +149,7 @@ export function presentGuestCart(options: {
   intent: GuestCartIntent;
   snapshots?: readonly GuestCartCatalogSnapshot[] | null;
   pending?: boolean;
+  retrying?: boolean;
   snapshotFailed?: boolean;
   storageNotice?: GuestCartReadNotice | null;
   checkoutAdmitted?: boolean;
@@ -166,6 +192,7 @@ export function presentGuestCart(options: {
     lines,
     empty: lines.length === 0,
     pending: options.pending === true,
+    retrying: options.retrying === true,
     snapshotError: options.snapshotFailed ? snapshotErrorText() : null,
     storageNotice: storageNoticeText(options.storageNotice ?? null),
     checkoutLabel: checkoutEnabled ? "Continue to secure checkout" : GUEST_CHECKOUT_LABEL,

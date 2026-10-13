@@ -14,6 +14,7 @@ import {
   saveGuestCartIntent,
   setGuestCartLineQuantity,
   storageNoticeText,
+  guestCartRetryControlState,
   checkoutCanConfirm,
   canRetryGuestCheckoutStatus,
   createGuestCheckoutController,
@@ -42,6 +43,7 @@ let session: Session = { intent: emptyGuestCartIntent(), notice: null };
 let snapshots: GuestCartCatalogSnapshot[] | null = null;
 let snapshotFailed = false;
 let pending = false;
+let retrying = false;
 let pendingCheckout = false;
 let checkoutRecovery = false;
 let checkoutController: ReturnType<typeof createGuestCheckoutController> | null = null;
@@ -83,6 +85,7 @@ function view(): GuestCartView {
     intent: session.intent,
     snapshots,
     pending,
+    retrying,
     snapshotFailed,
     storageNotice: session.notice,
     checkoutAdmitted,
@@ -242,7 +245,7 @@ function focusAfterRemove(root: Element, removedId: string): void {
     return;
   }
   const retry = root.querySelector("[data-guest-cart-retry]");
-  if (retry instanceof HTMLElement) retry.focus();
+  if (retry instanceof HTMLElement && !retry.hidden) retry.focus();
   void removedId;
 }
 
@@ -277,7 +280,9 @@ function renderCart(root: Element): void {
     delivery.hidden = !current.needsDelivery;
   }
   if (retry instanceof HTMLButtonElement) {
-    retry.disabled = current.pending;
+    const retryState = guestCartRetryControlState(current);
+    retry.hidden = retryState.hidden;
+    retry.disabled = retryState.disabled;
   }
   if (checkoutRecoveryButton instanceof HTMLButtonElement) {
     checkoutRecoveryButton.hidden = !checkoutRecovery;
@@ -399,11 +404,17 @@ async function refreshSnapshot(root?: Element): Promise<void> {
   if (session.intent.lines.length === 0) {
     snapshots = [];
     snapshotFailed = false;
+    retrying = false;
     pending = false;
     if (root) renderCart(root);
     else renderNav();
     return;
   }
+  const retryBtn = root?.querySelector("[data-guest-cart-retry]");
+  const retryHadFocus = Boolean(
+    retryBtn && (document.activeElement === retryBtn || retryBtn.contains(document.activeElement)),
+  );
+  retrying = snapshotFailed || retrying;
   pending = true;
   snapshotFailed = false;
   if (root) renderCart(root);
@@ -423,8 +434,18 @@ async function refreshSnapshot(root?: Element): Promise<void> {
     snapshotFailed = true;
   } finally {
     pending = false;
-    if (root) renderCart(root);
-    else renderNav();
+    retrying = false;
+    if (root) {
+      renderCart(root);
+      if (retryHadFocus && snapshotFailed) {
+        const retry = root.querySelector("[data-guest-cart-retry]");
+        if (retry instanceof HTMLElement && !retry.hidden && !("disabled" in retry && retry.disabled)) {
+          retry.focus();
+        }
+      }
+    } else {
+      renderNav();
+    }
   }
 }
 
@@ -491,14 +512,18 @@ export function hydrateGuestCartPage(): void {
     } satisfies GuestCheckoutTransport,
   });
   pendingCheckout = false;
-  checkoutRecovery = Boolean(readGuestCheckoutRetention(checkoutStorage()));
-  checkoutMessage = checkoutRecovery ? "You have a saved checkout. Check its status before trying again." : null;
+  const initialRetention = readGuestCheckoutRetention(checkoutStorage());
+  // A null attempt ID can mean a prepared capability or a lost start response.
+  // Only Commerce status can distinguish them and unlock the original capability.
+  checkoutRecovery = Boolean(initialRetention);
+  checkoutMessage = checkoutRecovery ? "Check checkout status before continuing." : null;
   checkoutMessageError = false;
   checkoutProbePending = false;
   snapshots = null;
   const retry = root.querySelector("[data-guest-cart-retry]");
   retry?.addEventListener("click", () => {
     if (pending) return;
+    retrying = true;
     void refreshSnapshot(root);
   });
   root.addEventListener("click", (event) => {

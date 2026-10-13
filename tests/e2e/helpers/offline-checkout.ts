@@ -44,6 +44,8 @@ type HarnessOptions = {
   gateInitialPrepare?: boolean;
   statusAlwaysPending?: boolean;
   statusUnknown?: boolean;
+  statusWithoutAttempt?: boolean;
+  loseFirstStartResponse?: boolean;
   /** Status returns a retryable recoverable-failure carrying this hosted-checkout redirect. */
   statusRetryRedirect?: string;
   digital?: boolean;
@@ -91,7 +93,7 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, statusRetryRedirect, digital = false, refuseDelivery = false }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, statusWithoutAttempt = false, loseFirstStartResponse = false, statusRetryRedirect, digital = false, refuseDelivery = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
@@ -150,6 +152,10 @@ export async function installOfflineCheckoutHarness(
           await json(route, { success: false }, 403);
           return;
         }
+        if (loseFirstStartResponse && startCalls === 1) {
+          await route.abort("failed");
+          return;
+        }
         await json(route, {
           success: true,
           data: { ok: true, capabilityId, checkout: projection("pending", `fixture-attempt-${startCalls}`) },
@@ -178,7 +184,7 @@ export async function installOfflineCheckoutHarness(
           data: {
             ok: true,
             capabilityId,
-            checkout: projection(statusAlwaysPending || statusCalls === 1 ? "pending" : "paid", `fixture-attempt-${startCalls}`),
+            checkout: projection(statusAlwaysPending || statusCalls === 1 ? "pending" : "paid", statusWithoutAttempt ? null : `fixture-attempt-${startCalls}`),
           },
         });
         return;

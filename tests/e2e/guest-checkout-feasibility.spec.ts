@@ -445,13 +445,69 @@ test("checkout start sends delivery only while the cart needs it, even after fie
   try {
     const page = await staleContext.newPage();
     const harness = await installOfflineCheckoutHarness(page, { baseURL });
-    await page.addInitScript(seedCart);
+    // Two physical lines, so removing one triggers a catalog refresh without a reload
+    // (a reload would clear the unsaved address and leave the form disabled while the catalog is down).
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+        version: 1,
+        lines: [{ id: "fixture-shirt", quantity: 1 }, { id: "fixture-mug", quantity: 1 }],
+      }));
+    });
+    const physicalProduct = (id: string, name: string) => ({
+      id,
+      found: true,
+      name,
+      sku: id.toUpperCase(),
+      price: { listable: true, regularText: "$24.00", saleText: null },
+      availability: { status: "in-stock", sellable: true, listable: true },
+    });
+    await page.route("**/api/guest-cart/snapshot**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          products: [physicalProduct("fixture-shirt", "Synthetic fixture shirt"), physicalProduct("fixture-mug", "Synthetic fixture mug")],
+        }),
+      }),
+    );
     await page.goto("/cart");
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
     await fillContact(page);
-    // The same cart becomes digital-only after Commerce's next catalog answer.
+    await page.unroute("**/api/guest-cart/snapshot**");
+    // The remaining line becomes digital-only after Commerce's next catalog answer,
+    // but the first refresh after removing the mug fails.
     harness.setDigital(true);
-    await page.getByRole("button", { name: "Retry catalog update" }).click();
+    await page.route("**/api/guest-cart/snapshot**", (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "catalog_unavailable" }),
+      }),
+    );
+    await page.getByRole("article").filter({ hasText: "Synthetic fixture mug" }).getByRole("button", { name: "Remove" }).click();
+    await expect(page.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.");
+    await page.unroute("**/api/guest-cart/snapshot**");
+
+    let releaseRetry: () => void = () => {};
+    const retryGate = new Promise<void>((resolve) => {
+      releaseRetry = resolve;
+    });
+    await page.route("**/api/guest-cart/snapshot**", async (route) => {
+      await retryGate;
+      // fallback(), not continue(): continue() skips the offline harness's context route and hits the real server.
+      await route.fallback();
+    });
+
+    const retryButton = page.getByRole("button", { name: "Try again" });
+    await expect(retryButton).toBeVisible();
+    await expect(retryButton).toBeEnabled();
+    await retryButton.click();
+    await expect(retryButton).toBeVisible();
+    await expect(retryButton).toBeDisabled();
+
+    releaseRetry();
+    await expect(retryButton).toBeHidden();
+    await page.unroute("**/api/guest-cart/snapshot**");
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeHidden();
     await expect(page.getByLabel("City", { exact: true })).toHaveValue(address.city);
     await page.screenshot({ path: resolve(root, "digital-after-physical-stale-fields.png"), fullPage: true, animations: "disabled" });
@@ -533,3 +589,60 @@ test("retryable unconfirmed return reveals the hosted-checkout retry link; confi
     await tokenlessContext.close();
   }
 });
+
+
+for (const scenario of ["prepared capability", "lost first-start response"] as const) {
+  test(`retained ${scenario} remains recoverable after cart reload`, async ({ browser }, testInfo) => {
+    test.setTimeout(60_000);
+    const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
+    try {
+      const page = await context.newPage();
+      const lostStart = scenario === "lost first-start response";
+      const harness = await installOfflineCheckoutHarness(page, {
+        baseURL: testInfo.project.use.baseURL as string,
+        digital: true,
+        statusWithoutAttempt: !lostStart,
+        loseFirstStartResponse: lostStart,
+      });
+      await page.addInitScript(() => {
+        if (localStorage.getItem("dinkus.guest-cart.v1")) return;
+        localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
+      });
+      await page.goto("/cart");
+      await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+      if (lostStart) {
+        await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
+        await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+        await expect(page.locator("[data-guest-cart-status]")).toContainText("may have reached Commerce");
+      }
+      const retained = await page.evaluate(() => JSON.parse(localStorage.getItem("dinkus.guest-checkout.v1")!));
+      expect(retained.attemptId).toBeNull();
+      expect(retained.awaitingStart === true).toBe(lostStart);
+      await page.reload();
+      await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+      await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+      const proof = resolve("runs/pr80-recovery-20261012", testInfo.project.name);
+      await mkdir(proof, { recursive: true });
+      await page.screenshot({ path: resolve(proof, `${lostStart ? "lost-start" : "prepared"}-reloaded.png`), fullPage: true });
+      await expect(page.getByRole("button", { name: "Check checkout status" })).toBeVisible({ timeout: 5_000 });
+      await page.getByRole("button", { name: "Check checkout status" }).click();
+      if (lostStart) {
+        await expect(page.locator("[data-guest-cart-status]")).toContainText("still pending");
+        await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+        await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+        expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 1, statusCalls: 1 });
+        const recovered = await page.evaluate(() => JSON.parse(localStorage.getItem("dinkus.guest-checkout.v1")!));
+        expect(recovered.capability).toBe(retained.capability);
+        expect(recovered.attemptId).toBe("fixture-attempt-1");
+      } else {
+        await expect(page.locator("[data-guest-cart-status]")).toContainText("No checkout has started");
+        await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+        await expect(page.locator("[data-guest-cart-qty]")).toBeEnabled();
+        expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 0, statusCalls: 1 });
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem("dinkus.guest-checkout.v1")!).capability)).toBe(retained.capability);
+      }
+      expect(harness.blocked).toEqual([]);
+      await page.screenshot({ path: resolve(proof, `${lostStart ? "lost-start" : "prepared"}-recovered.png`), fullPage: true });
+    } finally { await context.close(); }
+  });
+}

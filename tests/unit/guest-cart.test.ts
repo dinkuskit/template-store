@@ -9,6 +9,7 @@ import {
   canAddCommerceProductToCart,
   emptyGuestCartIntent,
   guestCartItemCount,
+  guestCartRetryControlState,
   guestReturnQueryIsPresent,
   loadGuestCartIntent,
   parseGuestCartIntent,
@@ -184,7 +185,7 @@ describe("guest cart snapshot presentation", () => {
       quantity: 2,
       canCheckout: false,
     });
-    expect(failed.snapshotError).toMatch(/could not be loaded/i);
+    expect(failed.snapshotError).toBe("We couldn't load the latest prices.");
     expect(failed.checkoutEnabled).toBe(false);
     expect(failed.checkoutLabel).toBe("Checkout unavailable");
     expect(
@@ -278,5 +279,54 @@ describe("guest cart snapshot presentation", () => {
         availability: { status: "in-stock", sellable: true, listable: true },
       },
     ]);
+  });
+});
+
+describe("guest cart retry control", () => {
+  const intent = addGuestCartLine(emptyGuestCartIntent(), "hat-1", 1).intent;
+
+  it("stays hidden when there is no snapshot error", () => {
+    const ok = presentGuestCart({ intent, snapshots: [] });
+    expect(ok.snapshotError).toBeNull();
+    expect(guestCartRetryControlState(ok).hidden).toBe(true);
+    const loading = presentGuestCart({ intent, pending: true });
+    expect(guestCartRetryControlState(loading)).toEqual({ hidden: true, disabled: true });
+  });
+
+  it("is visible and enabled after a snapshot error", () => {
+    const failed = presentGuestCart({ intent, snapshotFailed: true });
+    expect(failed.snapshotError).toBe("We couldn't load the latest prices.");
+    expect(guestCartRetryControlState(failed)).toEqual({ hidden: false, disabled: false });
+  });
+
+  it("is disabled while a refresh is pending", () => {
+    const failed = presentGuestCart({ intent, snapshotFailed: true });
+    expect(guestCartRetryControlState({ ...failed, pending: true })).toEqual({ hidden: false, disabled: true });
+  });
+
+  it("stays visible and disabled while pending after an error", () => {
+    const pendingRetry = presentGuestCart({ intent, pending: true, retrying: true });
+    expect(pendingRetry.snapshotError).toBeNull();
+    expect(guestCartRetryControlState(pendingRetry)).toEqual({ hidden: false, disabled: true });
+    expect(guestCartRetryControlState({ snapshotError: null, pending: true, retrying: true })).toEqual({
+      hidden: false,
+      disabled: true,
+    });
+    expect(guestCartRetryControlState({ snapshotError: null, pending: true, retryPending: true })).toEqual({
+      hidden: false,
+      disabled: true,
+    });
+  });
+
+  it("hides once a refresh succeeds", () => {
+    const success = presentGuestCart({ intent, snapshots: [] });
+    expect(success.snapshotError).toBeNull();
+    expect(guestCartRetryControlState(success)).toEqual({ hidden: true, disabled: false });
+  });
+
+  it("stays visible and becomes enabled when retry fails again", () => {
+    const failedAgain = presentGuestCart({ intent, snapshotFailed: true, retrying: false });
+    expect(failedAgain.snapshotError).toBe("We couldn't load the latest prices.");
+    expect(guestCartRetryControlState(failedAgain)).toEqual({ hidden: false, disabled: false });
   });
 });
