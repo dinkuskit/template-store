@@ -5,7 +5,7 @@ import {
   evaluatePublicBoundary,
   isExactGuestCheckoutPath,
 } from "./features/security/public-boundary.js";
-import { acquireGuestCheckoutAdmission } from "./features/guest-cart/checkout-admission.js";
+import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 
@@ -44,6 +44,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
     process.env.DINKUS_PROOF_MODE === "1";
   const isPlayground =
     Boolean((context.locals as { __playgroundDb?: unknown }).__playgroundDb);
+
+  async function checkoutRouteAdmitted(): Promise<boolean> {
+    const installed = { runtime: context.locals.emdash, request: context.request };
+    // Readiness is advisory for new checkout entry. An existing capability must
+    // still reach Commerce's current start/status checks when the advisory is stale.
+    return pathForms.some((path) => path.endsWith("/prepare"))
+      ? Boolean(await acquireGuestCheckoutAdmission(installed))
+      : canDispatchInstalledGuestCheckout(installed);
+  }
 
   if (isPlayground) {
     // EmDash seeds CMS content into each per-visitor DB; Commerce items live in
@@ -84,10 +93,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     if (isExactGuestCheckoutPath(url.pathname)) {
-      const admission = await acquireGuestCheckoutAdmission({
-        runtime: context.locals.emdash,
-        request: context.request,
-      });
+      const admission = await checkoutRouteAdmitted();
       if (!admission) {
         const response = new Response(
           JSON.stringify({ error: "Checkout is not available yet." }),
@@ -107,10 +113,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (isExactGuestCheckoutPath(context.url.pathname)) {
-    const admission = await acquireGuestCheckoutAdmission({
-      runtime: context.locals.emdash,
-      request: context.request,
-    });
+    const admission = await checkoutRouteAdmitted();
     if (!admission) {
       const response = new Response(
         JSON.stringify({ error: "Checkout is not available yet." }),

@@ -3,7 +3,9 @@
 Template admission reads `GET checkout/guest/readiness` through the same
 `r_gshdrqaldna3r7sn` public dispatcher used by the installed catalog. Only the
 exact `dinkuskit.commerce.checkout-readiness/v1` supported response with
-`mode: test` enables the cart and the prepare/start/status route guards.
+`mode: test` enables new cart checkout and the prepare route. Existing capabilities reach
+start/status without consulting the cached readiness answer; Commerce validates
+those requests against current configuration and payment binding.
 Unknown responses, missing plugins, rejected dispatch, and native-development
 catalogs stay closed. Anonymous EmDash pages use their public-only dispatcher;
 optional full-runtime route metadata is checked when available.
@@ -11,14 +13,18 @@ optional full-runtime route metadata is checked when available.
 Readiness is advisory. Commerce retains catalog prices, merchant settings,
 store-key exchange, payment binding checks, attempts, reconciliation and orders.
 Template forwards no browser credentials to the readiness request and adds no
-price or order writer. Start/status revalidate inside Commerce after admission.
+price or order writer. Start/status revalidate inside Commerce independently of readiness.
 The cart response is not cached. Existing recovery keeps the original attempt.
 
 ## Candidate and deployment boundary
 
-The source pin is the local Commerce PR106 candidate
-`c3fdf5749993d044829c6571c09565ba95199f74`. Its Registry package and backend
-identities are recorded in the [candidate proof](../../.grilltrack/proof/registry-merchant-checkout-20261012/PROOF.md).
+The source pin is merged Commerce 0.2.0 release commit
+`f37c9d83a102f7219cd8406986d01d001668c29c`. The frozen local package has the
+same source tree as reviewed PR107 head `2b6fe113746db3a5ff7e4345860c5ebadd466c48`.
+Package and backend identities are recorded in the
+[pairing proof](../../.grilltrack/proof/commerce-020-pairing-20261012/PROOF.md).
+These are local qualification artifacts; their digests do not establish a
+published Registry release.
 This source pin does not install a Registry plugin. A deployment needs the
 reviewed matching Registry artifact, the supported merchant TEST configuration
 and store key inside Commerce, approved service grants and an operating

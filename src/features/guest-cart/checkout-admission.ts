@@ -152,23 +152,38 @@ export function resolveGuestCheckoutAdmission(input: {
   ) {
     return null;
   }
-  if (
-    typeof input.runtime.getRuntimePluginSettingsSchema === "function" &&
-    input.runtime.getRuntimePluginSettingsSchema(COMMERCE_REGISTRY_RUNTIME_ID) === null
-  ) {
-    return null;
-  }
-  if (typeof input.runtime.getPluginRouteMeta === "function") {
-    for (const route of SUPPORTED_GUEST_CHECKOUT_ROUTES) {
-      const metadata = input.runtime.getPluginRouteMeta(COMMERCE_REGISTRY_RUNTIME_ID, route);
-      if (!metadata?.public || !metadata.methods?.some((method) => method.toUpperCase() === "POST")) return null;
-    }
-  }
+  if (!hasInstalledGuestCheckoutRoutes(input.runtime)) return null;
   return {
     pluginId: COMMERCE_REGISTRY_RUNTIME_ID,
     routes: SUPPORTED_GUEST_CHECKOUT_ROUTES,
     catalog: input.catalog,
   };
+}
+
+function hasInstalledGuestCheckoutRoutes(runtime: RuntimeGuestCheckoutMetadata): boolean {
+  if (
+    typeof runtime.getRuntimePluginSettingsSchema === "function" &&
+    runtime.getRuntimePluginSettingsSchema(COMMERCE_REGISTRY_RUNTIME_ID) === null
+  ) {
+    return false;
+  }
+  if (typeof runtime.getPluginRouteMeta === "function") {
+    for (const route of SUPPORTED_GUEST_CHECKOUT_ROUTES) {
+      const metadata = runtime.getPluginRouteMeta(COMMERCE_REGISTRY_RUNTIME_ID, route);
+      if (!metadata?.public || !metadata.methods?.some((method) => method.toUpperCase() === "POST")) return false;
+    }
+  }
+  return true;
+}
+
+/** Existing capabilities reach Commerce's fresh start/status validation without
+ * consulting its cached readiness advisory. This is routing permission only;
+ * Commerce still validates the capability, configuration, binding and attempt. */
+export function canDispatchInstalledGuestCheckout(context: InstalledCheckoutReadinessContext): boolean {
+  if (process.env.DINKUS_CATALOG_PROFILE === "native-development") return false;
+  return Boolean(context.runtime &&
+    typeof context.runtime.handlePublicPluginApiRoute === "function" &&
+    hasInstalledGuestCheckoutRoutes(context.runtime));
 }
 
 /**

@@ -28,17 +28,17 @@ registerHooks({ resolve(specifier, context, next) {
 } });
 
 const EXPECTED_HASHES = {
-  "registry-dinkus-commerce-0.1.0.tar.gz":
-    "f870b1eafc868ccfa832cb682d3bbeeee8027696cdad7fc02d8ab33de2bf9339",
-  "dinkuskit-commerce-0.1.0.tgz":
-    "13e0531ea36cf67267f7aa98782a644e2ee1d231886e16be4cec252cd01636ba",
+  "registry-dinkus-commerce-0.2.0.tar.gz":
+    "436fd1f1d98e7849a23d2376a192f3f536bc84a19301606f106369e354226687",
+  "dinkuskit-commerce-0.2.0.tgz":
+    "6d464546183d56a437393aa21b3f7ec9fdd323add70aaecc5ce696a3ea86c699",
   "route-manifest.json":
-    "50b51ecc45896e4caa7bd74564c93a61ff6a1f90e91a9e81b0de5b7fa6f226e5",
+    "e641db06c7851bf7e43cbb8ad462610853cced9626b3d4d75ce2dc5a7bc35885",
   "backend.js":
-    "8f3f771cb713044f1d6e638df1363bbe91e8da36ac4d778741ee8cf157752f81",
+    "cb61336de27ccf6fd6176a10be717b3f31b68ae7524f0710c82539a3c56c33d9",
 };
 
-const EXPECTED_BACKEND_BYTES = 129442;
+const EXPECTED_BACKEND_BYTES = 130990;
 
 function sha256(buf) {
   return createHash("sha256").update(buf).digest("hex");
@@ -57,7 +57,7 @@ artifactTest("frozen Commerce candidate artifacts match qualification digests", 
 
 artifactTest("compiled installed Registry path executes catalog/readiness/prepare/start/status on same namespace with one-order settlement", async (t) => {
 
-  const tarGzPath = join(ARTIFACT_DIR, "registry-dinkus-commerce-0.1.0.tar.gz");
+  const tarGzPath = join(ARTIFACT_DIR, "registry-dinkus-commerce-0.2.0.tar.gz");
   assert.ok(existsSync(tarGzPath), "registry tar.gz must exist");
 
   const proofRoot = join(root, ".artifacts");
@@ -71,7 +71,7 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
 
   const {
     CHECKOUT_READINESS_SCHEMA, SUPPORTED_GUEST_CHECKOUT_ROUTES,
-    acquireGuestCheckoutAdmission, readInstalledCheckoutReadiness,
+    acquireGuestCheckoutAdmission, readInstalledCheckoutReadiness, canDispatchInstalledGuestCheckout,
   } = await import(pathToFileURL(join(root, "src/features/guest-cart/checkout-admission.ts")));
   const { COMMERCE_REGISTRY_RUNTIME_ID } = await import(pathToFileURL(join(root, "src/features/guest-cart/checkout-protocol.ts")));
   const { readInstalledCommerceCatalog } = await import(pathToFileURL(join(root, "src/features/commerce-catalog/installed.ts")));
@@ -100,6 +100,7 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
 
   const parsedManifest = JSON.parse(manifestRaw);
   assert.equal(parsedManifest.id, "dinkus-commerce");
+  assert.equal(parsedManifest.version, "0.2.0");
 
   // Installed namespace: r_gshdrqaldna3r7sn
   const owner = COMMERCE_REGISTRY_RUNTIME_ID;
@@ -223,6 +224,8 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
   );
 
   let paid = false;
+  let bindingReady = true;
+  let bindingChecks = 0;
   const sessions = new Map();
 
   async function mockTransport(urlStr, init) {
@@ -252,12 +255,13 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
 
       const path = url.pathname;
       if (path.endsWith("-binding")) {
+        bindingChecks += 1;
         return Response.json({
           bindingRef: BINDING,
           providerId: "stripe",
           stripeAccountId: ACCOUNT,
           mode: "test",
-          ready: true,
+          ready: bindingReady,
         });
       }
 
@@ -401,6 +405,25 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
   const capabilityToken = prepareRes.capability.capability;
   assert.ok(Boolean(capabilityToken));
 
+  // Expire only the disposable fixture's advisory timestamp, then cache a
+  // negative binding answer. Commerce owns TTL/budget correctness; this tests
+  // that TemplateStore never treats that advisory as start/status authority.
+  const cached = await collections.checkout_readiness.get("readiness");
+  assert.equal(cached.status, "supported");
+  const earlier = Math.floor(Date.now() / 1000) - 901;
+  await collections.checkout_readiness.put("readiness", {
+    ...cached, lastAttemptAt: earlier, expiresAt: earlier + 900, attempts: [earlier],
+  });
+  bindingReady = false;
+  assert.deepEqual(await readInstalledCheckoutReadiness({ runtime: anonymousRuntime, request: clientRequest }), {
+    schema: CHECKOUT_READINESS_SCHEMA, status: "unavailable",
+  });
+  const negativeChecks = bindingChecks;
+  bindingReady = true;
+  assert.equal(await acquireGuestCheckoutAdmission({ runtime: anonymousRuntime, request: clientRequest }), null);
+  assert.equal(bindingChecks, negativeChecks, "negative readiness remains cached");
+  assert.equal(canDispatchInstalledGuestCheckout({ runtime: anonymousRuntime, request: clientRequest }), true);
+
   // 6. START ROUTE (checkout/guest/start)
   const startRes = await plugin.invokeRoute(
     "checkout/guest/start",
@@ -419,6 +442,7 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
     },
   );
   assert.equal(startRes.ok, true);
+  assert.ok(bindingChecks > negativeChecks, "start verifies current binding despite cached unavailable readiness");
   assert.equal(startRes.checkout.state, "pending");
   assert.ok(startRes.checkout.redirectUrl);
 
@@ -432,6 +456,7 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
   assert.equal(retryStart.checkout.attemptId, startRes.checkout.attemptId);
   assert.equal(sessions.size, 1, "start retry retains one provider session");
 
+  const checksBeforeStatus = bindingChecks;
   // 7. STATUS ROUTE - PENDING
   const statusPending = await plugin.invokeRoute("checkout/guest/status", {}, {
     url: `${SITE}/_emdash/api/plugins/${owner}/checkout/guest/status`,
@@ -443,6 +468,7 @@ artifactTest("compiled installed Registry path executes catalog/readiness/prepar
     },
   });
   assert.equal(statusPending.ok, true);
+  assert.ok(bindingChecks > checksBeforeStatus, "status verifies current binding despite cached unavailable readiness");
   assert.equal(statusPending.checkout.state, "pending");
   assert.equal((await collections.orders.query()).items.length, 0);
 

@@ -429,3 +429,27 @@ describe("guest checkout protocol and recovery", () => {
     expect(guestCheckoutRetryUrl(null)).toBeNull();
   });
 });
+
+
+describe("retained checkout with unavailable advisory readiness", () => {
+  it("requires authoritative status before resuming and never prepares a new capability", async () => {
+    const saved = storage();
+    saved.setItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY, JSON.stringify(retention));
+    const calls: string[] = [];
+    const controller = createGuestCheckoutController({ admitted: false, storage: saved, transport: {
+      fetch: async (endpoint) => {
+        calls.push(endpoint);
+        return Response.json(endpoint.endsWith("/status") ? wire() : wire({ attemptId: "attempt-1" }));
+      },
+    } });
+    expect((await controller.prepare()).failure).toBe("storage-unavailable");
+    expect((await controller.start({ version: 1, lines: [{ id: "item-1", quantity: 1 }] })).failure).toBeTruthy();
+    expect(calls).toHaveLength(0);
+    expect((await controller.status()).result?.ok).toBe(true);
+    expect(controller.canStart()).toBe(true);
+    expect((await controller.start({ version: 1, lines: [{ id: "item-1", quantity: 1 }] })).result?.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(readGuestCheckoutRetention(saved)).toEqual({ ...retention, attemptId: "attempt-1" });
+    expect(controller.canStart()).toBe(false);
+  });
+});

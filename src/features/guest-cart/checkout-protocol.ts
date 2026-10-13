@@ -552,7 +552,8 @@ export function createGuestCheckoutController(options: {
     canPrepareNew,
     start: async (intent, couponCode, contact) => {
       const retention = readGuestCheckoutRetention(options.storage);
-      if (!options.admitted) return { result: null, failure: "storage-unavailable" };
+      // Advisory admission gates new preparation. A retained capability can
+      // resume only after status set startAllowed; Commerce revalidates start.
       if (!retention) return { result: null, failure: "storage-unavailable" };
       if (busy || !startAllowed) return active();
       const start = checkoutStartIntent(intent, couponCode);
