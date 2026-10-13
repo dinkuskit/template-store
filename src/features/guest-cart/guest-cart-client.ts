@@ -513,8 +513,10 @@ export function hydrateGuestCartPage(): void {
   });
   pendingCheckout = false;
   const initialRetention = readGuestCheckoutRetention(checkoutStorage());
-  checkoutRecovery = Boolean(initialRetention?.attemptId || initialRetention?.cartSettlement);
-  checkoutMessage = checkoutRecovery ? "You have a saved checkout. Check its status before trying again." : null;
+  // A null attempt ID can mean a prepared capability or a lost start response.
+  // Only Commerce status can distinguish them and unlock the original capability.
+  checkoutRecovery = Boolean(initialRetention);
+  checkoutMessage = checkoutRecovery ? "Check checkout status before continuing." : null;
   checkoutMessageError = false;
   checkoutProbePending = false;
   snapshots = null;

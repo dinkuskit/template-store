@@ -589,3 +589,60 @@ test("retryable unconfirmed return reveals the hosted-checkout retry link; confi
     await tokenlessContext.close();
   }
 });
+
+
+for (const scenario of ["prepared capability", "lost first-start response"] as const) {
+  test(`retained ${scenario} remains recoverable after cart reload`, async ({ browser }, testInfo) => {
+    test.setTimeout(60_000);
+    const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
+    try {
+      const page = await context.newPage();
+      const lostStart = scenario === "lost first-start response";
+      const harness = await installOfflineCheckoutHarness(page, {
+        baseURL: testInfo.project.use.baseURL as string,
+        digital: true,
+        statusWithoutAttempt: !lostStart,
+        loseFirstStartResponse: lostStart,
+      });
+      await page.addInitScript(() => {
+        if (localStorage.getItem("dinkus.guest-cart.v1")) return;
+        localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
+      });
+      await page.goto("/cart");
+      await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+      if (lostStart) {
+        await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
+        await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+        await expect(page.locator("[data-guest-cart-status]")).toContainText("may have reached Commerce");
+      }
+      const retained = await page.evaluate(() => JSON.parse(localStorage.getItem("dinkus.guest-checkout.v1")!));
+      expect(retained.attemptId).toBeNull();
+      expect(retained.awaitingStart === true).toBe(lostStart);
+      await page.reload();
+      await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+      await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+      const proof = resolve("runs/pr80-recovery-20261012", testInfo.project.name);
+      await mkdir(proof, { recursive: true });
+      await page.screenshot({ path: resolve(proof, `${lostStart ? "lost-start" : "prepared"}-reloaded.png`), fullPage: true });
+      await expect(page.getByRole("button", { name: "Check checkout status" })).toBeVisible({ timeout: 5_000 });
+      await page.getByRole("button", { name: "Check checkout status" }).click();
+      if (lostStart) {
+        await expect(page.locator("[data-guest-cart-status]")).toContainText("still pending");
+        await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+        await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+        expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 1, statusCalls: 1 });
+        const recovered = await page.evaluate(() => JSON.parse(localStorage.getItem("dinkus.guest-checkout.v1")!));
+        expect(recovered.capability).toBe(retained.capability);
+        expect(recovered.attemptId).toBe("fixture-attempt-1");
+      } else {
+        await expect(page.locator("[data-guest-cart-status]")).toContainText("No checkout has started");
+        await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+        await expect(page.locator("[data-guest-cart-qty]")).toBeEnabled();
+        expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 0, statusCalls: 1 });
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem("dinkus.guest-checkout.v1")!).capability)).toBe(retained.capability);
+      }
+      expect(harness.blocked).toEqual([]);
+      await page.screenshot({ path: resolve(proof, `${lostStart ? "lost-start" : "prepared"}-recovered.png`), fullPage: true });
+    } finally { await context.close(); }
+  });
+}
