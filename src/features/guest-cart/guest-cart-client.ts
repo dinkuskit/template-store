@@ -88,7 +88,7 @@ function view(): GuestCartView {
     retrying,
     snapshotFailed,
     storageNotice: session.notice,
-    checkoutAdmitted,
+    checkoutAdmitted: checkoutAdmitted || Boolean(checkoutController?.canStart()),
   });
 }
 
@@ -271,7 +271,7 @@ function renderCart(root: Element): void {
     checkout.textContent = current.checkoutLabel;
   }
   if (contact instanceof HTMLFieldSetElement) {
-    contact.disabled = !checkoutAdmitted || checkoutLocked();
+    contact.disabled = !(checkoutAdmitted || checkoutController?.canStart()) || checkoutLocked();
   }
   if (reason instanceof HTMLElement) {
     reason.textContent = current.checkoutReason;
