@@ -89,3 +89,47 @@ does not establish deployment, Registry installation, or a successful payment.
 Configuration follows the installed EmDash 1.2.0 / Cloudflare adapter and
 Wrangler 4.145.0 schemas. Cloudflare's [Workers Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
 describe build/deploy commands and the separation of build and runtime variables.
+
+
+## Opt-in Cloudflare Access authentication
+
+Only the generated Registry configuration supports this opt-in. Set build
+variables `DINKUS_REGISTRY_ACCESS_ENABLED=1` and
+`DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN=<team>.cloudflareaccess.com`. The generated
+config carries that selection into the build and runtime; default Node and
+native demo builds keep their existing authentication. Leave the flag unset
+or `0` to retain passkeys.
+
+Provision `CF_ACCESS_AUDIENCE` as a runtime secret using the approved process.
+Its value is never needed by this generator or serialized into the config.
+Retain the existing `EMDASH_ENCRYPTION_KEY`, storage bindings and test hostname
+on redeploy; do not recreate resources or keys. Keep the existing hostname
+mapping and verified Access app/policy when deploying the updated bundle.
+
+The version-matched `access()` adapter verifies JWT signature, issuer and
+application audience, then fetches the Access email identity. EmDash 1.2.0 does
+not map service-token `common_name` identities to users. A service token that
+passes the outer guard is not proof of an authenticated EmDash user.
+
+Keep the outer Access application restricted to the intended bootstrap email
+until its first login is proved. EmDash promotes the **first stored user** to
+Admin regardless of the adapter default. Subsequent users receive Subscriber
+(role 10); role and name synchronization are disabled. Existing users retain
+their roles and disabled-user checks. This is not an email-to-Admin mapping.
+After login, verify the exact email and role through the authenticated admin
+user interface before any privileged action.
+
+A half-finished passkey wizard does not prove a user exists. In external mode,
+complete the supported site setup if still requested; that marks setup complete,
+then the first authenticated admin request provisions the user. Do not insert
+user/options rows or inject sessions to skip this flow.
+
+EmDash checks public Registry route metadata before demanding external auth.
+Outer Access still covers those paths unless a separately reviewed exact-path
+exception exists. Verify the installed plugin ID and declared public routes
+before changing that policy; never add a wildcard bypass. Test anonymous admin
+denial, authorized email/role, and intended public catalog behavior separately.
+
+Sources: [EmDash authentication](https://docs.emdashcms.com/guides/authentication/)
+and the resolved 1.2.0 `@emdash-cms/cloudflare/src/auth/cloudflare-access.ts`,
+`emdash/src/astro/middleware/auth.ts`, `setup.ts`, and setup API routes.
