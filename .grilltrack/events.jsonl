@@ -27,3 +27,9 @@
 {"action": "decision_locked", "at": "2026-10-14T11:43:25+00:00", "data": {"decision_id": "checkout-status-origin-001"}, "event_id": "a165e1a2-e238-4c77-ab48-f375b9ecb8e9"}
 {"action": "decision_implemented", "at": "2026-10-14T11:43:25+00:00", "data": {"decision_id": "checkout-status-origin-001"}, "event_id": "d4f62421-d097-41c0-bdf6-b33a52d91701"}
 {"action": "decision_verified", "at": "2026-10-14T11:43:52+00:00", "data": {"decision_id": "checkout-status-origin-001"}, "event_id": "3dc45456-b818-4069-b17c-6b8732c0c56b"}
+{"action": "focus_started", "at": "2026-10-14T12:05:07+00:00", "data": {"cadence": "sequential", "domain": "checkout-status-workerd-redirect"}, "event_id": "4ce10eee-3165-4678-a566-5168238c078b"}
+{"action": "decision_proposed", "at": "2026-10-14T12:05:07+00:00", "data": {"decision_id": "checkout-status-workerd-redirect-001"}, "event_id": "0ff334b3-2dc7-4e7b-b868-a03279d004ba"}
+{"action": "decision_locked", "at": "2026-10-14T12:05:07+00:00", "data": {"decision_id": "checkout-status-workerd-redirect-001"}, "event_id": "65af3f94-3c70-459e-953f-2036b14b11f9"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-14T12:05:07+00:00", "data": {"summary": "Coordinator explicitly assigned the bounded redirect manual fix and native workerd regression; preserve all origin, capability, response and deployment boundaries."}, "event_id": "468cbf7c-b5c7-4f8b-a85b-d30358e3f751"}
+{"action": "decision_implemented", "at": "2026-10-14T12:05:31+00:00", "data": {"decision_id": "checkout-status-workerd-redirect-001"}, "event_id": "9344186c-d923-4c97-8e0b-cc756fa1beb1"}
+{"action": "decision_verified", "at": "2026-10-14T12:06:18+00:00", "data": {"decision_id": "checkout-status-workerd-redirect-001"}, "event_id": "fe6eb895-9013-405c-88e5-29c4adc2843c"}
