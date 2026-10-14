@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-14T11:43:25+00:00",
-    "domain": "checkout-status-origin",
-    "started_at": "2026-10-14T11:43:25+00:00",
+    "confirmed_at": "2026-10-14T12:05:07+00:00",
+    "domain": "checkout-status-workerd-redirect",
+    "started_at": "2026-10-14T12:05:07+00:00",
     "status": "confirmed",
-    "summary": "Coordinator assigned this bounded proxy repair under existing remediation authority; no start, state reset or auth-guard weakening."
+    "summary": "Coordinator explicitly assigned the bounded redirect manual fix and native workerd regression; preserve all origin, capability, response and deployment boundaries."
   },
   "decisions": [
     {
@@ -2962,6 +2962,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-14T11:43:52+00:00",
       "verification_ref": "file:.grilltrack/proof/status-proxy-origin-20261014/PROOF.md;file:.grilltrack/proof/status-proxy-origin-20261014/compiled-admission.json"
+    },
+    {
+      "baseline_ref": "git:877e04671118e439dc399c348906efdf5b0a8d4b",
+      "candidate_refs": [],
+      "choice": "Use redirect manual and retain upstream.ok rejection so 3xx is rejected without following or exposing Location. Exercise native workerd fetch in the required verification suite.",
+      "context_ref": null,
+      "created_at": "2026-10-14T12:05:07+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "checkout-status-workerd-redirect",
+      "history": [
+        {
+          "at": "2026-10-14T12:05:07+00:00",
+          "choice": "Use redirect manual and retain upstream.ok rejection so 3xx is rejected without following or exposing Location. Exercise native workerd fetch in the required verification suite.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T12:05:31+00:00",
+          "choice": "Use redirect manual and retain upstream.ok rejection so 3xx is rejected without following or exposing Location. Exercise native workerd fetch in the required verification suite.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T12:06:18+00:00",
+          "choice": "Use redirect manual and retain upstream.ok rejection so 3xx is rejected without following or exposing Location. Exercise native workerd fetch in the required verification suite.",
+          "from": "implemented",
+          "implementation_ref": "file:src/pages/api/checkout/status.ts;file:tests/workflows/checkout-status-workerd.test.mjs",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "checkout-status-workerd-redirect-001",
+      "implementation_ref": "file:src/pages/api/checkout/status.ts;file:tests/workflows/checkout-status-workerd.test.mjs",
+      "question": "How does the status proxy refuse redirects with native Workers fetch?",
+      "rationale": "Built route returns 503 before any outbound request because workerd rejects redirect error. Local manual control returns 200 and rejects 302 without following.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-14T12:06:18+00:00",
+      "verification_ref": "file:.grilltrack/proof/status-workerd-redirect-20261014/PROOF.md;test:tests/workflows/checkout-status-workerd.test.mjs"
     }
   ],
   "last_activation": {
@@ -2984,5 +3053,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-14T11:43:52+00:00"
+  "updated_at": "2026-10-14T12:06:18+00:00"
 }

@@ -162,7 +162,9 @@ export const POST: APIRoute = async ({ request }) => {
       },
       body: requestBody,
       cache: "no-store",
-      redirect: "error",
+      // Workers supports manual/follow only. Keep redirects visible here so
+      // the non-2xx check below rejects them without forwarding credentials.
+      redirect: "manual",
     });
     if (!upstream.ok || !(upstream.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
       return unavailable();

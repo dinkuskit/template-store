@@ -166,7 +166,7 @@ describe("status proxy origin boundary", () => {
       expect(headers.get("origin")).toBe(site);
       expect(headers.get("authorization")).toBeNull();
       expect(headers.get("cookie")).toBeNull();
-      expect(init).toMatchObject({ method: "POST", body: "{}", cache: "no-store", redirect: "error" });
+      expect(init).toMatchObject({ method: "POST", body: "{}", cache: "no-store", redirect: "manual" });
       return Response.json(result);
     });
     vi.stubGlobal("fetch", transport);
