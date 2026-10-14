@@ -2,9 +2,12 @@ import type { APIRoute } from "astro";
 
 import {
   COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT,
+  COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_HEADER,
   parseGuestCheckoutWireResult,
 } from "../../../features/guest-cart/checkout-protocol.js";
+
+import { canDispatchInstalledGuestCheckout } from "../../../features/guest-cart/checkout-admission.js";
 
 export const prerender = false;
 const MAX_REQUEST_BYTES = 4 * 1024;
@@ -18,17 +21,7 @@ type StatusFailureCode =
   | "CHECKOUT_STATUS_CAPABILITY_DENIED"
   | "CHECKOUT_STATUS_NOT_FOUND"
   | "CHECKOUT_STATUS_UNAVAILABLE"
-  | "CHECKOUT_STATUS_UPSTREAM_REDIRECT"
-  | "CHECKOUT_STATUS_UPSTREAM_HTTP"
-  | `CHECKOUT_STATUS_UPSTREAM_HTTP_${number}`
-  | "CHECKOUT_STATUS_RESPONSE_INVALID"
-  | "CHECKOUT_STATUS_FETCH_FAILED";
-
-function upstreamHttpFailureCode(status: number): StatusFailureCode {
-  return Number.isInteger(status) && status >= 400 && status <= 599
-    ? `CHECKOUT_STATUS_UPSTREAM_HTTP_${status}`
-    : "CHECKOUT_STATUS_UPSTREAM_HTTP";
-}
+  | "CHECKOUT_STATUS_RESPONSE_INVALID";
 
 function domainFailureCode(code: string): StatusFailureCode {
   switch (code) {
@@ -46,41 +39,6 @@ function unavailable(status = 503, code: StatusFailureCode = "CHECKOUT_UNAVAILAB
     { ok: false, error: { code, message: "Checkout status unavailable." } },
     { status, headers: { "Cache-Control": "no-store" } },
   );
-}
-
-async function boundedText(response: Response): Promise<string | null> {
-  const declared = response.headers.get("content-length");
-  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_RESPONSE_BYTES)) return null;
-  if (!response.body) {
-    const text = await response.text();
-    return new TextEncoder().encode(text).byteLength <= MAX_RESPONSE_BYTES ? text : null;
-  }
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const next = await reader.read();
-      if (next.done) break;
-      size += next.value.byteLength;
-      if (size > MAX_RESPONSE_BYTES) {
-        await reader.cancel();
-        return null;
-      }
-      chunks.push(next.value);
-    }
-  } catch {
-    return null;
-  } finally {
-    reader.releaseLock();
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(bytes);
 }
 
 async function boundedRequestText(request: Request): Promise<string | null> {
@@ -167,7 +125,7 @@ function trustedStatusOrigin(request: Request): string | null {
   }
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const requestBody = await boundedRequestText(request);
   if (requestBody === null) {
     return unavailable(413);
@@ -178,44 +136,51 @@ export const POST: APIRoute = async ({ request }) => {
   }
   const origin = trustedStatusOrigin(request);
   if (!origin) return unavailable(403, "CHECKOUT_STATUS_HOST_ORIGIN");
+  const runtime = locals?.emdash;
+  if (!runtime || typeof runtime.handlePublicPluginApiRoute !== "function") {
+    return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
+  }
   try {
-    // This self-fetch targets Commerce's distinct public route, not this proxy,
-    // so the Worker route boundary cannot recurse. Wrangler coverage exercises it.
+    if (!canDispatchInstalledGuestCheckout({ runtime, request })) {
+      return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
+    }
     const target = new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
-    const upstream = await fetch(target, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        accept: "application/json",
-        origin,
-        [GUEST_CHECKOUT_CAPABILITY_HEADER]: capability,
-      },
-      body: requestBody,
-      cache: "no-store",
-      // Workers supports manual/follow only. Keep redirects visible here so
-      // the non-2xx check below rejects them without forwarding credentials.
-      redirect: "manual",
-    });
-    if (!upstream.ok) {
-      return unavailable(503, upstream.status >= 300 && upstream.status < 400
-        ? "CHECKOUT_STATUS_UPSTREAM_REDIRECT" : upstreamHttpFailureCode(upstream.status));
-    }
-    if (!(upstream.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
-      return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
-    }
-    const body = await boundedText(upstream);
-    if (body === null) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
+    const result = await runtime.handlePublicPluginApiRoute(
+      COMMERCE_REGISTRY_RUNTIME_ID,
+      "POST",
+      "checkout/guest/status",
+      new Request(target, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          origin,
+          [GUEST_CHECKOUT_CAPABILITY_HEADER]: capability,
+        },
+        body: requestBody,
+        cache: "no-store",
+      }),
+    );
     let parsed: unknown;
     try {
-      parsed = JSON.parse(body);
+      const text = JSON.stringify(result);
+      if (typeof text !== "string" || new TextEncoder().encode(text).byteLength > MAX_RESPONSE_BYTES) {
+        return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
+      }
+      parsed = JSON.parse(text);
     } catch {
       return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     }
     const validated = parseGuestCheckoutWireResult(parsed);
     if (!validated) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     if (!validated.ok) return unavailable(503, domainFailureCode(validated.error.code));
-    return Response.json(parsed, { status: 200, headers: { "Cache-Control": "no-store" } });
+    const { schema, state, attemptId, redirectUrl, order, retryAfter } = validated.checkout;
+    return Response.json({
+      ok: true,
+      capabilityId: validated.capabilityId,
+      checkout: { schema, state, attemptId, redirectUrl, order, retryAfter },
+    }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch {
-    return unavailable(503, "CHECKOUT_STATUS_FETCH_FAILED");
+    return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
   }
 };

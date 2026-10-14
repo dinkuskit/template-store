@@ -45,3 +45,9 @@
 {"action": "shared_understanding_confirmed", "at": "2026-10-14T12:42:57+00:00", "data": {"summary": "Coordinator approved numeric-only diagnostic after trace privacy qualification failed; optional HTML marker omitted without a stable structured contract."}, "event_id": "b66b8f66-c813-4820-b58d-086926539265"}
 {"action": "decision_implemented", "at": "2026-10-14T12:43:32+00:00", "data": {"decision_id": "checkout-status-http-code-001"}, "event_id": "a3a3261c-1857-4d97-99db-85c12d3b3c64"}
 {"action": "decision_verified", "at": "2026-10-14T12:43:38+00:00", "data": {"decision_id": "checkout-status-http-code-001"}, "event_id": "6422b0ad-0aab-436f-b293-1de79abf93a2"}
+{"action": "focus_started", "at": "2026-10-14T13:01:39+00:00", "data": {"cadence": "sequential", "domain": "checkout-status-public-dispatch"}, "event_id": "318b3717-8169-46bf-a0ea-6759dec7e91e"}
+{"action": "decision_proposed", "at": "2026-10-14T13:01:39+00:00", "data": {"decision_id": "checkout-status-public-dispatch-001"}, "event_id": "3d987567-d055-4071-9b9b-b56ab9cb4c3a"}
+{"action": "decision_locked", "at": "2026-10-14T13:01:39+00:00", "data": {"decision_id": "checkout-status-public-dispatch-001"}, "event_id": "b81fcb3a-067f-4f3b-824f-02878d8dbebe"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-14T13:01:39+00:00", "data": {"summary": "Coordinator approved status-only public dispatcher replacement after source and native-host availability qualification; all Commerce authority and checkout retention remain intact."}, "event_id": "3b2ffae7-735f-4c6f-aeed-914d4e83692d"}
+{"action": "decision_implemented", "at": "2026-10-14T13:02:13+00:00", "data": {"decision_id": "checkout-status-public-dispatch-001"}, "event_id": "99c1ebd7-f6fc-4b22-b67b-17d375bd1978"}
+{"action": "decision_verified", "at": "2026-10-14T13:03:00+00:00", "data": {"decision_id": "checkout-status-public-dispatch-001"}, "event_id": "e4ac56bf-0366-4b1d-9b49-274fd3700854"}

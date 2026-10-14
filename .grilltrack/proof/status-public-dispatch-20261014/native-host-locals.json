@@ -1,0 +1,10 @@
+{
+  "kind": "actual Cloudflare-built Astro/EmDash middleware API locals",
+  "dispatcherAvailable": true,
+  "httpStatus": 503,
+  "externalNetworkRequests": 0,
+  "blockedOutboundAttempts": 0,
+  "liveCalls": 0,
+  "nativeCommerceConfigured": false,
+  "requestDataLogged": false
+}

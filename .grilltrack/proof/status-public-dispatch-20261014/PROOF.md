@@ -1,0 +1,9 @@
+# Installed public status dispatch
+
+The status API now uses the existing EmDash public-only route dispatcher from request locals. It retains the original caller origin, request size and capability checks, installed guest-route metadata gate, and fixed canonical Commerce status Request with only approved headers. Missing dispatcher or failed admission stays unavailable. There is no HTTP self-fetch, private handler or native Commerce fallback. The serialized HandlerResponse is bounded to64KiB; success returns only validated projection fields and errors retain the fixed diagnostic mapping.
+
+Native workerd tests run the actual public-dispatch wrapper and actual status route, checking public-route denial, missing locals, exact request forwarding, zero outbound HTTP, response bounds and projection sanitation. They use a synthetic underlying route implementation, not an installed Commerce artifact.
+
+The complementary compiled-dispatch.json proof uses real EmDash1.2.0 runtime, actual public wrapper, actual WorkerdSandboxRunner and exact Commerce0.2.2 backend. Synthetic valid prepared capability returns pending/null; private route, absent/invalid capability and foreign Origin fail. Status/denial storage revisions stay unchanged, with zero checkout starts, carts, payment associations or application HTTP. Seven loopback bridge fetches are required IPC. This local configured-sandbox proof is not Registry installation or live Cloudflare routing proof.
+
+Separately, an isolated full Cloudflare-built Astro/EmDash middleware fixture verified the public dispatcher is present on the status API request locals with disposable local bindings and no native Commerce registration. The post-change fixture verifies the route does not attempt outbound HTTP. Full verification and exact-source review receipts are retained in the task handoff.
