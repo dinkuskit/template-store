@@ -29,7 +29,12 @@ test("native status failures expose only static diagnostic categories", async (t
       ["payments unavailable", 200, envelope("PAYMENTS_UNAVAILABLE"), "CHECKOUT_STATUS_UNAVAILABLE"],
       ["unknown", 200, envelope("private-code-fixture"), "CHECKOUT_UNAVAILABLE"],
       ["redirect", 302, null, "CHECKOUT_STATUS_UPSTREAM_REDIRECT"],
-      ["HTTP failure", 502, envelope("CAPABILITY_DENIED"), "CHECKOUT_STATUS_UPSTREAM_HTTP"],
+      ["HTTP failure", 502, envelope("CAPABILITY_DENIED"), "CHECKOUT_STATUS_UPSTREAM_HTTP_502"],
+      ["HTTP lower bound", 400, envelope("private-code-fixture"), "CHECKOUT_STATUS_UPSTREAM_HTTP_400"],
+      ["HTTP forbidden", 403, envelope("private-code-fixture"), "CHECKOUT_STATUS_UPSTREAM_HTTP_403"],
+      ["HTTP rate limit", 429, envelope("private-code-fixture"), "CHECKOUT_STATUS_UPSTREAM_HTTP_429"],
+      ["HTTP upper bound", 599, envelope("private-code-fixture"), "CHECKOUT_STATUS_UPSTREAM_HTTP_599"],
+      ["spoofed domain code", 200, envelope("CHECKOUT_STATUS_UPSTREAM_HTTP_403"), "CHECKOUT_UNAVAILABLE"],
       ["malformed", 200, { success: true, data: { ok: true } }, "CHECKOUT_STATUS_RESPONSE_INVALID"],
     ];
     for (const [name, upstreamStatus, payload, expectedCode] of cases) {
