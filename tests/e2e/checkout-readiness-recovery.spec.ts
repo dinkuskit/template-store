@@ -52,3 +52,52 @@ for (const awaitingStart of [false, true]) {
     } finally { await context.close(); }
   });
 }
+
+for (const diagnostic of ["CHECKOUT_STATUS_CAPABILITY_DENIED", "untrusted-private-fixture"]) {
+  test(`failed status remains locked and truthful: ${diagnostic}`, async ({ browser }, testInfo) => {
+    test.setTimeout(60_000);
+    const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
+    try {
+      const page = await context.newPage();
+      const harness = await installOfflineCheckoutHarness(page, {
+        baseURL: testInfo.project.use.baseURL as string, mutateCart: false,
+        digital: true, statusWithoutAttempt: true,
+      });
+      let failures = 0;
+      await page.route("**/api/checkout/status", async (route) => {
+        if (failures++ === 0) {
+          await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({
+            ok: false, error: { code: diagnostic, message: "untrusted-private-message" },
+          }) });
+        } else await route.fallback();
+      });
+      await page.addInitScript(() => {
+        localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
+        localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({ capabilityId: "fixture-cap-1",
+          capability: "fixture-cap-1.secret", attemptId: null, awaitingStart: true }));
+      });
+      await page.goto("/cart");
+      const retained = await page.evaluate(() => localStorage.getItem("dinkus.guest-checkout.v1"));
+      await page.getByRole("button", { name: "Check checkout status" }).click();
+      const status = page.locator("[data-guest-cart-status]");
+      await expect(status).toContainText("Checkout status is unavailable");
+      await expect(status).not.toContainText("pending");
+      await expect(status).not.toContainText("untrusted-private");
+      await expect(status).toHaveAttribute("role", "alert");
+      if (diagnostic === "CHECKOUT_STATUS_CAPABILITY_DENIED") await expect(status).toContainText("status-capability");
+      else await expect(status).not.toContainText("Reference:");
+      await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+      await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+      expect(await page.evaluate(() => localStorage.getItem("dinkus.guest-checkout.v1"))).toBe(retained);
+      expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 0, statusCalls: 0 });
+      const proof = resolve("runs/status-diagnostics-20261014", testInfo.project.name);
+      await mkdir(proof, { recursive: true });
+      await page.screenshot({ path: resolve(proof, diagnostic === "CHECKOUT_STATUS_CAPABILITY_DENIED" ? "capability-unavailable.png" : "unknown-unavailable.png"), fullPage: true });
+      await page.getByRole("button", { name: "Check checkout status" }).click();
+      await expect(status).toContainText("No checkout has started");
+      await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+      expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 0, statusCalls: 1 });
+      expect(harness.blocked).toEqual([]);
+    } finally { await context.close(); }
+  });
+}

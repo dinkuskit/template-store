@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-14T12:05:07+00:00",
-    "domain": "checkout-status-workerd-redirect",
-    "started_at": "2026-10-14T12:05:07+00:00",
+    "confirmed_at": "2026-10-14T12:24:13+00:00",
+    "domain": "checkout-status-diagnostics",
+    "started_at": "2026-10-14T12:24:12+00:00",
     "status": "confirmed",
-    "summary": "Coordinator explicitly assigned the bounded redirect manual fix and native workerd regression; preserve all origin, capability, response and deployment boundaries."
+    "summary": "Coordinator approved bounded diagnostic and truthful UI slice, no autoaction/reset/new capability or ambiguous retry unlock."
   },
   "decisions": [
     {
@@ -3031,6 +3031,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-14T12:06:18+00:00",
       "verification_ref": "file:.grilltrack/proof/status-workerd-redirect-20261014/PROOF.md;test:tests/workflows/checkout-status-workerd.test.mjs"
+    },
+    {
+      "baseline_ref": "git:d2fae38b080c701c043ae09bd363fb195de8e41b",
+      "candidate_refs": [],
+      "choice": "Emit only static allowlisted status failure codes with fixed generic messages; show truthful unavailable text with fixed support reference; preserve retained capability and all start/edit locks on error.",
+      "context_ref": null,
+      "created_at": "2026-10-14T12:24:12+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "checkout-status-diagnostics",
+      "history": [
+        {
+          "at": "2026-10-14T12:24:12+00:00",
+          "choice": "Emit only static allowlisted status failure codes with fixed generic messages; show truthful unavailable text with fixed support reference; preserve retained capability and all start/edit locks on error.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T12:24:53+00:00",
+          "choice": "Emit only static allowlisted status failure codes with fixed generic messages; show truthful unavailable text with fixed support reference; preserve retained capability and all start/edit locks on error.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T12:25:26+00:00",
+          "choice": "Emit only static allowlisted status failure codes with fixed generic messages; show truthful unavailable text with fixed support reference; preserve retained capability and all start/edit locks on error.",
+          "from": "implemented",
+          "implementation_ref": "file:src/pages/api/checkout/status.ts;file:src/features/guest-cart/guest-cart-client.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "checkout-status-diagnostics-001",
+      "implementation_ref": "file:src/pages/api/checkout/status.ts;file:src/features/guest-cart/guest-cart-client.ts",
+      "question": "How should status failures be observable without exposing upstream data or implying pending success?",
+      "rationale": "Wrapped domain errors currently become generic503 and recovery UI calls them pending. This diagnoses the unknown cause without claiming to fix it.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-14T12:25:26+00:00",
+      "verification_ref": "file:.grilltrack/proof/status-diagnostics-20261014/PROOF.md;test:tests/workflows/checkout-status-diagnostics.test.mjs"
     }
   ],
   "last_activation": {
@@ -3053,5 +3122,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-14T12:06:18+00:00"
+  "updated_at": "2026-10-14T12:25:26+00:00"
 }

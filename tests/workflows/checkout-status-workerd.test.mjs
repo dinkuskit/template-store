@@ -67,7 +67,7 @@ test("status proxy uses native workerd fetch without following redirects", async
           const body = await response.json();
           assert.equal(body.ok, upstreamStatus === 200);
           if (upstreamStatus === 200) assert.equal(body.checkout.attemptId, null);
-          else assert.equal(body.error.code, "CHECKOUT_UNAVAILABLE");
+          else assert.equal(body.error.code, "CHECKOUT_STATUS_UPSTREAM_REDIRECT");
           assert.equal(JSON.stringify(body).includes("redirect.example.invalid"), false);
           assert.equal(JSON.stringify(body).includes("cap.synthetic"), false);
           assert.equal(calls.length, 1);

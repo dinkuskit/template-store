@@ -314,6 +314,23 @@ function checkoutFailureText(failure: string | null): string {
   return "Checkout is not available yet. Try again when Commerce is available.";
 }
 
+function checkoutStatusFailureText(code?: string): string {
+  const references: Record<string, string> = {
+    CHECKOUT_STATUS_HOST_ORIGIN: "status-host-origin",
+    CHECKOUT_STATUS_ORIGIN_DENIED: "status-origin",
+    CHECKOUT_STATUS_CAPABILITY_DENIED: "status-capability",
+    CHECKOUT_STATUS_NOT_FOUND: "status-not-found",
+    CHECKOUT_STATUS_UNAVAILABLE: "status-unavailable",
+    CHECKOUT_STATUS_UPSTREAM_REDIRECT: "status-upstream-redirect",
+    CHECKOUT_STATUS_UPSTREAM_HTTP: "status-upstream-http",
+    CHECKOUT_STATUS_RESPONSE_INVALID: "status-response",
+    CHECKOUT_STATUS_FETCH_FAILED: "status-fetch",
+  };
+  const reference = code && Object.hasOwn(references, code) ? references[code] : undefined;
+  return "Checkout status is unavailable. Your existing checkout remains protected." +
+    (reference ? ` Reference: ${reference}.` : "");
+}
+
 function commerceErrorText(error: { code: string; message: string; reason?: string; minimum?: { currency: string; minor: string } }): string {
   if (error.code !== "COUPON_UNAVAILABLE") return error.message;
   const wording: Record<string, string> = {
@@ -374,9 +391,11 @@ async function recoverGuestCheckout(root: Element): Promise<void> {
   checkoutRecovery = true;
   renderCart(root);
   const response = await checkoutController.status();
-  if (response.failure || !response.result) {
+  if (response.failure || !response.result || !response.result.ok) {
     pendingCheckout = false;
-    setCheckoutMessage(checkoutFailureText(response.failure), true);
+    setCheckoutMessage(checkoutStatusFailureText(
+      response.result && !response.result.ok ? response.result.error.code : undefined,
+    ), true);
     renderCart(root);
     return;
   }
