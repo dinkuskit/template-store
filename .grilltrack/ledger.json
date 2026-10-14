@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-14T12:42:57+00:00",
-    "domain": "checkout-status-http-code",
-    "started_at": "2026-10-14T12:42:56+00:00",
+    "confirmed_at": "2026-10-14T13:01:39+00:00",
+    "domain": "checkout-status-public-dispatch",
+    "started_at": "2026-10-14T13:01:39+00:00",
     "status": "confirmed",
-    "summary": "Coordinator approved numeric-only diagnostic after trace privacy qualification failed; optional HTML marker omitted without a stable structured contract."
+    "summary": "Coordinator approved status-only public dispatcher replacement after source and native-host availability qualification; all Commerce authority and checkout retention remain intact."
   },
   "decisions": [
     {
@@ -3169,6 +3169,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-14T12:43:38+00:00",
       "verification_ref": "file:.grilltrack/proof/status-http-code-20261014/PROOF.md;test:tests/workflows/checkout-status-diagnostics.test.mjs"
+    },
+    {
+      "baseline_ref": "git:c8f2297777c31bed56159f64e2fe5cceac8ebd5b",
+      "candidate_refs": [],
+      "choice": "Use locals.emdash.handlePublicPluginApiRoute only, retaining canDispatchInstalledGuestCheckout and original caller origin/capability/body bounds. Build the fixed canonical Request with approved headers; bound and validate HandlerResponse; return only safe status projection. Fail closed if public dispatcher absent; no HTTP/native/private fallback.",
+      "context_ref": null,
+      "created_at": "2026-10-14T13:01:39+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "checkout-status-public-dispatch",
+      "history": [
+        {
+          "at": "2026-10-14T13:01:39+00:00",
+          "choice": "Use locals.emdash.handlePublicPluginApiRoute only, retaining canDispatchInstalledGuestCheckout and original caller origin/capability/body bounds. Build the fixed canonical Request with approved headers; bound and validate HandlerResponse; return only safe status projection. Fail closed if public dispatcher absent; no HTTP/native/private fallback.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T13:02:13+00:00",
+          "choice": "Use locals.emdash.handlePublicPluginApiRoute only, retaining canDispatchInstalledGuestCheckout and original caller origin/capability/body bounds. Build the fixed canonical Request with approved headers; bound and validate HandlerResponse; return only safe status projection. Fail closed if public dispatcher absent; no HTTP/native/private fallback.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T13:03:00+00:00",
+          "choice": "Use locals.emdash.handlePublicPluginApiRoute only, retaining canDispatchInstalledGuestCheckout and original caller origin/capability/body bounds. Build the fixed canonical Request with approved headers; bound and validate HandlerResponse; return only safe status projection. Fail closed if public dispatcher absent; no HTTP/native/private fallback.",
+          "from": "implemented",
+          "implementation_ref": "file:src/pages/api/checkout/status.ts;file:tests/unit/checkout-status-route.test.ts;file:tests/workflows/checkout-status-workerd.test.mjs",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "checkout-status-public-dispatch-001",
+      "implementation_ref": "file:src/pages/api/checkout/status.ts;file:tests/unit/checkout-status-route.test.ts;file:tests/workflows/checkout-status-workerd.test.mjs",
+      "question": "How should the status proxy reach installed Commerce without a same-worker origin HTTP timeout?",
+      "rationale": "Live numeric HTTP522 identifies the current self-fetch transport failure. The installed public dispatcher is used by catalog/readiness and actual Cloudflare-built middleware exposes it to this API route.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-14T13:03:00+00:00",
+      "verification_ref": "file:.grilltrack/proof/status-public-dispatch-20261014/PROOF.md;file:.grilltrack/proof/status-public-dispatch-20261014/compiled-dispatch.json;file:.grilltrack/proof/status-public-dispatch-20261014/native-host-locals.json"
     }
   ],
   "last_activation": {
@@ -3191,5 +3260,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-14T12:43:38+00:00"
+  "updated_at": "2026-10-14T13:03:00+00:00"
 }

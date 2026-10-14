@@ -148,11 +148,15 @@ and callbacks remain intact. Node and other Cloudflare profiles keep their
 existing runners. A reported failure after a write is not proof of rollback;
 inspect and reuse the persisted record before retrying creation.
 
-## Checkout status proxy origin
+## Checkout status public dispatch
 
 The browser-facing `/api/checkout/status` endpoint requires an Origin matching
-the explicit `EMDASH_SITE_URL` and request URL. It forwards only that validated
-canonical origin and the existing checkout capability to Commerce's fixed
-status endpoint, without browser cookies, authorization, or redirect following.
-Missing/foreign origin and contradictory Fetch Metadata fail closed. This
-preserves Commerce's same-origin admission; status does not start a payment.
+both the configured site origin and the incoming request URL. It preserves the
+installed guest-route admission gate, then calls the existing public-only
+EmDash dispatcher from request locals with a fixed Commerce status Request.
+Only the validated origin, capability, content type and accept headers are
+forwarded; no browser cookie or authorization header is forwarded. The route
+never falls back to HTTP self-fetch, a private handler, or native Commerce.
+Missing locals or dispatcher admission remains unavailable. Request and
+serialized result sizes remain bounded; only validated checkout projection
+fields are returned. Status does not start a payment.
