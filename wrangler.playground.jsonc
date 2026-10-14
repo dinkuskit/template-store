@@ -57,6 +57,14 @@
         "limit": 100,
         "period": 60
       }
+    },
+    {
+      "name": "PLAYGROUND_CHECKOUT_LIMITER",
+      "namespace_id": "2026101013",
+      "simple": {
+        "limit": 3,
+        "period": 600
+      }
     }
   ],
   "previews": {
@@ -87,6 +95,14 @@
         "simple": {
           "limit": 100,
           "period": 60
+        }
+      },
+      {
+        "name": "PLAYGROUND_CHECKOUT_LIMITER",
+        "namespace_id": "2026101013",
+        "simple": {
+          "limit": 3,
+          "period": 600
         }
       }
     ]

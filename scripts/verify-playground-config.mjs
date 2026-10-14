@@ -20,6 +20,9 @@ for (const required of [
   '"DINKUS_DEMO_NOINDEX": "1"',
   '"name": "PLAYGROUND_CREATION_LIMITER"',
   '"name": "PLAYGROUND_GLOBAL_LIMITER"',
+  '"name": "PLAYGROUND_CHECKOUT_LIMITER"',
+  '"limit": 3',
+  '"period": 600',
 ]) {
   if (!config.includes(required)) {
     throw new Error(`Playground Wrangler config is missing ${required}.`);
