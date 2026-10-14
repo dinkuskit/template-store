@@ -63,7 +63,7 @@
       "namespace_id": "2026101013",
       "simple": {
         "limit": 3,
-        "period": 600
+        "period": 60
       }
     }
   ],
@@ -102,7 +102,7 @@
         "namespace_id": "2026101013",
         "simple": {
           "limit": 3,
-          "period": 600
+          "period": 60
         }
       }
     ]

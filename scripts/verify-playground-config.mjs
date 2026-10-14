@@ -22,7 +22,7 @@ for (const required of [
   '"name": "PLAYGROUND_GLOBAL_LIMITER"',
   '"name": "PLAYGROUND_CHECKOUT_LIMITER"',
   '"limit": 3',
-  '"period": 600',
+  '"period": 60',
 ]) {
   if (!config.includes(required)) {
     throw new Error(`Playground Wrangler config is missing ${required}.`);
