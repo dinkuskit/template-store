@@ -1,0 +1,49 @@
+{
+  "kind": "actual-built-status-chunk-under-workerd",
+  "tree": "e022f570c9ef31c8aafc1a7636444878d81a7ed4",
+  "compatibilityDate": "2026-10-07",
+  "compatibilityFlags": [
+    "nodejs_compat"
+  ],
+  "results": [
+    {
+      "name": "original-present",
+      "originBindingPresent": true,
+      "localOnlyManualComparison": false,
+      "httpStatus": 503,
+      "forwarded": 0,
+      "ok": false,
+      "nativeFetchFailure": "TypeError: Invalid redirect value, must be one of \"follow\" or \"manual\" (\"error\" won't be implemented since it does not make sense at the edge; use \"manual\" and check the response status code)."
+    },
+    {
+      "name": "original-absent",
+      "originBindingPresent": false,
+      "localOnlyManualComparison": false,
+      "httpStatus": 403,
+      "forwarded": 0,
+      "ok": false,
+      "nativeFetchFailure": null
+    },
+    {
+      "name": "manual-present",
+      "originBindingPresent": true,
+      "localOnlyManualComparison": true,
+      "httpStatus": 200,
+      "forwarded": 1,
+      "ok": true,
+      "nativeFetchFailure": null
+    },
+    {
+      "name": "manual-redirect",
+      "originBindingPresent": true,
+      "localOnlyManualComparison": true,
+      "httpStatus": 503,
+      "forwarded": 1,
+      "ok": false,
+      "nativeFetchFailure": null
+    }
+  ],
+  "liveRuntimeProven": false,
+  "noExternalRequests": true,
+  "noBrowserStorageAccess": true
+}
