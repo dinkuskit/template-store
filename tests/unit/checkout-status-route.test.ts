@@ -6,9 +6,8 @@ describe("checkout status browser proxy", () => {
   beforeEach(() => vi.stubEnv("EMDASH_SITE_URL", "http://store.test"));
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
   it("returns its own non-200 error when Commerce is unavailable", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }),
-    ));
+    const upstream = new Response(JSON.stringify({ error: "private-upstream-fixture" }), { status: 503 });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(upstream));
     const response = await POST({
       request: new Request("http://store.test/api/checkout/status", {
         method: "POST",
@@ -17,11 +16,23 @@ describe("checkout status browser proxy", () => {
       }),
     } as never);
     expect(response.status).toBe(503);
+    expect(upstream.bodyUsed).toBe(false);
     expect(await response.json()).toEqual({
       ok: false,
-      error: { code: "CHECKOUT_STATUS_UPSTREAM_HTTP", message: "Checkout status unavailable." },
+      error: { code: "CHECKOUT_STATUS_UPSTREAM_HTTP_503", message: "Checkout status unavailable." },
     });
     vi.unstubAllGlobals();
+  });
+
+  it.each([0, 600, 403.5])("does not emit an unbounded upstream status: %s", async (status) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status }));
+    const response = await POST({ request: new Request("http://store.test/api/checkout/status", {
+      method: "POST", headers: { origin: "http://store.test", "x-commerce-guest-capability": "cap.secret" }, body: "{}",
+    }) } as never);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ok: false, error: {
+      code: "CHECKOUT_STATUS_UPSTREAM_HTTP", message: "Checkout status unavailable.",
+    } });
   });
 
   it("does not expose a fetch exception", async () => {

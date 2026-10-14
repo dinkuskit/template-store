@@ -53,7 +53,7 @@ for (const awaitingStart of [false, true]) {
   });
 }
 
-for (const diagnostic of ["CHECKOUT_STATUS_CAPABILITY_DENIED", "untrusted-private-fixture"]) {
+for (const diagnostic of ["CHECKOUT_STATUS_CAPABILITY_DENIED", "untrusted-private-fixture", "CHECKOUT_STATUS_UPSTREAM_HTTP_403", "CHECKOUT_STATUS_UPSTREAM_HTTP_600"]) {
   test(`failed status remains locked and truthful: ${diagnostic}`, async ({ browser }, testInfo) => {
     test.setTimeout(60_000);
     const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
@@ -85,6 +85,7 @@ for (const diagnostic of ["CHECKOUT_STATUS_CAPABILITY_DENIED", "untrusted-privat
       await expect(status).not.toContainText("untrusted-private");
       await expect(status).toHaveAttribute("role", "alert");
       if (diagnostic === "CHECKOUT_STATUS_CAPABILITY_DENIED") await expect(status).toContainText("status-capability");
+      else if (diagnostic === "CHECKOUT_STATUS_UPSTREAM_HTTP_403") await expect(status).toContainText("status-upstream-http-403");
       else await expect(status).not.toContainText("Reference:");
       await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
       await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
@@ -92,7 +93,7 @@ for (const diagnostic of ["CHECKOUT_STATUS_CAPABILITY_DENIED", "untrusted-privat
       expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 0, statusCalls: 0 });
       const proof = resolve("runs/status-diagnostics-20261014", testInfo.project.name);
       await mkdir(proof, { recursive: true });
-      await page.screenshot({ path: resolve(proof, diagnostic === "CHECKOUT_STATUS_CAPABILITY_DENIED" ? "capability-unavailable.png" : "unknown-unavailable.png"), fullPage: true });
+      await page.screenshot({ path: resolve(proof, `${diagnostic.toLowerCase()}-unavailable.png`), fullPage: true });
       await page.getByRole("button", { name: "Check checkout status" }).click();
       await expect(status).toContainText("No checkout has started");
       await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();

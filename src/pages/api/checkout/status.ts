@@ -20,8 +20,15 @@ type StatusFailureCode =
   | "CHECKOUT_STATUS_UNAVAILABLE"
   | "CHECKOUT_STATUS_UPSTREAM_REDIRECT"
   | "CHECKOUT_STATUS_UPSTREAM_HTTP"
+  | `CHECKOUT_STATUS_UPSTREAM_HTTP_${number}`
   | "CHECKOUT_STATUS_RESPONSE_INVALID"
   | "CHECKOUT_STATUS_FETCH_FAILED";
+
+function upstreamHttpFailureCode(status: number): StatusFailureCode {
+  return Number.isInteger(status) && status >= 400 && status <= 599
+    ? `CHECKOUT_STATUS_UPSTREAM_HTTP_${status}`
+    : "CHECKOUT_STATUS_UPSTREAM_HTTP";
+}
 
 function domainFailureCode(code: string): StatusFailureCode {
   switch (code) {
@@ -191,7 +198,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
     if (!upstream.ok) {
       return unavailable(503, upstream.status >= 300 && upstream.status < 400
-        ? "CHECKOUT_STATUS_UPSTREAM_REDIRECT" : "CHECKOUT_STATUS_UPSTREAM_HTTP");
+        ? "CHECKOUT_STATUS_UPSTREAM_REDIRECT" : upstreamHttpFailureCode(upstream.status));
     }
     if (!(upstream.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
       return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
