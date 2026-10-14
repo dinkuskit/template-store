@@ -147,3 +147,12 @@ wall-time defaults, capability checks, blocked direct outbound access, storage
 and callbacks remain intact. Node and other Cloudflare profiles keep their
 existing runners. A reported failure after a write is not proof of rollback;
 inspect and reuse the persisted record before retrying creation.
+
+## Checkout status proxy origin
+
+The browser-facing `/api/checkout/status` endpoint requires an Origin matching
+the explicit `EMDASH_SITE_URL` and request URL. It forwards only that validated
+canonical origin and the existing checkout capability to Commerce's fixed
+status endpoint, without browser cookies, authorization, or redirect following.
+Missing/foreign origin and contradictory Fetch Metadata fail closed. This
+preserves Commerce's same-origin admission; status does not start a payment.

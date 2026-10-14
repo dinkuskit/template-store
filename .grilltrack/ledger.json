@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-14T00:11:16+00:00",
-    "domain": "registry-sandbox-budget",
-    "started_at": "2026-10-14T00:11:16+00:00",
+    "confirmed_at": "2026-10-14T11:43:25+00:00",
+    "domain": "checkout-status-origin",
+    "started_at": "2026-10-14T11:43:25+00:00",
     "status": "confirmed",
-    "summary": "Parent explicitly admitted this exact bounded host configuration and proof scope before implementation; cap32 covers all installed Registry plugins and leaves other limits unchanged."
+    "summary": "Coordinator assigned this bounded proxy repair under existing remediation authority; no start, state reset or auth-guard weakening."
   },
   "decisions": [
     {
@@ -2893,6 +2893,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-14T00:22:06+00:00",
       "verification_ref": "file:.grilltrack/proof/registry-sandbox-budget-20261013/PROOF.md;file:.grilltrack/proof/registry-sandbox-budget-20261013/published-budget.json"
+    },
+    {
+      "baseline_ref": "git:9d5e12a3495fe3e69986ff2e8429af173dcf8f4b",
+      "candidate_refs": [],
+      "choice": "Validate incoming Origin against explicit EMDASH_SITE_URL and request URL; reject missing/foreign origin or contradictory fetch-site metadata. Forward only the validated canonical origin with the existing capability to the fixed status endpoint, disable redirects, preserve response bounds and no-store. No start, reset or Commerce guard change.",
+      "context_ref": "task:checkout-status-origin",
+      "created_at": "2026-10-14T11:43:25+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "checkout-status-origin",
+      "history": [
+        {
+          "at": "2026-10-14T11:43:25+00:00",
+          "choice": "Validate incoming Origin against explicit EMDASH_SITE_URL and request URL; reject missing/foreign origin or contradictory fetch-site metadata. Forward only the validated canonical origin with the existing capability to the fixed status endpoint, disable redirects, preserve response bounds and no-store. No start, reset or Commerce guard change.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T11:43:25+00:00",
+          "choice": "Validate incoming Origin against explicit EMDASH_SITE_URL and request URL; reject missing/foreign origin or contradictory fetch-site metadata. Forward only the validated canonical origin with the existing capability to the fixed status endpoint, disable redirects, preserve response bounds and no-store. No start, reset or Commerce guard change.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T11:43:52+00:00",
+          "choice": "Validate incoming Origin against explicit EMDASH_SITE_URL and request URL; reject missing/foreign origin or contradictory fetch-site metadata. Forward only the validated canonical origin with the existing capability to the fixed status endpoint, disable redirects, preserve response bounds and no-store. No start, reset or Commerce guard change.",
+          "from": "implemented",
+          "implementation_ref": "file:src/pages/api/checkout/status.ts;file:tests/unit/checkout-status-route.test.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "checkout-status-origin-001",
+      "implementation_ref": "file:src/pages/api/checkout/status.ts;file:tests/unit/checkout-status-route.test.ts",
+      "question": "How must the status proxy retain same-origin admission?",
+      "rationale": "The previous self-fetch dropped Origin; the installed Commerce admission rejects it before capability lookup. Deriving a trusted header for an untrusted caller would weaken the origin boundary.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-14T11:43:52+00:00",
+      "verification_ref": "file:.grilltrack/proof/status-proxy-origin-20261014/PROOF.md;file:.grilltrack/proof/status-proxy-origin-20261014/compiled-admission.json"
     }
   ],
   "last_activation": {
@@ -2915,5 +2984,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-14T00:22:06+00:00"
+  "updated_at": "2026-10-14T11:43:52+00:00"
 }
