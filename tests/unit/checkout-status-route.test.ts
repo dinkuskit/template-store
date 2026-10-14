@@ -19,9 +19,20 @@ describe("checkout status browser proxy", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       ok: false,
-      error: { code: "CHECKOUT_UNAVAILABLE", message: "Checkout status unavailable." },
+      error: { code: "CHECKOUT_STATUS_UPSTREAM_HTTP", message: "Checkout status unavailable." },
     });
     vi.unstubAllGlobals();
+  });
+
+  it("does not expose a fetch exception", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("private-exception-fixture")));
+    const response = await POST({ request: new Request("http://store.test/api/checkout/status", {
+      method: "POST", headers: { origin: "http://store.test", "x-commerce-guest-capability": "cap.secret" }, body: "{}",
+    }) } as never);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ok: false, error: {
+      code: "CHECKOUT_STATUS_FETCH_FAILED", message: "Checkout status unavailable.",
+    } });
   });
 
   it("does not call Commerce without the shopper capability", async () => {
@@ -53,7 +64,7 @@ describe("checkout status browser proxy", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       ok: false,
-      error: { code: "CHECKOUT_UNAVAILABLE", message: "Checkout status unavailable." },
+      error: { code: "CHECKOUT_STATUS_RESPONSE_INVALID", message: "Checkout status unavailable." },
     });
     expect(response.headers.get("cache-control")).toBe("no-store");
     vi.unstubAllGlobals();
@@ -190,6 +201,7 @@ describe("status proxy origin boundary", () => {
       method: "POST", headers: { ...headers, "x-commerce-guest-capability": "cap.secret" }, body: "{}",
     }) } as never);
     expect(response.status).toBe(403);
+    expect(await response.clone().json()).toMatchObject({ error: { code: "CHECKOUT_STATUS_HOST_ORIGIN" } });
     expect(transport).not.toHaveBeenCalled();
     expect(JSON.stringify(await response.json())).not.toContain("cap.secret");
   });

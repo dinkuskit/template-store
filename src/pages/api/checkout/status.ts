@@ -11,9 +11,32 @@ const MAX_REQUEST_BYTES = 4 * 1024;
 const MAX_DISCARD_BYTES = 64 * 1024;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 
-function unavailable(status = 503): Response {
+type StatusFailureCode =
+  | "CHECKOUT_UNAVAILABLE"
+  | "CHECKOUT_STATUS_HOST_ORIGIN"
+  | "CHECKOUT_STATUS_ORIGIN_DENIED"
+  | "CHECKOUT_STATUS_CAPABILITY_DENIED"
+  | "CHECKOUT_STATUS_NOT_FOUND"
+  | "CHECKOUT_STATUS_UNAVAILABLE"
+  | "CHECKOUT_STATUS_UPSTREAM_REDIRECT"
+  | "CHECKOUT_STATUS_UPSTREAM_HTTP"
+  | "CHECKOUT_STATUS_RESPONSE_INVALID"
+  | "CHECKOUT_STATUS_FETCH_FAILED";
+
+function domainFailureCode(code: string): StatusFailureCode {
+  switch (code) {
+    case "ORIGIN_DENIED": return "CHECKOUT_STATUS_ORIGIN_DENIED";
+    case "CAPABILITY_DENIED": return "CHECKOUT_STATUS_CAPABILITY_DENIED";
+    case "CHECKOUT_NOT_FOUND": return "CHECKOUT_STATUS_NOT_FOUND";
+    case "UNAVAILABLE":
+    case "PAYMENTS_UNAVAILABLE": return "CHECKOUT_STATUS_UNAVAILABLE";
+    default: return "CHECKOUT_UNAVAILABLE";
+  }
+}
+
+function unavailable(status = 503, code: StatusFailureCode = "CHECKOUT_UNAVAILABLE"): Response {
   return Response.json(
-    { ok: false, error: { code: "CHECKOUT_UNAVAILABLE", message: "Checkout status unavailable." } },
+    { ok: false, error: { code, message: "Checkout status unavailable." } },
     { status, headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -147,7 +170,7 @@ export const POST: APIRoute = async ({ request }) => {
     return unavailable(400);
   }
   const origin = trustedStatusOrigin(request);
-  if (!origin) return unavailable(403);
+  if (!origin) return unavailable(403, "CHECKOUT_STATUS_HOST_ORIGIN");
   try {
     // This self-fetch targets Commerce's distinct public route, not this proxy,
     // so the Worker route boundary cannot recurse. Wrangler coverage exercises it.
@@ -166,21 +189,26 @@ export const POST: APIRoute = async ({ request }) => {
       // the non-2xx check below rejects them without forwarding credentials.
       redirect: "manual",
     });
-    if (!upstream.ok || !(upstream.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
-      return unavailable();
+    if (!upstream.ok) {
+      return unavailable(503, upstream.status >= 300 && upstream.status < 400
+        ? "CHECKOUT_STATUS_UPSTREAM_REDIRECT" : "CHECKOUT_STATUS_UPSTREAM_HTTP");
+    }
+    if (!(upstream.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
+      return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     }
     const body = await boundedText(upstream);
-    if (body === null) return unavailable();
+    if (body === null) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     let parsed: unknown;
     try {
       parsed = JSON.parse(body);
     } catch {
-      return unavailable();
+      return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     }
     const validated = parseGuestCheckoutWireResult(parsed);
-    if (!validated || !validated.ok) return unavailable();
+    if (!validated) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
+    if (!validated.ok) return unavailable(503, domainFailureCode(validated.error.code));
     return Response.json(parsed, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch {
-    return unavailable();
+    return unavailable(503, "CHECKOUT_STATUS_FETCH_FAILED");
   }
 };
