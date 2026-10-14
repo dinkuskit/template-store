@@ -3,11 +3,12 @@
   "created_at": "2026-10-08T19:35:31+00:00",
   "current_focus": {
     "cadence": "sequential",
-    "confirmed": false,
-    "domain": "guest-checkout-return-retry",
-    "started_at": "2026-10-09T14:51:51+00:00",
-    "status": "grilling",
-    "summary": "Issue #20 continuation: bound return status checks without changing Commerce authority"
+    "confirmed": true,
+    "confirmed_at": "2026-10-14T00:11:16+00:00",
+    "domain": "registry-sandbox-budget",
+    "started_at": "2026-10-14T00:11:16+00:00",
+    "status": "confirmed",
+    "summary": "Parent explicitly admitted this exact bounded host configuration and proof scope before implementation; cap32 covers all installed Registry plugins and leaves other limits unchanged."
   },
   "decisions": [
     {
@@ -2712,6 +2713,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-10T18:35:04+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:ed9bcbed410075a4d5377793ab33f197b4eb47cf",
+      "candidate_refs": [],
+      "choice": "Use the stock Cloudflare sandbox runner with subrequests set to 32 only for the Registry Cloudflare profile. This applies to every installed plugin on that host; preserve CPU 50ms, wall time 30s, global outbound denial, capabilities, callbacks, storage, and Access. Do not change Commerce or other hosting profiles.",
+      "context_ref": "task:registry-sandbox-budget-remediation",
+      "created_at": "2026-10-14T00:10:29+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "guest-checkout-return-retry",
+      "history": [
+        {
+          "at": "2026-10-14T00:10:29+00:00",
+          "choice": "Use the stock Cloudflare sandbox runner with subrequests set to 32 only for the Registry Cloudflare profile. This applies to every installed plugin on that host; preserve CPU 50ms, wall time 30s, global outbound denial, capabilities, callbacks, storage, and Access. Do not change Commerce or other hosting profiles.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T00:11:17+00:00",
+          "choice": "Use the stock Cloudflare sandbox runner with subrequests set to 32 only for the Registry Cloudflare profile. This applies to every installed plugin on that host; preserve CPU 50ms, wall time 30s, global outbound denial, capabilities, callbacks, storage, and Access. Do not change Commerce or other hosting profiles.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T00:14:04+00:00",
+          "choice": "Use the stock Cloudflare sandbox runner with subrequests set to 32 only for the Registry Cloudflare profile. This applies to every installed plugin on that host; preserve CPU 50ms, wall time 30s, global outbound denial, capabilities, callbacks, storage, and Access. Do not change Commerce or other hosting profiles.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/registry-sandbox/runner.ts;file:scripts/registry-sandbox.mjs;file:astro.config.mjs",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "registry-sandbox-budget-001",
+      "implementation_ref": "file:src/features/registry-sandbox/runner.ts;file:scripts/registry-sandbox.mjs;file:astro.config.mjs",
+      "question": "What subrequest budget should the Registry Cloudflare host provide for installed plugin operations?",
+      "rationale": "The stock limit of 10 permits a catalog draft write but exhausts before the following list render. The published Commerce create/list flow needs 19 calls; observed price, weight and choice edits need up to 31. Bound the host to 32 without claiming support for arbitrary large catalogs.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-14T00:14:04+00:00",
+      "verification_ref": "file:.grilltrack/proof/registry-sandbox-budget-20261013/PROOF.md;file:.grilltrack/proof/registry-sandbox-budget-20261013/published-budget.json"
     }
   ],
   "last_activation": {
@@ -2734,5 +2804,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-10T18:35:04+00:00"
+  "updated_at": "2026-10-14T00:14:04+00:00"
 }

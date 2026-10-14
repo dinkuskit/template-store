@@ -9,3 +9,9 @@
 {"action": "decision_superseded", "at": "2026-10-10T14:55:45+00:00", "data": {"affected": ["template-checkout-country-selector-002"], "decision_id": "template-checkout-country-input-001", "replacement_id": "template-checkout-country-selector-002"}, "event_id": "3eb7f70c-7aab-408c-a9f9-90b96e17a2a1"}
 {"action": "decision_proposed", "at": "2026-10-10T17:18:03+00:00", "data": {"decision_id": "commerce-main-canary-001"}, "event_id": "da652b53-d529-4231-b0fa-bf9351e1e2d1"}
 {"action": "decision_locked", "at": "2026-10-10T18:35:04+00:00", "data": {"decision_id": "commerce-main-canary-001"}, "event_id": "ac749ce5-e63f-4c75-95a9-b2991f51dd6c"}
+{"action": "decision_proposed", "at": "2026-10-14T00:10:29+00:00", "data": {"decision_id": "registry-sandbox-budget-001"}, "event_id": "a1de61ee-81d9-48a2-a688-e61e5d6dc48e"}
+{"action": "decision_locked", "at": "2026-10-14T00:10:29+00:00", "data": {"decision_id": "registry-sandbox-budget-001"}, "event_id": "3b1193e7-25c4-4ad3-bcd3-145cb73da6a6"}
+{"action": "focus_started", "at": "2026-10-14T00:11:16+00:00", "data": {"cadence": "sequential", "domain": "registry-sandbox-budget"}, "event_id": "7dbeabbd-e970-417d-8db2-cc6881d1c7ee"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-14T00:11:16+00:00", "data": {"summary": "Parent explicitly admitted this exact bounded host configuration and proof scope before implementation; cap32 covers all installed Registry plugins and leaves other limits unchanged."}, "event_id": "e38cb5a6-6e10-45af-b76a-bda48b48ffa5"}
+{"action": "decision_implemented", "at": "2026-10-14T00:11:17+00:00", "data": {"decision_id": "registry-sandbox-budget-001"}, "event_id": "18d7d5b0-0628-44b6-b405-624950701486"}
+{"action": "decision_verified", "at": "2026-10-14T00:14:04+00:00", "data": {"decision_id": "registry-sandbox-budget-001"}, "event_id": "dd210c47-484b-4999-b183-4e84318c0287"}
