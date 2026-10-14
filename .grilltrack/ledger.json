@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-14T12:24:13+00:00",
-    "domain": "checkout-status-diagnostics",
-    "started_at": "2026-10-14T12:24:12+00:00",
+    "confirmed_at": "2026-10-14T12:42:57+00:00",
+    "domain": "checkout-status-http-code",
+    "started_at": "2026-10-14T12:42:56+00:00",
     "status": "confirmed",
-    "summary": "Coordinator approved bounded diagnostic and truthful UI slice, no autoaction/reset/new capability or ambiguous retry unlock."
+    "summary": "Coordinator approved numeric-only diagnostic after trace privacy qualification failed; optional HTML marker omitted without a stable structured contract."
   },
   "decisions": [
     {
@@ -3100,6 +3100,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-14T12:25:26+00:00",
       "verification_ref": "file:.grilltrack/proof/status-diagnostics-20261014/PROOF.md;test:tests/workflows/checkout-status-diagnostics.test.mjs"
+    },
+    {
+      "baseline_ref": "git:28ef3555b728bca5780b937679c20aabc8134465",
+      "candidate_refs": [],
+      "choice": "Append only integer HTTP statuses400 through599 to the existing local upstream-HTTP diagnostic; UI accepts only that exact bounded form. No body/header parsing, tracing or routing change.",
+      "context_ref": null,
+      "created_at": "2026-10-14T12:42:56+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "checkout-status-http-code",
+      "history": [
+        {
+          "at": "2026-10-14T12:42:56+00:00",
+          "choice": "Append only integer HTTP statuses400 through599 to the existing local upstream-HTTP diagnostic; UI accepts only that exact bounded form. No body/header parsing, tracing or routing change.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T12:43:32+00:00",
+          "choice": "Append only integer HTTP statuses400 through599 to the existing local upstream-HTTP diagnostic; UI accepts only that exact bounded form. No body/header parsing, tracing or routing change.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-14T12:43:38+00:00",
+          "choice": "Append only integer HTTP statuses400 through599 to the existing local upstream-HTTP diagnostic; UI accepts only that exact bounded form. No body/header parsing, tracing or routing change.",
+          "from": "implemented",
+          "implementation_ref": "file:src/pages/api/checkout/status.ts;file:src/features/guest-cart/guest-cart-client.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "checkout-status-http-code-001",
+      "implementation_ref": "file:src/pages/api/checkout/status.ts;file:src/features/guest-cart/guest-cart-client.ts",
+      "question": "How can the unknown upstream HTTP failure be classified without reading private response data?",
+      "rationale": "The deployed upstream-HTTP category is proven but lacks its numeric status. The number is enough for the next bounded diagnosis and cannot include secret strings.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-14T12:43:38+00:00",
+      "verification_ref": "file:.grilltrack/proof/status-http-code-20261014/PROOF.md;test:tests/workflows/checkout-status-diagnostics.test.mjs"
     }
   ],
   "last_activation": {
@@ -3122,5 +3191,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-14T12:25:26+00:00"
+  "updated_at": "2026-10-14T12:43:38+00:00"
 }

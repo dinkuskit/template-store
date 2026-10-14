@@ -39,3 +39,9 @@
 {"action": "shared_understanding_confirmed", "at": "2026-10-14T12:24:13+00:00", "data": {"summary": "Coordinator approved bounded diagnostic and truthful UI slice, no autoaction/reset/new capability or ambiguous retry unlock."}, "event_id": "5f2f10b2-f7e9-49ee-af83-52fe9b91955d"}
 {"action": "decision_implemented", "at": "2026-10-14T12:24:53+00:00", "data": {"decision_id": "checkout-status-diagnostics-001"}, "event_id": "7fada160-6bb9-4bef-bae7-deefcd48ad50"}
 {"action": "decision_verified", "at": "2026-10-14T12:25:26+00:00", "data": {"decision_id": "checkout-status-diagnostics-001"}, "event_id": "a8fc314f-1620-48a3-8c26-3bef2208047e"}
+{"action": "focus_started", "at": "2026-10-14T12:42:56+00:00", "data": {"cadence": "sequential", "domain": "checkout-status-http-code"}, "event_id": "873496ac-9ce5-46f5-97ab-fd038d0eebe5"}
+{"action": "decision_proposed", "at": "2026-10-14T12:42:56+00:00", "data": {"decision_id": "checkout-status-http-code-001"}, "event_id": "aedd49b6-0ca1-4f7f-beca-b88e10565a51"}
+{"action": "decision_locked", "at": "2026-10-14T12:42:56+00:00", "data": {"decision_id": "checkout-status-http-code-001"}, "event_id": "f977d5d1-6027-423f-98d2-6259092993c8"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-14T12:42:57+00:00", "data": {"summary": "Coordinator approved numeric-only diagnostic after trace privacy qualification failed; optional HTML marker omitted without a stable structured contract."}, "event_id": "b66b8f66-c813-4820-b58d-086926539265"}
+{"action": "decision_implemented", "at": "2026-10-14T12:43:32+00:00", "data": {"decision_id": "checkout-status-http-code-001"}, "event_id": "a3a3261c-1857-4d97-99db-85c12d3b3c64"}
+{"action": "decision_verified", "at": "2026-10-14T12:43:38+00:00", "data": {"decision_id": "checkout-status-http-code-001"}, "event_id": "6422b0ad-0aab-436f-b293-1de79abf93a2"}

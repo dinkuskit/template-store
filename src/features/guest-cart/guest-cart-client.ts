@@ -326,7 +326,10 @@ function checkoutStatusFailureText(code?: string): string {
     CHECKOUT_STATUS_RESPONSE_INVALID: "status-response",
     CHECKOUT_STATUS_FETCH_FAILED: "status-fetch",
   };
-  const reference = code && Object.hasOwn(references, code) ? references[code] : undefined;
+  const http = code?.match(/^CHECKOUT_STATUS_UPSTREAM_HTTP_([45][0-9]{2})$/u);
+  const reference = http && http[0] === code
+    ? `status-upstream-http-${http[1]}`
+    : code && Object.hasOwn(references, code) ? references[code] : undefined;
   return "Checkout status is unavailable. Your existing checkout remains protected." +
     (reference ? ` Reference: ${reference}.` : "");
 }
