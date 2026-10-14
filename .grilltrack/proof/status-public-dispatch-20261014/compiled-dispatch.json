@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "synthetic": true,
+  "emdash": "1.2.0",
+  "commerce": "0.2.2",
+  "backendBytes": 114432,
+  "backendSha256": "9cb5e56dea11148535d3a53c04b8837df0c3af6daba8214b3288457e1a2ee20d",
+  "dispatcher": "actual createPublicPluginApiRouteHandler -> actual EmDashRuntime.handlePluginApiRoute -> actual WorkerdSandboxRunner",
+  "status": {
+    "ok": true,
+    "state": "pending",
+    "attemptIdIsNull": true
+  },
+  "missing": "CAPABILITY_DENIED",
+  "invalid": "CAPABILITY_DENIED",
+  "foreign": "ORIGIN_DENIED",
+  "private": "NOT_FOUND",
+  "pluginNetworkCalls": 0,
+  "applicationHttpCalls": 0,
+  "loopbackBridgeFetchCalls": 7,
+  "statusAndDenialStorageUnchanged": true,
+  "checkoutStarts": 0,
+  "checkoutCarts": 0,
+  "paymentAssociations": 0
+}
