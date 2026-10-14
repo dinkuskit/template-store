@@ -21,3 +21,9 @@
 {"action": "decision_implemented", "at": "2026-10-14T00:22:06+00:00", "data": {"decision_id": "registry-sandbox-budget-002"}, "event_id": "509e84e7-8b22-457e-b4a3-1aace92297b1"}
 {"action": "decision_verified", "at": "2026-10-14T00:22:06+00:00", "data": {"decision_id": "registry-sandbox-budget-002"}, "event_id": "d4a555b1-6921-4ec8-9a6f-09b5bac33a32"}
 {"action": "decision_superseded", "at": "2026-10-14T00:22:06+00:00", "data": {"affected": [], "decision_id": "registry-sandbox-budget-001", "replacement_id": "registry-sandbox-budget-002"}, "event_id": "1c80b7eb-01fc-4402-b038-3cf6950ca5d8"}
+{"action": "focus_started", "at": "2026-10-14T11:43:25+00:00", "data": {"cadence": "sequential", "domain": "checkout-status-origin"}, "event_id": "f162d2c9-87f7-4afa-86de-3166770aadd9"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-14T11:43:25+00:00", "data": {"summary": "Coordinator assigned this bounded proxy repair under existing remediation authority; no start, state reset or auth-guard weakening."}, "event_id": "551fc1f7-b1a8-4579-bdfd-263ea754c9bb"}
+{"action": "decision_proposed", "at": "2026-10-14T11:43:25+00:00", "data": {"decision_id": "checkout-status-origin-001"}, "event_id": "a8c281e8-6968-43f1-a92f-0106969c2230"}
+{"action": "decision_locked", "at": "2026-10-14T11:43:25+00:00", "data": {"decision_id": "checkout-status-origin-001"}, "event_id": "a165e1a2-e238-4c77-ab48-f375b9ecb8e9"}
+{"action": "decision_implemented", "at": "2026-10-14T11:43:25+00:00", "data": {"decision_id": "checkout-status-origin-001"}, "event_id": "d4f62421-d097-41c0-bdf6-b33a52d91701"}
+{"action": "decision_verified", "at": "2026-10-14T11:43:52+00:00", "data": {"decision_id": "checkout-status-origin-001"}, "event_id": "3dc45456-b818-4069-b17c-6b8732c0c56b"}

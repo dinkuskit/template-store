@@ -118,6 +118,25 @@ async function discardRequestBody(request: Request): Promise<void> {
   }
 }
 
+// Do not turn this proxy into a same-origin credential forwarder for foreign
+// callers. The configured store origin is authority; request Host is not.
+function trustedStatusOrigin(request: Request): string | null {
+  try {
+    const site = new URL(process.env.EMDASH_SITE_URL ?? "");
+    const origin = new URL(request.headers.get("origin") ?? "");
+    const canonical = (url: URL) =>
+      (url.protocol === "https:" || url.protocol === "http:") &&
+      !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash;
+    if (!canonical(site) || !canonical(origin) || origin.origin !== site.origin ||
+        new URL(request.url).origin !== site.origin) return null;
+    const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
+    if (fetchSite !== undefined && fetchSite !== "same-origin") return null;
+    return site.origin;
+  } catch {
+    return null;
+  }
+}
+
 export const POST: APIRoute = async ({ request }) => {
   const requestBody = await boundedRequestText(request);
   if (requestBody === null) {
@@ -127,19 +146,23 @@ export const POST: APIRoute = async ({ request }) => {
   if (!capability) {
     return unavailable(400);
   }
+  const origin = trustedStatusOrigin(request);
+  if (!origin) return unavailable(403);
   try {
     // This self-fetch targets Commerce's distinct public route, not this proxy,
     // so the Worker route boundary cannot recurse. Wrangler coverage exercises it.
-    const target = new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, request.url);
+    const target = new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
     const upstream = await fetch(target, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         accept: "application/json",
+        origin,
         [GUEST_CHECKOUT_CAPABILITY_HEADER]: capability,
       },
       body: requestBody,
       cache: "no-store",
+      redirect: "error",
     });
     if (!upstream.ok || !(upstream.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
       return unavailable();

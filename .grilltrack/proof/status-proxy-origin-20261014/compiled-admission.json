@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "kind": "bundled-template-proxy-to-real-compiled-commerce-admission",
+  "commerceVersion": "0.2.2",
+  "admissionSha256": "8812c67a5801de76e530b2df1f63529ce37f146c65295f3e5a6dc0f2baba152c",
+  "results": [
+    {
+      "name": "trusted",
+      "status": 200,
+      "forwarded": 1
+    },
+    {
+      "name": "origin-only",
+      "status": 200,
+      "forwarded": 1
+    },
+    {
+      "name": "missing-origin",
+      "status": 403,
+      "forwarded": 0
+    },
+    {
+      "name": "foreign-origin",
+      "status": 403,
+      "forwarded": 0
+    },
+    {
+      "name": "cross-site",
+      "status": 403,
+      "forwarded": 0
+    },
+    {
+      "name": "foreign-request-host",
+      "status": 403,
+      "forwarded": 0
+    }
+  ],
+  "newStartCalls": 0,
+  "externalNetworkCalls": 0,
+  "browserStorageAccess": false
+}
