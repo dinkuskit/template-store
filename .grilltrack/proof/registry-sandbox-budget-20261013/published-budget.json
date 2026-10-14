@@ -1,0 +1,43 @@
+{
+  "schema": "registry-sandbox-budget-proof/v1",
+  "kind": "published-artifact-with-simulated-storage-rpc-budget",
+  "commerceVersion": "0.2.0",
+  "backendSha256": "cb61336de27ccf6fd6176a10be717b3f31b68ae7524f0710c82539a3c56c33d9",
+  "createAt10": {
+    "calls": 11,
+    "result": "failed-after-write",
+    "persistedDrafts": 1
+  },
+  "createAt32": {
+    "calls": 19,
+    "result": "success",
+    "persistedDrafts": 1
+  },
+  "editsAt32": [
+    {
+      "operation": "price",
+      "calls": 16,
+      "result": "success"
+    },
+    {
+      "operation": "weight",
+      "calls": 17,
+      "result": "success"
+    },
+    {
+      "operation": "add-choices",
+      "calls": 31,
+      "result": "success"
+    }
+  ],
+  "recovery": {
+    "listCalls": 6,
+    "openCalls": 9,
+    "sameCommandPersistedDrafts": 1
+  },
+  "limitations": [
+    "Storage-RPC budget simulation, not deployed Worker Loader evidence.",
+    "Measured flows only; no claim for arbitrary catalog size.",
+    "Post-deployment recovery must reuse the existing live draft."
+  ]
+}

@@ -133,3 +133,17 @@ denial, authorized email/role, and intended public catalog behavior separately.
 Sources: [EmDash authentication](https://docs.emdashcms.com/guides/authentication/)
 and the resolved 1.2.0 `@emdash-cms/cloudflare/src/auth/cloudflare-access.ts`,
 `emdash/src/astro/middleware/auth.ts`, `setup.ts`, and setup API routes.
+
+## Registry sandbox request budget
+
+The Registry Cloudflare profile uses the stock EmDash Cloudflare runner with a
+32-subrequest limit for every installed sandbox plugin. A catalog admin write
+followed by its list render needs 19 bridge calls; the observed choice-edit flow
+needs 31. The default limit of 10 can allow a write to persist before its response
+render fails. This cap supports those measured flows, not arbitrary catalog size.
+
+The wrapper changes only `limits.subrequests`. The stock 50ms CPU and 30-second
+wall-time defaults, capability checks, blocked direct outbound access, storage
+and callbacks remain intact. Node and other Cloudflare profiles keep their
+existing runners. A reported failure after a write is not proof of rollback;
+inspect and reuse the persisted record before retrying creation.

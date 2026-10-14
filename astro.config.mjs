@@ -10,6 +10,7 @@ import { sqlite } from "emdash/db";
 import { access, d1, r2, sandbox } from "@emdash-cms/cloudflare";
 import { unstable_readConfig } from "wrangler";
 import { selectedRegistryAccessOptions } from "./scripts/registry-access.mjs";
+import { selectedRegistrySandboxRunner } from "./scripts/registry-sandbox.mjs";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
@@ -49,7 +50,7 @@ function cloudflareSandbox() {
     if (config.vars?.DINKUS_CATALOG_PROFILE === "native-development") return undefined;
     throw new Error("The selected Cloudflare config must provide LOADER for Registry plugins.");
   }
-  return "@emdash-cms/cloudflare/sandbox";
+  return selectedRegistrySandboxRunner(process.env) ?? "@emdash-cms/cloudflare/sandbox";
 }
 
 export default defineConfig({
