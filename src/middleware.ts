@@ -199,6 +199,7 @@ async function guardSandboxCheckout(
     return checkoutJsonError(413, "Checkout request is too large.");
   }
   const raw = await boundedCheckoutBody(request);
+  if (raw === TOO_LARGE) return checkoutJsonError(413, "Checkout request is too large.");
   if (raw === null || !validateCheckoutBody(kind, raw).ok) {
     return checkoutJsonError(400, "Checkout request is invalid.");
   }
@@ -215,7 +216,9 @@ async function guardSandboxCheckout(
   return null;
 }
 
-async function boundedCheckoutBody(request: Request): Promise<string | null> {
+const TOO_LARGE = Symbol("checkout-body-too-large");
+
+async function boundedCheckoutBody(request: Request): Promise<string | null | typeof TOO_LARGE> {
   if (!request.body) return "";
   const reader = request.clone().body?.getReader();
   if (!reader) return "";
@@ -227,8 +230,12 @@ async function boundedCheckoutBody(request: Request): Promise<string | null> {
       if (next.done) break;
       size += next.value.byteLength;
       if (size > MAX_CHECKOUT_BODY_BYTES) {
-        await reader.cancel();
-        return null;
+        // This reader is one branch of request.clone()'s tee. Cancelling a tee
+        // branch settles only once the other branch is consumed or cancelled,
+        // and the original body stays unread here, so never await it: reply
+        // 413 now and let the runtime discard the original request body.
+        reader.cancel().catch(() => {});
+        return TOO_LARGE;
       }
       chunks.push(next.value);
     }

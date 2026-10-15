@@ -5,13 +5,9 @@ import {
   checkoutLimited,
   checkoutRouteKind,
   isCheckoutEnabled,
-  lookupCheckoutReceipt,
   offersCheckout,
-  parseCheckoutReceipt,
   getStorePass,
   resetStorePassCache,
-  formatReceiptTotal,
-  paymentsHeaders,
   SANDBOX_RATE_LIMITED_MESSAGE,
   SANDBOX_CLIENT_IP_MESSAGE,
   readPaymentsConfig,
@@ -19,6 +15,7 @@ import {
   SANDBOX_TEST_CARD_NOTICE,
   showsSandboxCheckoutNotice,
   validateCheckoutBody,
+  visitorIp,
 } from "../../src/features/playground-checkout/index.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../src/features/guest-cart/checkout-protocol.js";
 
@@ -130,12 +127,11 @@ describe("checkout body validation", () => {
   });
 });
 
-describe("Payments config and lookup-only receipt", () => {
+describe("Payments config and store pass", () => {
   const storeKey = `dk_store_${"a".repeat(43)}`;
   const config = { baseUrl: "https://payments.example", storeKey };
   const passFetchImpl = vi.fn(async () => Response.json({ access_token: "h.p.s", token_type: "Bearer", expires_in: 300 }));
   beforeEach(() => { resetStorePassCache(); passFetchImpl.mockClear(); });
-  const ipRequest = new Request("https://p.test/", { headers: { "cf-connecting-ip": "203.0.113.7" } });
 
   it("reads PAYMENTS_URL and PAYMENTS_STORE_KEY, https and dk_store_ only", () => {
     expect(readPaymentsConfig({})).toBeNull();
@@ -176,98 +172,28 @@ describe("Payments config and lookup-only receipt", () => {
       resetStorePassCache();
       expect(await getStorePass(config, { fetchImpl: fetchImpl as never })).toBeNull();
     }
-    const receiptFetch = vi.fn();
-    resetStorePassCache();
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: ipRequest, fetchImpl: receiptFetch, passFetchImpl: bad[0] as never })).toBeNull();
-    expect(receiptFetch).not.toHaveBeenCalled();
     expect(log).not.toHaveBeenCalled();
     log.mockRestore();
   });
 
-  it("GETs /v1/checkout/receipt by test session id with the bearer credential", async () => {
-    const fetchImpl = vi.fn(async () => Response.json({
-      outcome: "paid", attemptId: "pg-attempt-1", paymentId: "pi_1", total: { currency: "USD", minor: "2500" },
-      session: { sessionId: "cs_test_abc123", redirectUrl: "https://checkout.stripe.com/c/pay/cs_test_abc123", createdAt: 1, expiresAt: 1801 },
-    }));
-    const request = new Request("https://p.test/checkout/success", { headers: { "cf-connecting-ip": "203.0.113.7" } });
-    const receipt = await lookupCheckoutReceipt({ sessionId: "cs_test_abc123", config, request, fetchImpl: fetchImpl as never, passFetchImpl: passFetchImpl as never });
-    expect(receipt).toEqual({ status: "paid", attemptId: "pg-attempt-1", total: { currency: "USD", minor: "2500" } });
-    expect(formatReceiptTotal(receipt!.total)).toBe("$25.00");
-    expect(formatReceiptTotal({ currency: "USD", minor: "5" })).toBe("$0.05");
-    const [url, init] = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit];
-    expect(url.href).toBe("https://payments.example/v1/checkout/receipt?session_id=cs_test_abc123");
-    expect(init.method).toBe("GET");
-    expect(init.headers).toEqual({
-      authorization: "Bearer h.p.s", accept: "application/json",
-      "x-dinkus-site": "playground", "x-dinkus-client-ip": "203.0.113.7",
-    });
-  });
-
-  it("never calls Payments for live or malformed session ids, and rejects live receipts", async () => {
-    const fetchImpl = vi.fn();
-    for (const sessionId of ["cs_live_abc", "cs_test_../x", null, "x"]) {
-      expect(await lookupCheckoutReceipt({ sessionId, config, fetchImpl })).toBeNull();
-    }
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config: null, fetchImpl })).toBeNull();
-    expect(fetchImpl).not.toHaveBeenCalled();
-    expect(parseCheckoutReceipt({ status: "paid" })).toBeNull();
-    expect(parseCheckoutReceipt({ outcome: "unknown" })).toEqual({ status: "unknown", attemptId: null });
-    expect(parseCheckoutReceipt({ outcome: "not-created", attemptId: "a" })).toEqual({ status: "unknown", attemptId: "a" });
-    expect(parseCheckoutReceipt({ outcome: "open", attemptId: "a" })).toEqual({ status: "pending", attemptId: "a" });
-    expect(parseCheckoutReceipt({ outcome: "expired-unpaid", attemptId: "a" })).toEqual({ status: "expired", attemptId: "a" });
-    expect(parseCheckoutReceipt({ outcome: "paid", attemptId: "a" })).toBeNull();
-    expect(parseCheckoutReceipt({ outcome: "paid", attemptId: "a", session: { sessionId: "cs_live_x" } })).toBeNull();
-    expect(parseCheckoutReceipt({ outcome: "open" })).toBeNull();
-    expect(parseCheckoutReceipt({ outcome: "weird", attemptId: "a" })).toBeNull();
-  });
-
-  it("returns null when Payments errors", async () => {
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: ipRequest, fetchImpl: async () => new Response("", { status: 500 }), passFetchImpl: passFetchImpl as never })).toBeNull();
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: ipRequest, fetchImpl: async () => { throw new Error("x"); }, passFetchImpl: passFetchImpl as never })).toBeNull();
-  });
-
-  it("maps playground_rate_limited 429 to the public limit message", async () => {
-    const fetchImpl = async () => Response.json({ error: "playground_rate_limited" }, { status: 429, headers: { "Retry-After": "600" } });
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: ipRequest, fetchImpl, passFetchImpl: passFetchImpl as never })).toEqual({
-      status: "rate-limited", attemptId: null, retryAfterSeconds: 600,
-    });
+  it("keeps the rate-limit and client-IP refusals local to the middleware", () => {
     expect(SANDBOX_RATE_LIMITED_MESSAGE).toContain("Each visitor is limited to 3 checkouts per 10 minutes.");
-    const other = async () => Response.json({ error: "other" }, { status: 429 });
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: ipRequest, fetchImpl: other, passFetchImpl: passFetchImpl as never })).toBeNull();
-    expect(readFileSync("src/pages/checkout/success.astro", "utf8")).toContain("{SANDBOX_RATE_LIMITED_MESSAGE}");
-    expect(readFileSync("src/middleware.ts", "utf8")).toContain("checkoutJsonError(429, SANDBOX_RATE_LIMITED_MESSAGE)");
-  });
-
-  it("refuses locally (no Payments call) when CF-Connecting-IP is absent or malformed", async () => {
-    expect(paymentsHeaders("h.p.s", new Request("https://p.test/"))).toBeNull();
-    expect(paymentsHeaders("h.p.s", new Request("https://p.test/", { headers: { "cf-connecting-ip": "not an ip" } }))).toBeNull();
-    expect(paymentsHeaders("h.p.s", new Request("https://p.test/", { headers: { "cf-connecting-ip": "2001:db8::1" } })))
-      .toMatchObject({ "x-dinkus-client-ip": "2001:db8::1" });
-    const fetchImpl = vi.fn();
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: new Request("https://p.test/"), fetchImpl }))
-      .toEqual({ status: "client-ip-refused", attemptId: null });
-    expect(fetchImpl).not.toHaveBeenCalled();
-    expect(await checkoutLimited(new Request("https://p.test/"), { limit: async () => ({ success: true }) })).toBe(true);
+    expect(SANDBOX_CLIENT_IP_MESSAGE).toMatch(/try again/);
+    expect(visitorIp(new Request("https://p.test/"))).toBeNull();
+    expect(visitorIp(new Request("https://p.test/", { headers: { "cf-connecting-ip": "not an ip" } }))).toBeNull();
+    expect(visitorIp(new Request("https://p.test/", { headers: { "cf-connecting-ip": "2001:db8::1" } }))).toBe("2001:db8::1");
     const middleware = readFileSync("src/middleware.ts", "utf8");
+    expect(middleware).toContain("checkoutJsonError(429, SANDBOX_RATE_LIMITED_MESSAGE)");
     expect(middleware).toMatch(/kind === "start" && isPlayground && !visitorIp\(request\)\) \{\s*return checkoutJsonError\(400, SANDBOX_CLIENT_IP_MESSAGE\)/);
   });
 
-  it("maps Payments client_ip_required / invalid_client_ip 400s to the friendly message", async () => {
-    for (const error of ["client_ip_required", "invalid_client_ip"]) {
-      const fetchImpl = async () => Response.json({ error }, { status: 400 });
-      expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: ipRequest, fetchImpl, passFetchImpl: passFetchImpl as never }))
-        .toEqual({ status: "client-ip-refused", attemptId: null });
-    }
-    const other = async () => Response.json({ error: "bad_request" }, { status: 400 });
-    expect(await lookupCheckoutReceipt({ sessionId: "cs_test_a", config, request: ipRequest, fetchImpl: other, passFetchImpl: passFetchImpl as never })).toBeNull();
-    expect(SANDBOX_CLIENT_IP_MESSAGE).toMatch(/try again/);
-    expect(readFileSync("src/pages/checkout/success.astro", "utf8")).toContain("{SANDBOX_CLIENT_IP_MESSAGE}");
-  });
-
-  it("success page uses the server-side lookup only (no wakes)", () => {
+  it("success page confirms only through Commerce's capability-scoped return controller", () => {
     const page = readFileSync("src/pages/checkout/success.astro", "utf8");
-    expect(page).toContain("lookupCheckoutReceipt(");
+    expect(page).toContain("<GuestCheckoutReturn contactHref={contactHref} />");
+    // No caller-selected Stripe session id is looked up under the shared playground credential.
+    expect(page).not.toMatch(/session_id|lookupCheckoutReceipt|PAYMENTS_STORE_KEY|getStorePass/);
     expect(page).not.toMatch(/wakes\?|ackWake|wake-client/);
+    expect(readFileSync("src/features/playground-checkout/index.ts", "utf8")).not.toContain("/v1/checkout/receipt");
   });
 });
 

@@ -93,3 +93,28 @@ describe("playground sandbox checkout gates", () => {
     expect(playgroundCheckoutConfigured({ ...READY, PAYMENTS_STRIPE_ACCOUNT_ID: "sk_test_x" })).toBe(false);
   });
 });
+
+describe("sandbox checkout body guard", () => {
+  it("rejects an oversized streamed body with 413 without waiting on the unread original", async () => {
+    Object.assign(process.env, READY);
+    const chunk = new Uint8Array(1024).fill(32);
+    let pulls = 0;
+    // An endless chunked body: awaiting cancellation of one tee branch would hang here.
+    const stream = new ReadableStream<Uint8Array>({ pull(controller) { pulls += 1; controller.enqueue(chunk); } });
+    const request = new Request(`https://playground.example${registryStart}`, {
+      method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7" }, body: stream, duplex: "half",
+    } as RequestInit);
+    const next = vi.fn(async () => new Response("native", { status: 200 }));
+    const response = await Promise.race([
+      (onRequest as unknown as (c: unknown, n: unknown) => Promise<Response>)({
+        url: new URL(request.url), request,
+        locals: { emdash: null, __playgroundDb: {}, __playgroundCheckoutLimiter: { limit: async () => ({ success: true }) } },
+        cookies: { get: () => ({ value: "pg-session" }) },
+      }, next),
+      new Promise<Response>((_, reject) => setTimeout(() => reject(new Error("guard stalled")), 2_000)),
+    ]);
+    expect(response.status).toBe(413);
+    expect(next).not.toHaveBeenCalled();
+    expect(pulls).toBeGreaterThan(4);
+  });
+});

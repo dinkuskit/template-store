@@ -2,7 +2,7 @@
 import { getSiteSettings } from "emdash";
 import { GuestCartNav, GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
-import { formatReceiptTotal, isCheckoutEnabled, SANDBOX_CLIENT_IP_MESSAGE, SANDBOX_RATE_LIMITED_MESSAGE, lookupCheckoutReceipt, readPaymentsConfig, SANDBOX_SESSION_NOTICE, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { isCheckoutEnabled, SANDBOX_SESSION_NOTICE, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
@@ -27,12 +27,9 @@ const contactHref = (() => {
 Astro.response.headers.set("Cache-Control", "no-store");
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo: isDemoCatalogProfile(), checkoutEnabled: isCheckoutEnabled() });
-// Lookup-only: the sandbox success page asks Payments for this session's receipt
-// server-side. No wakes are read or acked for the playground tenant.
-const receipt = sandboxCheckout
-  ? await lookupCheckoutReceipt({ sessionId: Astro.url.searchParams.get("session_id"), config: readPaymentsConfig(), request: Astro.request })
-  : null;
-const receiptTotal = formatReceiptTotal(receipt?.total);
+// Sandbox returns use the same capability-scoped controller as every store:
+// only Commerce's durable paid order confirms, and only then is the purchased
+// cart settled. No Stripe session id from the URL is looked up or trusted.
 ---
 <!doctype html>
 <html lang="en">
@@ -48,22 +45,9 @@ const receiptTotal = formatReceiptTotal(receipt?.total);
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav>
     </header>
-    <main>{sandboxCheckout
-      ? <section class="guest-checkout-return" data-sandbox-checkout-return>
-          <h1>Order confirmation</h1>
-          {receipt?.status === "paid"
-            ? <p role="status" data-sandbox-receipt="paid">Payment received (test){receiptTotal ? `: ${receiptTotal}` : ""}. Your order is confirmed. {SANDBOX_SESSION_NOTICE}</p>
-            : receipt?.status === "rate-limited"
-              ? <p role="status" data-sandbox-receipt="rate-limited">{SANDBOX_RATE_LIMITED_MESSAGE}</p>
-            : receipt?.status === "client-ip-refused"
-              ? <p role="status" data-sandbox-receipt="client-ip-refused">{SANDBOX_CLIENT_IP_MESSAGE}</p>
-            : receipt?.status === "expired"
-              ? <p role="status" data-sandbox-receipt="expired">This test checkout expired before payment. Nothing was charged; return to the cart to try again.</p>
-            : receipt?.status === "pending"
-              ? <p role="status" data-sandbox-receipt="pending">Payment is still processing (test). Refresh this page in a moment. {SANDBOX_SESSION_NOTICE}</p>
-              : <p role="status" data-sandbox-receipt="unknown">If you completed payment, it was received in test mode. This playground session may have ended; start a new playground to try again.</p>}
-          <a class="guest-checkout-continue" href="/">Continue shopping</a>
-        </section>
-      : <GuestCheckoutReturn contactHref={contactHref} />}</main>
+    <main>
+      {sandboxCheckout && <p class="store-sandbox-notice" role="note" data-sandbox-checkout-return>Test mode checkout. {SANDBOX_SESSION_NOTICE}</p>}
+      <GuestCheckoutReturn contactHref={contactHref} />
+    </main>
   </body>
 </html>

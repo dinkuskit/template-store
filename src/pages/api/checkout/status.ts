@@ -8,7 +8,8 @@ import {
 } from "../../../features/guest-cart/checkout-protocol.js";
 
 import { canDispatchInstalledGuestCheckout } from "../../../features/guest-cart/checkout-admission.js";
-import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, playgroundCheckoutConfigured } from "../../../features/playground-checkout/index.js";
+import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, visitorIp } from "../../../features/playground-checkout/index.js";
+import { playgroundCheckoutConfigured, withCheckoutVisitor } from "../../../features/playground-checkout/payments-port.js";
 
 export const prerender = false;
 const MAX_REQUEST_BYTES = 4 * 1024;
@@ -126,6 +127,11 @@ function trustedStatusOrigin(request: Request): string | null {
   }
 }
 
+/**
+ * A configured playground session serves guest checkout from its own native
+ * Commerce plugin (per-visitor runtime), not the Registry install, so status
+ * recovery dispatches there. Capability and origin checks above still apply.
+ */
 function playgroundNativeStatus(locals: unknown): boolean {
   return Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb) &&
     playgroundCheckoutConfigured();
@@ -155,7 +161,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const target = native
       ? new URL(nativeCheckoutPath("status"), origin)
       : new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
-    const result = await runtime.handlePublicPluginApiRoute(
+    const dispatch = () => runtime.handlePublicPluginApiRoute(
       pluginId,
       "POST",
       "checkout/guest/status",
@@ -171,6 +177,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
         cache: "no-store",
       }),
     );
+    // Payments lookups from the native playground port require the exact
+    // playground session that owns the disposable Commerce runtime.
+    const session = /(?:^|;\s*)emdash_playground=([A-Za-z0-9._~-]{1,512})(?:;|$)/u.exec(
+      request.headers.get("cookie") ?? "",
+    )?.[1] ?? "";
+    const result = native
+      ? await withCheckoutVisitor(visitorIp(request) ?? "", session, dispatch)
+      : await dispatch();
     let parsed: unknown;
     try {
       const text = JSON.stringify(result);

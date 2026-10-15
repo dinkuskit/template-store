@@ -268,69 +268,12 @@ export function checkoutJsonError(status: number, message: string): Response {
   });
 }
 
-// --- Success page: lookup-only receipt from Payments ------------------------
+// --- Payments visitor context ---------------------------------------------
 
-export const PAYMENTS_RECEIPT_PATH = "/v1/checkout/receipt";
-const TEST_SESSION_ID = /^cs_test_[A-Za-z0-9]{1,200}$/u;
-const MAX_RECEIPT_BYTES = 16 * 1024;
-const RECEIPT_TIMEOUT_MS = 5_000;
-
-export const PAYMENTS_SITE_HEADER = "x-dinkus-site";
 export const PAYMENTS_CLIENT_IP_HEADER = "x-dinkus-client-ip";
-export const PAYMENTS_RATE_LIMIT_ERROR = "playground_rate_limited";
 export const SANDBOX_RATE_LIMITED_MESSAGE =
   `You've reached the playground checkout limit. ${SANDBOX_RATE_LIMIT_NOTICE} Please wait about 10 minutes and try again.`;
 
-export type CheckoutReceipt = Readonly<{
-  status: "paid" | "pending" | "expired" | "unknown" | "rate-limited" | "client-ip-refused";
-  attemptId: string | null;
-  total?: Readonly<{ currency: "USD"; minor: string }>;
-  retryAfterSeconds?: number;
-}>;
-
-export function isTestCheckoutSessionId(value: unknown): value is string {
-  return typeof value === "string" && TEST_SESSION_ID.test(value);
-}
-
-function usdTotal(value: unknown): { currency: "USD"; minor: string } | undefined {
-  return isObject(value) && value.currency === "USD" && typeof value.minor === "string" && /^\d{1,12}$/u.test(value.minor)
-    ? { currency: "USD", minor: value.minor } : undefined;
-}
-
-/**
- * Maps Payments' PaymentOutcome (dinkuskit/payments src/commerce/checkout-port.ts):
- * unknown | open | paid | expired-unpaid | not-created. A paid receipt must
- * carry its attempt id and session; anything unrecognized is rejected.
- */
-export function parseCheckoutReceipt(value: unknown): CheckoutReceipt | null {
-  if (!isObject(value) || typeof value.outcome !== "string") return null;
-  const attemptId = typeof value.attemptId === "string" && value.attemptId.length > 0 &&
-      value.attemptId.length <= MAX_ATTEMPT_ID_LENGTH ? value.attemptId : null;
-  switch (value.outcome) {
-    case "unknown":
-    case "not-created":
-      return { status: "unknown", attemptId };
-    case "open":
-      return attemptId ? { status: "pending", attemptId } : null;
-    case "expired-unpaid":
-      return attemptId ? { status: "expired", attemptId } : null;
-    case "paid": {
-      if (!attemptId || !isObject(value.session) || !isTestCheckoutSessionId(value.session.sessionId)) return null;
-      const total = usdTotal(value.total);
-      return total ? { status: "paid", attemptId, total } : { status: "paid", attemptId };
-    }
-    default:
-      return null;
-  }
-}
-
-export function formatReceiptTotal(total: CheckoutReceipt["total"]): string | null {
-  if (!total) return null;
-  const minor = total.minor.padStart(3, "0");
-  return `$${minor.slice(0, -2).replace(/^0+(?=\d)/u, "")}.${minor.slice(-2)}`;
-}
-
-export const PAYMENTS_CLIENT_IP_ERRORS = new Set(["client_ip_required", "invalid_client_ip"]);
 export const SANDBOX_CLIENT_IP_MESSAGE =
   "Playground checkout couldn't confirm your connection, so it was not started. Reload the page and try again.";
 const CLIENT_IP = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}|[0-9A-Fa-f:]{2,39})$/u;
@@ -339,66 +282,4 @@ const CLIENT_IP = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d
 export function visitorIp(request: Request | null): string | null {
   const ip = request?.headers.get("cf-connecting-ip")?.trim() ?? "";
   return CLIENT_IP.test(ip) && (ip.includes(".") || ip.includes(":")) ? ip : null;
-}
-
-/**
- * Headers every store-to-Payments playground call carries. Payments #41
- * rejects calls without a valid x-dinkus-client-ip, so with no usable
- * CF-Connecting-IP this returns null and the caller refuses locally.
- */
-export function paymentsHeaders(pass: string, request: Request | null): Record<string, string> | null {
-  const ip = visitorIp(request);
-  if (!ip) return null;
-  return {
-    authorization: `Bearer ${pass}`,
-    accept: "application/json",
-    [PAYMENTS_SITE_HEADER]: PAYMENTS_PLAYGROUND_SITE,
-    [PAYMENTS_CLIENT_IP_HEADER]: ip,
-  };
-}
-
-/**
- * Server-side lookup by Stripe session id. Never runs in the browser (the
- * credential stays on the Worker) and never acks or reads wakes.
- */
-export async function lookupCheckoutReceipt(input: {
-  sessionId: unknown;
-  config: PaymentsConfig | null;
-  request?: Request | null;
-  fetchImpl?: typeof fetch;
-  passFetchImpl?: typeof fetch;
-}): Promise<CheckoutReceipt | null> {
-  if (!input.config || !isTestCheckoutSessionId(input.sessionId)) return null;
-  const url = new URL(PAYMENTS_RECEIPT_PATH, input.config.baseUrl);
-  url.searchParams.set("session_id", input.sessionId);
-  if (!visitorIp(input.request ?? null)) return { status: "client-ip-refused", attemptId: null };
-  const pass = await getStorePass(input.config, { fetchImpl: input.passFetchImpl });
-  if (!pass) return null;
-  const headers = paymentsHeaders(pass, input.request ?? null);
-  if (!headers) return { status: "client-ip-refused", attemptId: null };
-  try {
-    const response = await (input.fetchImpl ?? fetch)(url, {
-      method: "GET",
-      headers,
-      signal: AbortSignal.timeout(RECEIPT_TIMEOUT_MS),
-      redirect: "error",
-    });
-    const text = await response.text();
-    if (text.length > MAX_RECEIPT_BYTES) return null;
-    if (response.status === 429) {
-      const body = JSON.parse(text) as { error?: unknown };
-      if (body.error !== PAYMENTS_RATE_LIMIT_ERROR) return null;
-      const retry = Number(response.headers.get("retry-after"));
-      return { status: "rate-limited", attemptId: null, retryAfterSeconds: Number.isFinite(retry) && retry > 0 ? retry : 600 };
-    }
-    if (response.status === 400) {
-      const body = JSON.parse(text) as { error?: unknown };
-      return typeof body.error === "string" && PAYMENTS_CLIENT_IP_ERRORS.has(body.error)
-        ? { status: "client-ip-refused", attemptId: null } : null;
-    }
-    if (!response.ok) return null;
-    return parseCheckoutReceipt(JSON.parse(text));
-  } catch {
-    return null;
-  }
 }
