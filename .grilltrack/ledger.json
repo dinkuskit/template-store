@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-14T13:01:39+00:00",
-    "domain": "checkout-status-public-dispatch",
-    "started_at": "2026-10-14T13:01:39+00:00",
+    "confirmed_at": "2026-10-15T16:18:06+00:00",
+    "domain": "fresh-beta-runtime",
+    "started_at": "2026-10-15T16:18:05+00:00",
     "status": "confirmed",
-    "summary": "Coordinator approved status-only public dispatcher replacement after source and native-host availability qualification; all Commerce authority and checkout retention remain intact."
+    "summary": "Coordinator explicitly authorized necessary stable/beta identity repair, focused PR and exact CI/reviews; no deployment or merge."
   },
   "decisions": [
     {
@@ -3238,6 +3238,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-14T13:03:00+00:00",
       "verification_ref": "file:.grilltrack/proof/status-public-dispatch-20261014/PROOF.md;file:.grilltrack/proof/status-public-dispatch-20261014/compiled-dispatch.json;file:.grilltrack/proof/status-public-dispatch-20261014/native-host-locals.json"
+    },
+    {
+      "baseline_ref": "git:5de7970a63bc3bfa9357cf61f0df080d39987e86",
+      "candidate_refs": [],
+      "choice": "Bake one trusted allowlisted stable or beta profile into server and browser; align catalog/readiness/checkout/public boundary and Access source preview. Stable remains default, no arbitrary runtime selector or fallback. Beta packaged contract proof precedes any hosted claim.",
+      "context_ref": "task:fresh-beta-host-20261015",
+      "created_at": "2026-10-15T16:18:06+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "fresh-beta-runtime",
+      "history": [
+        {
+          "at": "2026-10-15T16:18:06+00:00",
+          "choice": "Bake one trusted allowlisted stable or beta profile into server and browser; align catalog/readiness/checkout/public boundary and Access source preview. Stable remains default, no arbitrary runtime selector or fallback. Beta packaged contract proof precedes any hosted claim.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-15T16:23:17+00:00",
+          "choice": "Bake one trusted allowlisted stable or beta profile into server and browser; align catalog/readiness/checkout/public boundary and Access source preview. Stable remains default, no arbitrary runtime selector or fallback. Beta packaged contract proof precedes any hosted claim.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-15T16:23:17+00:00",
+          "choice": "Bake one trusted allowlisted stable or beta profile into server and browser; align catalog/readiness/checkout/public boundary and Access source preview. Stable remains default, no arbitrary runtime selector or fallback. Beta packaged contract proof precedes any hosted claim.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/commerce-profile;file:scripts/build-registry.mjs;file:scripts/access-route-extractor.mjs",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "fresh-beta-runtime-001",
+      "implementation_ref": "file:src/features/commerce-profile;file:scripts/build-registry.mjs;file:scripts/access-route-extractor.mjs",
+      "question": "How does the host consume the separately identified beta Commerce package?",
+      "rationale": "",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-15T16:23:17+00:00",
+      "verification_ref": "file:.grilltrack/proof/fresh-beta-runtime-20261015/PROOF.md;file:.grilltrack/proof/fresh-beta-runtime-20261015/packaged-composition.json"
     }
   ],
   "last_activation": {
@@ -3260,5 +3329,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-14T13:03:00+00:00"
+  "updated_at": "2026-10-15T16:23:17+00:00"
 }

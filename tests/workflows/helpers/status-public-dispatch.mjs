@@ -1,3 +1,4 @@
+import { commerceProfile, commerceProfileDefine } from "../../../src/features/commerce-profile/profiles.mjs";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -9,7 +10,8 @@ const { Miniflare, convertV4MiniflareOptions, Log, LogLevel } = await import(pat
 export const site = "https://store.example.test";
 export const checkout = { schema: "dinkuskit.commerce.guest-checkout-projection/v1", state: "pending",
   attemptId: null, redirectUrl: null, order: null, retryAfter: null };
-export async function statusFixture(payload, { publicRoute = true, missingLocals = false } = {}) {
+export async function statusFixture(payload, { publicRoute = true, missingLocals = false, profile = "stable" } = {}) {
+  const { runtimeId } = commerceProfile(profile);
   await mkdir("runs", { recursive: true });
   const directory = await mkdtemp(join(process.cwd(), "runs/public-status-"));
   const worker = join(directory, "worker.mjs");
@@ -21,15 +23,15 @@ export async function statusFixture(payload, { publicRoute = true, missingLocals
       const runtime={getPluginRouteMeta(){return {public:env.PUBLIC_ROUTE,methods:['POST']}},
         async handlePluginApiRoute(id,method,path,forwarded){
           calls++;
-          if(id!=='r_gshdrqaldna3r7sn'||method!=='POST'||path!=='checkout/guest/status'||
-            forwarded.url!=='${site}/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status'||
+          if(id!=='${runtimeId}'||method!=='POST'||path!=='checkout/guest/status'||
+            forwarded.url!=='${site}/_emdash/api/plugins/${runtimeId}/checkout/guest/status'||
             forwarded.headers.get('origin')!=='${site}'||forwarded.headers.get('x-commerce-guest-capability')!=='cap.synthetic'||forwarded.headers.has('cookie')||forwarded.headers.has('authorization')) throw new Error('invalid forwarding');
           return env.PAYLOAD;
         }};
       const host={...runtime,handlePublicPluginApiRoute:createPublicPluginApiRouteHandler(runtime)};
       const response=await POST({request,locals:env.MISSING_LOCALS?{}:{emdash:host}});
       response.headers.set('x-fixture-dispatch-calls',String(calls));return response;
-    }};` }, bundle: true, platform: "neutral", format: "esm", outfile: worker });
+    }};` }, define: commerceProfileDefine({ DINKUS_COMMERCE_PROFILE: profile }), bundle: true, platform: "neutral", format: "esm", outfile: worker });
   let outbound = 0;
   const mf = new Miniflare(convertV4MiniflareOptions({ name: "public-status", modules: true, scriptPath: worker,
     compatibilityDate: "2026-10-07", compatibilityFlags: ["nodejs_compat"], host: "127.0.0.1", port: 0,

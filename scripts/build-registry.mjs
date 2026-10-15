@@ -3,6 +3,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { registryAccessOptions, registryConfigPath } from "./registry-access.mjs";
 
+import { commerceProfile } from "../src/features/commerce-profile/profiles.mjs";
+
 const root = resolve(import.meta.dirname, "..");
 const configRelativePath = registryConfigPath;
 const configPath = resolve(root, configRelativePath);
@@ -54,6 +56,7 @@ export function registryConfig(env) {
     workers_dev: false,
     preview_urls: false,
     vars: {
+      DINKUS_COMMERCE_PROFILE: commerceProfile(env.DINKUS_COMMERCE_PROFILE).name,
       DINKUS_CATALOG_PROFILE: "shipping",
       DINKUS_STOREFRONT_PROFILE: "shipping",
       DINKUS_PROOF_MODE: "0",
