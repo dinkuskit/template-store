@@ -12,6 +12,8 @@ import { unstable_readConfig } from "wrangler";
 import { selectedRegistryAccessOptions } from "./scripts/registry-access.mjs";
 import { selectedRegistrySandboxRunner } from "./scripts/registry-sandbox.mjs";
 
+import { commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
+
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
   process.env.ASTRO_ADAPTER === "cloudflare";
@@ -94,6 +96,7 @@ export default defineConfig({
     }),
   ],
   vite: {
+    define: commerceProfileDefine(process.env),
     resolve: {
       alias: {
         "@dinkuskit/commerce/features/checkout": fileURLToPath(

@@ -160,3 +160,30 @@ never falls back to HTTP self-fetch, a private handler, or native Commerce.
 Missing locals or dispatcher admission remains unavailable. Request and
 serialized result sizes remain bounded; only validated checkout projection
 fields are returned. Status does not start a payment.
+
+## Commerce runtime profile
+
+`DINKUS_COMMERCE_PROFILE` is a trusted **build** input: omitted or `stable`
+selects `dinkus-commerce` (`r_gshdrqaldna3r7sn`); `beta` selects
+`dinkus-commerce-beta` (`r_fjzjvld3ssb4j63o`). Other values fail the build.
+`build:registry` records the validated profile in the generated config and passes
+it to Astro, which bakes one selection into both server and browser bundles.
+Changing a runtime variable alone cannot switch the bundled catalog or checkout.
+Keep the selected package installed in the same site's original namespace; a
+missing or mismatched installation fails closed. There is no runtime-ID, URL,
+query, or browser-storage selector and no cross-profile fallback.
+
+Catalog and item reads, readiness admission, prepare/start URLs, and the local
+status proxy all use that selection. Only its exact guest prepare/start/status
+POST paths pass the storefront boundary; private adjacent routes retain their
+existing admin protection. The source Access preview uses the same profile:
+`DINKUS_COMMERCE_PROFILE=beta node scripts/verify-access-routes.mjs --check`.
+Its AST extraction remains strict about public metadata and methods. Preview
+output is source evidence, **not an installed artifact or authority to apply
+Access changes**. The Access owner must match the installed package's exact
+route manifest and bytes before applying any exception.
+
+The beta manifest fixture is the qualified `0.3.0-beta.0` candidate manifest,
+SHA256 `86cbba303b8780f7a1dfc74dfa7af3404215975f89a98aa4403596992de16e5e`.
+It establishes the consumer route contract, not publication, a fresh hosted
+installation, successful service authentication, or a completed checkout.

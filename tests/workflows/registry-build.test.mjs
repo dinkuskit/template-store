@@ -60,3 +60,14 @@ test("Registry Access is opt-in and never serializes runtime secrets", () => {
   }
   assert.equal(registryBuildEnv(opted, registryConfig(env)).DINKUS_REGISTRY_ACCESS_ENABLED, "0");
 });
+
+
+test("only known Commerce profiles enter both build and runtime configuration", () => {
+  assert.equal(registryConfig(env).vars.DINKUS_COMMERCE_PROFILE, "stable");
+  const config = registryConfig({ ...env, DINKUS_COMMERCE_PROFILE: "beta" });
+  assert.equal(config.vars.DINKUS_COMMERCE_PROFILE, "beta");
+  assert.equal(registryBuildEnv({ ...env, DINKUS_COMMERCE_PROFILE: "stable" }, config).DINKUS_COMMERCE_PROFILE, "beta");
+  for (const profile of ["", "other", "r_fjzjvld3ssb4j63o", "https://foreign.test"]) {
+    assert.throws(() => registryConfig({ ...env, DINKUS_COMMERCE_PROFILE: profile }), /DINKUS_COMMERCE_PROFILE/);
+  }
+});

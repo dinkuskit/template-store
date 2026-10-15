@@ -2,7 +2,8 @@ import { parseGuestCartIntent, type GuestCartIntent, type GuestCartLine } from "
 
 export const GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY = "dinkus.guest-checkout.v1";
 export const GUEST_CHECKOUT_CAPABILITY_HEADER = "x-commerce-guest-capability";
-export const COMMERCE_REGISTRY_RUNTIME_ID = "r_gshdrqaldna3r7sn";
+export { COMMERCE_RUNTIME_ID as COMMERCE_REGISTRY_RUNTIME_ID } from "../commerce-profile/selected.js";
+import { COMMERCE_RUNTIME_ID as COMMERCE_REGISTRY_RUNTIME_ID } from "../commerce-profile/selected.js";
 export const GUEST_CHECKOUT_PREPARE_ENDPOINT =
   `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/prepare`;
 export const GUEST_CHECKOUT_START_ENDPOINT =

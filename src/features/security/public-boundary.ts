@@ -1,3 +1,5 @@
+import { COMMERCE_RUNTIME_ID } from "../commerce-profile/selected.js";
+
 export interface SecurityPolicyCheck {
   allowed: boolean;
   status: number;
@@ -27,7 +29,7 @@ const ALLOWED_PATH_PATTERNS = [
 ];
 
 const GUEST_CHECKOUT_POST_PATH =
-  /^\/_emdash\/api\/plugins\/r_gshdrqaldna3r7sn\/checkout\/guest\/(prepare|start|status)$/;
+  new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/checkout/guest/(prepare|start|status)$`);
 const LOCAL_CHECKOUT_STATUS_POST_PATH = /^\/api\/checkout\/status$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 function slashlessCollectionPath(pathname: string): string | undefined {
