@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-15T16:18:06+00:00",
-    "domain": "fresh-beta-runtime",
-    "started_at": "2026-10-15T16:18:05+00:00",
+    "confirmed_at": "2026-10-15T18:35:59+00:00",
+    "domain": "workers-build-source-guard",
+    "started_at": "2026-10-15T18:35:59+00:00",
     "status": "confirmed",
-    "summary": "Coordinator explicitly authorized necessary stable/beta identity repair, focused PR and exact CI/reviews; no deployment or merge."
+    "summary": "Root explicitly approved this bounded source guard, account pin, focused tests/docs and exact qualification; no merge/deployment."
   },
   "decisions": [
     {
@@ -3307,6 +3307,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-15T16:23:17+00:00",
       "verification_ref": "file:.grilltrack/proof/fresh-beta-runtime-20261015/PROOF.md;file:.grilltrack/proof/fresh-beta-runtime-20261015/packaged-composition.json"
+    },
+    {
+      "baseline_ref": "git:e2ad5273fbd0ec46e9947a96bc37b9aeb7b913d4",
+      "candidate_refs": [],
+      "choice": "Require actual project-root Git HEAD equal full reviewed expected commit, committed tree, clean tracked staged/worktree source, exact injected branch and expected account. Treat injected commit stamp only as truthful bounded observational metadata; never rewrite it or use it as admission. Non-CI builds keep prior behavior.",
+      "context_ref": "task:workers-build-source-guard-20261015",
+      "created_at": "2026-10-15T18:35:59+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "workers-build-source-guard",
+      "history": [
+        {
+          "at": "2026-10-15T18:35:59+00:00",
+          "choice": "Require actual project-root Git HEAD equal full reviewed expected commit, committed tree, clean tracked staged/worktree source, exact injected branch and expected account. Treat injected commit stamp only as truthful bounded observational metadata; never rewrite it or use it as admission. Non-CI builds keep prior behavior.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-15T18:38:12+00:00",
+          "choice": "Require actual project-root Git HEAD equal full reviewed expected commit, committed tree, clean tracked staged/worktree source, exact injected branch and expected account. Treat injected commit stamp only as truthful bounded observational metadata; never rewrite it or use it as admission. Non-CI builds keep prior behavior.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-15T18:38:12+00:00",
+          "choice": "Require actual project-root Git HEAD equal full reviewed expected commit, committed tree, clean tracked staged/worktree source, exact injected branch and expected account. Treat injected commit stamp only as truthful bounded observational metadata; never rewrite it or use it as admission. Non-CI builds keep prior behavior.",
+          "from": "implemented",
+          "implementation_ref": "file:scripts/build-registry.mjs;file:tests/workflows/registry-build.test.mjs;file:docs/implementation/registry-git-build.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "workers-build-source-guard-001",
+      "implementation_ref": "file:scripts/build-registry.mjs;file:tests/workflows/registry-build.test.mjs;file:docs/implementation/registry-git-build.md",
+      "question": "Which source identity admits a Workers Builds Registry build when the injected stamp is unqualified?",
+      "rationale": "",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-15T18:38:12+00:00",
+      "verification_ref": "file:.grilltrack/proof/workers-build-source-guard-20261015/PROOF.md"
     }
   ],
   "last_activation": {
@@ -3329,5 +3398,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-15T16:23:17+00:00"
+  "updated_at": "2026-10-15T18:38:12+00:00"
 }

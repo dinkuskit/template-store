@@ -57,3 +57,9 @@
 {"action": "shared_understanding_confirmed", "at": "2026-10-15T16:18:06+00:00", "data": {"summary": "Coordinator explicitly authorized necessary stable/beta identity repair, focused PR and exact CI/reviews; no deployment or merge."}, "event_id": "f702130f-e2b6-407c-a476-d8cc07b6785a"}
 {"action": "decision_implemented", "at": "2026-10-15T16:23:17+00:00", "data": {"decision_id": "fresh-beta-runtime-001"}, "event_id": "f6df13dc-ab2a-436f-8b3a-6bf613d49be5"}
 {"action": "decision_verified", "at": "2026-10-15T16:23:17+00:00", "data": {"decision_id": "fresh-beta-runtime-001"}, "event_id": "640f17d6-d65f-421c-85c5-29e74716b3ce"}
+{"action": "focus_started", "at": "2026-10-15T18:35:59+00:00", "data": {"cadence": "sequential", "domain": "workers-build-source-guard"}, "event_id": "f6bdfb10-a98b-4a93-9148-d17dd099f00d"}
+{"action": "decision_proposed", "at": "2026-10-15T18:35:59+00:00", "data": {"decision_id": "workers-build-source-guard-001"}, "event_id": "13b81eba-ac6d-4d19-a9de-76f983d0a563"}
+{"action": "decision_locked", "at": "2026-10-15T18:35:59+00:00", "data": {"decision_id": "workers-build-source-guard-001"}, "event_id": "b72e6436-d226-4f5d-ab8f-c662e696d226"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-15T18:35:59+00:00", "data": {"summary": "Root explicitly approved this bounded source guard, account pin, focused tests/docs and exact qualification; no merge/deployment."}, "event_id": "5bc81b09-5591-4b88-a7e7-954b703b9441"}
+{"action": "decision_implemented", "at": "2026-10-15T18:38:12+00:00", "data": {"decision_id": "workers-build-source-guard-001"}, "event_id": "3c569471-59bf-45ce-ac93-d828aa91885e"}
+{"action": "decision_verified", "at": "2026-10-15T18:38:12+00:00", "data": {"decision_id": "workers-build-source-guard-001"}, "event_id": "25796236-95e6-4038-8110-3dcb9ec39a6f"}
