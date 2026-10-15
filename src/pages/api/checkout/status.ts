@@ -8,8 +8,7 @@ import {
 } from "../../../features/guest-cart/checkout-protocol.js";
 
 import { canDispatchInstalledGuestCheckout } from "../../../features/guest-cart/checkout-admission.js";
-import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, visitorIp } from "../../../features/playground-checkout/index.js";
-import { playgroundCheckoutConfigured, withCheckoutVisitor } from "../../../features/playground-checkout/payments-port.js";
+import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, playgroundCheckoutConfigured } from "../../../features/playground-checkout/index.js";
 
 export const prerender = false;
 const MAX_REQUEST_BYTES = 4 * 1024;
@@ -161,7 +160,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const target = native
       ? new URL(nativeCheckoutPath("status"), origin)
       : new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
-    const dispatch = () => runtime.handlePublicPluginApiRoute(
+    // The middleware supplies the playground visitor context for Payments lookups.
+    const result = await runtime.handlePublicPluginApiRoute(
       pluginId,
       "POST",
       "checkout/guest/status",

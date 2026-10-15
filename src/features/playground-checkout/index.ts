@@ -60,6 +60,23 @@ export function readPaymentsConfig(env: EnvLike = process.env): PaymentsConfig |
 
 export type PaymentsConfig = Readonly<{ baseUrl: string; storeKey: string }>;
 
+export const PAYMENTS_STRIPE_ACCOUNT_ENV = "PAYMENTS_STRIPE_ACCOUNT_ID";
+
+/** The Payments playground tenant's Stripe test account id, or null when absent or malformed. */
+export function readStripeAccount(env: EnvLike = process.env): string | null {
+  const value = env[PAYMENTS_STRIPE_ACCOUNT_ENV];
+  return typeof value === "string" && /^acct_[A-Za-z0-9]{1,64}$/u.test(value.trim()) ? value.trim() : null;
+}
+
+/**
+ * True only when the flag is "1" and every value the playground port needs is
+ * present and well formed. Dependency-free so request handlers can gate on it
+ * without loading the Commerce payment port.
+ */
+export function playgroundCheckoutConfigured(env: EnvLike = process.env): boolean {
+  return isCheckoutEnabled(env) && readPaymentsConfig(env) !== null && readStripeAccount(env) !== null;
+}
+
 // --- Store pass exchange (dinkuskit/dinkuskit src/account/store-passes.ts) -----
 
 export const STORE_PASSES_URL = "https://dinkuskit.com/api/store-passes";

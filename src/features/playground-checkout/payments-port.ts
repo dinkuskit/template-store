@@ -20,13 +20,14 @@ import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../playground/flat-rate-shipping.
 import {
   getStorePass,
   isCheckoutEnabled,
+  readStripeAccount,
   PAYMENTS_CLIENT_IP_HEADER,
   PAYMENTS_PLAYGROUND_SITE,
   readPaymentsConfig,
 } from "./index.js";
 
 export const PAYMENTS_PLAYGROUND_BINDING_REF = "playground";
-export const PAYMENTS_STRIPE_ACCOUNT_ENV = "PAYMENTS_STRIPE_ACCOUNT_ID";
+export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured } from "./index.js";
 /** Stands in for the store origin Payments takes from the pass; the port never sends it. */
 const PLAYGROUND_COMMERCE_ORIGIN = "https://playground.dinkuskit.com";
 
@@ -38,15 +39,7 @@ export function withCheckoutVisitor<T>(clientIp: string, run: () => T): T {
   return visitor.run({ clientIp }, run);
 }
 
-function stripeAccount(env: EnvLike): string | null {
-  const value = env[PAYMENTS_STRIPE_ACCOUNT_ENV];
-  return typeof value === "string" && /^acct_[A-Za-z0-9]{1,64}$/u.test(value.trim()) ? value.trim() : null;
-}
-
-/** True only when the flag is "1" and every value the playground port needs is present and well formed. */
-export function playgroundCheckoutConfigured(env: EnvLike = process.env): boolean {
-  return isCheckoutEnabled(env) && readPaymentsConfig(env) !== null && stripeAccount(env) !== null;
-}
+const stripeAccount = readStripeAccount;
 
 /**
  * Payments (#41) serves the playground tenant on session, lookup and receipt

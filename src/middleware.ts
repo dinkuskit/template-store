@@ -6,6 +6,7 @@ import {
   isExactGuestCheckoutPath,
 } from "./features/security/public-boundary.js";
 import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
+import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-protocol.js";
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import { playgroundCheckoutConfigured, withCheckoutVisitor } from "./features/playground-checkout/payments-port.js";
@@ -109,6 +110,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return refused;
     }
     const response = await withCheckoutVisitor(clientIp ?? "", () => next(nativeCheckoutPath(checkoutKind)));
+    applySecurityHeaders(response.headers);
+    return response;
+  }
+
+  // Status recovery (/api/checkout/status) dispatches in-process to the native
+  // Commerce route; give its Payments lookup the same visitor context.
+  if (isPlayground && context.url.pathname === GUEST_CHECKOUT_STATUS_ENDPOINT &&
+      playgroundCheckoutConfigured()) {
+    const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", () => next());
     applySecurityHeaders(response.headers);
     return response;
   }

@@ -118,3 +118,36 @@ describe("sandbox checkout body guard", () => {
     expect(pulls).toBeGreaterThan(4);
   });
 });
+
+describe("playground status recovery visitor context", () => {
+  it("runs /api/checkout/status inside the visitor context only for a configured playground session", async () => {
+    const { playgroundPaymentsFetch } = await import("../../src/features/playground-checkout/payments-port.js");
+    Object.assign(process.env, READY);
+    const seen: Array<string | null> = [];
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+      seen.push(new Headers(init.headers).get("x-dinkus-client-ip"));
+      return Response.json({});
+    });
+    const lookup = () => playgroundPaymentsFetch(process.env, { fetchImpl: fetchImpl as never })(
+      "https://payments.local.test/v1/checkout/lookup", { method: "POST" });
+    const statusCall = async (playground: boolean) => {
+      const request = new Request("https://playground.example/api/checkout/status", {
+        method: "POST", headers: { "cf-connecting-ip": "203.0.113.7" }, body: "{}" });
+      const locals: Record<string, unknown> = { emdash: null };
+      if (playground) locals.__playgroundDb = {};
+      const next = vi.fn(async () => { await lookup(); return new Response("status", { status: 200 }); });
+      const response = await (onRequest as unknown as (c: unknown, n: unknown) => Promise<Response>)({
+        url: new URL(request.url), request, locals, cookies: { get: () => ({ value: "pg-session" }) },
+      }, next);
+      return { response, next };
+    };
+    const configured = await statusCall(true);
+    expect(configured.response.status).toBe(200);
+    expect(configured.next).toHaveBeenCalledWith();
+    expect(seen).toEqual(["203.0.113.7"]);
+    seen.length = 0;
+    process.env.DINKUS_CHECKOUT_ENABLED = "0";
+    await statusCall(true).catch(() => undefined);
+    expect(seen).toEqual([]);
+  });
+});
