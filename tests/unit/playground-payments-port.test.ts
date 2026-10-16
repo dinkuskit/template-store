@@ -146,6 +146,8 @@ describe("playground host-side Payments port", () => {
     vi.spyOn(Date, "now").mockReturnValue(now + 31 * 60 * 1000);
     await expect(withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.lookup(request as never)))
       .rejects.toThrow(/expired/);
+    await expect(withCheckoutVisitor("203.0.113.8", "visitor-b", () => port.lookup(request as never)))
+      .rejects.toThrow(/expired/);
     expect(upstream).toHaveBeenCalledTimes(1);
     vi.restoreAllMocks();
   });
