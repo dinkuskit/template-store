@@ -37,7 +37,9 @@ type EnvLike = Record<string, unknown>;
 type VisitorContext = { clientIp: string; sessionId: string };
 const visitor = new AsyncLocalStorage<VisitorContext>();
 const attemptVisitors = new Map<string, { sessionId: string; expiresAt: number }>();
-const ATTEMPT_BINDING_TTL_MS = 2 * 60 * 60 * 1000;
+// Recovery may only use the Commerce/Payments minimum checkout lifetime. The
+// in-memory binding remains authoritative when Payments gives a shorter expiry.
+const ATTEMPT_BINDING_TTL_MS = 30 * 60 * 1000;
 const PLAYGROUND_ATTEMPT_PREFIX = "pg1";
 
 function visitorBindingHash(sessionId: string): string {

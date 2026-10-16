@@ -8,7 +8,7 @@ import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, productPageOffersCart, readProductEntries } from "../../features/store-shell/product-routes.js";
-import { isCheckoutEnabled, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { playgroundCheckoutConfigured, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
@@ -56,7 +56,7 @@ if (item && profile === "shipping" && item.availabilitySource !== "preview") {
 // DINKUS_CHECKOUT_ENABLED is on; other proof profiles never do.
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const isDemo = isDemoCatalogProfile();
-const checkoutEnabled = isCheckoutEnabled();
+const checkoutEnabled = playgroundCheckoutConfigured();
 const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checkoutEnabled });
 const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo, checkoutEnabled });
 const variants = linkedProduct?.variants ?? [];

@@ -84,8 +84,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
     if (checkoutKind === "status" && isPlayground && playgroundCheckoutConfigured()) {
       const statusAttemptId = await readStatusAttemptId(context.request);
+      if (statusAttemptId === TOO_LARGE) {
+        const refused = checkoutJsonError(413, "Checkout request is too large.");
+        applySecurityHeaders(refused.headers);
+        return refused;
+      }
       const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
-      if (!statusAttemptId || !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
+      if (statusAttemptId !== null && !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
         const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
         applySecurityHeaders(refused.headers);
         return refused;
@@ -134,7 +139,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
       playgroundCheckoutConfigured()) {
     const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
     const statusAttemptId = await readStatusAttemptId(context.request);
-    if (!statusAttemptId || !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
+    if (statusAttemptId === TOO_LARGE) {
+      const refused = checkoutJsonError(413, "Checkout request is too large.");
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
+    if (statusAttemptId !== null && !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
       const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
       applySecurityHeaders(refused.headers);
       return refused;
@@ -284,9 +294,12 @@ async function boundedCheckoutBody(request: Request): Promise<string | null | ty
   return new TextDecoder().decode(bytes);
 }
 
-async function readStatusAttemptId(request: Request): Promise<string | null> {
+async function readStatusAttemptId(request: Request): Promise<string | null | typeof TOO_LARGE> {
+  const raw = await boundedCheckoutBody(request);
+  if (raw === TOO_LARGE) return TOO_LARGE;
+  if (raw === null || raw === "") return null;
   try {
-    const body = await request.clone().json() as { attemptId?: unknown };
+    const body = JSON.parse(raw) as { attemptId?: unknown };
     return typeof body.attemptId === "string" && body.attemptId.length > 0 ? body.attemptId : null;
   } catch {
     return null;
