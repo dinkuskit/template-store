@@ -121,15 +121,25 @@ describe("sandbox checkout body guard", () => {
 
 describe("playground status recovery visitor context", () => {
   it("runs /api/checkout/status inside the visitor context only for a configured playground session", async () => {
-    const { playgroundPaymentsFetch } = await import("../../src/features/playground-checkout/payments-port.js");
+    const { playgroundPaymentsFetch, withCheckoutVisitor } = await import("../../src/features/playground-checkout/payments-port.js");
     Object.assign(process.env, READY);
     const seen: Array<string | null> = [];
     const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
       seen.push(new Headers(init.headers).get("x-dinkus-client-ip"));
-      return Response.json({});
+      const body = typeof init.body === "string" ? JSON.parse(init.body) : {};
+      return Response.json({ outcome: "open", attemptId: body.attemptId, session: { expiresAt: Math.floor(Date.now() / 1000) + 1800 } });
     });
+    const scoped = playgroundPaymentsFetch(process.env, { fetchImpl: fetchImpl as never });
+    await withCheckoutVisitor("203.0.113.7", "pg-session", () => scoped(
+      "https://payments.local.test/v1/checkout/session",
+      { method: "POST", body: JSON.stringify({ attemptId: "status-attempt" }) },
+    ));
+    seen.length = 0;
     const lookup = () => playgroundPaymentsFetch(process.env, { fetchImpl: fetchImpl as never })(
-      "https://payments.local.test/v1/checkout/lookup", { method: "POST" });
+      "https://payments.local.test/v1/checkout/lookup", {
+        method: "POST",
+        body: JSON.stringify({ attemptId: "status-attempt" }),
+      });
     const statusCall = async (playground: boolean) => {
       const request = new Request("https://playground.example/api/checkout/status", {
         method: "POST", headers: { "cf-connecting-ip": "203.0.113.7" }, body: "{}" });

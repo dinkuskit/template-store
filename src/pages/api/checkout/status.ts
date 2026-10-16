@@ -160,8 +160,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const target = native
       ? new URL(nativeCheckoutPath("status"), origin)
       : new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
-    // The middleware supplies the playground visitor context for Payments lookups.
-    const result = await runtime.handlePublicPluginApiRoute(
+    const dispatch = () => runtime.handlePublicPluginApiRoute(
       pluginId,
       "POST",
       "checkout/guest/status",
@@ -177,14 +176,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         cache: "no-store",
       }),
     );
-    // Payments lookups from the native playground port require the exact
-    // playground session that owns the disposable Commerce runtime.
-    const session = /(?:^|;\s*)emdash_playground=([A-Za-z0-9._~-]{1,512})(?:;|$)/u.exec(
-      request.headers.get("cookie") ?? "",
-    )?.[1] ?? "";
-    const result = native
-      ? await withCheckoutVisitor(visitorIp(request) ?? "", session, dispatch)
-      : await dispatch();
+    const result = await dispatch();
     let parsed: unknown;
     try {
       const text = JSON.stringify(result);

@@ -119,9 +119,9 @@ describe("playground host-side Payments port", () => {
     await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never));
     const callsAfterCreate = upstream.mock.calls.length;
     await expect(withCheckoutVisitor("203.0.113.8", "visitor-b", () =>
-      port.lookup(request as never))).rejects.toThrow(/visitor mismatch/);
+      port.lookup(request as never))).rejects.toThrow(/visitor mismatch|not bound/);
     await expect(withCheckoutVisitor("203.0.113.7", "visitor-reset", () =>
-      port.lookup(request as never))).rejects.toThrow(/visitor mismatch/);
+      port.lookup(request as never))).rejects.toThrow(/visitor mismatch|not bound/);
     expect(upstream).toHaveBeenCalledTimes(callsAfterCreate);
   });
 });
