@@ -124,4 +124,29 @@ describe("playground host-side Payments port", () => {
       port.lookup(request as never))).rejects.toThrow(/visitor mismatch|not bound/);
     expect(upstream).toHaveBeenCalledTimes(callsAfterCreate);
   });
+
+  it("rejects an expired binding before lookup transport", async () => {
+    const passFetchImpl = vi.fn(async () => Response.json({ access_token: "h.p.s", token_type: "Bearer", expires_in: 300 }));
+    const upstream = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as { attemptId: string };
+      return Response.json({
+        outcome: "open", attemptId: body.attemptId, total: { currency: "USD", minor: "2500" },
+        session: { sessionId: "cs_expiring", redirectUrl: "https://checkout.stripe.com/c/pay/cs_expiring", createdAt: 1, expiresAt: Math.floor(Date.now() / 1000) + 1800 },
+      });
+    });
+    const port = resolvePlaygroundPayments(env, { fetchImpl: upstream as never, passFetchImpl: passFetchImpl as never })!;
+    const request = {
+      attemptId: "att_expiring", bindingRef: "playground",
+      lines: [{ catalogItemId: "item_1", quantity: 1, name: "Tee", unitPrice: { currency: "USD" as const, minor: "2500" } }],
+      total: { currency: "USD" as const, minor: "2500" },
+      paymentMethods: ["card"] as const, paymentWindow: { minSeconds: 1800 as const, maxSeconds: 1860 as const },
+    };
+    await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never));
+    const now = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(now + 31 * 60 * 1000);
+    await expect(withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.lookup(request as never)))
+      .rejects.toThrow(/expired/);
+    expect(upstream).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
 });

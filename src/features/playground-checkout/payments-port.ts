@@ -84,11 +84,9 @@ export function playgroundPaymentsFetch(
     const binding = attemptVisitors.get(attemptId);
     if (binding && binding.expiresAt <= Date.now()) {
       attemptVisitors.delete(attemptId);
+      throw new Error("Checkout attempt expired");
     } else if (binding && binding.sessionId !== currentVisitor.sessionId) {
       throw new Error("Checkout visitor mismatch");
-    }
-    if (target.pathname === "/v1/checkout/lookup" && !binding) {
-      throw new Error("Checkout attempt is not bound to this visitor");
     }
     // Payments requires the visitor IP to create a session (per-IP limit); a
     // lookup forwards it when known.
