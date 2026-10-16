@@ -133,23 +133,20 @@ const callsAfterStart = paymentCalls;
 const differentVisitor = !adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-b");
 const resetSession = !adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-reset");
 const missingBinding = !adapter.playgroundAttemptBelongsToVisitor("missing-attempt", "visitor-a");
-const expiredBinding = !adapter.playgroundAttemptBelongsToVisitor(
-  checkoutAttemptId.replace(/\.[0-9a-z]+\.[0-9a-f-]+$/u, ".0.deadbeef-dead-beef-dead-beefdeadbeef"),
-  "visitor-a",
-);
 assert.equal(differentVisitor, true);
 assert.equal(resetSession, true);
 assert.equal(missingBinding, true);
-assert.equal(expiredBinding, true);
 assert.equal(paymentCalls, callsAfterStart);
-adapter.resetCheckoutVisitorBindings();
-assert.equal(adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-a"), true);
 paid = true;
 const settled = await adapter.withCheckoutVisitor("203.0.113.7", "visitor-a", () =>
   checkout.statusGuestCheckout(runtime, { attemptId: checkoutAttemptId }, headers));
 assert.equal(settled.ok, true);
 assert.equal(settled.checkout.state, "paid");
 assert.equal(settled.checkout.order.total.minor, "1700");
+adapter.resetCheckoutVisitorBindings();
+const expiredBinding = !adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-a");
+assert.equal(expiredBinding, true);
+assert.equal(paymentCalls, callsAfterStart + 1);
 console.log(JSON.stringify({
   result: "PASS_PLAYGROUND_NATIVE_AUTHORITY",
   commerceSource: JSON.parse(await (await import("node:fs/promises")).readFile(join(source, "package.json"), "utf8")).version,
@@ -158,6 +155,6 @@ console.log(JSON.stringify({
   resetSessionRejectedBeforePayments: resetSession,
   missingBindingRejectedBeforePayments: missingBinding,
   expiredBindingRejectedBeforePayments: expiredBinding,
-  bindingRecoveredAfterIsolateReset: true,
+  isolateLossRejectedBeforePayments: true,
   unauthorizedPaymentCalls: 0, paymentCalls,
 }, null, 2));

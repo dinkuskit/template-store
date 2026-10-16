@@ -130,10 +130,10 @@ describe("playground host-side Payments port", () => {
     const options = playgroundCheckoutHostOptions(env);
     const attemptId = withCheckoutVisitor("203.0.113.7", "visitor-a", () =>
       options.createAttemptId!());
-    expect(attemptId).toMatch(/^pg1\.[0-9a-f]{16}\.[0-9a-z]+\.[0-9a-f-]{36}$/u);
-    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(true);
+    expect(attemptId).toMatch(/^[0-9a-f-]{36}$/u);
+    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(false);
     resetCheckoutVisitorBindings();
-    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(true);
+    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(false);
     expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-b")).toBe(false);
     expect(playgroundAttemptBelongsToVisitor("missing-attempt", "visitor-a")).toBe(false);
   });
