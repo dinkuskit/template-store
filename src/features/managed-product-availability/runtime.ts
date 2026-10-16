@@ -47,7 +47,7 @@ const INVENTORY_SKU_ID = "dinkus-inventory-sku-demo";
 const OPENING_QUANTITY = "8";
 
 const PROVENANCE = {
-  commerce: "14154268206580eae616d8b2c9488f2fa470614e",
+  commerce: "93af4fec2f33f43463d5917972cce574180446d1",
   inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
 } as const;
 
