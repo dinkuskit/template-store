@@ -34,9 +34,21 @@ const PLAYGROUND_COMMERCE_ORIGIN = "https://playground.dinkuskit.com";
 type EnvLike = Record<string, unknown>;
 
 /** Per-request visitor context, set by the store middleware around checkout routes. */
-const visitor = new AsyncLocalStorage<{ clientIp: string }>();
-export function withCheckoutVisitor<T>(clientIp: string, run: () => T): T {
-  return visitor.run({ clientIp }, run);
+type VisitorContext = { clientIp: string; sessionId: string };
+const visitor = new AsyncLocalStorage<VisitorContext>();
+const attemptVisitors = new Map<string, { sessionId: string; expiresAt: number }>();
+const ATTEMPT_BINDING_TTL_MS = 2 * 60 * 60 * 1000;
+
+export function withCheckoutVisitor<T>(
+  clientIp: string,
+  sessionId: string,
+  run: () => T,
+): T {
+  return visitor.run({ clientIp, sessionId }, run);
+}
+
+export function resetCheckoutVisitorBindings(): void {
+  attemptVisitors.clear();
 }
 
 const stripeAccount = readStripeAccount;
@@ -64,14 +76,50 @@ export function playgroundPaymentsFetch(
     if (target.pathname !== "/v1/checkout/session" && target.pathname !== "/v1/checkout/lookup") {
       throw new Error("Unexpected Payments route");
     }
+    const currentVisitor = visitor.getStore();
+    if (!currentVisitor?.sessionId) throw new Error("Visitor session unavailable");
+    const clientIp = currentVisitor.clientIp;
+    const attemptId = readAttemptId(init.body);
+    if (!attemptId) throw new Error("Checkout attempt unavailable");
+    const binding = attemptVisitors.get(attemptId);
+    if (binding && (binding.expiresAt <= Date.now() || binding.sessionId !== currentVisitor.sessionId)) {
+      attemptVisitors.delete(attemptId);
+      throw new Error("Checkout visitor mismatch");
+    }
+    if (target.pathname === "/v1/checkout/lookup" && !binding) {
+      throw new Error("Checkout attempt is not bound to this visitor");
+    }
     // Payments requires the visitor IP to create a session (per-IP limit); a
     // lookup forwards it when known.
-    const clientIp = visitor.getStore()?.clientIp;
     if (!clientIp && target.pathname === "/v1/checkout/session") throw new Error("Visitor IP unavailable");
     const headers = new Headers(init.headers);
     if (clientIp) headers.set(PAYMENTS_CLIENT_IP_HEADER, clientIp);
-    return (deps.fetchImpl ?? fetch)(target.href, { ...init, headers });
+    const response = await (deps.fetchImpl ?? fetch)(target.href, { ...init, headers });
+    if (target.pathname === "/v1/checkout/session" && response.ok) {
+      const result = await response.clone().json() as { attemptId?: unknown; session?: { expiresAt?: unknown } };
+      if (typeof result.attemptId !== "string" || result.attemptId !== attemptId) {
+        throw new Error("Payments attempt identity mismatch");
+      }
+      const expiresAt = typeof result.session?.expiresAt === "number"
+        ? result.session.expiresAt * 1000
+        : Date.now() + ATTEMPT_BINDING_TTL_MS;
+      attemptVisitors.set(attemptId, {
+        sessionId: currentVisitor.sessionId,
+        expiresAt: Math.min(expiresAt, Date.now() + ATTEMPT_BINDING_TTL_MS),
+      });
+    }
+    return response;
   };
+}
+
+function readAttemptId(body: BodyInit | null | undefined): string | null {
+  if (typeof body !== "string") return null;
+  try {
+    const value = JSON.parse(body) as { attemptId?: unknown };
+    return typeof value.attemptId === "string" && value.attemptId.length > 0 ? value.attemptId : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Commerce's port for binding ref "playground", or null (fail closed) when not configured. */

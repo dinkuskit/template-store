@@ -4,6 +4,7 @@ import { resetStorePassCache } from "../../src/features/playground-checkout/inde
 import {
   playgroundCheckoutHostOptions,
   playgroundPaymentsFetch,
+  resetCheckoutVisitorBindings,
   resolvePlaygroundPayments,
   withCheckoutVisitor,
 } from "../../src/features/playground-checkout/payments-port.js";
@@ -14,7 +15,10 @@ const env = {
   PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
   PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
 };
-beforeEach(() => resetStorePassCache());
+beforeEach(() => {
+  resetStorePassCache();
+  resetCheckoutVisitorBindings();
+});
 
 describe("playground host-side Payments port", () => {
   it("is absent (fail closed) unless the flag and every value are set", async () => {
@@ -34,15 +38,23 @@ describe("playground host-side Payments port", () => {
   });
 
   it("answers the binding pre-check locally and adds the visitor IP to session calls", async () => {
-    const upstream = vi.fn(async () => Response.json({ outcome: "unknown" }));
+    const upstream = vi.fn(async () => Response.json({
+      outcome: "open",
+      attemptId: "att_0",
+      session: { sessionId: "cs_test_0", expiresAt: Math.floor(Date.now() / 1000) + 1800 },
+    }));
     const scoped = playgroundPaymentsFetch(env, { fetchImpl: upstream as never });
     const binding = await scoped("https://payments.local.test/v1/checkout-binding?bindingRef=playground", { method: "GET" });
     expect(await binding.json()).toEqual({ bindingRef: "playground", providerId: "stripe", stripeAccountId: "acct_TEST1", mode: "test", ready: true });
     expect(upstream).not.toHaveBeenCalled();
     await expect(scoped("https://payments.local.test/v1/checkout/session", { method: "POST", headers: { "x-dinkus-site": "playground" } }))
-      .rejects.toThrow(/Visitor IP/);
-    await withCheckoutVisitor("203.0.113.7", () =>
-      scoped("https://payments.local.test/v1/checkout/session", { method: "POST", headers: { "x-dinkus-site": "playground" } }));
+      .rejects.toThrow(/Visitor session/);
+    await withCheckoutVisitor("203.0.113.7", "visitor-a", () =>
+      scoped("https://payments.local.test/v1/checkout/session", {
+        method: "POST",
+        headers: { "x-dinkus-site": "playground" },
+        body: JSON.stringify({ attemptId: "att_0" }),
+      }));
     const headers = new Headers((upstream.mock.calls[0] as unknown as [string, RequestInit])[1].headers);
     expect(headers.get("x-dinkus-client-ip")).toBe("203.0.113.7");
     expect(headers.get("x-dinkus-site")).toBe("playground");
@@ -67,7 +79,7 @@ describe("playground host-side Payments port", () => {
       total: { currency: "USD" as const, minor: "2500" },
       paymentMethods: ["card"] as const, paymentWindow: { minSeconds: 1800 as const, maxSeconds: 1860 as const },
     };
-    const outcome = await withCheckoutVisitor("203.0.113.7", () => port.ensureSession(request as never));
+    const outcome = await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never));
     expect(outcome).toMatchObject({ outcome: "open", session: { sessionId: "cs_test_mock1" } });
     const [url, init] = upstream.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://payments.local.test/v1/checkout/session");
@@ -81,8 +93,35 @@ describe("playground host-side Payments port", () => {
   it("fails closed when the pass exchange fails", async () => {
     const upstream = vi.fn();
     const port = resolvePlaygroundPayments(env, { fetchImpl: upstream as never, passFetchImpl: (async () => new Response("", { status: 401 })) as never })!;
-    await expect(withCheckoutVisitor("203.0.113.7", () => port.lookup({ attemptId: "a", bindingRef: "playground", lines: [], total: { currency: "USD", minor: "0" }, paymentMethods: ["card"], paymentWindow: { minSeconds: 1800, maxSeconds: 1860 } } as never)))
+    await expect(withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.lookup({ attemptId: "a", bindingRef: "playground", lines: [], total: { currency: "USD", minor: "0" }, paymentMethods: ["card"], paymentWindow: { minSeconds: 1800, maxSeconds: 1860 } } as never)))
       .rejects.toThrow();
     expect(upstream).not.toHaveBeenCalled();
+  });
+
+  it("binds payment attempts to the playground session before lookup", async () => {
+    const passFetchImpl = vi.fn(async () => Response.json({ access_token: "h.p.s", token_type: "Bearer", expires_in: 300 }));
+    const upstream = vi.fn(async (_url: string, init: RequestInit) => {
+      const request = JSON.parse(init.body as string) as { attemptId: string };
+      return Response.json({
+        outcome: "open",
+        attemptId: request.attemptId,
+        total: { currency: "USD", minor: "2500" },
+        session: { sessionId: "cs_isolated", redirectUrl: "https://checkout.stripe.com/c/pay/cs_isolated", createdAt: 1, expiresAt: Math.floor(Date.now() / 1000) + 1800 },
+      });
+    });
+    const port = resolvePlaygroundPayments(env, { fetchImpl: upstream as never, passFetchImpl: passFetchImpl as never })!;
+    const request = {
+      attemptId: "att_isolated", bindingRef: "playground",
+      lines: [{ catalogItemId: "item_1", quantity: 1, name: "Tee", unitPrice: { currency: "USD" as const, minor: "2500" } }],
+      total: { currency: "USD" as const, minor: "2500" },
+      paymentMethods: ["card"] as const, paymentWindow: { minSeconds: 1800 as const, maxSeconds: 1860 as const },
+    };
+    await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never));
+    const callsAfterCreate = upstream.mock.calls.length;
+    await expect(withCheckoutVisitor("203.0.113.8", "visitor-b", () =>
+      port.lookup(request as never))).rejects.toThrow(/visitor mismatch/);
+    await expect(withCheckoutVisitor("203.0.113.7", "visitor-reset", () =>
+      port.lookup(request as never))).rejects.toThrow(/visitor mismatch/);
+    expect(upstream).toHaveBeenCalledTimes(callsAfterCreate);
   });
 });

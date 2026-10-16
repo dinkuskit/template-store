@@ -109,7 +109,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       applySecurityHeaders(refused.headers);
       return refused;
     }
-    const response = await withCheckoutVisitor(clientIp ?? "", () => next(nativeCheckoutPath(checkoutKind)));
+    const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
+    const response = await withCheckoutVisitor(clientIp ?? "", sessionId, () => next(nativeCheckoutPath(checkoutKind)));
     applySecurityHeaders(response.headers);
     return response;
   }
@@ -118,7 +119,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Commerce route; give its Payments lookup the same visitor context.
   if (isPlayground && context.url.pathname === GUEST_CHECKOUT_STATUS_ENDPOINT &&
       playgroundCheckoutConfigured()) {
-    const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", () => next());
+    const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
+    const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", sessionId, () => next());
     applySecurityHeaders(response.headers);
     return response;
   }
