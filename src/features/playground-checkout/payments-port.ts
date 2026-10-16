@@ -82,8 +82,9 @@ export function playgroundPaymentsFetch(
     const attemptId = readAttemptId(init.body);
     if (!attemptId) throw new Error("Checkout attempt unavailable");
     const binding = attemptVisitors.get(attemptId);
-    if (binding && (binding.expiresAt <= Date.now() || binding.sessionId !== currentVisitor.sessionId)) {
+    if (binding && binding.expiresAt <= Date.now()) {
       attemptVisitors.delete(attemptId);
+    } else if (binding && binding.sessionId !== currentVisitor.sessionId) {
       throw new Error("Checkout visitor mismatch");
     }
     if (target.pathname === "/v1/checkout/lookup" && !binding) {
