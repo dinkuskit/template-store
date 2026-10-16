@@ -38,6 +38,39 @@ type VisitorContext = { clientIp: string; sessionId: string };
 const visitor = new AsyncLocalStorage<VisitorContext>();
 const attemptVisitors = new Map<string, { sessionId: string; expiresAt: number }>();
 const ATTEMPT_BINDING_TTL_MS = 2 * 60 * 60 * 1000;
+const PLAYGROUND_ATTEMPT_PREFIX = "pg1";
+
+function visitorBindingHash(sessionId: string): string {
+  let hash = 0xcbf29ce484222325n;
+  for (const byte of new TextEncoder().encode(sessionId)) {
+    hash ^= BigInt(byte);
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+  }
+  return hash.toString(16).padStart(16, "0");
+}
+
+/** The binding survives Worker isolate replacement without exposing the session cookie. */
+export function createPlaygroundAttemptId(sessionId = visitor.getStore()?.sessionId ?? ""): string {
+  if (!sessionId) return crypto.randomUUID();
+  return `${PLAYGROUND_ATTEMPT_PREFIX}.${visitorBindingHash(sessionId)}.${Date.now().toString(36)}.${crypto.randomUUID()}`;
+}
+
+function recoverEncodedBinding(attemptId: string, sessionId: string): { sessionId: string; expiresAt: number } | null {
+  const match = /^pg1\.([0-9a-f]{16})\.([0-9a-z]+)\./u.exec(attemptId);
+  if (!match || !sessionId || match[1] !== visitorBindingHash(sessionId)) return null;
+  const createdAt = Number.parseInt(match[2], 36);
+  if (!Number.isSafeInteger(createdAt) || createdAt > Date.now() || Date.now() - createdAt > ATTEMPT_BINDING_TTL_MS) return null;
+  return { sessionId, expiresAt: createdAt + ATTEMPT_BINDING_TTL_MS };
+}
+
+export function playgroundAttemptBelongsToVisitor(attemptId: string, sessionId: string): boolean {
+  const binding = attemptVisitors.get(attemptId) ?? recoverEncodedBinding(attemptId, sessionId);
+  return Boolean(
+    binding &&
+    binding.expiresAt > Date.now() &&
+    binding.sessionId === sessionId,
+  );
+}
 
 export function withCheckoutVisitor<T>(
   clientIp: string,
@@ -81,7 +114,7 @@ export function playgroundPaymentsFetch(
     const clientIp = currentVisitor.clientIp;
     const attemptId = readAttemptId(init.body);
     if (!attemptId) throw new Error("Checkout attempt unavailable");
-    const binding = attemptVisitors.get(attemptId);
+    const binding = attemptVisitors.get(attemptId) ?? recoverEncodedBinding(attemptId, currentVisitor.sessionId);
     if (binding && binding.expiresAt <= Date.now()) {
       throw new Error("Checkout attempt expired");
     } else if (binding && binding.sessionId !== currentVisitor.sessionId) {
@@ -153,6 +186,7 @@ export function resolvePlaygroundPayments(
 export function playgroundCheckoutHostOptions(env: EnvLike = process.env): GuestCheckoutHostOptions {
   return {
     paymentBindingRef: PAYMENTS_PLAYGROUND_BINDING_REF,
+    createAttemptId: () => createPlaygroundAttemptId(),
     resolvePayments: async (bindingRef: string) =>
       bindingRef === PAYMENTS_PLAYGROUND_BINDING_REF ? resolvePlaygroundPayments(env) : null,
     pricing: {

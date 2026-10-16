@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetStorePassCache } from "../../src/features/playground-checkout/index.js";
 import {
   playgroundCheckoutHostOptions,
+  playgroundAttemptBelongsToVisitor,
   playgroundPaymentsFetch,
   resetCheckoutVisitorBindings,
   resolvePlaygroundPayments,
@@ -123,6 +124,18 @@ describe("playground host-side Payments port", () => {
     await expect(withCheckoutVisitor("203.0.113.7", "visitor-reset", () =>
       port.lookup(request as never))).rejects.toThrow(/visitor mismatch|not bound/);
     expect(upstream).toHaveBeenCalledTimes(callsAfterCreate);
+  });
+
+  it("encodes visitor binding into new attempt identities for isolate recovery", () => {
+    const options = playgroundCheckoutHostOptions(env);
+    const attemptId = withCheckoutVisitor("203.0.113.7", "visitor-a", () =>
+      options.createAttemptId!());
+    expect(attemptId).toMatch(/^pg1\.[0-9a-f]{16}\.[0-9a-z]+\.[0-9a-f-]{36}$/u);
+    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(true);
+    resetCheckoutVisitorBindings();
+    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(true);
+    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-b")).toBe(false);
+    expect(playgroundAttemptBelongsToVisitor("missing-attempt", "visitor-a")).toBe(false);
   });
 
   it("rejects an expired binding before lookup transport", async () => {

@@ -9,7 +9,11 @@ import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from
 import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-protocol.js";
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
-import { playgroundCheckoutConfigured, withCheckoutVisitor } from "./features/playground-checkout/payments-port.js";
+import {
+  playgroundAttemptBelongsToVisitor,
+  playgroundCheckoutConfigured,
+  withCheckoutVisitor,
+} from "./features/playground-checkout/payments-port.js";
 import {
   checkoutJsonError,
   checkoutLimited,
@@ -78,6 +82,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
       applySecurityHeaders(guarded.headers);
       return guarded;
     }
+    if (checkoutKind === "status" && isPlayground && playgroundCheckoutConfigured()) {
+      const statusAttemptId = await readStatusAttemptId(context.request);
+      const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
+      if (!statusAttemptId || !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
+        const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
+        applySecurityHeaders(refused.headers);
+        return refused;
+      }
+    }
   }
 
   if (isPlayground) {
@@ -120,6 +133,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (isPlayground && context.url.pathname === GUEST_CHECKOUT_STATUS_ENDPOINT &&
       playgroundCheckoutConfigured()) {
     const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
+    const statusAttemptId = await readStatusAttemptId(context.request);
+    if (!statusAttemptId || !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
+      const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
     const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", sessionId, () => next());
     applySecurityHeaders(response.headers);
     return response;
@@ -263,4 +282,13 @@ async function boundedCheckoutBody(request: Request): Promise<string | null | ty
     offset += chunk.byteLength;
   }
   return new TextDecoder().decode(bytes);
+}
+
+async function readStatusAttemptId(request: Request): Promise<string | null> {
+  try {
+    const body = await request.clone().json() as { attemptId?: unknown };
+    return typeof body.attemptId === "string" && body.attemptId.length > 0 ? body.attemptId : null;
+  } catch {
+    return null;
+  }
 }

@@ -142,7 +142,8 @@ describe("playground status recovery visitor context", () => {
       });
     const statusCall = async (playground: boolean) => {
       const request = new Request("https://playground.example/api/checkout/status", {
-        method: "POST", headers: { "cf-connecting-ip": "203.0.113.7" }, body: "{}" });
+        method: "POST", headers: { "cf-connecting-ip": "203.0.113.7" },
+        body: JSON.stringify({ attemptId: "status-attempt" }) });
       const locals: Record<string, unknown> = { emdash: null };
       if (playground) locals.__playgroundDb = {};
       const next = vi.fn(async () => { await lookup(); return new Response("status", { status: 200 }); });
