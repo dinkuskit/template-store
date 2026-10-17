@@ -5,10 +5,10 @@ import {
   playgroundCheckoutHostOptions,
   playgroundAttemptBelongsToVisitor,
   playgroundPaymentsFetch,
-  resetCheckoutVisitorBindings,
   resolvePlaygroundPayments,
   withCheckoutVisitor,
 } from "../../src/features/playground-checkout/payments-port.js";
+import type { PlaygroundCheckoutBindingStore } from "../../src/features/playground-checkout/payments-port.js";
 
 const env = {
   DINKUS_CHECKOUT_ENABLED: "1",
@@ -16,9 +16,14 @@ const env = {
   PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
   PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
 };
+let bindings: PlaygroundCheckoutBindingStore;
 beforeEach(() => {
   resetStorePassCache();
-  resetCheckoutVisitorBindings();
+  const records = new Map<string, Awaited<ReturnType<PlaygroundCheckoutBindingStore["get"]>>>();
+  bindings = {
+    get: async (id) => records.get(id) ?? null,
+    put: async (id, value) => { records.set(id, value); },
+  };
 });
 
 describe("playground host-side Payments port", () => {
@@ -55,7 +60,7 @@ describe("playground host-side Payments port", () => {
         method: "POST",
         headers: { "x-dinkus-site": "playground" },
         body: JSON.stringify({ attemptId: "att_0" }),
-      }));
+      }), bindings);
     const headers = new Headers((upstream.mock.calls[0] as unknown as [string, RequestInit])[1].headers);
     expect(headers.get("x-dinkus-client-ip")).toBe("203.0.113.7");
     expect(headers.get("x-dinkus-site")).toBe("playground");
@@ -80,7 +85,7 @@ describe("playground host-side Payments port", () => {
       total: { currency: "USD" as const, minor: "2500" },
       paymentMethods: ["card"] as const, paymentWindow: { minSeconds: 1800 as const, maxSeconds: 1860 as const },
     };
-    const outcome = await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never));
+    const outcome = await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never), bindings);
     expect(outcome).toMatchObject({ outcome: "open", session: { sessionId: "cs_test_mock1" } });
     const [url, init] = upstream.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://payments.local.test/v1/checkout/session");
@@ -94,7 +99,7 @@ describe("playground host-side Payments port", () => {
   it("fails closed when the pass exchange fails", async () => {
     const upstream = vi.fn();
     const port = resolvePlaygroundPayments(env, { fetchImpl: upstream as never, passFetchImpl: (async () => new Response("", { status: 401 })) as never })!;
-    await expect(withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.lookup({ attemptId: "a", bindingRef: "playground", lines: [], total: { currency: "USD", minor: "0" }, paymentMethods: ["card"], paymentWindow: { minSeconds: 1800, maxSeconds: 1860 } } as never)))
+    await expect(withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.lookup({ attemptId: "a", bindingRef: "playground", lines: [], total: { currency: "USD", minor: "0" }, paymentMethods: ["card"], paymentWindow: { minSeconds: 1800, maxSeconds: 1860 } } as never), bindings))
       .rejects.toThrow();
     expect(upstream).not.toHaveBeenCalled();
   });
@@ -117,25 +122,24 @@ describe("playground host-side Payments port", () => {
       total: { currency: "USD" as const, minor: "2500" },
       paymentMethods: ["card"] as const, paymentWindow: { minSeconds: 1800 as const, maxSeconds: 1860 as const },
     };
-    await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never));
+    await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never), bindings);
     const callsAfterCreate = upstream.mock.calls.length;
     await expect(withCheckoutVisitor("203.0.113.8", "visitor-b", () =>
-      port.lookup(request as never))).rejects.toThrow(/visitor mismatch|not bound/);
+      port.lookup(request as never), bindings)).rejects.toThrow(/visitor mismatch|not bound/);
     await expect(withCheckoutVisitor("203.0.113.7", "visitor-reset", () =>
-      port.lookup(request as never))).rejects.toThrow(/visitor mismatch|not bound/);
+      port.lookup(request as never), bindings)).rejects.toThrow(/visitor mismatch|not bound/);
     expect(upstream).toHaveBeenCalledTimes(callsAfterCreate);
   });
 
-  it("encodes visitor binding into new attempt identities for isolate recovery", () => {
+  it("encodes visitor binding into new attempt identities for isolate recovery", async () => {
     const options = playgroundCheckoutHostOptions(env);
     const attemptId = withCheckoutVisitor("203.0.113.7", "visitor-a", () =>
-      options.createAttemptId!());
+      options.createAttemptId!(), bindings);
     expect(attemptId).toMatch(/^[0-9a-f-]{36}$/u);
-    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(false);
-    resetCheckoutVisitorBindings();
-    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(false);
-    expect(playgroundAttemptBelongsToVisitor(attemptId, "visitor-b")).toBe(false);
-    expect(playgroundAttemptBelongsToVisitor("missing-attempt", "visitor-a")).toBe(false);
+    expect(await playgroundAttemptBelongsToVisitor(attemptId, "visitor-a")).toBe(false);
+    expect(await playgroundAttemptBelongsToVisitor(attemptId, "visitor-a", bindings)).toBe(false);
+    expect(await playgroundAttemptBelongsToVisitor(attemptId, "visitor-b", bindings)).toBe(false);
+    expect(await playgroundAttemptBelongsToVisitor("missing-attempt", "visitor-a", bindings)).toBe(false);
   });
 
   it("rejects an expired binding before lookup transport", async () => {
@@ -154,12 +158,12 @@ describe("playground host-side Payments port", () => {
       total: { currency: "USD" as const, minor: "2500" },
       paymentMethods: ["card"] as const, paymentWindow: { minSeconds: 1800 as const, maxSeconds: 1860 as const },
     };
-    await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never));
+    await withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.ensureSession(request as never), bindings);
     const now = Date.now();
     vi.spyOn(Date, "now").mockReturnValue(now + 31 * 60 * 1000);
-    await expect(withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.lookup(request as never)))
+    await expect(withCheckoutVisitor("203.0.113.7", "visitor-a", () => port.lookup(request as never), bindings))
       .rejects.toThrow(/expired/);
-    await expect(withCheckoutVisitor("203.0.113.8", "visitor-b", () => port.lookup(request as never)))
+    await expect(withCheckoutVisitor("203.0.113.8", "visitor-b", () => port.lookup(request as never), bindings))
       .rejects.toThrow(/expired/);
     expect(upstream).toHaveBeenCalledTimes(1);
     vi.restoreAllMocks();

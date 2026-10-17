@@ -15,6 +15,8 @@ import {
   type GuestCheckoutHostOptions,
   type TrustedShippingConfiguration,
 } from "@dinkuskit/commerce/features/checkout";
+import { COMMERCE_PLUGIN_ID } from "@dinkuskit/commerce";
+import { PluginStorageRepository } from "emdash";
 
 import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../playground/flat-rate-shipping.js";
 import {
@@ -32,36 +34,56 @@ export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured } from "./ind
 const PLAYGROUND_COMMERCE_ORIGIN = "https://playground.dinkuskit.com";
 
 type EnvLike = Record<string, unknown>;
+const PLAYGROUND_BINDINGS_COLLECTION = "playground_checkout_bindings";
 
 /** Per-request visitor context, set by the store middleware around checkout routes. */
-type VisitorContext = { clientIp: string; sessionId: string };
+type BindingRecord = { recordKind: "playground-checkout-binding"; attemptId: string; sessionId: string; expiresAt: number };
+export type PlaygroundCheckoutBindingStore = {
+  get(attemptId: string): Promise<BindingRecord | null>;
+  put(attemptId: string, value: BindingRecord): Promise<void>;
+};
+type VisitorContext = { clientIp: string; sessionId: string; bindings?: PlaygroundCheckoutBindingStore };
 const visitor = new AsyncLocalStorage<VisitorContext>();
-const attemptVisitors = new Map<string, { sessionId: string; expiresAt: number }>();
-const ATTEMPT_BINDING_TTL_MS = 2 * 60 * 60 * 1000;
 /** Missing bindings fail closed; only the exact Payments expiry authorizes lookup. */
 export function createPlaygroundAttemptId(): string {
   return crypto.randomUUID();
 }
 
-export function playgroundAttemptBelongsToVisitor(attemptId: string, sessionId: string): boolean {
-  const binding = attemptVisitors.get(attemptId);
-  return Boolean(
-    binding &&
-    binding.expiresAt > Date.now() &&
-    binding.sessionId === sessionId,
+export function playgroundCheckoutBindingStore(db: ConstructorParameters<typeof PluginStorageRepository>[0]): PlaygroundCheckoutBindingStore {
+  const repository = new PluginStorageRepository<BindingRecord>(
+    db,
+    COMMERCE_PLUGIN_ID,
+    PLAYGROUND_BINDINGS_COLLECTION,
+    [],
   );
+  return {
+    async get(attemptId) {
+      const value = await repository.get(attemptId);
+      return value && value.recordKind === "playground-checkout-binding" ? value : null;
+    },
+    async put(attemptId, value) {
+      await repository.put(attemptId, value);
+    },
+  };
 }
 
 export function withCheckoutVisitor<T>(
   clientIp: string,
   sessionId: string,
   run: () => T,
+  bindings?: PlaygroundCheckoutBindingStore,
 ): T {
-  return visitor.run({ clientIp, sessionId }, run);
+  return visitor.run({ clientIp, sessionId, bindings }, run);
 }
 
-export function resetCheckoutVisitorBindings(): void {
-  attemptVisitors.clear();
+export async function playgroundAttemptBelongsToVisitor(
+  attemptId: string,
+  sessionId: string,
+  bindings?: PlaygroundCheckoutBindingStore,
+): Promise<boolean> {
+  if (!bindings || !sessionId) return false;
+  const binding = await bindings.get(attemptId);
+  return Boolean(binding && binding.expiresAt > Date.now() && binding.sessionId === sessionId);
 }
 
 const stripeAccount = readStripeAccount;
@@ -94,7 +116,9 @@ export function playgroundPaymentsFetch(
     const clientIp = currentVisitor.clientIp;
     const attemptId = readAttemptId(init.body);
     if (!attemptId) throw new Error("Checkout attempt unavailable");
-    const binding = attemptVisitors.get(attemptId);
+    const bindingStore = currentVisitor.bindings;
+    if (!bindingStore) throw new Error("Visitor binding store unavailable");
+    const binding = await bindingStore.get(attemptId);
     if (binding && binding.expiresAt <= Date.now()) {
       throw new Error("Checkout attempt expired");
     } else if (binding && binding.sessionId !== currentVisitor.sessionId) {
@@ -116,10 +140,13 @@ export function playgroundPaymentsFetch(
       }
       const expiresAt = typeof result.session?.expiresAt === "number"
         ? result.session.expiresAt * 1000
-        : Date.now() + ATTEMPT_BINDING_TTL_MS;
-      attemptVisitors.set(attemptId, {
+        : null;
+      if (expiresAt === null) throw new Error("Payments expiry unavailable");
+      await bindingStore.put(attemptId, {
+        recordKind: "playground-checkout-binding",
+        attemptId,
         sessionId: currentVisitor.sessionId,
-        expiresAt: Math.min(expiresAt, Date.now() + ATTEMPT_BINDING_TTL_MS),
+        expiresAt,
       });
     }
     return response;

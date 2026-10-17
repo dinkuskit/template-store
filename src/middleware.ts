@@ -11,6 +11,7 @@ import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import {
   playgroundAttemptBelongsToVisitor,
+  playgroundCheckoutBindingStore,
   playgroundCheckoutConfigured,
   withCheckoutVisitor,
 } from "./features/playground-checkout/payments-port.js";
@@ -62,6 +63,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     process.env.DINKUS_PROOF_MODE === "1";
   const isPlayground =
     Boolean((context.locals as { __playgroundDb?: unknown }).__playgroundDb);
+  const playgroundBindings = isPlayground
+    ? ((context.locals as { __playgroundCheckoutBindings?: unknown }).__playgroundCheckoutBindings as
+      Parameters<typeof withCheckoutVisitor>[3] | undefined ??
+      playgroundCheckoutBindingStore((context.locals as { __playgroundDb: Parameters<typeof playgroundCheckoutBindingStore>[0] }).__playgroundDb))
+    : undefined;
 
   async function checkoutRouteAdmitted(): Promise<boolean> {
     const installed = { runtime: context.locals.emdash, request: context.request };
@@ -90,7 +96,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
         return refused;
       }
       const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
-      if (statusAttemptId !== null && !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
+      if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings))) {
         const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
         applySecurityHeaders(refused.headers);
         return refused;
@@ -128,7 +134,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return refused;
     }
     const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
-    const response = await withCheckoutVisitor(clientIp ?? "", sessionId, () => next(nativeCheckoutPath(checkoutKind)));
+      const response = await withCheckoutVisitor(clientIp ?? "", sessionId, () => next(nativeCheckoutPath(checkoutKind)), playgroundBindings);
     applySecurityHeaders(response.headers);
     return response;
   }
@@ -144,12 +150,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
       applySecurityHeaders(refused.headers);
       return refused;
     }
-    if (statusAttemptId !== null && !playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId)) {
+    if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings))) {
       const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
       applySecurityHeaders(refused.headers);
       return refused;
     }
-    const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", sessionId, () => next());
+    const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", sessionId, () => next(), playgroundBindings);
     applySecurityHeaders(response.headers);
     return response;
   }

@@ -130,10 +130,15 @@ describe("playground status recovery visitor context", () => {
       return Response.json({ outcome: "open", attemptId: body.attemptId, session: { expiresAt: Math.floor(Date.now() / 1000) + 1800 } });
     });
     const scoped = playgroundPaymentsFetch(process.env, { fetchImpl: fetchImpl as never });
+    const records = new Map<string, { recordKind: "playground-checkout-binding"; attemptId: string; sessionId: string; expiresAt: number }>();
+    const bindings = {
+      get: async (id: string) => records.get(id) ?? null,
+      put: async (id: string, value: { recordKind: "playground-checkout-binding"; attemptId: string; sessionId: string; expiresAt: number }) => { records.set(id, value); },
+    };
     await withCheckoutVisitor("203.0.113.7", "pg-session", () => scoped(
       "https://payments.local.test/v1/checkout/session",
       { method: "POST", body: JSON.stringify({ attemptId: "status-attempt" }) },
-    ));
+    ), bindings);
     seen.length = 0;
     const lookup = () => playgroundPaymentsFetch(process.env, { fetchImpl: fetchImpl as never })(
       "https://payments.local.test/v1/checkout/lookup", {
@@ -145,7 +150,10 @@ describe("playground status recovery visitor context", () => {
         method: "POST", headers: { "cf-connecting-ip": "203.0.113.7" },
         body: "{}" });
       const locals: Record<string, unknown> = { emdash: null };
-      if (playground) locals.__playgroundDb = {};
+      if (playground) {
+        locals.__playgroundDb = {};
+        locals.__playgroundCheckoutBindings = bindings;
+      }
       const next = vi.fn(async () => { await lookup(); return new Response("status", { status: 200 }); });
       const response = await (onRequest as unknown as (c: unknown, n: unknown) => Promise<Response>)({
         url: new URL(request.url), request, locals, cookies: { get: () => ({ value: "pg-session" }) },
