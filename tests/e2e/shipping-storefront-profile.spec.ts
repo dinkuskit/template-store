@@ -60,7 +60,12 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator("[data-commerce-empty]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add to cart", exact: true })).toHaveCount(0);
   await expect(page.locator(".home-opener__deck")).toContainText("Browse products published in Commerce");
-  await expect(page.locator(".home-opener__deck")).toContainText("Checkout is not available yet");
+  await expect(page.locator(".home-opener__deck")).not.toContainText("Checkout is not available yet");
+  await expect(page.locator("[data-store-demo-banner]")).toHaveAttribute("data-checkout-available", "false");
+  await expect(page.locator("[data-store-demo-banner]")).toHaveText("Demo / Test Store — Purchases and checkout are unavailable.");
+  await expect(page.locator("[data-catalog-guidance]")).not.toContainText(/checkout/i);
+  await expect(page.locator("[data-home-default]")).toHaveCount(0);
+  await expect(page.getByText("Storefront composition is unavailable")).toHaveCount(0);
   await expect(page.getByText("Two connected styles", { exact: false })).toHaveCount(0);
   await expect(page.getByText("Inventory + manual", { exact: true })).toHaveCount(0);
   await expect(page.locator(".home-opener__primary")).toHaveAttribute("href", "#commerce-catalog");

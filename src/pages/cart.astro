@@ -6,6 +6,7 @@ import SandboxCheckoutNotice from "../features/playground-checkout/SandboxChecko
 import { isCheckoutEnabled, playgroundCheckoutAdmission, showsSandboxCheckoutNotice } from "../features/playground-checkout/index.js";
 import { playgroundCheckoutConfigured } from "../features/playground-checkout/payments-port.js";
 import { isDemoCatalogProfile } from "../features/playground/demo-products.js";
+import { storeBannerText } from "../features/store-shell/checkout-copy.js";
 import "../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -29,7 +30,7 @@ const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
     <title>Cart | {STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <div class="store-demo-banner" data-store-demo-banner role="status">{effectiveAdmission ? "Test checkout is available. No live purchases." : "Demo / Test Store — Purchases and checkout are unavailable."}</div>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(Boolean(checkoutAdmission))} role="status">{storeBannerText(Boolean(checkoutAdmission))}</div>
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store">

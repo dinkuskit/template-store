@@ -211,6 +211,47 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
   };
 }
 
+function wireMoney(value: unknown): GuestCheckoutMoney | undefined {
+  return isObject(value) && typeof value.currency === "string" &&
+    typeof value.minor === "string" && /^-?\d+$/u.test(value.minor)
+    ? { currency: value.currency, minor: value.minor }
+    : undefined;
+}
+
+/**
+ * The wire form projectCheckout reads, rebuilt from a validated projection: order lines go back
+ * under Commerce's `catalogItemId`, and only validated fields (plus the money fields of Commerce's
+ * public pricing) are carried. A store route relaying a status answer sends this, so the return
+ * page can parse what it relays.
+ */
+export function guestCheckoutWire(checkout: GuestCheckoutProjection) {
+  const { schema, state, attemptId, redirectUrl, order, retryAfter } = checkout;
+  const raw = isObject(checkout.pricing) ? checkout.pricing : {};
+  const shipping = isObject(raw.shipping) && (raw.shipping.mode === "free" || raw.shipping.mode === "flat") &&
+    wireMoney(raw.shipping.charge) ? { mode: raw.shipping.mode, charge: wireMoney(raw.shipping.charge) } : undefined;
+  const pricing = Object.fromEntries(Object.entries({
+    merchandiseSubtotal: wireMoney(raw.merchandiseSubtotal),
+    couponDiscount: wireMoney(raw.couponDiscount),
+    netMerchandise: wireMoney(raw.netMerchandise),
+    shipping,
+    finalTotal: wireMoney(raw.finalTotal),
+  }).filter(([, value]) => value !== undefined));
+  return {
+    schema, state, attemptId, redirectUrl, retryAfter,
+    order: order && {
+      orderId: order.orderId,
+      receiptId: order.receiptId,
+      lines: order.lines.map(({ id, quantity, name, variant, unitPrice }) => ({
+        catalogItemId: id, quantity,
+        ...(name ? { name } : {}), ...(variant ? { variant } : {}), ...(unitPrice ? { unitPrice } : {}),
+      })),
+      ...(order.total ? { total: order.total } : {}),
+      ...(order.test === undefined ? {} : { test: order.test }),
+    },
+    ...(Object.keys(pricing).length ? { pricing } : {}),
+  };
+}
+
 function unwrap(body: unknown): unknown {
   return isObject(body) && body.success === true ? body.data : body;
 }

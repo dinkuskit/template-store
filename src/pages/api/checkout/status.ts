@@ -4,6 +4,7 @@ import {
   COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT,
   COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_HEADER,
+  guestCheckoutWire,
   parseGuestCheckoutWireResult,
 } from "../../../features/guest-cart/checkout-protocol.js";
 
@@ -191,11 +192,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const validated = parseGuestCheckoutWireResult(parsed);
     if (!validated) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     if (!validated.ok) return unavailable(503, domainFailureCode(validated.error.code));
-    const { schema, state, attemptId, redirectUrl, order, retryAfter } = validated.checkout;
     return Response.json({
       ok: true,
       capabilityId: validated.capabilityId,
-      checkout: { schema, state, attemptId, redirectUrl, order, retryAfter },
+      checkout: guestCheckoutWire(validated.checkout),
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch {
     return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");

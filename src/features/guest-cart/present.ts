@@ -34,6 +34,9 @@ export type GuestCartCatalogSnapshot =
 
 export const GUEST_CHECKOUT_LABEL = "Checkout unavailable";
 export const GUEST_CHECKOUT_REASON = "Checkout is not available yet.";
+/** Shown when checkout is admitted but there is nothing to buy yet. */
+export const GUEST_CHECKOUT_READY_LABEL = "Checkout";
+export const GUEST_CHECKOUT_EMPTY_REASON = "Add products to your cart to check out.";
 
 export type GuestCartLineReason =
   | "missing"
@@ -188,6 +191,10 @@ export function presentGuestCart(options: {
     !options.snapshotFailed &&
     lines.every((line) => line.sellable);
   const needsDelivery = lines.some((line) => line.fulfillment === "physical");
+  // An empty cart on a store that takes checkouts says the cart is empty, not
+  // that checkout is off.
+  const emptyAdmitted = options.checkoutAdmitted === true && lines.length === 0 &&
+    !options.pending && !options.snapshotFailed;
   return {
     lines,
     empty: lines.length === 0,
@@ -195,10 +202,12 @@ export function presentGuestCart(options: {
     retrying: options.retrying === true,
     snapshotError: options.snapshotFailed ? snapshotErrorText() : null,
     storageNotice: storageNoticeText(options.storageNotice ?? null),
-    checkoutLabel: checkoutEnabled ? "Continue to secure checkout" : GUEST_CHECKOUT_LABEL,
+    checkoutLabel: checkoutEnabled
+      ? "Continue to secure checkout"
+      : emptyAdmitted ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL,
     checkoutReason: checkoutEnabled
       ? "Commerce will confirm the final amount and availability."
-      : GUEST_CHECKOUT_REASON,
+      : emptyAdmitted ? GUEST_CHECKOUT_EMPTY_REASON : GUEST_CHECKOUT_REASON,
     checkoutEnabled,
     needsDelivery,
   };
