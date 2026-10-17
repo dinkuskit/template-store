@@ -49,8 +49,8 @@ describe("DINKUS_CHECKOUT_ENABLED gate", () => {
 describe("sandbox checkout notice", () => {
   it("names the test card and the public per-visitor limit", () => {
     expect(SANDBOX_TEST_CARD_NOTICE).toContain("4242 4242 4242 4242");
-    expect(SANDBOX_TEST_CARD_NOTICE).toMatch(/any future expiry/);
-    expect(SANDBOX_TEST_CARD_NOTICE).toMatch(/any CVC/);
+    expect(SANDBOX_TEST_CARD_NOTICE).toMatch(/a future expiry date/);
+    expect(SANDBOX_TEST_CARD_NOTICE).toMatch(/a CVC/);
     expect(SANDBOX_RATE_LIMIT_NOTICE).toBe("Each visitor is limited to 3 checkouts per 10 minutes.");
   });
 
