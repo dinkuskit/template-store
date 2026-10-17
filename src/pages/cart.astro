@@ -2,6 +2,7 @@
 import { GuestCart, GuestCartNav } from "../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { storeBannerText } from "../features/store-shell/checkout-copy.js";
 import "../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -19,7 +20,7 @@ const checkoutAdmission = await acquireGuestCheckoutAdmission({
     <title>Cart | {STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <div class="store-demo-banner" data-store-demo-banner role="status">{checkoutAdmission ? "Test checkout is available. No live purchases." : "Demo / Test Store — Purchases and checkout are unavailable."}</div>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(Boolean(checkoutAdmission))} role="status">{storeBannerText(Boolean(checkoutAdmission))}</div>
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store">

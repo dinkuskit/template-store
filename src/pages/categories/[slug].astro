@@ -2,6 +2,8 @@
 import { getEmDashCollection } from "emdash";
 import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
 import { GuestCartNav } from "../../features/guest-cart/ui.ts";
+import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
+import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
@@ -16,6 +18,10 @@ const { profile, demonstrations, collections } = await loadStorefrontRouteContex
 );
 const category = collections.find((group) => group.slug === Astro.params.slug);
 if (!category) Astro.response.status = 404;
+const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
+  runtime: Astro.locals.emdash,
+  request: Astro.request,
+}).catch(() => null));
 const managed = demonstrations?.managed;
 const unmanaged = demonstrations?.unmanaged;
 ---
@@ -29,7 +35,7 @@ const unmanaged = demonstrations?.unmanaged;
     <title>{category ? `${category.name} | ${STORE_TITLE}` : `Category not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <div class="store-demo-banner" data-store-demo-banner role="status">Demo / Test Store &mdash; Synthetic demonstration. Purchases and checkout are unavailable.</div>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
     <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav></header>
     <main class="browse-page">
       <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">{category?.name ?? "Not found"}</span></nav>
