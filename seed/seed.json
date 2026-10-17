@@ -124,6 +124,24 @@
   ],
   "menus": [
     {
+      "name": "primary",
+      "label": "Main navigation",
+      "items": [
+        { "type": "custom", "label": "Home", "url": "/" },
+        {
+          "type": "custom",
+          "label": "Shop",
+          "url": "/#commerce-catalog",
+          "children": [
+            { "type": "custom", "label": "All products", "url": "/#commerce-catalog" },
+            { "type": "collection", "label": "Hats", "collection": "categories", "ref": "hats" },
+            { "type": "collection", "label": "Hoodies", "collection": "categories", "ref": "hoodies" },
+            { "type": "collection", "label": "Tees", "collection": "categories", "ref": "tees" }
+          ]
+        }
+      ]
+    },
+    {
       "name": "store-primary",
       "label": "Store navigation",
       "items": [

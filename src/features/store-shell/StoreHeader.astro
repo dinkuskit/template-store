@@ -1,0 +1,64 @@
+---
+import { getMenu } from "emdash";
+import { GuestCartNav } from "../guest-cart/ui.ts";
+import { MAIN_MENU_NAME, isCurrentMenuItem, type StoreMenuItem } from "./store-menu.js";
+
+interface Props {
+  profile: string;
+}
+const { profile } = Astro.props;
+// The main menu is EmDash content: the seed creates it and owners edit it in
+// the admin under Menus. A store without it keeps the brand and cart only.
+const menu = await getMenu(MAIN_MENU_NAME).catch(() => null);
+const items: readonly StoreMenuItem[] = menu?.items ?? [];
+const path = Astro.url.pathname;
+const linkProps = (item: StoreMenuItem) => ({
+  href: item.url,
+  target: item.target,
+  rel: item.target === "_blank" ? "noopener noreferrer" : undefined,
+  title: item.titleAttr,
+  "aria-current": isCurrentMenuItem(item, path) ? ("page" as const) : undefined,
+});
+---
+<header class="store-header" data-store-header>
+  <a class="store-header__mark" href="/">DinkusKit / Store</a>
+  {items.length > 0 && (
+    <button class="store-menu-toggle" type="button" aria-expanded="false" aria-controls="store-main-nav" data-store-menu-toggle hidden>
+      <span class="store-menu-toggle__bars" aria-hidden="true"></span>Menu
+    </button>
+  )}
+  {items.length > 0 && (
+    <nav class="store-main-nav" id="store-main-nav" aria-label="Main" data-store-main-nav>
+      <ul class="store-main-nav__list">
+        {items.map((item, index) => item.children.length > 0 ? (
+          <li class="store-main-nav__item store-main-nav__item--parent" data-store-menu-parent>
+            <a class="store-main-nav__link" {...linkProps(item)}>{item.label}</a>
+            <button class="store-main-nav__expand" type="button" aria-expanded="false" aria-controls={`store-main-nav-${index}`} aria-label={`Show ${item.label} links`} data-store-menu-expand><span aria-hidden="true"></span></button>
+            <ul class="store-main-nav__sub" id={`store-main-nav-${index}`}>
+              {item.children.map((child) => (
+                <li class={child.children.length > 0 ? "store-main-nav__group" : undefined}>
+                  <a class="store-main-nav__sublink" {...linkProps(child)}>{child.label}</a>
+                  {child.children.length > 0 && (
+                    <ul>
+                      {child.children.map((grandchild) => <li><a class="store-main-nav__sublink" {...linkProps(grandchild)}>{grandchild.label}</a></li>)}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ) : (
+          <li class="store-main-nav__item"><a class="store-main-nav__link" {...linkProps(item)}>{item.label}</a></li>
+        ))}
+      </ul>
+    </nav>
+  )}
+  <nav class="store-header__nav" aria-label="Store">
+    <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
+    <GuestCartNav />
+  </nav>
+</header>
+<script>
+  import { hydrateStoreMenu } from "./store-menu-client.ts";
+  hydrateStoreMenu();
+</script>

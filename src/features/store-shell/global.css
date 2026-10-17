@@ -81,6 +81,235 @@
     gap: 1rem;
   }
 
+  /* Main menu: the EmDash "primary" menu, a bar on desktop and a toggled
+     stack on phones. */
+  .store-header {
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+  }
+
+  .store-main-nav__list,
+  .store-main-nav__sub,
+  .store-main-nav__group ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .store-main-nav__link,
+  .store-main-nav__sublink {
+    display: block;
+    font-weight: 700;
+    text-underline-offset: 0.25em;
+  }
+
+  .store-header .store-main-nav__link:hover,
+  .store-header .store-main-nav__sublink:hover,
+  .store-header .store-main-nav [aria-current="page"] {
+    text-decoration: underline;
+  }
+
+  .store-main-nav__item--parent {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .store-main-nav__expand,
+  .store-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .store-main-nav__expand {
+    justify-content: center;
+    min-width: 2.75rem;
+    padding: 0;
+  }
+
+  .store-main-nav__expand span {
+    display: block;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-0.15rem) rotate(45deg);
+    transition: transform 0.15s ease;
+  }
+
+  .store-main-nav__item--parent[data-open] .store-main-nav__expand span {
+    transform: translateY(0.1rem) rotate(225deg);
+  }
+
+  .store-main-nav__sub {
+    display: none;
+  }
+
+  .store-main-nav__item--parent[data-open] > .store-main-nav__sub {
+    display: block;
+  }
+
+  .store-main-nav__group > .store-main-nav__sublink {
+    color: var(--store-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .store-menu-toggle {
+    order: 3;
+    padding: 0 0.25rem;
+  }
+
+  .store-menu-toggle[hidden] {
+    display: none;
+  }
+
+  .store-menu-toggle__bars,
+  .store-menu-toggle__bars::before,
+  .store-menu-toggle__bars::after {
+    display: block;
+    width: 1.1rem;
+    height: 2px;
+    background: currentColor;
+  }
+
+  .store-menu-toggle__bars {
+    position: relative;
+  }
+
+  .store-menu-toggle__bars::before,
+  .store-menu-toggle__bars::after {
+    content: "";
+    position: absolute;
+    left: 0;
+  }
+
+  .store-menu-toggle__bars::before {
+    top: -0.35rem;
+  }
+
+  .store-menu-toggle__bars::after {
+    top: 0.35rem;
+  }
+
+  @media (max-width: 47.99rem) {
+    .store-header__mark {
+      margin-right: auto;
+    }
+
+    .store-header__nav {
+      order: 2;
+    }
+
+    .store-main-nav {
+      order: 4;
+      flex-basis: 100%;
+      border-top: 1px solid var(--store-line);
+    }
+
+    .store-header[data-menu-ready]:not([data-menu-open]) .store-main-nav {
+      display: none;
+    }
+
+    .store-main-nav__item {
+      border-bottom: 1px solid var(--store-line);
+    }
+
+    .store-main-nav__link {
+      flex: 1;
+      padding: 0.8rem 0;
+    }
+
+    .store-main-nav__sub {
+      flex-basis: 100%;
+      padding: 0 0 0.75rem 1rem;
+    }
+
+    .store-header:not([data-menu-ready]) .store-main-nav__sub {
+      display: block;
+    }
+
+    .store-header:not([data-menu-ready]) .store-main-nav__expand {
+      display: none;
+    }
+
+    .store-main-nav__sublink {
+      padding: 0.55rem 0;
+      font-weight: 600;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .store-header {
+      flex-wrap: nowrap;
+    }
+
+    .store-menu-toggle,
+    .store-menu-toggle[hidden] {
+      display: none;
+    }
+
+    .store-main-nav {
+      flex: 1;
+    }
+
+    .store-main-nav__list {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem 1.5rem;
+    }
+
+    .store-main-nav__link {
+      padding: 0.6rem 0;
+    }
+
+    .store-main-nav__expand {
+      min-width: 1.75rem;
+      margin-left: 0.1rem;
+    }
+
+    .store-main-nav__item--parent {
+      position: relative;
+    }
+
+    .store-main-nav__item--parent:hover > .store-main-nav__sub,
+    .store-main-nav__item--parent:focus-within > .store-main-nav__sub {
+      display: block;
+    }
+
+    .store-main-nav__sub {
+      position: absolute;
+      top: 100%;
+      left: -1rem;
+      z-index: 20;
+      min-width: 13rem;
+      padding: 0.6rem 0;
+      border: 1px solid var(--store-line);
+      background: var(--store-surface);
+      box-shadow: 0 0.75rem 2rem rgb(23 32 51 / 0.12);
+    }
+
+    .store-main-nav__sublink {
+      padding: 0.5rem 1rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .store-main-nav__group {
+      padding-top: 0.35rem;
+    }
+  }
+
   .catalog-guidance {
     width: min(70rem, calc(100% - 2rem));
     margin: 2rem auto -1rem;

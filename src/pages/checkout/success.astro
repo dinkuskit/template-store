@@ -1,6 +1,7 @@
 ---
+import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { getSiteSettings } from "emdash";
-import { GuestCartNav, GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
+import { GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import "../../features/store-shell/global.css";
 
@@ -34,10 +35,7 @@ Astro.response.headers.set("Cache-Control", "no-store");
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner role="status">Demo checkout &mdash; No real payments or fulfillment.</div>
-    <header class="store-header">
-      <a class="store-header__mark" href="/">DinkusKit / Store</a>
-      <nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav>
-    </header>
+    <StoreHeader profile={profile} />
     <main><GuestCheckoutReturn contactHref={contactHref} /></main>
   </body>
 </html>

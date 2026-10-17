@@ -1,7 +1,7 @@
 ---
+import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { getEmDashCollection } from "emdash";
 import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
-import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { readCommerceCatalog } from "../../features/commerce-catalog/index.js";
@@ -49,7 +49,7 @@ const unmanaged = demonstrations?.unmanaged;
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
-    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav></header>
+    <StoreHeader profile={profile} />
     <main class="browse-page">
       <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span><span aria-current="page">{category?.name ?? "Not found"}</span></nav>
       {category ? (
