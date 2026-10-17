@@ -6,6 +6,7 @@ import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkou
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { readCommerceCatalog } from "../../features/commerce-catalog/index.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
+import { leftCommerceCatalog, withoutRemovedProducts } from "../../features/store-shell/merch-catalog.js";
 import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
 
@@ -17,19 +18,30 @@ const { profile, demonstrations, collections } = await loadStorefrontRouteContex
   products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
   categoryEntries.entries,
 );
-const category = collections.find((group) => group.slug === Astro.params.slug);
-if (!category) Astro.response.status = 404;
+const listedCategory = collections.find((group) => group.slug === Astro.params.slug);
+if (!listedCategory) Astro.response.status = 404;
 const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
   runtime: Astro.locals.emdash,
   request: Astro.request,
 }).catch(() => null));
 // Shipping stores show linked Commerce products with their real availability
 // and price instead of calling them previews.
+let catalogRead = false;
 const commerceById = new Map(
-  profile === "shipping" && category
-    ? (await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => [])).map((product) => [product.id, product])
+  profile === "shipping" && listedCategory
+    ? (await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request })
+      .then((catalog) => { catalogRead = true; return catalog; })
+      .catch(() => [])).map((product) => [product.id, product])
     : [],
 );
+// A product whose Commerce product left the catalog (archived) leaves the
+// category too. If the catalog can't be read, nothing is dropped.
+const removedEntryIds = new Set(catalogRead
+  ? productLinks.products
+    .filter((product) => leftCommerceCatalog(product.commerceItemId, commerceById.has(product.commerceItemId)))
+    .map((product) => product.id)
+  : []);
+const category = listedCategory ? withoutRemovedProducts([listedCategory], removedEntryIds)[0] : undefined;
 const commerceProducts = new Map(productLinks.products.flatMap((product) => {
   const commerce = commerceById.get(product.commerceItemId);
   return commerce ? [[product.id, commerce] as const] : [];
