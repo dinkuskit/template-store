@@ -29,7 +29,8 @@ function context(claims: Claims) {
 function event(id: string, itemId: string, slug = id) {
   return {
     collection: "products",
-    content: { id, slug, commerce_item_id: itemId },
+    // The shape EmDash 1.2.0 passes: fields live under `data`.
+    content: { id, slug, status: "draft", data: { title: id, commerce_item_id: itemId } },
     origin: { source: "api" as const },
   };
 }
@@ -92,5 +93,14 @@ describe("product URL publish claims", () => {
     await expect(schedule({ ...event("two", "item-1"), scheduledAt: "2030-01-02T00:00:00Z" }, context(claims))).resolves.toMatchObject({
       cancel: true,
     });
+  });
+
+  it("cancels a publish whose content carries no Commerce product ID", async () => {
+    const plugin = createPlugin();
+    const handler = plugin.hooks["content:beforePublish"]!.handler;
+    const content = { id: "one", slug: "one", status: "draft", data: { title: "One" } };
+    await expect(
+      handler({ collection: "products", content, origin: { source: "api" as const } }, context(new Claims())),
+    ).resolves.toMatchObject({ cancel: true });
   });
 });
