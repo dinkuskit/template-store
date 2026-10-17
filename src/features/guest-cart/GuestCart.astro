@@ -1,5 +1,5 @@
 ---
-import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON } from "./index.js";
+import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON, GUEST_CHECKOUT_READY_LABEL } from "./index.js";
 import type { GuestCheckoutAdmission } from "./index.js";
 
 interface Props {
@@ -49,8 +49,8 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
       <input id="guest-cart-coupon" data-guest-cart-coupon type="text" placeholder="Coupons coming soon" aria-describedby="guest-cart-coupon-note" autocomplete="off" disabled />
       <p id="guest-cart-coupon-note">Discount codes can't be used yet.</p>
     </div>
-    <button type="button" data-guest-cart-checkout disabled>{GUEST_CHECKOUT_LABEL}</button>
-    <p data-guest-cart-checkout-reason>{GUEST_CHECKOUT_REASON}</p>
+    <button type="button" data-guest-cart-checkout disabled>{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
+    <p data-guest-cart-checkout-reason>{checkoutAdmission ? "" : GUEST_CHECKOUT_REASON}</p>
     <button type="button" data-guest-cart-retry hidden>Try again</button>
     <button type="button" data-guest-cart-recover hidden>Check checkout status</button>
   </div>

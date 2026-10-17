@@ -121,3 +121,20 @@ describe("category pages on a shipping store", () => {
     expect(page).toContain('item.availabilitySource === "preview" && !commerceProducts.has(item.id)');
   });
 });
+
+describe("empty cart on a store that takes checkouts", () => {
+  it("says the cart is empty instead of that checkout is unavailable", async () => {
+    const { emptyGuestCartIntent, presentGuestCart, GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON } =
+      await import("../../src/features/guest-cart/index.js");
+    const admitted = presentGuestCart({ intent: emptyGuestCartIntent(), checkoutAdmitted: true });
+    expect(admitted.empty).toBe(true);
+    expect(admitted.checkoutEnabled).toBe(false);
+    expect(admitted.checkoutLabel).toBe("Checkout");
+    expect(admitted.checkoutReason).toBe("Add products to your cart to check out.");
+    const closed = presentGuestCart({ intent: emptyGuestCartIntent(), checkoutAdmitted: false });
+    expect(closed.checkoutLabel).toBe(GUEST_CHECKOUT_LABEL);
+    expect(closed.checkoutReason).toBe(GUEST_CHECKOUT_REASON);
+    const cart = readFileSync("src/features/guest-cart/GuestCart.astro", "utf8");
+    expect(cart).toContain("{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}");
+  });
+});
