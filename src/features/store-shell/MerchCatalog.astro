@@ -2,6 +2,7 @@
 import type { ManagedProductAvailability } from "../managed-product-availability/index.js";
 import type { UnmanagedProductSellability } from "../unmanaged-product-sellability/index.js";
 import { categoryAnchor, categoryPath, productPath, type MerchCollection } from "./merch-catalog.js";
+import { availabilityLabels, type PublicCommerceProduct } from "../commerce-catalog/index.js";
 
 interface Props {
   collections: readonly MerchCollection[];
@@ -9,8 +10,10 @@ interface Props {
   managed?: ManagedProductAvailability;
   unmanaged?: UnmanagedProductSellability;
   collectionOnly?: boolean;
+  /** EmDash product id -> its installed Commerce product, on shipping stores. */
+  commerceProducts?: ReadonlyMap<string, PublicCommerceProduct>;
 }
-const { collections, menu, managed, unmanaged, collectionOnly = false } = Astro.props;
+const { collections, menu, managed, unmanaged, collectionOnly = false, commerceProducts = new Map() } = Astro.props;
 const manualLabel: Record<string, string> = {
   "in-stock": "In stock",
   "out-of-stock": "Out of stock",
@@ -39,11 +42,14 @@ const manualLabel: Record<string, string> = {
       <div class="merch-grid">
         {collection.items.map((item) => {
           const source = item.availabilitySource;
+          const commerce = source === "preview" ? commerceProducts.get(item.id) : undefined;
           const status = source === "managed" && managed
             ? `${managed.inventory.available} available`
             : source === "unmanaged" && unmanaged
               ? manualLabel[unmanaged.storefront.status]
-              : "Preview only · not purchasable";
+              : commerce
+                ? availabilityLabels[commerce.availability.status] ?? "Availability unavailable"
+                : "Preview only · not purchasable";
           const destination = productPath(item.id)!;
           return <article class="merch-card" data-merch-item={item.id} data-merch-source={source}>
             <div class={`merch-card__visual merch-card__visual--${item.illustration}`}><img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} loading="lazy" width="640" height="480" /></div>
@@ -53,6 +59,7 @@ const manualLabel: Record<string, string> = {
               <p class="merch-card__description">{item.description}</p>
               {source === "managed" && managed && <p class="merch-card__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
               {source === "unmanaged" && unmanaged && <p class="merch-card__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
+              {commerce && <p class="merch-card__price" data-product-price>{commerce.price.saleText ? <><s data-regular-price>{commerce.price.regularText}</s> <strong data-sale-price>{commerce.price.saleText}</strong></> : <strong data-regular-price>{commerce.price.regularText}</strong>}</p>}
               <p class="merch-card__status" data-merch-status>{status}</p>
               <a href={destination} aria-label={`View ${item.title} details`}>View details <span aria-hidden="true">↗</span></a>
               {source !== "preview" && (managed || unmanaged) && <a class="merch-card__availability" href={source === "managed" ? "/#managed-product" : "/#unmanaged-product"} aria-label={`View availability for ${item.title}`}>View availability</a>}

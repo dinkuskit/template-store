@@ -101,3 +101,21 @@ describe("neutral seed copy", () => {
     expect(seed).toContain("Browse products published in Commerce.");
   });
 });
+
+describe("category pages on a shipping store", () => {
+  it("show linked Commerce products with their availability and price, not as previews", () => {
+    const catalog = readFileSync("src/features/store-shell/MerchCatalog.astro", "utf8");
+    expect(catalog).toContain('const commerce = source === "preview" ? commerceProducts.get(item.id) : undefined;');
+    expect(catalog).toMatch(/: commerce\n\s+\? availabilityLabels\[commerce\.availability\.status\]/);
+    expect(catalog).toContain("{commerce && <p class=\"merch-card__price\" data-product-price>");
+    const page = readFileSync("src/pages/categories/[slug].astro", "utf8");
+    expect(page).toContain('profile === "shipping" && category');
+    expect(page).toContain("commerceProducts={commerceProducts}");
+  });
+
+  it("only mention editorial previews when the category has one", () => {
+    const page = readFileSync("src/pages/categories/[slug].astro", "utf8");
+    expect(page).toContain('hasPreviews ? "Editorial previews cannot be purchased." : ""');
+    expect(page).toContain('item.availabilitySource === "preview" && !commerceProducts.has(item.id)');
+  });
+});
