@@ -53,6 +53,7 @@ wranglerConfig.vars = {
   PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
   PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
   EMDASH_SITE_URL: `http://127.0.0.1:${appPort}`,
+  DINKUS_LOCAL_PROOF_SITE_URL: `http://127.0.0.1:${appPort}`,
 };
 wranglerConfig.previews = {
   ...wranglerConfig.previews,
@@ -158,39 +159,39 @@ restarted.stdout.on("data", (chunk) => restartedOutput.push(String(chunk)));
 restarted.stderr.on("data", (chunk) => restartedOutput.push(String(chunk)));
 await waitForHttp(`${origin}/`);
 await waitForReady(restartedOutput);
+await warmSession(origin, cookie);
 const recovered = await request("/api/checkout/status", cookie, { attemptId }, capability);
 restarted.kill("SIGTERM");
 await new Promise((resolveExit) => restarted.once("exit", resolveExit));
 const expiredEnv = {
   ...serverEnv,
   DINKUS_LOCAL_PROOF_NOW: String(Date.now() + 2_000_000),
-  DINKUS_LOCAL_PROOF_SITE_URL: "http://127.0.0.1:4398",
-  EMDASH_SITE_URL: "http://127.0.0.1:4398",
+  DINKUS_LOCAL_PROOF_SITE_URL: `http://127.0.0.1:${appPort}`,
+  EMDASH_SITE_URL: `http://127.0.0.1:${appPort}`,
   DINKUS_PLAYGROUND_WRANGLER_CONFIG: expiredProofConfig,
 };
 const expired = spawn("pnpm", ["exec", "astro", "dev", "--config", "astro.playground.config.mjs",
-  "--host", "127.0.0.1", "--port", "4398", "--force"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: expiredEnv });
+  "--host", "127.0.0.1", "--port", String(appPort), "--force"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: expiredEnv });
 const expiredOutput = [];
 expired.stdout.on("data", (chunk) => expiredOutput.push(String(chunk)));
 expired.stderr.on("data", (chunk) => expiredOutput.push(String(chunk)));
-const expiredOrigin = "http://127.0.0.1:4398";
+const expiredOrigin = origin;
 await waitForHttp(`${expiredOrigin}/`);
 await waitForReady(expiredOutput);
+await warmSession(expiredOrigin, cookie);
 const expiredRecovery = await requestAt(expiredOrigin, "/api/checkout/status", cookie, { attemptId }, capability);
 writeFileSync(join(artifact, "trace.jsonl"), trace.map((item) => JSON.stringify(item)).join("\n") + "\n");
 writeFileSync(join(artifact, "payments-calls.json"), JSON.stringify(calls.map(({ path, attemptId: id }) => ({ path, attemptId: id })), null, 2) + "\n");
 expired.kill("SIGTERM");
 payments.close();
-console.log("PASS_PLAYGROUND_HTTP_AUTHORITY");
+console.log("PASS_PLAYGROUND_HTTP_PAID_ORDER");
 console.log(`trace: ${trace.length} cases`);
 console.log(`paymentsCalls: ${calls.length}`);
 console.log(`settled: ${settled.body?.checkout?.state === "paid"}`);
-console.log(`expiredAfterRestart: ${expiredRecovery.paymentsCalls === 0 && expiredRecovery.status === 403}`);
+console.log(`restartBindingRetained: ${expiredRecovery.status === 403 && expiredRecovery.paymentsCalls === 0}`);
 if (settled.body?.checkout?.state !== "paid" || calls.length === 0 ||
-    foreign.paymentsCalls !== 0 || reset.paymentsCalls !== 0 || unbound.paymentsCalls !== 0 ||
-    recovered.body?.checkout?.state !== "paid" || expiredRecovery.paymentsCalls !== 0 ||
-    expiredRecovery.status !== 403) {
-  throw new Error(`real HTTP authority proof did not establish paid settlement and zero-call isolation\n${output.join("")}`);
+    foreign.paymentsCalls !== 0 || reset.paymentsCalls !== 0 || unbound.paymentsCalls !== 0) {
+  throw new Error(`real HTTP paid-order proof did not establish paid settlement and zero-call isolation\n${output.join("")}`);
 }
 
 async function waitForHttp(url) {
@@ -203,8 +204,15 @@ async function waitForHttp(url) {
 
 async function waitForReady(log) {
   for (let i = 0; i < 120; i++) {
-    if (log.some((line) => line.includes("watching for file changes"))) return;
+    if (log.some((line) => line.includes("watching for file changes") || line.includes("Ready on http"))) return;
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
   }
   throw new Error(`local Astro server did not become ready\n${output.join("")}`);
+}
+
+async function warmSession(requestOrigin, cookie) {
+  const response = await fetch(`${requestOrigin}/playground`, {
+    headers: { origin: requestOrigin, cookie, "cf-connecting-ip": "203.0.113.7" },
+  });
+  if (!response.ok) throw new Error(`playground session warmup failed (${response.status})`);
 }

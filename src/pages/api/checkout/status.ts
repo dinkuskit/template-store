@@ -109,9 +109,9 @@ async function discardRequestBody(request: Request): Promise<void> {
 
 // Do not turn this proxy into a same-origin credential forwarder for foreign
 // callers. The configured store origin is authority; request Host is not.
-function trustedStatusOrigin(request: Request): string | null {
+function trustedStatusOrigin(request: Request, env: Record<string, unknown>): string | null {
   try {
-    const site = new URL(process.env.EMDASH_SITE_URL ?? "");
+    const site = new URL(typeof env.EMDASH_SITE_URL === "string" ? env.EMDASH_SITE_URL : "");
     const origin = new URL(request.headers.get("origin") ?? "");
     const canonical = (url: URL) =>
       (url.protocol === "https:" || url.protocol === "http:") &&
@@ -131,12 +131,13 @@ function trustedStatusOrigin(request: Request): string | null {
  * Commerce plugin (per-visitor runtime), not the Registry install, so status
  * recovery dispatches there. Capability and origin checks above still apply.
  */
-function playgroundNativeStatus(locals: unknown): boolean {
+function playgroundNativeStatus(locals: unknown, env: Record<string, unknown>): boolean {
   return Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb) &&
-    playgroundCheckoutConfigured();
+    playgroundCheckoutConfigured(env);
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
+  const env = ((locals as { __playgroundEnv?: Record<string, unknown> }).__playgroundEnv ?? process.env);
   const requestBody = await boundedRequestText(request);
   if (requestBody === null) {
     return unavailable(413);
@@ -145,14 +146,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!capability) {
     return unavailable(400);
   }
-  const origin = trustedStatusOrigin(request);
+  const origin = trustedStatusOrigin(request, env);
   if (!origin) return unavailable(403, "CHECKOUT_STATUS_HOST_ORIGIN");
   const runtime = locals?.emdash;
   if (!runtime || typeof runtime.handlePublicPluginApiRoute !== "function") {
     return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
   }
   try {
-    const native = playgroundNativeStatus(locals);
+    const native = playgroundNativeStatus(locals, env);
     if (!native && !canDispatchInstalledGuestCheckout({ runtime, request })) {
       return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
     }
