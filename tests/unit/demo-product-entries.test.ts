@@ -69,8 +69,16 @@ describe("demo EmDash product entries", () => {
     expect(productPageOffersCart({ profile: "shipping", isPlayground: true })).toBe(false);
     expect(productPageOffersCart({ profile: "proof", isPlayground: false })).toBe(false);
     expect(productPageOffersCart({ profile: "proof", isPlayground: true })).toBe(false);
+    // DINKUS_CHECKOUT_ENABLED turns sandbox checkout on for the playground/demo only.
+    expect(productPageOffersCart({ profile: "shipping", isPlayground: false, checkoutEnabled: false })).toBe(true);
+    expect(productPageOffersCart({ profile: "shipping", isPlayground: true, checkoutEnabled: true })).toBe(true);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: true, checkoutEnabled: true })).toBe(true);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: false, isDemo: true, checkoutEnabled: true })).toBe(true);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: false, isDemo: true, checkoutEnabled: false })).toBe(false);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: true, checkoutEnabled: false })).toBe(false);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: false, checkoutEnabled: true })).toBe(false);
     const page = readFileSync("src/pages/products/[id].astro", "utf8");
-    expect(page).toContain("const offersCart = productPageOffersCart({ profile, isPlayground });");
+    expect(page).toContain("const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checkoutEnabled });");
     expect(page).toContain("{cartProduct && offersCart && <AddToCart");
     expect(page).not.toMatch(/!isPlayground && <AddToCart/);
     expect(page).toContain("data-checkout-unavailable>Demo product. Cart and checkout are unavailable.");

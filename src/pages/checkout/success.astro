@@ -2,6 +2,8 @@
 import { getSiteSettings } from "emdash";
 import { GuestCartNav, GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
+import { isCheckoutEnabled, SANDBOX_SESSION_NOTICE, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -23,6 +25,11 @@ const contactHref = (() => {
   return undefined;
 })();
 Astro.response.headers.set("Cache-Control", "no-store");
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo: isDemoCatalogProfile(), checkoutEnabled: isCheckoutEnabled() });
+// Sandbox returns use the same capability-scoped controller as every store:
+// only Commerce's durable paid order confirms, and only then is the purchased
+// cart settled. No Stripe session id from the URL is looked up or trusted.
 ---
 <!doctype html>
 <html lang="en">
@@ -38,6 +45,9 @@ Astro.response.headers.set("Cache-Control", "no-store");
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav>
     </header>
-    <main><GuestCheckoutReturn contactHref={contactHref} /></main>
+    <main>
+      {sandboxCheckout && <p class="store-sandbox-notice" role="note" data-sandbox-checkout-return>Test mode checkout. {SANDBOX_SESSION_NOTICE}</p>}
+      <GuestCheckoutReturn contactHref={contactHref} />
+    </main>
   </body>
 </html>

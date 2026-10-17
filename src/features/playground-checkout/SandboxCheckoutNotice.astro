@@ -1,0 +1,12 @@
+---
+import { SANDBOX_RATE_LIMIT_NOTICE, SANDBOX_TEST_CARD_NOTICE } from "./index.js";
+---
+<aside class="sandbox-checkout-notice" data-sandbox-checkout-notice role="note">
+  <p data-sandbox-test-card>{SANDBOX_TEST_CARD_NOTICE}</p>
+  <p data-sandbox-rate-limit>{SANDBOX_RATE_LIMIT_NOTICE}</p>
+</aside>
+<style>
+  .sandbox-checkout-notice{width:min(70rem,calc(100% - 2rem));margin:1.5rem auto 0;padding:.9rem 1rem;border:1px solid var(--store-line);border-radius:.65rem;background:var(--store-surface);line-height:1.5}
+  .sandbox-checkout-notice p{margin:0}
+  .sandbox-checkout-notice p + p{margin-top:.35rem;color:var(--store-muted)}
+</style>

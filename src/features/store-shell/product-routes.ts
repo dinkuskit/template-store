@@ -1,6 +1,7 @@
 import { getEmDashEntry } from "emdash";
 import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
 import { readInstalledCommerceProduct, type InstalledCatalogContext } from "../commerce-catalog/installed.js";
+import { offersCheckout, type CheckoutGateInput } from "../playground-checkout/index.js";
 
 export type ProductEntry = Readonly<{
   id: string;
@@ -158,9 +159,10 @@ export async function resolvePublishedProduct(
 
 /**
  * Product pages offer Add to cart only where checkout can actually run: a
- * shipping storefront outside the playground. Demo/proof profiles and the
- * playground show the checkout-unavailable notice instead.
+ * shipping storefront outside the playground, or the playground/demo profile
+ * once DINKUS_CHECKOUT_ENABLED turns on sandbox checkout. Otherwise the page
+ * shows the checkout-unavailable notice instead.
  */
-export function productPageOffersCart({ profile, isPlayground }: { profile: string; isPlayground: boolean }): boolean {
-  return profile === "shipping" && !isPlayground;
+export function productPageOffersCart(input: CheckoutGateInput): boolean {
+  return offersCheckout(input);
 }
