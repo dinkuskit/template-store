@@ -145,6 +145,10 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   const qty = shopper.locator(`[data-guest-cart-qty="${id}"]`);
   const remove = shopper.locator(`[data-guest-cart-remove="${id}"]`);
   await expect(qty).toHaveValue("1");
+  const lineTotal = shopper.locator(`[data-guest-cart-line="${id}"] [data-guest-cart-line-total]`);
+  const subtotal = shopper.locator("[data-guest-cart-subtotal]");
+  await expect(lineTotal).toHaveText("Line total $24.00");
+  await expect(subtotal).toHaveText("Subtotal $24.00");
   await expect(shopper.locator("[data-guest-cart-checkout]")).toBeDisabled();
   await expect(shopper.locator("[data-guest-cart-checkout]")).toHaveText("Checkout unavailable");
   await expect(shopper.locator("[data-guest-cart-checkout-reason]")).toHaveText("Checkout is not available yet.");
@@ -156,6 +160,8 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.keyboard.press("Tab");
   await expect(remove).toBeFocused();
   await expect(qty).toHaveValue("3");
+  await expect(lineTotal).toHaveText("Line total $72.00");
+  await expect(subtotal).toHaveText("Subtotal $72.00");
   const lineStyles = await shopper.locator(`[data-guest-cart-line="${id}"]`).evaluate((element) => {
     const style = getComputedStyle(element);
     return {
@@ -261,8 +267,12 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   expect(unwrap<{ saved: boolean }>(await cleared.json()).saved).toBe(true);
   await shopper.reload();
   await expect(shopper.locator("[data-guest-cart-line-reason]")).toContainText("does not have a current price");
+  // An unpriced line has no amount, so no total is claimed.
+  await expect(lineTotal).toHaveCount(0);
+  await expect(subtotal).toBeHidden();
   await remove.click();
   await expect(shopper.locator("[data-guest-cart-empty]")).toBeVisible();
+  await expect(subtotal).toBeHidden();
   await expect(shopper.locator("[data-guest-cart-empty]")).toBeFocused();
 
   await shopper.evaluate((key) => {

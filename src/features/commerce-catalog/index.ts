@@ -129,9 +129,11 @@ export async function readCommerceCatalogSnapshots(
     const availability = await resolveStorefrontAvailability(storage, {
       catalogItemId: product.catalogItemId,
     });
-    const price = presentStorefrontPrice(
-      await resolveCatalogItemPrice(storage.prices, product.catalogItemId),
-    );
+    const resolved = await resolveCatalogItemPrice(storage.prices, product.catalogItemId);
+    const shown = presentStorefrontPrice(resolved);
+    // The cart totals use the amount the shopper pays for one unit.
+    const unitMinor = shown.listable ? (resolved.sale ?? resolved.regular)?.minor : undefined;
+    const price = unitMinor ? { ...shown, unitMinor } : shown;
     const publicName = price.listable || availability.listable ? product.name : id;
     const publicSku = price.listable || availability.listable ? product.sku : "";
     snapshots.push({
