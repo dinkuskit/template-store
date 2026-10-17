@@ -16,7 +16,9 @@ import {
   isSafeGuestCartQuantity,
 } from "../guest-cart/intent.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
-import noticeCopy from "./notice-copy.json";
+const noticeCopy = {
+  testCard: "Playground: test mode. Pay with card 4242 4242 4242 4242, any future expiry date, and any CVC. No real charges.",
+} as const;
 
 /** Payments site id for the shared playground tenant (dinkuskit/payments#41). */
 export const PAYMENTS_PLAYGROUND_SITE = "playground";
