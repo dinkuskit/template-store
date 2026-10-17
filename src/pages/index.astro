@@ -1,4 +1,5 @@
 ---
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import { getEmDashEntry, getEmDashCollection, getMenu, getSiteSettings, type PortableTextBlock } from "emdash";
 import { Blocks, PortableText, type BlockValue } from "emdash/ui";
 import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
@@ -7,7 +8,6 @@ import UnknownBlock from "../features/store-shell/blocks/UnknownBlock.astro";
 
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
-import { GuestCartNav } from "../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
 import { leftCommerceCatalog, withoutRemovedProducts } from "../features/store-shell/merch-catalog.js";
@@ -79,13 +79,7 @@ const unmanaged = demonstrations?.unmanaged;
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
-    <header class="store-header">
-      <a class="store-header__mark" href="/">DinkusKit / Store</a>
-      <nav class="store-header__nav" aria-label="Store">
-        <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
-        <GuestCartNav />
-      </nav>
-    </header>
+    <StoreHeader profile={profile} />
     <main>
       {
         layout?.length ? (

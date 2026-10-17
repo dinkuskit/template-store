@@ -1,5 +1,6 @@
 ---
-import { GuestCart, GuestCartNav } from "../features/guest-cart/ui.ts";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import { GuestCart } from "../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
 import { storeBannerText } from "../features/store-shell/checkout-copy.js";
@@ -21,13 +22,7 @@ const checkoutAdmission = await acquireGuestCheckoutAdmission({
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(Boolean(checkoutAdmission))} role="status">{storeBannerText(Boolean(checkoutAdmission))}</div>
-    <header class="store-header">
-      <a class="store-header__mark" href="/">DinkusKit / Store</a>
-      <nav class="store-header__nav" aria-label="Store">
-        <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
-        <GuestCartNav />
-      </nav>
-    </header>
+    <StoreHeader profile={profile} />
     <main>
       <GuestCart checkoutAdmission={checkoutAdmission} />
     </main>

@@ -130,3 +130,28 @@ response through the same installed public dispatcher as the catalog. The cart
 shows its existing checkout flow only for supported TEST readiness; unavailable
 or native-development contexts remain closed. This local candidate does not
 establish Registry publication, deployment or a real hosted purchase.
+
+## Store header main menu (2026-10-17)
+
+Every shopper page (home, category, product, cart, checkout return) shares one
+header: the store mark on the left, the main menu, and the existing store label
+and Cart link on the right. The main menu is EmDash's own Menus feature, read
+with `getMenu("primary")`; the template does not keep a second navigation
+model. The seed creates `primary` as Home and Shop, with Shop opening All
+products and one link per seeded category, so fresh stores start with a working
+bar and owners rename, reorder or add links in the EmDash admin under Menus.
+Category links resolve through the collection URL pattern, and a category that
+is unpublished drops out of the menu. A store without a `primary` menu shows
+the header without a menu, never invented links.
+
+On desktop the menu is a single row; an item with children opens its
+dropdown while the mouse is over it, and its chevron button opens it for
+keyboard and click until Escape, a second click, or a click elsewhere closes
+it, with `aria-expanded` always matching what is shown. Under 48rem the menu
+collapses behind a Menu button and opens as a full-width stacked list with the
+same chevron per dropdown. Escape closes the open dropdown, then the menu.
+Without JavaScript, desktop dropdowns open on hover and focus, and phones show
+the full menu expanded. The link for the current page carries
+`aria-current="page"`. The look stays within the existing warm-neutral tokens;
+this adds navigation, not a new visual round. The older `store-primary` menu
+remains the category row inside the seeded integration demonstrations.

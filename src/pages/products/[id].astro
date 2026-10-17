@@ -1,6 +1,6 @@
 ---
+import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { getEmDashCollection } from "emdash";
-import { GuestCartNav } from "../../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
 import { canAddCommerceProductToCart } from "../../features/guest-cart/index.js";
 import { linkedProductPurchasable, storeBannerText } from "../../features/store-shell/checkout-copy.js";
@@ -101,7 +101,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
-    <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav></header>
+    <StoreHeader profile={profile} />
     <main class="product-page">
     <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{noLongerAvailable ? "No longer available" : productName ?? "Not found"}</span></nav>
       {noLongerAvailable ? <section class="product-removed" data-product-removed><h1>This product is no longer available</h1><p>It has been removed from the shop.</p><a href="/">Browse the shop</a></section> : item ? (
