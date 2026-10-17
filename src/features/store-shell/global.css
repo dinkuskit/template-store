@@ -282,8 +282,10 @@
       position: relative;
     }
 
-    .store-main-nav__item--parent:hover > .store-main-nav__sub,
-    .store-main-nav__item--parent:focus-within > .store-main-nav__sub {
+    /* Without the menu script, hover and focus open dropdowns. With it, the
+       script opens them so Escape and the chevron can close them. */
+    .store-header:not([data-menu-ready]) .store-main-nav__item--parent:hover > .store-main-nav__sub,
+    .store-header:not([data-menu-ready]) .store-main-nav__item--parent:focus-within > .store-main-nav__sub {
       display: block;
     }
 

@@ -144,11 +144,13 @@ Category links resolve through the collection URL pattern, and a category that
 is unpublished drops out of the menu. A store without a `primary` menu shows
 the header without a menu, never invented links.
 
-On desktop the menu is a single row; items with children open a dropdown on
-hover, keyboard focus, or the chevron button. Under 48rem the menu collapses
-behind a Menu button and opens as a full-width stacked list with the same
-chevron per dropdown. Escape closes the open dropdown, then the menu. Without
-JavaScript, desktop dropdowns still open on hover and focus, and phones show
+On desktop the menu is a single row; an item with children opens its
+dropdown while the mouse is over it, and its chevron button opens it for
+keyboard and click until Escape, a second click, or a click elsewhere closes
+it, with `aria-expanded` always matching what is shown. Under 48rem the menu
+collapses behind a Menu button and opens as a full-width stacked list with the
+same chevron per dropdown. Escape closes the open dropdown, then the menu.
+Without JavaScript, desktop dropdowns open on hover and focus, and phones show
 the full menu expanded. The link for the current page carries
 `aria-current="page"`. The look stays within the existing warm-neutral tokens;
 this adds navigation, not a new visual round. The older `store-primary` menu
