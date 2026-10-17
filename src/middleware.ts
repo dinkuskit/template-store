@@ -10,11 +10,11 @@ import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-p
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import {
-  playgroundAttemptBelongsToVisitor,
-  playgroundCheckoutBindingStore,
   playgroundCheckoutConfigured,
   withCheckoutVisitor,
 } from "./features/playground-checkout/payments-port.js";
+import { playgroundAttemptBelongsToVisitor } from "./features/playground-checkout/binding-auth.js";
+import { playgroundCheckoutBindingStore } from "./features/playground-checkout/binding-store.js";
 import {
   checkoutJsonError,
   checkoutLimited,

@@ -15,10 +15,14 @@ import {
   type GuestCheckoutHostOptions,
   type TrustedShippingConfiguration,
 } from "@dinkuskit/commerce/features/checkout";
-import { COMMERCE_PLUGIN_ID } from "@dinkuskit/commerce";
-import { PluginStorageRepository } from "emdash";
-
 import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../playground/flat-rate-shipping.js";
+import {
+  playgroundNow,
+  type PlaygroundCheckoutBindingStore,
+} from "./binding-auth.js";
+export { playgroundAttemptBelongsToVisitor } from "./binding-auth.js";
+export { playgroundCheckoutBindingStore } from "./binding-store.js";
+export type { PlaygroundCheckoutBindingStore } from "./binding-auth.js";
 import {
   getStorePass,
   isCheckoutEnabled,
@@ -40,44 +44,12 @@ function playgroundCommerceOrigin(env: EnvLike): string {
 }
 
 type EnvLike = Record<string, unknown>;
-const PLAYGROUND_BINDINGS_COLLECTION = "playground_checkout_bindings";
-function playgroundNow(env: EnvLike = (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ?? process.env): number {
-  const fallback = process.env;
-  const override = env.DINKUS_LOCAL_PROOF === "1" && typeof (env.DINKUS_LOCAL_PROOF_NOW ?? fallback.DINKUS_LOCAL_PROOF_NOW) === "string"
-    ? Number(env.DINKUS_LOCAL_PROOF_NOW ?? fallback.DINKUS_LOCAL_PROOF_NOW)
-    : NaN;
-  return Number.isFinite(override) ? override : Date.now();
-}
-
 /** Per-request visitor context, set by the store middleware around checkout routes. */
-type BindingRecord = { recordKind: "playground-checkout-binding"; attemptId: string; sessionId: string; expiresAt: number };
-export type PlaygroundCheckoutBindingStore = {
-  get(attemptId: string): Promise<BindingRecord | null>;
-  put(attemptId: string, value: BindingRecord): Promise<void>;
-};
 type VisitorContext = { clientIp: string; sessionId: string; bindings?: PlaygroundCheckoutBindingStore };
 const visitor = new AsyncLocalStorage<VisitorContext>();
 /** Missing bindings fail closed; only the exact Payments expiry authorizes lookup. */
 export function createPlaygroundAttemptId(): string {
   return crypto.randomUUID();
-}
-
-export function playgroundCheckoutBindingStore(db: ConstructorParameters<typeof PluginStorageRepository>[0]): PlaygroundCheckoutBindingStore {
-  const repository = new PluginStorageRepository<BindingRecord>(
-    db,
-    COMMERCE_PLUGIN_ID,
-    PLAYGROUND_BINDINGS_COLLECTION,
-    [],
-  );
-  return {
-    async get(attemptId) {
-      const value = await repository.get(attemptId);
-      return value && value.recordKind === "playground-checkout-binding" ? value : null;
-    },
-    async put(attemptId, value) {
-      await repository.put(attemptId, value);
-    },
-  };
 }
 
 export function withCheckoutVisitor<T>(
@@ -87,18 +59,6 @@ export function withCheckoutVisitor<T>(
   bindings?: PlaygroundCheckoutBindingStore,
 ): T {
   return visitor.run({ clientIp, sessionId, bindings }, run);
-}
-
-export async function playgroundAttemptBelongsToVisitor(
-  attemptId: string,
-  sessionId: string,
-  bindings?: PlaygroundCheckoutBindingStore,
-  env?: EnvLike,
-): Promise<boolean> {
-  if (!bindings || !sessionId) return false;
-  const binding = await bindings.get(attemptId);
-  const now = playgroundNow(env);
-  return Boolean(binding && binding.expiresAt > now && binding.sessionId === sessionId);
 }
 
 const stripeAccount = readStripeAccount;

@@ -12,9 +12,8 @@ import { canDispatchInstalledGuestCheckout } from "../../../features/guest-cart/
 import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, playgroundCheckoutConfigured } from "../../../features/playground-checkout/index.js";
 import {
   playgroundAttemptBelongsToVisitor,
-  playgroundCheckoutBindingStore,
   type PlaygroundCheckoutBindingStore,
-} from "../../../features/playground-checkout/payments-port.js";
+} from "../../../features/playground-checkout/binding-auth.js";
 
 export const prerender = false;
 const MAX_REQUEST_BYTES = 4 * 1024;
@@ -203,8 +202,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const sessionId = request.headers.get("cookie")?.match(/(?:^|;\s*)emdash_playground=([^;]+)/u)?.[1] ?? "";
       let bindingStore = (locals as { __playgroundCheckoutBindings?: unknown }).__playgroundCheckoutBindings as
         PlaygroundCheckoutBindingStore | undefined;
-      const playgroundDb = (locals as { __playgroundDb?: Parameters<typeof playgroundCheckoutBindingStore>[0] }).__playgroundDb;
-      if (!bindingStore && playgroundDb) bindingStore = playgroundCheckoutBindingStore(playgroundDb);
       if (!validated.checkout.attemptId ||
           !(await playgroundAttemptBelongsToVisitor(validated.checkout.attemptId, sessionId, bindingStore, env))) {
         return unavailable(403, "CHECKOUT_STATUS_CAPABILITY_DENIED");
