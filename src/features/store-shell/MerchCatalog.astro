@@ -53,18 +53,20 @@ const manualLabel: Record<string, string> = {
                 ? availabilityLabels[commerce.availability.status] ?? "Availability unavailable"
                 : "Preview only · not purchasable";
           const destination = productPath(item.id)!;
+          // A linked Commerce product shows its own name, so a rename shows here too.
+          const name = commerce?.name.trim() || item.title;
           return <article class="merch-card" data-merch-item={item.id} data-merch-source={source}>
-            <div class={`merch-card__visual merch-card__visual--${item.illustration}`}>{commerce ? <ProductMedia image={commerce.image} productId={commerce.id} fallbackSrc={demoPlaceholderImage(commerce.sku, item.id)} fallbackAlt={`${item.title} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} loading="lazy" width="640" height="480" />}</div>
+            <div class={`merch-card__visual merch-card__visual--${item.illustration}`}>{commerce ? <ProductMedia image={commerce.image} productId={commerce.id} fallbackSrc={demoPlaceholderImage(commerce.sku, item.id)} fallbackAlt={`${name} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} loading="lazy" width="640" height="480" />}</div>
             <div class="merch-card__body">
               <p class="merch-card__category">{item.category}</p>
-              {collectionOnly ? <h2>{item.title}</h2> : <h4>{item.title}</h4>}
+              {collectionOnly ? <h2>{name}</h2> : <h4>{name}</h4>}
               <p class="merch-card__description">{item.description}</p>
               {source === "managed" && managed && <p class="merch-card__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
               {source === "unmanaged" && unmanaged && <p class="merch-card__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
               {commerce && <p class="merch-card__price" data-product-price>{commerce.price.saleText ? <><s data-regular-price>{commerce.price.regularText}</s> <strong data-sale-price>{commerce.price.saleText}</strong></> : <strong data-regular-price>{commerce.price.regularText}</strong>}</p>}
               <p class="merch-card__status" data-merch-status>{status}</p>
-              <a href={destination} aria-label={`View ${item.title} details`}>View details <span aria-hidden="true">↗</span></a>
-              {source !== "preview" && (managed || unmanaged) && <a class="merch-card__availability" href={source === "managed" ? "/#managed-product" : "/#unmanaged-product"} aria-label={`View availability for ${item.title}`}>View availability</a>}
+              <a href={destination} aria-label={`View ${name} details`}>View details <span aria-hidden="true">↗</span></a>
+              {source !== "preview" && (managed || unmanaged) && <a class="merch-card__availability" href={source === "managed" ? "/#managed-product" : "/#unmanaged-product"} aria-label={`View availability for ${name}`}>View availability</a>}
             </div>
           </article>;
         })}
