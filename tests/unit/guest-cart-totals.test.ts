@@ -49,4 +49,16 @@ describe("guest cart totals", () => {
     });
     expect(parsed?.map((item) => item.found && item.price.unitMinor)).toEqual(["2400", undefined, undefined]);
   });
+
+  it("hides totals while a failed price check leaves older prices in place, then shows them on retry", () => {
+    let intent = addGuestCartLine(emptyGuestCartIntent(), "hat", 1).intent;
+    intent = addGuestCartLine(intent, "mug", 1).intent;
+    const loaded = [snapshot("hat", "2400"), snapshot("mug", "1250")];
+    expect(presentGuestCart({ intent, snapshots: loaded }).subtotalText).toBe("$36.50");
+    const failed = presentGuestCart({ intent, snapshots: loaded, snapshotFailed: true });
+    expect(failed.subtotalText).toBeNull();
+    expect(failed.lines.map((line) => line.lineTotalText)).toEqual([null, null]);
+    const retried = presentGuestCart({ intent, snapshots: [snapshot("hat", "2600"), snapshot("mug", "1250")] });
+    expect(retried.subtotalText).toBe("$38.50");
+  });
 });

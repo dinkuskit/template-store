@@ -207,6 +207,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(shopper.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.", { timeout: 8_000 });
   await expect(shopper.locator(`[data-guest-cart-line="${id}"]`)).toBeVisible();
   await expect(shopper.locator("[data-guest-cart-empty]")).toBeHidden();
+  await expect(subtotal).toBeHidden();
   await shopper.unroute("**/api/guest-cart/snapshot**");
 
   await shopper.route("**/api/guest-cart/snapshot**", async (route) => {
@@ -242,6 +243,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(shopper.getByRole("heading", { name, exact: true })).toBeVisible();
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeHidden();
   await expect(shopper.locator("[data-regular-price]")).toHaveText("$24.00");
+  await expect(subtotal).toHaveText("Subtotal $72.00");
 
   await shopper.goto("/cart?success=1&session_id=forged");
   await expect(shopper.getByText(/thank you|order confirmed|purchase complete|payment succeeded/i)).toHaveCount(0);
