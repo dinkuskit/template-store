@@ -1,6 +1,9 @@
 ---
 import { getEmDashCollection } from "emdash";
 import { GuestCartNav } from "../../features/guest-cart/ui.ts";
+import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
+import { canAddCommerceProductToCart } from "../../features/guest-cart/index.js";
+import { linkedProductPurchasable, storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { AddToCart } from "../../features/guest-cart/ui.ts";
 import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
 import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
@@ -59,6 +62,17 @@ const cartProduct = linkedProduct && selectedVariant
   ? { ...linkedProduct, id: selectedVariant.id, availability: { ...selectedVariant.availability, listable: true } }
   : linkedProduct;
 const linkedStatus = selectedVariant?.availability.status ?? linkedProduct?.availability.status;
+const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
+  runtime: Astro.locals.emdash,
+  request: Astro.request,
+}).catch(() => null));
+// A Commerce-linked product on a shipping store says nothing extra when it can
+// be bought; the notice appears only when it really cannot.
+const purchasable = Boolean(cartProduct) && linkedProductPurchasable({
+  offersCart,
+  checkoutAvailable,
+  sellable: cartProduct ? canAddCommerceProductToCart(cartProduct) : false,
+});
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
 const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability unavailable" : managed ? `${managed.inventory.available} available` : unmanaged ? ({
@@ -76,7 +90,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
     <title>{item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <div class="store-demo-banner" data-store-demo-banner role="status">Demo / Test Store &mdash; Synthetic demonstration. Purchases and checkout are unavailable.</div>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
     <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav></header>
     <main class="product-page">
     <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{item?.title ?? "Not found"}</span></nav>
@@ -105,7 +119,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
             {cartProduct && offersCart && <AddToCart product={cartProduct} />}
-            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>Demo product. Cart and checkout are unavailable.</p> : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>Demo product. Cart and checkout are unavailable.</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>

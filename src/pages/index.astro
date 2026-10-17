@@ -1,5 +1,5 @@
 ---
-import { getEmDashEntry, getEmDashCollection, getMenu, type PortableTextBlock } from "emdash";
+import { getEmDashEntry, getEmDashCollection, getMenu, getSiteSettings, type PortableTextBlock } from "emdash";
 import { Blocks, PortableText, type BlockValue } from "emdash/ui";
 import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
 import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
@@ -8,6 +8,7 @@ import UnknownBlock from "../features/store-shell/blocks/UnknownBlock.astro";
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
 import { GuestCartNav } from "../features/guest-cart/ui.ts";
+import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
 import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
@@ -16,6 +17,7 @@ import {
   STORE_TITLE,
   loadStorefrontRouteContext,
 } from "../features/store-shell/index.js";
+import { catalogGuidanceCopy, storeBannerText } from "../features/store-shell/checkout-copy.js";
 import { canonicalProductPath, hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
 import "../features/store-shell/global.css";
 
@@ -38,6 +40,21 @@ const { profile, demonstrations, collections } = await loadStorefrontRouteContex
 let catalogUnavailable = false;
 const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
 const productPaths = new Map(productLinks.products.map((product) => [product.commerceItemId, canonicalProductPath(product.slug)]));
+const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
+  runtime: Astro.locals.emdash,
+  request: Astro.request,
+}).catch(() => null));
+const guidanceState = catalogUnavailable ? "unavailable" : commerceProducts.length === 0 ? "empty" : "ready";
+const guidance = catalogGuidanceCopy(guidanceState, checkoutAvailable);
+// A store with no published "home" page still greets shoppers with its name
+// and the shop; the seed hint is for developers only.
+const composed = Boolean(layout?.length || content?.length);
+const siteSettings = composed ? null : await getSiteSettings().catch(() => null);
+const siteTitle = siteSettings?.title?.trim() || STORE_TITLE;
+const siteTagline = siteSettings?.tagline?.trim() || null;
+if (!composed && import.meta.env.DEV) {
+  console.warn('[storefront] No published page with slug "home"; showing the default storefront. Load the neutral EmDash seed or publish a home page.');
+}
 const availability = demonstrations?.managed;
 const unmanaged = demonstrations?.unmanaged;
 ---
@@ -51,7 +68,7 @@ const unmanaged = demonstrations?.unmanaged;
     <title>{STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <div class="store-demo-banner" data-store-demo-banner role="status">Demo / Test Store &mdash; Synthetic demonstration. Purchases and checkout are unavailable.</div>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
     <header class="store-header">
       <a class="store-header__mark" href="/">DinkusKit / Store</a>
       <nav class="store-header__nav" aria-label="Store">
@@ -74,21 +91,18 @@ const unmanaged = demonstrations?.unmanaged;
             <PortableText value={content} components={legacyPortableTextComponents} />
           </div>
         ) : (
-          <section class="store-error" role="alert" data-content-missing>
-            <h1>Storefront composition is unavailable</h1>
-            <p>Load the neutral EmDash seed before presenting this starter.</p>
+          <section class="store-default-home" data-home-default>
+            <h1>{siteTitle}</h1>
+            {siteTagline && <p>{siteTagline}</p>}
+            <a href="#commerce-catalog">Browse the shop</a>
           </section>
         )
       }
-      <section class="catalog-guidance" data-catalog-guidance data-catalog-guidance-state={catalogUnavailable ? "unavailable" : commerceProducts.length === 0 ? "empty" : "ready"} aria-label="How to use this store">
-        <strong>{catalogUnavailable ? "The catalog is unavailable right now." : commerceProducts.length === 0 ? "No products are listed yet." : "Browse the current catalog."}</strong>
-        <p>{catalogUnavailable
-          ? "Products are not shown until the connected store can be reached. Checkout is unavailable."
-          : commerceProducts.length === 0
-            ? "Products will appear here when they are published. Checkout is unavailable."
-            : "Eligible products can be added to your cart. Checkout is unavailable, so no purchase will be completed."}</p>
+      <section class="catalog-guidance" data-catalog-guidance data-catalog-guidance-state={guidanceState} aria-label="How to use this store">
+        <strong>{guidance.heading}</strong>
+        <p>{guidance.detail}</p>
       </section>
-      <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} productPaths={productPaths} />
+      <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} productPaths={productPaths} checkoutAvailable={checkoutAvailable} />
       {demonstrations && availability && unmanaged && (
       <section aria-label="Separate integration demonstrations" data-integration-demos>
       <h2 class="demo-heading">Integration demonstrations</h2>

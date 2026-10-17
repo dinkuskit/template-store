@@ -34,6 +34,7 @@ export type {
 export {
   GUEST_CHECKOUT_LABEL,
   GUEST_CHECKOUT_REASON,
+  GUEST_CHECKOUT_READY_LABEL,
   canAddCommerceProductToCart,
   guestReturnQueryIsPresent,
   lineBlockReason,

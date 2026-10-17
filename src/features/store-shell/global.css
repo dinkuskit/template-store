@@ -145,6 +145,30 @@
     background: #fff1f2;
   }
 
+  .store-default-home {
+    width: min(70rem, calc(100% - 2rem));
+    margin: 3rem auto 0;
+  }
+
+  .store-default-home h1 {
+    margin: 0 0 .75rem;
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    letter-spacing: -.05em;
+    line-height: 1;
+  }
+
+  .store-default-home p {
+    max-width: 40rem;
+    margin: 0 0 1.25rem;
+    color: var(--store-muted);
+    line-height: 1.6;
+  }
+
+  .store-default-home a {
+    font-weight: 800;
+    text-underline-offset: .25em;
+  }
+
   .store-unknown-block {
     margin: 1.5rem 0;
     padding: 1rem;
