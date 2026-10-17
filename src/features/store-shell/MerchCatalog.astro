@@ -4,6 +4,7 @@ import type { UnmanagedProductSellability } from "../unmanaged-product-sellabili
 import { categoryAnchor, categoryPath, productPath, type MerchCollection } from "./merch-catalog.js";
 import { availabilityLabels, type PublicCommerceProduct } from "../commerce-catalog/index.js";
 import ProductMedia from "../commerce-catalog/ProductMedia.astro";
+import { demoPlaceholderImage } from "../playground/demo-products.js";
 
 interface Props {
   collections: readonly MerchCollection[];
@@ -53,7 +54,7 @@ const manualLabel: Record<string, string> = {
                 : "Preview only · not purchasable";
           const destination = productPath(item.id)!;
           return <article class="merch-card" data-merch-item={item.id} data-merch-source={source}>
-            <div class={`merch-card__visual merch-card__visual--${item.illustration}`}>{commerce ? <ProductMedia image={commerce.image} productId={commerce.id} fallbackSrc={`/merch/${item.illustration}.svg`} fallbackAlt={`${item.title} garment illustration`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} loading="lazy" width="640" height="480" />}</div>
+            <div class={`merch-card__visual merch-card__visual--${item.illustration}`}>{commerce ? <ProductMedia image={commerce.image} productId={commerce.id} fallbackSrc={demoPlaceholderImage(commerce.sku, item.id)} fallbackAlt={`${item.title} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} loading="lazy" width="640" height="480" />}</div>
             <div class="merch-card__body">
               <p class="merch-card__category">{item.category}</p>
               {collectionOnly ? <h2>{item.title}</h2> : <h4>{item.title}</h4>}

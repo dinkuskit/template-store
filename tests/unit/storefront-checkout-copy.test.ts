@@ -108,8 +108,10 @@ describe("category pages on a shipping store", () => {
     expect(catalog).toContain('const commerce = source === "preview" ? commerceProducts.get(item.id) : undefined;');
     expect(catalog).toMatch(/: commerce\n\s+\? availabilityLabels\[commerce\.availability\.status\]/);
     expect(catalog).toContain("{commerce && <p class=\"merch-card__price\" data-product-price>");
-    // The product's own Commerce image, with the drawing only as its fallback.
-    expect(catalog).toContain("{commerce ? <ProductMedia image={commerce.image} productId={commerce.id} fallbackSrc={`/merch/${item.illustration}.svg`}");
+    // The product's own Commerce image; merchant products without one keep the
+    // "No image" placeholder, and only seeded demo products get a demo image.
+    expect(catalog).toContain("{commerce ? <ProductMedia image={commerce.image} productId={commerce.id} fallbackSrc={demoPlaceholderImage(commerce.sku, item.id)}");
+    expect(catalog).not.toContain("fallbackSrc={`/merch/");
     const page = readFileSync("src/pages/categories/[slug].astro", "utf8");
     expect(page).toContain('profile === "shipping" && category');
     expect(page).toContain("commerceProducts={commerceProducts}");
