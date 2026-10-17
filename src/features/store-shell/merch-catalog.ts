@@ -16,6 +16,31 @@ export type MerchCollection = Readonly<{
   items: readonly MerchRecord[];
 }>;
 
+// Seeded editorial previews link to Commerce IDs that never exist, and the
+// local demonstrations use fixed IDs; neither ever leaves the catalog.
+const EDITORIAL_PREVIEW_PREFIX = "dinkus-template-preview-";
+const DEMONSTRATION_ITEM_IDS = new Set(["dinkus-template-managed-product", "dinkus-template-unmanaged-product"]);
+
+/**
+ * Whether a page's linked Commerce product has left the public catalog, for
+ * example because the owner archived it, rather than being a seeded preview.
+ */
+export function leftCommerceCatalog(commerceItemId: string, inCatalog: boolean): boolean {
+  return !inCatalog && commerceItemId !== "" &&
+    !commerceItemId.startsWith(EDITORIAL_PREVIEW_PREFIX) && !DEMONSTRATION_ITEM_IDS.has(commerceItemId);
+}
+
+/** The collections without the entries whose Commerce product has left the catalog. */
+export function withoutRemovedProducts(
+  collections: readonly MerchCollection[],
+  removedEntryIds: ReadonlySet<string>,
+): MerchCollection[] {
+  return collections.map((collection) => ({
+    ...collection,
+    items: collection.items.filter((item) => !removedEntryIds.has(item.id)),
+  }));
+}
+
 /** Editorial content comes from EmDash; Commerce links are validated by the page resolver. */
 export function buildMerchCollections(
   entries: readonly { id: string; data: Record<string, unknown> }[],
