@@ -37,6 +37,7 @@ await build({
     name: "native-commerce",
     setup(buildApi) {
       buildApi.onResolve({ filter: /^@dinkuskit\/commerce\/features\/checkout$/ }, () => ({ path: commerceBundle }));
+      buildApi.onResolve({ filter: /^(emdash(?:\/.*)?|astro:content|virtual:emdash\/)/ }, args => ({ path: args.path, external: true }));
     },
   }],
 });
@@ -101,6 +102,11 @@ const port = adapter.resolvePlaygroundPayments(env, {
   passFetchImpl: async () => Response.json({ access_token: "h.p.s", token_type: "Bearer", expires_in: 300 }),
   fetchImpl: transport,
 });
+const bindingRecords = new Map();
+const bindingStore = {
+  async get(id) { return bindingRecords.get(id) ?? null; },
+  async put(id, value) { bindingRecords.set(id, value); },
+};
 const host = {
   ...adapter.playgroundCheckoutHostOptions(env),
   loadCheckoutContactRequirements: async () => ({
@@ -124,27 +130,28 @@ await adapter.withCheckoutVisitor("203.0.113.7", "visitor-a", async () => {
     contact: { email: "buyer@example.invalid", delivery: {
       name: "Fixture Buyer", line1: "1 Test Road", city: "Testville", postalCode: "10001", country: "US",
     } },
-  }, headers);
+    },
+    headers);
   assert.equal(started.ok, true, JSON.stringify(started));
   assert.equal(started.checkout.state, "pending", JSON.stringify(started));
   checkoutAttemptId = started.checkout.attemptId;
-});
+}, bindingStore);
 const callsAfterStart = paymentCalls;
-const differentVisitor = !adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-b");
-const resetSession = !adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-reset");
-const missingBinding = !adapter.playgroundAttemptBelongsToVisitor("missing-attempt", "visitor-a");
+const differentVisitor = !(await adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-b", bindingStore));
+const resetSession = !(await adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-reset", bindingStore));
+const missingBinding = !(await adapter.playgroundAttemptBelongsToVisitor("missing-attempt", "visitor-a", bindingStore));
 assert.equal(differentVisitor, true);
 assert.equal(resetSession, true);
 assert.equal(missingBinding, true);
 assert.equal(paymentCalls, callsAfterStart);
 paid = true;
 const settled = await adapter.withCheckoutVisitor("203.0.113.7", "visitor-a", () =>
-  checkout.statusGuestCheckout(runtime, { attemptId: checkoutAttemptId }, headers));
+  checkout.statusGuestCheckout(runtime, { attemptId: checkoutAttemptId }, headers), bindingStore);
 assert.equal(settled.ok, true);
 assert.equal(settled.checkout.state, "paid");
 assert.equal(settled.checkout.order.total.minor, "1700");
-adapter.resetCheckoutVisitorBindings();
-const expiredBinding = !adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-a");
+bindingRecords.set(checkoutAttemptId, { ...bindingRecords.get(checkoutAttemptId), expiresAt: Date.now() - 1 });
+const expiredBinding = !(await adapter.playgroundAttemptBelongsToVisitor(checkoutAttemptId, "visitor-a", bindingStore));
 assert.equal(expiredBinding, true);
 assert.equal(paymentCalls, callsAfterStart + 1);
 console.log(JSON.stringify({

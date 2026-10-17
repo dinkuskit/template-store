@@ -143,7 +143,10 @@ const started = await request("/_emdash/api/plugins/dinkus-commerce/checkout/gue
       name: "Proof Visitor", line1: "1 Test Way", city: "Testville",
       region: "TS", postalCode: "00000", country: "US",
     } } }, capability);
-const attemptId = started.body?.checkout?.attemptId ?? started.body?.attemptId;
+const attemptId = started.body?.data?.checkout?.attemptId ?? started.body?.checkout?.attemptId ?? started.body?.data?.attemptId ?? started.body?.attemptId;
+if (typeof attemptId !== "string" || attemptId.length === 0) {
+  throw new Error(`native Commerce start response did not contain an attempt ID: ${JSON.stringify(started.body)}`);
+}
 const settled = await request("/api/checkout/status", cookie, { attemptId }, capability);
 const foreign = await request("/api/checkout/status", foreignCookie, { attemptId }, capability);
 const reset = await request("/api/checkout/status", resetCookie, { attemptId }, capability);
@@ -180,6 +183,7 @@ await waitForHttp(`${expiredOrigin}/`);
 await waitForReady(expiredOutput);
 await warmSession(expiredOrigin, cookie);
 const expiredRecovery = await requestAt(expiredOrigin, "/api/checkout/status", cookie, { attemptId }, capability);
+const settledCheckout = settled.body?.data?.checkout ?? settled.body?.checkout;
 writeFileSync(join(artifact, "trace.jsonl"), trace.map((item) => JSON.stringify(item)).join("\n") + "\n");
 writeFileSync(join(artifact, "payments-calls.json"), JSON.stringify(calls.map(({ path, attemptId: id }) => ({ path, attemptId: id })), null, 2) + "\n");
 expired.kill("SIGTERM");
@@ -187,10 +191,12 @@ payments.close();
 console.log("PASS_PLAYGROUND_HTTP_PAID_ORDER");
 console.log(`trace: ${trace.length} cases`);
 console.log(`paymentsCalls: ${calls.length}`);
-console.log(`settled: ${settled.body?.checkout?.state === "paid"}`);
+console.log(`settled: ${settledCheckout?.state === "paid"}`);
 console.log(`restartBindingRetained: ${expiredRecovery.status === 403 && expiredRecovery.paymentsCalls === 0}`);
-if (settled.body?.checkout?.state !== "paid" || calls.length === 0 ||
-    foreign.paymentsCalls !== 0 || reset.paymentsCalls !== 0 || unbound.paymentsCalls !== 0) {
+if (settledCheckout?.state !== "paid" || calls.length === 0 ||
+    foreign.paymentsCalls !== 0 || reset.paymentsCalls !== 0 || unbound.paymentsCalls !== 0 ||
+    recovered.status === 200 || expiredRecovery.status === 200 ||
+    recovered.paymentsCalls !== 0 || expiredRecovery.paymentsCalls !== 0) {
   throw new Error(`real HTTP paid-order proof did not establish paid settlement and zero-call isolation\n${output.join("")}`);
 }
 

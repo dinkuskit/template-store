@@ -142,6 +142,39 @@ describe("playground native status recovery", () => {
       origin: site, "x-commerce-guest-capability": "cap.synthetic" });
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
+  it("requires the resolved terminal attempt to remain bound to the visitor", async () => {
+    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+    for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
+    dispatch.mockResolvedValue({
+      success: true,
+      data: {
+        ok: true,
+        capabilityId: "cap",
+        checkout: {
+          ...projection,
+          state: "paid",
+          attemptId: "attempt-paid",
+          order: { orderId: "order-1", receiptId: "receipt-1", lines: [{ catalogItemId: "fixture", quantity: 1 }] },
+        },
+      },
+    });
+    const bindings = {
+      get: vi.fn(async (attemptId: string) => attemptId === "attempt-paid"
+        ? { recordKind: "playground-checkout-binding", attemptId, sessionId: "visitor-a", expiresAt: Date.now() + 60_000 }
+        : null),
+      put: vi.fn(),
+    };
+    const response = await POST({
+      request: request({ cookie: "emdash_playground=visitor-a" }),
+      locals: { emdash: runtime, __playgroundDb: {}, __playgroundCheckoutBindings: bindings },
+    } as never);
+    expect(response.status).toBe(200);
+    const foreign = await POST({
+      request: request({ cookie: "emdash_playground=visitor-b" }),
+      locals: { emdash: runtime, __playgroundDb: {}, __playgroundCheckoutBindings: bindings },
+    } as never);
+    expect(foreign.status).toBe(403);
+  });
   it("keeps capability and origin checks, and stays on the Registry gates when not configured", async () => {
     vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
     for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);

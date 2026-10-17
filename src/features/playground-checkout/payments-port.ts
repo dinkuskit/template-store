@@ -32,6 +32,7 @@ export const PAYMENTS_PLAYGROUND_BINDING_REF = "playground";
 export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured } from "./index.js";
 /** Stands in for the store origin Payments takes from the pass; the port never sends it. */
 const PLAYGROUND_COMMERCE_ORIGIN = "https://playground.dinkuskit.com";
+const MAX_PAYMENTS_RESPONSE_BYTES = 128 * 1024;
 function playgroundCommerceOrigin(env: EnvLike): string {
   return typeof env.DINKUS_LOCAL_PROOF_SITE_URL === "string"
     ? env.DINKUS_LOCAL_PROOF_SITE_URL
@@ -151,7 +152,14 @@ export function playgroundPaymentsFetch(
       : target;
     const response = await (deps.fetchImpl ?? fetch)(localTarget.href, { ...init, headers, redirect: "manual" });
     if (target.pathname === "/v1/checkout/session" && response.ok) {
-      const result = await response.clone().json() as { attemptId?: unknown; session?: { expiresAt?: unknown } };
+      const responseBody = await readBoundedPaymentsResponse(response.clone());
+      if (responseBody === null) throw new Error("Payments response too large");
+      let result: { attemptId?: unknown; session?: { expiresAt?: unknown } };
+      try {
+        result = JSON.parse(responseBody) as { attemptId?: unknown; session?: { expiresAt?: unknown } };
+      } catch {
+        throw new Error("Payments response invalid");
+      }
       if (typeof result.attemptId !== "string" || result.attemptId !== attemptId) {
         throw new Error("Payments attempt identity mismatch");
       }
@@ -178,6 +186,41 @@ function readAttemptId(body: BodyInit | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+async function readBoundedPaymentsResponse(response: Response): Promise<string | null> {
+  const declared = response.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_PAYMENTS_RESPONSE_BYTES)) {
+    return null;
+  }
+  if (!response.body) {
+    const text = await response.text();
+    return new TextEncoder().encode(text).byteLength <= MAX_PAYMENTS_RESPONSE_BYTES ? text : null;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.byteLength;
+      if (size > MAX_PAYMENTS_RESPONSE_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(next.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }
 
 /** Commerce's port for binding ref "playground", or null (fail closed) when not configured. */

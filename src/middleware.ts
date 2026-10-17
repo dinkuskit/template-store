@@ -138,7 +138,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       return refused;
     }
     const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
-      const response = await withCheckoutVisitor(clientIp ?? "", sessionId, () => next(nativeCheckoutPath(checkoutKind)), playgroundBindings);
+    const response = await withCheckoutVisitor(clientIp ?? "", sessionId, async () => {
+      const nativeResponse = await next(nativeCheckoutPath(checkoutKind));
+      if (checkoutKind === "status") {
+        return authorizeNativeStatusResponse(nativeResponse, sessionId, playgroundBindings, playgroundEnv);
+      }
+      return nativeResponse;
+    }, playgroundBindings);
     applySecurityHeaders(response.headers);
     return response;
   }
@@ -313,5 +319,29 @@ async function readStatusAttemptId(request: Request): Promise<string | null | ty
     return typeof body.attemptId === "string" && body.attemptId.length > 0 ? body.attemptId : null;
   } catch {
     return null;
+  }
+}
+
+async function authorizeNativeStatusResponse(
+  response: Response,
+  sessionId: string,
+  bindings: Parameters<typeof playgroundAttemptBelongsToVisitor>[2],
+  env: Record<string, unknown>,
+): Promise<Response> {
+  try {
+    const body = await response.clone().json() as {
+      data?: { checkout?: { state?: unknown; attemptId?: unknown; order?: unknown } };
+      checkout?: { state?: unknown; attemptId?: unknown; order?: unknown };
+    };
+    const checkout = body.data?.checkout ?? body.checkout;
+    const terminal = checkout?.state === "paid" || checkout?.order !== null && checkout?.order !== undefined;
+    if (!terminal) return response;
+    if (typeof checkout?.attemptId !== "string" ||
+        !(await playgroundAttemptBelongsToVisitor(checkout.attemptId, sessionId, bindings, env))) {
+      return checkoutJsonError(403, "Checkout visitor session is not authorized.");
+    }
+    return response;
+  } catch {
+    return checkoutJsonError(503, "Checkout status unavailable.");
   }
 }

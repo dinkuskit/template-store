@@ -17,6 +17,12 @@ describe("TemplateStore playground Commerce catalog", () => {
     expect(middleware).toContain("ensurePlaygroundDemoCatalog");
   });
 
+  it("preserves an intentional empty saved shipping-country setting", () => {
+    const seed = readFileSync("src/features/playground/demo-commerce-seed.ts", "utf8");
+    expect(seed).toContain("currentSettings.revision === null");
+    expect(seed).not.toContain("currentSettings.settings.shippingCountries.length === 0");
+  });
+
   it("smoke-checks the deployed playground for the catalog fallback", () => {
     const ci = readFileSync(".github/workflows/ci.yml", "utf8");
     expect(ci).toContain('data-catalog-guidance-state="ready"');

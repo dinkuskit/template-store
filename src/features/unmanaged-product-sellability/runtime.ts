@@ -34,7 +34,7 @@ import {
 } from "./types.js";
 
 const PROVENANCE = {
-  commerce: "67f2626edb7986d82886f0c015a9305f61c1753e",
+  commerce: "6ebd9820319385131a088f01819ab02490bb8892",
   inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
 } as const;
 

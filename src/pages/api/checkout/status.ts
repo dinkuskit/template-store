@@ -10,6 +10,11 @@ import {
 
 import { canDispatchInstalledGuestCheckout } from "../../../features/guest-cart/checkout-admission.js";
 import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, playgroundCheckoutConfigured } from "../../../features/playground-checkout/index.js";
+import {
+  playgroundAttemptBelongsToVisitor,
+  playgroundCheckoutBindingStore,
+  type PlaygroundCheckoutBindingStore,
+} from "../../../features/playground-checkout/payments-port.js";
 
 export const prerender = false;
 const MAX_REQUEST_BYTES = 4 * 1024;
@@ -138,7 +143,7 @@ function playgroundNativeStatus(locals: unknown, env: Record<string, unknown>): 
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const env = ((locals as { __playgroundEnv?: Record<string, unknown> }).__playgroundEnv ?? process.env);
+  const env = ((locals as { __playgroundEnv?: Record<string, unknown> } | undefined)?.__playgroundEnv ?? process.env);
   const requestBody = await boundedRequestText(request);
   if (requestBody === null) {
     return unavailable(413);
@@ -192,6 +197,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const validated = parseGuestCheckoutWireResult(parsed);
     if (!validated) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     if (!validated.ok) return unavailable(503, domainFailureCode(validated.error.code));
+    const isPlayground = Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb);
+    const terminal = validated.checkout.state === "paid" || validated.checkout.order !== null;
+    if (native && isPlayground && terminal) {
+      const sessionId = request.headers.get("cookie")?.match(/(?:^|;\s*)emdash_playground=([^;]+)/u)?.[1] ?? "";
+      let bindingStore = (locals as { __playgroundCheckoutBindings?: unknown }).__playgroundCheckoutBindings as
+        PlaygroundCheckoutBindingStore | undefined;
+      const playgroundDb = (locals as { __playgroundDb?: Parameters<typeof playgroundCheckoutBindingStore>[0] }).__playgroundDb;
+      if (!bindingStore && playgroundDb) bindingStore = playgroundCheckoutBindingStore(playgroundDb);
+      if (!validated.checkout.attemptId ||
+          !(await playgroundAttemptBelongsToVisitor(validated.checkout.attemptId, sessionId, bindingStore, env))) {
+        return unavailable(403, "CHECKOUT_STATUS_CAPABILITY_DENIED");
+      }
+    }
     return Response.json({
       ok: true,
       capabilityId: validated.capabilityId,

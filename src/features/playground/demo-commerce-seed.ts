@@ -143,7 +143,10 @@ export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: st
   await ensureCommerceStorageIndexes(db);
   const settings = createSettingsAccess(new OptionsRepository(db), COMMERCE_PLUGIN_ID);
   const currentSettings = await loadMerchantStoreSettings(settings);
-  if (currentSettings.settings.shippingCountries.length === 0) {
+  // A null revision means the settings record does not exist. Empty country
+  // lists are valid saved values and must never be replaced on a later seed
+  // pass, including after a Worker isolate is replaced.
+  if (currentSettings.revision === null) {
     await saveMerchantStoreSettings(settings, {
       expectedRevision: currentSettings.revision,
       storeCountry: "US",
