@@ -119,3 +119,71 @@ describe("original caller and body bounds", () => {
     expect(pulls).toBeLessThanOrEqual(70); expect(dispatch).not.toHaveBeenCalled();
   });
 });
+
+describe("playground native status recovery", () => {
+  const READY = {
+    DINKUS_CHECKOUT_ENABLED: "1",
+    PAYMENTS_URL: "https://payments.local.test",
+    PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
+    PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
+  };
+  function playgroundCall(req = request()) {
+    return POST({ request: req, locals: { emdash: runtime, __playgroundDb: {} } } as never);
+  }
+  it("dispatches a configured playground session to its native Commerce status route", async () => {
+    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+    for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
+    const response = await playgroundCall(request({ cookie: "emdash_playground=s1", "cf-connecting-ip": "203.0.113.7" }));
+    expect(response.status).toBe(200);
+    const [id, method, path, forwarded] = dispatch.mock.calls[0];
+    expect([id, method, path]).toEqual(["dinkus-commerce", "POST", "checkout/guest/status"]);
+    expect(forwarded.url).toBe(site + "/_emdash/api/plugins/dinkus-commerce/checkout/guest/status");
+    expect(Object.fromEntries(forwarded.headers)).toEqual({ accept: "application/json", "content-type": "application/json",
+      origin: site, "x-commerce-guest-capability": "cap.synthetic" });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("requires the resolved terminal attempt to remain bound to the visitor", async () => {
+    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+    for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
+    dispatch.mockResolvedValue({
+      success: true,
+      data: {
+        ok: true,
+        capabilityId: "cap",
+        checkout: {
+          ...projection,
+          state: "paid",
+          attemptId: "attempt-paid",
+          order: { orderId: "order-1", receiptId: "receipt-1", lines: [{ catalogItemId: "fixture", quantity: 1 }] },
+        },
+      },
+    });
+    const bindings = {
+      get: vi.fn(async (attemptId: string) => attemptId === "attempt-paid"
+        ? { recordKind: "playground-checkout-binding", attemptId, sessionId: "visitor-a", expiresAt: Date.now() + 60_000 }
+        : null),
+      put: vi.fn(),
+    };
+    const response = await POST({
+      request: request({ cookie: "emdash_playground=visitor-a" }),
+      locals: { emdash: runtime, __playgroundDb: {}, __playgroundCheckoutBindings: bindings },
+    } as never);
+    expect(response.status).toBe(200);
+    const foreign = await POST({
+      request: request({ cookie: "emdash_playground=visitor-b" }),
+      locals: { emdash: runtime, __playgroundDb: {}, __playgroundCheckoutBindings: bindings },
+    } as never);
+    expect(foreign.status).toBe(403);
+  });
+  it("keeps capability and origin checks, and stays on the Registry gates when not configured", async () => {
+    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+    for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
+    const missing = request(); missing.headers.delete("x-commerce-guest-capability");
+    expect((await playgroundCall(missing)).status).toBe(400);
+    expect((await playgroundCall(request({ origin: "https://foreign.example.test" }))).status).toBe(403);
+    vi.stubEnv("DINKUS_CHECKOUT_ENABLED", "0");
+    expect((await playgroundCall()).status).toBe(503);
+    expect((await call()).status).toBe(503);
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+});

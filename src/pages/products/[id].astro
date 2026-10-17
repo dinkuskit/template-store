@@ -12,6 +12,8 @@ import { demoPlaceholderImage } from "../../features/playground/demo-products.js
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, productPageOffersCart, readProductEntries } from "../../features/store-shell/product-routes.js";
 import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
+import { playgroundCheckoutConfigured, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
@@ -60,9 +62,13 @@ const linkedItemId = item ? productLinks.products.find((product) => product.id =
 const noLongerAvailable = Boolean(item) && profile === "shipping" && !lookupUnavailable && !linkedProduct &&
   item?.availabilitySource === "preview" && leftCommerceCatalog(linkedItemId, false);
 if (noLongerAvailable) Astro.response.status = 404;
-// The playground and demo/proof profiles never offer cart or checkout.
+// The playground and demo profile offer cart + sandbox checkout only when
+// DINKUS_CHECKOUT_ENABLED is on; other proof profiles never do.
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
-const offersCart = productPageOffersCart({ profile, isPlayground });
+const isDemo = isDemoCatalogProfile();
+const checkoutEnabled = playgroundCheckoutConfigured();
+const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checkoutEnabled });
+const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo, checkoutEnabled });
 const variants = linkedProduct?.variants ?? [];
 const selectedVariant = variants.find((member) => member.availability.sellable) ?? variants[0] ?? null;
 const cartProduct = linkedProduct && selectedVariant
@@ -129,7 +135,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
             {cartProduct && offersCart && <AddToCart product={cartProduct} />}
-            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>Demo product. Cart and checkout are unavailable.</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>Demo product. Cart and checkout are unavailable.</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>
