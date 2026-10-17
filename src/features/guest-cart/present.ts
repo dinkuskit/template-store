@@ -165,6 +165,7 @@ export function presentGuestCart(options: {
   checkoutAdmitted?: boolean;
 }): GuestCartView {
   const byId = new Map((options.snapshots ?? []).map((snapshot) => [snapshot.id, snapshot]));
+  const totalsUnconfirmed = options.snapshotFailed === true || options.retrying === true;
   const lines = options.intent.lines.map((line) => {
     const snapshot = options.snapshots ? byId.get(line.id) : undefined;
     const blocked = options.snapshotFailed && !snapshot
@@ -182,8 +183,9 @@ export function presentGuestCart(options: {
       fulfillment: snapshot?.found ? snapshot.fulfillment ?? "physical" : "physical",
       regularText: snapshot?.found ? snapshot.price.regularText : null,
       saleText: snapshot?.found ? snapshot.price.saleText : null,
-      // A failed price check may leave older prices in place; show no totals then.
-      lineTotalText: options.snapshotFailed ? null : minorText(lineTotalMinor(snapshot, line.quantity)),
+      // A failed price check, and its retry, may leave older prices in place;
+      // show no totals until a check succeeds.
+      lineTotalText: totalsUnconfirmed ? null : minorText(lineTotalMinor(snapshot, line.quantity)),
       availabilityLabel:
         snapshot?.found
           ? availabilityLabels[snapshot.availability.status] ?? snapshot.availability.status
@@ -206,7 +208,7 @@ export function presentGuestCart(options: {
     !options.pending && !options.snapshotFailed;
   return {
     lines,
-    subtotalText: options.snapshotFailed ? null : cartSubtotalText(options.intent.lines, options.snapshots ?? null),
+    subtotalText: totalsUnconfirmed ? null : cartSubtotalText(options.intent.lines, options.snapshots ?? null),
     empty: lines.length === 0,
     pending: options.pending === true,
     retrying: options.retrying === true,

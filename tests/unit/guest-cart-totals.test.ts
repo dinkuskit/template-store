@@ -58,6 +58,10 @@ describe("guest cart totals", () => {
     const failed = presentGuestCart({ intent, snapshots: loaded, snapshotFailed: true });
     expect(failed.subtotalText).toBeNull();
     expect(failed.lines.map((line) => line.lineTotalText)).toEqual([null, null]);
+    // Try again keeps the older prices while the retry runs.
+    const retrying = presentGuestCart({ intent, snapshots: loaded, pending: true, retrying: true });
+    expect(retrying.subtotalText).toBeNull();
+    expect(retrying.lines.map((line) => line.lineTotalText)).toEqual([null, null]);
     const retried = presentGuestCart({ intent, snapshots: [snapshot("hat", "2600"), snapshot("mug", "1250")] });
     expect(retried.subtotalText).toBe("$38.50");
   });
