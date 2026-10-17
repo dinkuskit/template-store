@@ -11,6 +11,7 @@ import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, productPageOffersCart, readProductEntries } from "../../features/store-shell/product-routes.js";
+import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
 import "../../features/store-shell/global.css";
 
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
@@ -53,6 +54,12 @@ if (item && (profile === "shipping" || item.availabilitySource === "preview")) {
 if (item && profile === "shipping" && item.availabilitySource !== "preview") {
   Astro.response.status = lookupUnavailable ? 503 : linkedProduct ? 200 : 404;
 }
+// A shipping store's page whose Commerce product left the catalog (archived)
+// is gone for shoppers, like Shopify and WooCommerce: a 404 that says so.
+const linkedItemId = item ? productLinks.products.find((product) => product.id === item.id)?.commerceItemId ?? "" : "";
+const noLongerAvailable = Boolean(item) && profile === "shipping" && !lookupUnavailable && !linkedProduct &&
+  item?.availabilitySource === "preview" && leftCommerceCatalog(linkedItemId, false);
+if (noLongerAvailable) Astro.response.status = 404;
 // The playground and demo/proof profiles never offer cart or checkout.
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const offersCart = productPageOffersCart({ profile, isPlayground });
@@ -85,16 +92,16 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
-    <meta name="description" content={item?.description ?? "Product not found."} />
+    <meta name="description" content={noLongerAvailable ? "This product is no longer available." : item?.description ?? "Product not found."} />
     {item && <link rel="canonical" href={new URL(`/products/${item.id}`, Astro.site ?? Astro.url).href} />}
-    <title>{item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
+    <title>{noLongerAvailable ? `No longer available | ${STORE_TITLE}` : item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
     <StoreHeader profile={profile} />
     <main class="product-page">
-    <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{item?.title ?? "Not found"}</span></nav>
-      {item ? (
+    <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{noLongerAvailable ? "No longer available" : item?.title ?? "Not found"}</span></nav>
+      {noLongerAvailable ? <section class="product-removed" data-product-removed><h1>This product is no longer available</h1><p>It has been removed from the shop.</p><a href="/">Browse the shop</a></section> : item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
               {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${item.title} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}

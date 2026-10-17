@@ -26,8 +26,12 @@ describe("CMS merchandise grouping", () => {
   it("keeps published entries with optional description absent and hides Commerce unpriced draft", () => {
     const groups = buildMerchCollections([
       { id: "new-preview", data: { title: "New", categories: ["tees"], commerce_item_id: "preview", visual_label: "tee" } },
+      { id: "admin-made", data: { title: "Admin made", categories: ["tees"], commerce_item_id: "preview", description: null, visual_label: "tee" } },
       { id: "dinkus-template-unpriced-product", data: { title: "Draft", categories: ["tees"], commerce_item_id: "preview", visual_label: "tee" } },
     ], categories);
-    expect(groups.find((group) => group.slug === "tees")?.items).toMatchObject([{ id: "new-preview", description: "" }]);
+    expect(groups.find((group) => group.slug === "tees")?.items).toMatchObject([
+      { id: "new-preview", description: "" },
+      { id: "admin-made", description: "" },
+    ]);
   });
 });

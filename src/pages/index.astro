@@ -10,6 +10,7 @@ import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro"
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
+import { leftCommerceCatalog, withoutRemovedProducts } from "../features/store-shell/merch-catalog.js";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
 import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
 import {
@@ -39,6 +40,15 @@ const { profile, demonstrations, collections } = await loadStorefrontRouteContex
 );
 let catalogUnavailable = false;
 const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
+// On a shipping store, products whose Commerce product left the catalog
+// (archived) leave the category groups too, unless the catalog can't be read.
+const catalogIds = new Set(commerceProducts.map((product) => product.id));
+const removedEntryIds = new Set(profile === "shipping" && !catalogUnavailable
+  ? productLinks.products
+    .filter((product) => leftCommerceCatalog(product.commerceItemId, catalogIds.has(product.commerceItemId)))
+    .map((product) => product.id)
+  : []);
+const shownCollections = withoutRemovedProducts(collections, removedEntryIds);
 const productPaths = new Map(productLinks.products.map((product) => [product.commerceItemId, canonicalProductPath(product.slug)]));
 const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
   runtime: Astro.locals.emdash,
@@ -101,7 +111,7 @@ const unmanaged = demonstrations?.unmanaged;
       <section aria-label="Separate integration demonstrations" data-integration-demos>
       <h2 class="demo-heading">Integration demonstrations</h2>
       <p class="demo-heading">These seeded examples are separate from the merchant catalog above.</p>
-      <MerchCatalog collections={collections} menu={storeMenu ?? undefined} managed={availability} unmanaged={unmanaged} />
+      <MerchCatalog collections={shownCollections} menu={storeMenu ?? undefined} managed={availability} unmanaged={unmanaged} />
       {availability.price.listable && <ManagedProductAvailability availability={availability} />}
       {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
       </section>
