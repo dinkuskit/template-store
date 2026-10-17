@@ -73,6 +73,9 @@ const purchasable = Boolean(cartProduct) && linkedProductPurchasable({
   checkoutAvailable,
   sellable: cartProduct ? canAddCommerceProductToCart(cartProduct) : false,
 });
+// Shoppers see the linked Commerce product's name, so a rename in Commerce
+// changes the heading too. The entry title stays the owner's admin label.
+const productName = linkedProduct?.name.trim() || item?.title;
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;
 const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability unavailable" : managed ? `${managed.inventory.available} available` : unmanaged ? ({
@@ -87,21 +90,21 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={item?.description ?? "Product not found."} />
     {item && <link rel="canonical" href={new URL(`/products/${item.id}`, Astro.site ?? Astro.url).href} />}
-    <title>{item ? `${item.title} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
+    <title>{item ? `${productName} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
     <header class="store-header"><a class="store-header__mark" href="/">DinkusKit / Store</a><nav class="store-header__nav" aria-label="Store"><span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span><GuestCartNav /></nav></header>
     <main class="product-page">
-    <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{item?.title ?? "Not found"}</span></nav>
+    <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{productName ?? "Not found"}</span></nav>
       {item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${item.title} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
             </div>
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
-            <h1>{item.title}</h1>
+            <h1>{productName}</h1>
             <p class="product-detail__description">{item.description}</p>
             {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price data-variant-price>{selectedVariant?.priceText ?? linkedProduct.price.regularText}</strong>}</p>}
             {variants.length > 0 && <p class="product-detail__from" data-product-from-price>{linkedProduct!.price.regularText}</p>}
