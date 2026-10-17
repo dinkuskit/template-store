@@ -23,6 +23,7 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   await shirt.click();
   await expect(page).toHaveURL(/\/products\/demo-shirt$/);
   await expect(page.locator("[data-product-page]")).toBeVisible();
+  await expect(page.locator("[data-product-page] h1")).toHaveText("Dinkus Demo Heavyweight T-Shirt");
   await expect(page.locator("[data-product-price]")).toHaveText("$32.00");
   await expect(page.locator("[data-product-status]")).toHaveText("In stock");
   await expect(page.locator(".product-detail img[data-demo-placeholder]")).toBeVisible();
