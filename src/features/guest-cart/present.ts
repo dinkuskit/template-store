@@ -65,7 +65,7 @@ export type GuestCartLineView = Readonly<{
 
 export type GuestCartView = Readonly<{
   lines: readonly GuestCartLineView[];
-  /** Sum of line totals, or null when any line's amount is unknown. */
+  /** Sum of line totals, or null when a line's amount is unknown. */
   subtotalText: string | null;
   empty: boolean;
   pending: boolean;
