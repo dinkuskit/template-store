@@ -113,7 +113,7 @@ describe("category pages on a shipping store", () => {
     expect(catalog).toContain("{commerce ? <ProductMedia image={commerce.image} productId={commerce.id} fallbackSrc={demoPlaceholderImage(commerce.sku, item.id)}");
     expect(catalog).not.toContain("fallbackSrc={`/merch/");
     const page = readFileSync("src/pages/categories/[slug].astro", "utf8");
-    expect(page).toContain('profile === "shipping" && category');
+    expect(page).toContain('profile === "shipping" && listedCategory');
     expect(page).toContain("commerceProducts={commerceProducts}");
   });
 
