@@ -8,7 +8,8 @@ import { createPlugin as createCommercePlugin, type CommercePluginOptions } from
 import { playgroundCheckoutHostOptions } from "./payments-port.js";
 
 export function createPlugin(options: CommercePluginOptions = {}) {
-  return createCommercePlugin({ ...options, checkout: playgroundCheckoutHostOptions() });
+  const checkout = playgroundCheckoutHostOptions();
+  return createCommercePlugin({ ...options, checkout });
 }
 
 export default createPlugin;

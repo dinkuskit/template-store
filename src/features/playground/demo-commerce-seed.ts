@@ -20,11 +20,13 @@ import {
   CATALOG_MANUAL_AVAILABILITY_COLLECTION,
   CATALOG_PRICES_COLLECTION,
   COMMERCE_PLUGIN_ID,
+  loadMerchantStoreSettings,
+  saveMerchantStoreSettings,
   type CatalogManualAvailabilityRecord,
   type CatalogPriceRecord,
   type CatalogStorageRecord,
 } from "@dinkuskit/commerce";
-import { PluginStorageRepository } from "emdash";
+import { createSettingsAccess, OptionsRepository, PluginStorageRepository } from "emdash";
 import { applySeed, type SeedFile } from "emdash/seed";
 import { sql } from "kysely";
 
@@ -139,6 +141,17 @@ export const PLAYGROUND_DEMO_PRODUCTS = DEMO_PRODUCTS;
 /** Creates missing demo catalog items and product entries. Existing SKUs and entries are left untouched. */
 export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: string[] }> {
   await ensureCommerceStorageIndexes(db);
+  const settings = createSettingsAccess(new OptionsRepository(db), COMMERCE_PLUGIN_ID);
+  const currentSettings = await loadMerchantStoreSettings(settings);
+  if (currentSettings.settings.shippingCountries.length === 0) {
+    await saveMerchantStoreSettings(settings, {
+      expectedRevision: currentSettings.revision,
+      storeCountry: "US",
+      sellingCountries: ["US"],
+      shippingCountries: ["US"],
+      requirePhoneNumber: false,
+    });
+  }
   const storage = playgroundCommerceStorage(db);
   const existing = new Set((await listCatalogProducts(storage)).products.map((p) => p.sku.toUpperCase()));
   const created: string[] = [];

@@ -25,7 +25,7 @@ export default defineConfig({
   output: "server",
   trailingSlash: "never",
   adapter: cloudflare({
-    configPath: "./wrangler.playground.jsonc",
+    configPath: process.env.DINKUS_PLAYGROUND_WRANGLER_CONFIG ?? "./wrangler.playground.jsonc",
   }),
   integrations: [
     react(),

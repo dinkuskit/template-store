@@ -52,13 +52,18 @@ export function readPaymentsConfig(env: EnvLike = process.env): PaymentsConfig |
   try {
     const url = new URL(rawUrl);
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return null;
-    return { baseUrl: url.origin, storeKey: storeKey.trim() };
+    const passUrl = env.DINKUS_LOCAL_PROOF === "1" ? env.PAYMENTS_STORE_PASSES_URL : undefined;
+    return {
+      baseUrl: url.origin,
+      storeKey: storeKey.trim(),
+      ...(typeof passUrl === "string" ? { passUrl } : {}),
+    };
   } catch {
     return null;
   }
 }
 
-export type PaymentsConfig = Readonly<{ baseUrl: string; storeKey: string }>;
+export type PaymentsConfig = Readonly<{ baseUrl: string; storeKey: string; passUrl?: string }>;
 
 export const PAYMENTS_STRIPE_ACCOUNT_ENV = "PAYMENTS_STRIPE_ACCOUNT_ID";
 
@@ -112,12 +117,14 @@ export async function getStorePass(
   if (inflight && inflight.storeKey === config.storeKey) return inflight.promise;
   const promise = (async () => {
     try {
-      const response = await (deps.fetchImpl ?? fetch)(STORE_PASSES_URL, {
+      const response = await (deps.fetchImpl ?? fetch)(config.passUrl ?? STORE_PASSES_URL, {
         method: "POST",
         headers: { authorization: `Bearer ${config.storeKey}`, "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({ site_id: PAYMENTS_PLAYGROUND_SITE, scope: PAYMENTS_CHECKOUT_SCOPE, audience: PAYMENTS_AUDIENCE }),
         signal: AbortSignal.timeout(PASS_TIMEOUT_MS),
-        redirect: "error",
+        // Cloudflare workerd rejects the non-standard "error" mode. Manual
+        // preserves the fail-closed no-follow behavior at the edge.
+        redirect: "manual",
       });
       if (!response.ok) return null;
       const text = await response.text();

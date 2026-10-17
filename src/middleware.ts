@@ -63,6 +63,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     process.env.DINKUS_PROOF_MODE === "1";
   const isPlayground =
     Boolean((context.locals as { __playgroundDb?: unknown }).__playgroundDb);
+  const playgroundEnv =
+    ((context.locals as { __playgroundEnv?: Record<string, unknown> }).__playgroundEnv ??
+      process.env) as Record<string, unknown>;
+  (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv = playgroundEnv;
   const playgroundBindings = isPlayground
     ? ((context.locals as { __playgroundCheckoutBindings?: unknown }).__playgroundCheckoutBindings as
       Parameters<typeof withCheckoutVisitor>[3] | undefined ??
@@ -88,7 +92,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       applySecurityHeaders(guarded.headers);
       return guarded;
     }
-    if (checkoutKind === "status" && isPlayground && playgroundCheckoutConfigured()) {
+    if (checkoutKind === "status" && isPlayground && playgroundCheckoutConfigured(playgroundEnv)) {
       const statusAttemptId = await readStatusAttemptId(context.request);
       if (statusAttemptId === TOO_LARGE) {
         const refused = checkoutJsonError(413, "Checkout request is too large.");
@@ -96,7 +100,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
         return refused;
       }
       const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
-      if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings))) {
+      if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings, playgroundEnv))) {
         const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
         applySecurityHeaders(refused.headers);
         return refused;
@@ -126,7 +130,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // every Payments value present; the request has already passed body
   // validation, the visitor-IP check and the limiter above. Registry-path calls
   // from the cart are served by the playground's native Commerce routes.
-  if (checkoutKind && isPlayground && playgroundCheckoutConfigured()) {
+  if (checkoutKind && isPlayground && playgroundCheckoutConfigured(playgroundEnv)) {
     const clientIp = visitorIp(context.request);
     if (!clientIp && checkoutKind === "start") {
       const refused = checkoutJsonError(400, SANDBOX_CLIENT_IP_MESSAGE);
@@ -142,7 +146,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Status recovery (/api/checkout/status) dispatches in-process to the native
   // Commerce route; give its Payments lookup the same visitor context.
   if (isPlayground && context.url.pathname === GUEST_CHECKOUT_STATUS_ENDPOINT &&
-      playgroundCheckoutConfigured()) {
+      playgroundCheckoutConfigured(playgroundEnv)) {
     const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
     const statusAttemptId = await readStatusAttemptId(context.request);
     if (statusAttemptId === TOO_LARGE) {
@@ -150,7 +154,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       applySecurityHeaders(refused.headers);
       return refused;
     }
-    if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings))) {
+    if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings, playgroundEnv))) {
       const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
       applySecurityHeaders(refused.headers);
       return refused;

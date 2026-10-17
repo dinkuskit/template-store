@@ -32,9 +32,21 @@ export const PAYMENTS_PLAYGROUND_BINDING_REF = "playground";
 export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured } from "./index.js";
 /** Stands in for the store origin Payments takes from the pass; the port never sends it. */
 const PLAYGROUND_COMMERCE_ORIGIN = "https://playground.dinkuskit.com";
+function playgroundCommerceOrigin(env: EnvLike): string {
+  return typeof env.DINKUS_LOCAL_PROOF_SITE_URL === "string"
+    ? env.DINKUS_LOCAL_PROOF_SITE_URL
+    : PLAYGROUND_COMMERCE_ORIGIN;
+}
 
 type EnvLike = Record<string, unknown>;
 const PLAYGROUND_BINDINGS_COLLECTION = "playground_checkout_bindings";
+function playgroundNow(env: EnvLike = (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ?? process.env): number {
+  const fallback = process.env;
+  const override = env.DINKUS_LOCAL_PROOF === "1" && typeof (env.DINKUS_LOCAL_PROOF_NOW ?? fallback.DINKUS_LOCAL_PROOF_NOW) === "string"
+    ? Number(env.DINKUS_LOCAL_PROOF_NOW ?? fallback.DINKUS_LOCAL_PROOF_NOW)
+    : NaN;
+  return Number.isFinite(override) ? override : Date.now();
+}
 
 /** Per-request visitor context, set by the store middleware around checkout routes. */
 type BindingRecord = { recordKind: "playground-checkout-binding"; attemptId: string; sessionId: string; expiresAt: number };
@@ -80,10 +92,12 @@ export async function playgroundAttemptBelongsToVisitor(
   attemptId: string,
   sessionId: string,
   bindings?: PlaygroundCheckoutBindingStore,
+  env?: EnvLike,
 ): Promise<boolean> {
   if (!bindings || !sessionId) return false;
   const binding = await bindings.get(attemptId);
-  return Boolean(binding && binding.expiresAt > Date.now() && binding.sessionId === sessionId);
+  const now = playgroundNow(env);
+  return Boolean(binding && binding.expiresAt > now && binding.sessionId === sessionId);
 }
 
 const stripeAccount = readStripeAccount;
@@ -119,7 +133,7 @@ export function playgroundPaymentsFetch(
     const bindingStore = currentVisitor.bindings;
     if (!bindingStore) throw new Error("Visitor binding store unavailable");
     const binding = await bindingStore.get(attemptId);
-    if (binding && binding.expiresAt <= Date.now()) {
+    if (binding && binding.expiresAt <= playgroundNow(env)) {
       throw new Error("Checkout attempt expired");
     } else if (binding && binding.sessionId !== currentVisitor.sessionId) {
       throw new Error("Checkout visitor mismatch");
@@ -132,7 +146,10 @@ export function playgroundPaymentsFetch(
     if (!clientIp && target.pathname === "/v1/checkout/session") throw new Error("Visitor IP unavailable");
     const headers = new Headers(init.headers);
     if (clientIp) headers.set(PAYMENTS_CLIENT_IP_HEADER, clientIp);
-    const response = await (deps.fetchImpl ?? fetch)(target.href, { ...init, headers });
+    const localTarget = env.DINKUS_LOCAL_PROOF === "1" && typeof env.PAYMENTS_LOCAL_HTTP_URL === "string"
+      ? new URL(target.pathname + target.search, env.PAYMENTS_LOCAL_HTTP_URL)
+      : target;
+    const response = await (deps.fetchImpl ?? fetch)(localTarget.href, { ...init, headers, redirect: "manual" });
     if (target.pathname === "/v1/checkout/session" && response.ok) {
       const result = await response.clone().json() as { attemptId?: unknown; session?: { expiresAt?: unknown } };
       if (typeof result.attemptId !== "string" || result.attemptId !== attemptId) {
@@ -171,31 +188,45 @@ export function resolvePlaygroundPayments(
   const config = readPaymentsConfig(env);
   const account = stripeAccount(env);
   if (!isCheckoutEnabled(env) || !config || !account) return null;
-  return createTrustedTestPaymentPort({
+  const port = createTrustedTestPaymentPort({
     paymentsOrigin: config.baseUrl,
     siteId: PAYMENTS_PLAYGROUND_SITE,
-    commerceOrigin: PLAYGROUND_COMMERCE_ORIGIN,
+    commerceOrigin: playgroundCommerceOrigin(env),
     bindingRef: PAYMENTS_PLAYGROUND_BINDING_REF,
     providerId: "stripe",
     stripeAccountId: account,
     pricingSchema: CHECKOUT_PRICING_SCHEMA,
     credentialResolver: async () => {
       const current = readPaymentsConfig(env);
-      const pass = current ? await getStorePass(current, { fetchImpl: deps.passFetchImpl }) : null;
+      let pass: string | null = null;
+      try {
+        pass = current ? await getStorePass(current, { fetchImpl: deps.passFetchImpl }) : null;
+      } catch {}
       if (!pass) throw new Error("Payments credential unavailable");
       return pass;
     },
     fetch: playgroundPaymentsFetch(env, deps),
   });
+  return {
+    ...port,
+    ensureSession: port.ensureSession,
+    lookup: port.lookup,
+  };
 }
 
 /** Build-time checkout options for the playground's native Commerce plugin. */
 export function playgroundCheckoutHostOptions(env: EnvLike = process.env): GuestCheckoutHostOptions {
   return {
+    ...(env.DINKUS_LOCAL_PROOF === "1" && typeof env.DINKUS_LOCAL_PROOF_SITE_URL === "string"
+      ? { siteUrl: env.DINKUS_LOCAL_PROOF_SITE_URL }
+      : {}),
     paymentBindingRef: PAYMENTS_PLAYGROUND_BINDING_REF,
     createAttemptId: () => createPlaygroundAttemptId(),
-    resolvePayments: async (bindingRef: string) =>
-      bindingRef === PAYMENTS_PLAYGROUND_BINDING_REF ? resolvePlaygroundPayments(env) : null,
+    resolvePayments: async (bindingRef: string) => {
+      if (bindingRef !== PAYMENTS_PLAYGROUND_BINDING_REF) return null;
+      const activeEnv = (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ?? env;
+      return resolvePlaygroundPayments(activeEnv);
+    },
     pricing: {
       paymentPricingSchema: CHECKOUT_PRICING_SCHEMA,
       resolveShippingConfiguration: async () =>
