@@ -99,8 +99,10 @@ function product(value: unknown): ProductResult {
       !STATUSES.has(value.availability.status) || value.availability.listable !== true ||
       typeof value.availability.sellable !== "boolean") return fail("invalid availability");
   let regularText: string | null;
+  let unitMinor: string | null = null;
   if (value.price !== undefined) {
     const minor = usdMinor(value.price);
+    unitMinor = minor;
     regularText = minor === null ? null : formatUsdMinor(minor);
     if (regularText === null) return fail("invalid price");
   } else {
@@ -114,7 +116,7 @@ function product(value: unknown): ProductResult {
     // required delivery address.
     fulfillment: "physical",
     // Commerce projects customerPays only; never reconstruct a regular/sale pair.
-    price: { listable: true, regularText, saleText: null },
+    price: { listable: true, regularText, saleText: null, ...(unitMinor ? { unitMinor } : {}) },
     availability: {
       status: value.availability.status as PublicCommerceProduct["availability"]["status"],
       // Commerce reports a variant parent as not sellable; the parent id is

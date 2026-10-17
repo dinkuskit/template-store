@@ -15,6 +15,7 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   <p data-guest-cart-status role="status" hidden></p>
   <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
   <div data-guest-cart-lines></div>
+  <p class="guest-cart-subtotal" data-guest-cart-subtotal hidden>Subtotal <strong data-guest-cart-subtotal-amount></strong></p>
   <div class="guest-cart-checkout">
     <fieldset class="guest-cart-contact" data-guest-cart-contact>
       <legend>Checkout contact</legend>
@@ -61,6 +62,8 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   [data-guest-cart-status],[data-guest-cart-empty],[data-guest-cart-checkout-reason]{color:var(--store-muted);line-height:1.5}
   [data-guest-cart-status][role="alert"]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
   [data-guest-cart-lines]{display:grid;gap:1rem;margin:1.5rem 0}
+  .guest-cart-subtotal[hidden]{display:none}
+  .guest-cart-subtotal{display:flex;justify-content:space-between;gap:1rem;max-width:32rem;margin:1rem 0 0;padding-top:1rem;border-top:1px solid var(--store-line);font-size:1.25rem}
   .guest-cart-checkout{margin-top:2rem}
   .guest-cart-contact{display:grid;gap:.5rem;max-width:34rem;margin:0 0 1rem;padding:1rem;border:1px solid var(--store-line);border-radius:.65rem}
   .guest-cart-contact p{margin:0 0 .5rem}

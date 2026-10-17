@@ -4,6 +4,8 @@ export type PublicPriceView = Readonly<{
   listable: boolean;
   regularText: string | null;
   saleText: string | null;
+  /** USD minor units the shopper pays for one unit, when Commerce projects it (cart totals). */
+  unitMinor?: string;
 }>;
 
 export function formatUsdMinor(minor: string): string {
