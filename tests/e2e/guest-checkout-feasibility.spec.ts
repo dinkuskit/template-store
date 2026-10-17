@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
+import { POST as storeCheckoutStatus } from "../../src/pages/api/checkout/status";
 import {
   NATIVE_PREPARE,
   RUNTIME_PREPARE,
@@ -147,6 +148,93 @@ test("Commerce checkout token renders the paid order and clears the cart", async
   expect(harness.counts().prepareCalls).toBe(2);
   expect(harness.counts().startCalls).toBe(2);
   } finally { await context.close(); }
+});
+
+test("the store's status route relays Commerce's paid answer to the thank-you page", async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
+  const baseURL = testInfo.project.use.baseURL as string;
+  const usd = (minor: string) => ({ currency: "USD", minor });
+  const line = { catalogItemId: "fixture-shirt", name: "Synthetic fixture shirt", quantity: 1, unitPrice: usd("2400") };
+  const dispatched: string[] = [];
+  // Only Commerce's answer is stood in. The store's /api/checkout/status route runs as it ships,
+  // so the page reads exactly what the route relays, which the stubbed-status tests above skip.
+  const commerce = {
+    getPluginRouteMeta: () => ({ public: true, methods: ["POST"] }),
+    async handlePublicPluginApiRoute(pluginId: string, method: string, path: string, forwarded: Request) {
+      dispatched.push(`${pluginId} ${method} ${path}`);
+      const capabilityId = forwarded.headers.get("x-commerce-guest-capability")?.replace(/\.secret$/u, "");
+      return { success: true, data: { ok: true, capabilityId, checkout: {
+        schema: "dinkuskit.commerce.guest-checkout-projection/v1",
+        state: "paid",
+        attemptId: "fixture-attempt-1",
+        lines: [line],
+        total: usd("2900"),
+        pricing: {
+          merchandiseSubtotal: usd("2400"),
+          couponDiscount: usd("0"),
+          netMerchandise: usd("2400"),
+          shipping: { mode: "flat", charge: usd("500") },
+          finalTotal: usd("2900"),
+        },
+        redirectUrl: null,
+        order: { orderId: "order:fixture", receiptId: "receipt:fixture", lines: [line], total: usd("2900") },
+        retryAfter: null,
+        unavailable: null,
+      } } };
+    },
+  };
+  // The route reads the store origin and catalog profile from its environment, as the shipping server does.
+  const savedEnv = { site: process.env.EMDASH_SITE_URL, profile: process.env.DINKUS_CATALOG_PROFILE };
+  process.env.EMDASH_SITE_URL = new URL(baseURL).origin;
+  delete process.env.DINKUS_CATALOG_PROFILE;
+  const context = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, {
+      baseURL,
+      statusRoute: (request) => storeCheckoutStatus({ request, locals: { emdash: commerce } } as never),
+    });
+    await page.addInitScript(() => {
+      if (localStorage.getItem("dinkus.guest-cart.v1")) return;
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
+        version: 1,
+        lines: [{ id: "fixture-shirt", quantity: 1 }],
+      }));
+    });
+    await page.goto("/cart");
+    await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+    await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
+    await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+    await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
+    await page.goto("/checkout/success");
+    await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
+    await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
+    await expect(page.locator("[data-guest-checkout-order-number]")).toHaveText("Order fixture");
+    await expect(page.locator("[data-guest-checkout-order-items] li")).toHaveText(["Synthetic fixture shirt × 1$24.00"]);
+    await expect(page.locator("[data-guest-checkout-order-totals] dt")).toHaveText(["Subtotal", "Shipping", "Total"]);
+    await expect(page.locator("[data-guest-checkout-order-totals] dd")).toHaveText(["$24.00", "$5.00", "$29.00"]);
+    await expect(page.locator("[data-guest-cart-count]")).toBeHidden();
+    expect(dispatched).toEqual(["r_gshdrqaldna3r7sn POST checkout/guest/status"]);
+    expect(harness.counts().statusCalls).toBe(1);
+    await mkdir(resolve("runs/checkout-success-commerce"), { recursive: true });
+    await page.screenshot({
+      path: resolve("runs/checkout-success-commerce", `${testInfo.project.name}-paid-through-store-route.png`),
+      fullPage: true,
+      animations: "disabled",
+    });
+    await page.goto("/cart");
+    await expect(page.locator("[data-guest-cart-empty]")).toBeVisible();
+    await expect(page.locator("[data-guest-cart-status]")).toContainText("Order confirmed");
+    expect(harness.blocked).toEqual([]);
+  } finally {
+    await context.close();
+    if (savedEnv.site === undefined) delete process.env.EMDASH_SITE_URL;
+    else process.env.EMDASH_SITE_URL = savedEnv.site;
+    if (savedEnv.profile !== undefined) process.env.DINKUS_CATALOG_PROFILE = savedEnv.profile;
+  }
 });
 
 test("unknown checkout token gives a safe status-failure message", async ({ browser }, testInfo) => {

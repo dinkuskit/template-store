@@ -48,6 +48,8 @@ type HarnessOptions = {
   loseFirstStartResponse?: boolean;
   /** Status returns a retryable recoverable-failure carrying this hosted-checkout redirect. */
   statusRetryRedirect?: string;
+  /** Status requests run through this handler (the store's own route) instead of a stubbed answer. */
+  statusRoute?: (request: Request) => Response | Promise<Response>;
   digital?: boolean;
   refuseDelivery?: boolean;
 };
@@ -93,7 +95,7 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installOfflineCheckoutHarness(
   page: Page,
-  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, statusWithoutAttempt = false, loseFirstStartResponse = false, statusRetryRedirect, digital = false, refuseDelivery = false }: HarnessOptions,
+  { baseURL, mutateCart = true, synthetic = true, gateInitialPrepare = false, statusAlwaysPending = false, statusUnknown = false, statusWithoutAttempt = false, loseFirstStartResponse = false, statusRetryRedirect, statusRoute, digital = false, refuseDelivery = false }: HarnessOptions,
 ) {
   const origin = assertLoopbackBaseOrigin(baseURL).origin;
   const blocked: string[] = [];
@@ -159,6 +161,20 @@ export async function installOfflineCheckoutHarness(
         await json(route, {
           success: true,
           data: { ok: true, capabilityId, checkout: projection("pending", `fixture-attempt-${startCalls}`) },
+        });
+        return;
+      }
+      if (statusRoute && path === RUNTIME_STATUS && route.request().method() === "POST") {
+        statusCalls += 1;
+        const response = await statusRoute(new Request(requestURL, {
+          method: "POST",
+          headers: await route.request().allHeaders(),
+          body: route.request().postData() ?? "",
+        }));
+        await route.fulfill({
+          status: response.status,
+          headers: Object.fromEntries(response.headers),
+          body: await response.text(),
         });
         return;
       }
