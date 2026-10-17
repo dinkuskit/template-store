@@ -38,7 +38,8 @@ export function buildMerchCollections(
       : [];
     if (
       typeof title !== "string" || !title.trim() ||
-      (description !== undefined && typeof description !== "string") ||
+      // EmDash returns an empty optional field as null.
+      (description != null && typeof description !== "string") ||
       typeof visualLabel !== "string" || !visualLabel.trim() ||
       !productPath(entry.id)
     ) continue;
