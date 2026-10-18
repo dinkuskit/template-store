@@ -378,14 +378,10 @@ async function probeGuestCheckout(root: Element): Promise<void> {
     checkoutProbePending ||
     session.intent.lines.length === 0
   ) return;
-  const retention = readGuestCheckoutRetention(checkoutStorage());
-  if (
-    retention &&
-    !checkoutController.canPrepareNew() &&
-    !checkoutController.canStart()
-  ) {
-    return;
-  }
+  // A startable capability needs no new one, and a retained one that cannot
+  // prepare new stays with its status check; prepare() would only refuse.
+  if (checkoutController.canStart()) return;
+  if (readGuestCheckoutRetention(checkoutStorage()) && !checkoutController.canPrepareNew()) return;
   checkoutProbePending = true;
   checkoutMessage = "Checking Commerce checkout availability.";
   checkoutMessageError = false;
@@ -403,15 +399,18 @@ async function probeGuestCheckout(root: Element): Promise<void> {
   renderCart(root);
 }
 
-async function recoverGuestCheckout(root: Element): Promise<void> {
+// A quiet check is the cart's own reload check of a capability this browser
+// only prepared: when Commerce says nothing started, the cart simply unlocks.
+async function recoverGuestCheckout(root: Element, quiet = false): Promise<void> {
   if (!checkoutController || pendingCheckout) return;
   pendingCheckout = true;
-  checkoutRecovery = true;
+  checkoutRecovery = !quiet;
   checkoutResumeUrl = null;
   renderCart(root);
   const response = await checkoutController.status();
   if (response.failure || !response.result || !response.result.ok) {
     pendingCheckout = false;
+    checkoutRecovery = true;
     setCheckoutMessage(checkoutStatusFailureText(
       response.result && !response.result.ok ? response.result.error.code : undefined,
     ), true);
@@ -428,6 +427,10 @@ async function recoverGuestCheckout(root: Element): Promise<void> {
     setCheckoutMessage(settled ? "Order confirmed." : "Order confirmed. Your cart could not be updated. Check status again.", !settled);
   } else if (response.result.ok && response.result.checkout.state === "released-retry") {
     setCheckoutMessage("The original attempt was released. You can try checkout again.");
+  } else if (checkoutController.canStart() && quiet) {
+    checkoutRecovery = false;
+    checkoutMessage = null;
+    checkoutMessageError = false;
   } else if (checkoutController.canStart()) {
     setCheckoutMessage("No checkout has started. You can continue to checkout.");
   } else {
@@ -556,9 +559,12 @@ export function hydrateGuestCartPage(): void {
   });
   pendingCheckout = false;
   const initialRetention = readGuestCheckoutRetention(checkoutStorage());
-  // A null attempt ID can mean a prepared capability or a lost start response.
-  // Only Commerce status can distinguish them and unlock the original capability.
-  checkoutRecovery = Boolean(initialRetention);
+  // start() marks awaitingStart before it sends, so a retention with neither an
+  // attempt nor that mark was only prepared here. The cart checks its status on
+  // load by itself; anything else waits for the shopper's status check.
+  const preparedOnly = Boolean(initialRetention && initialRetention.attemptId === null &&
+    !initialRetention.awaitingStart && !initialRetention.cartSettlement);
+  checkoutRecovery = Boolean(initialRetention) && !preparedOnly;
   checkoutMessage = checkoutRecovery ? "Check checkout status before continuing." : null;
   checkoutMessageError = false;
   checkoutProbePending = false;
@@ -673,6 +679,8 @@ export function hydrateGuestCartPage(): void {
   void (async () => {
     if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) {
       await recoverGuestCheckout(root);
+    } else if (preparedOnly) {
+      await recoverGuestCheckout(root, true);
     }
     await probeGuestCheckout(root);
   })();

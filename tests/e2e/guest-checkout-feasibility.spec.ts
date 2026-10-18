@@ -707,14 +707,14 @@ for (const scenario of ["prepared capability", "lost first-start response"] as c
       expect(retained.attemptId).toBeNull();
       expect(retained.awaitingStart === true).toBe(lostStart);
       await page.reload();
-      await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
-      await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
       const proof = resolve("runs/pr80-recovery-20261012", testInfo.project.name);
       await mkdir(proof, { recursive: true });
-      await page.screenshot({ path: resolve(proof, `${lostStart ? "lost-start" : "prepared"}-reloaded.png`), fullPage: true });
-      await expect(page.getByRole("button", { name: "Check checkout status" })).toBeVisible({ timeout: 5_000 });
-      await page.getByRole("button", { name: "Check checkout status" }).click();
       if (lostStart) {
+        await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+        await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+        await page.screenshot({ path: resolve(proof, "lost-start-reloaded.png"), fullPage: true });
+        await expect(page.getByRole("button", { name: "Check checkout status" })).toBeVisible({ timeout: 5_000 });
+        await page.getByRole("button", { name: "Check checkout status" }).click();
         await expect(page.locator("[data-guest-cart-status]")).toContainText("still pending");
         await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
         await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
@@ -723,8 +723,9 @@ for (const scenario of ["prepared capability", "lost first-start response"] as c
         expect(recovered.capability).toBe(retained.capability);
         expect(recovered.attemptId).toBe("fixture-attempt-1");
       } else {
-        await expect(page.locator("[data-guest-cart-status]")).toContainText("No checkout has started");
+        // The cart checks a capability it only prepared by itself on load and unlocks.
         await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+        await expect(page.getByRole("button", { name: "Check checkout status" })).toBeHidden();
         await expect(page.locator("[data-guest-cart-qty]")).toBeEnabled();
         expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 0, statusCalls: 1 });
         expect(await page.evaluate(() => JSON.parse(localStorage.getItem("dinkus.guest-checkout.v1")!).capability)).toBe(retained.capability);
