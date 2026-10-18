@@ -3,6 +3,8 @@ import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { getSiteSettings } from "emdash";
 import { GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
+import { isCheckoutEnabled, SANDBOX_SESSION_NOTICE, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -24,6 +26,11 @@ const contactHref = (() => {
   return undefined;
 })();
 Astro.response.headers.set("Cache-Control", "no-store");
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo: isDemoCatalogProfile(), checkoutEnabled: isCheckoutEnabled() });
+// Sandbox returns use the same capability-scoped controller as every store:
+// only Commerce's durable paid order confirms, and only then is the purchased
+// cart settled. No Stripe session id from the URL is looked up or trusted.
 ---
 <!doctype html>
 <html lang="en">
@@ -36,6 +43,13 @@ Astro.response.headers.set("Cache-Control", "no-store");
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner role="status">Demo checkout &mdash; No real payments or fulfillment.</div>
     <StoreHeader profile={profile} />
-    <main><GuestCheckoutReturn contactHref={contactHref} /></main>
+    <main>
+      {sandboxCheckout && <p class="store-sandbox-notice" role="note" data-sandbox-checkout-return>Test mode checkout. {SANDBOX_SESSION_NOTICE}</p>}
+      <GuestCheckoutReturn contactHref={contactHref} />
+    </main>
   </body>
 </html>
+
+<style>
+  .store-sandbox-notice{width:min(70rem,calc(100% - 2rem));margin:1.5rem auto 0;padding:.9rem 1rem;border:1px solid var(--store-line);border-radius:.65rem;background:var(--store-surface);line-height:1.5}
+</style>
