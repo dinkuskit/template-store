@@ -149,6 +149,16 @@ private Durable Object SQLite database, applies this repository's
 continues to render the existing unavailable state; the playground has no
 payment or coupon bindings. Every response is noindex.
 
+The opt-in Stripe TEST sandbox checkout (`src/features/playground-checkout/`)
+stays off unless `DINKUS_CHECKOUT_ENABLED="1"` and all of its env is
+provisioned by infra outside the committed Wrangler config: `PAYMENTS_URL`,
+`PAYMENTS_STORE_KEY` (secret), `PAYMENTS_STRIPE_ACCOUNT_ID`, the
+`PLAYGROUND_CHECKOUT_LIMITER` binding, and `EMDASH_SITE_URL`. The last is the
+canonical https origin of that deployment (for example
+`https://playground.dinkuskit.com`, or `https://pr-N.playground.dinkuskit.com`
+for a preview), not a secret. `/api/checkout/status` confirms paid returns only
+against it, so without a valid value the cart shows checkout as unavailable.
+
 Before a public preview is enabled, infra-keeper must add a Cloudflare Rate
 Limit bindings named `PLAYGROUND_CREATION_LIMITER` and
 `PLAYGROUND_GLOBAL_LIMITER` to `wrangler.playground.jsonc` (per-IP and global
