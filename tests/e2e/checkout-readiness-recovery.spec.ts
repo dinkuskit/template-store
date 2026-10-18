@@ -28,9 +28,9 @@ for (const awaitingStart of [false, true]) {
       }, awaitingStart);
       await page.goto("/cart");
       await expect(page.locator("[data-guest-cart]")).toHaveAttribute("data-guest-checkout-admitted", "false");
-      await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
-      await page.getByRole("button", { name: "Check checkout status" }).click();
       if (awaitingStart) {
+        await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+        await page.getByRole("button", { name: "Check checkout status" }).click();
         await expect(page.locator("[data-guest-cart-status]")).toContainText("still pending");
         await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
         await expect(page.locator("[data-guest-cart-resume]")).toBeHidden();
@@ -39,8 +39,9 @@ for (const awaitingStart of [false, true]) {
         await expect(page.locator("[data-guest-cart-empty]")).toBeVisible();
         expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 0, statusCalls: 2 });
       } else {
-        await expect(page.locator("[data-guest-cart-status]")).toContainText("No checkout has started");
+        // A capability this browser only prepared is checked on load without the shopper asking.
         await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled({ timeout: 5_000 });
+        await expect(page.getByRole("button", { name: "Check checkout status" })).toBeHidden();
         await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
         await page.getByRole("button", { name: "Continue to secure checkout" }).click();
         await expect(page.locator("[data-guest-cart-status]")).toContainText("pending");
@@ -138,5 +139,74 @@ test("abandoned hosted checkout offers a way back to the open payment page from 
     // The harness blocks every other origin, so following the link is recorded, not loaded.
     await resume.click();
     await expect.poll(() => harness.blocked).toContain(redirectUrl);
+  } finally { await context.close(); }
+});
+
+test("a reload after a quantity change keeps the cart editable when no checkout started", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string,
+      digital: true, statusWithoutAttempt: true, statusAlwaysPending: true,
+    });
+    await page.addInitScript(() => {
+      if (localStorage.getItem("dinkus.guest-cart.v1")) return;
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
+    });
+    await page.goto("/cart");
+    // Opening the cart prepares a checkout capability, which stays in this browser.
+    await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+    expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 0, statusCalls: 0 });
+    await page.locator("[data-guest-cart-qty]").fill("2");
+    await page.locator("[data-guest-cart-qty]").press("Tab");
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("dinkus.guest-cart.v1"))).toContain('"quantity":2');
+    await page.reload();
+    await expect(page.locator("[data-guest-cart-qty]")).toHaveValue("2");
+    const status = page.locator("[data-guest-cart-status]");
+    await expect(page.locator("[data-guest-cart-remove]")).toBeEnabled();
+    await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Check checkout status" })).toBeHidden();
+    await expect(status).not.toContainText("Check checkout status");
+    await expect(status).not.toContainText("tied to the original attempt");
+    // The capability prepared before the reload is reused after one status check; nothing is prepared or started again.
+    expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 0, statusCalls: 1 });
+    const proof = resolve("runs/cart-reload-unlock-20261018", testInfo.project.name);
+    await mkdir(proof, { recursive: true });
+    await page.screenshot({ path: resolve(proof, "cart-after-reload.png"), fullPage: true });
+    await page.locator("[data-guest-cart-remove]").click();
+    await expect(page.locator("[data-guest-cart-empty]")).toBeVisible();
+    expect(harness.blocked).toEqual([]);
+  } finally { await context.close(); }
+});
+
+test("a reload finds a checkout another tab opened and offers the way back to it", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  const redirectUrl = "https://checkout.stripe.com/c/pay/cs_test_fixture_open";
+  const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string,
+      digital: true, statusPendingRedirect: redirectUrl,
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
+      // Prepared here; Commerce says an attempt on this capability has since opened a payment page.
+      localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({ capabilityId: "fixture-cap-1",
+        capability: "fixture-cap-1.secret", attemptId: null }));
+    });
+    await page.goto("/cart");
+    const status = page.locator("[data-guest-cart-status]");
+    await expect(status).toHaveText("Your checkout is still open. Return to secure checkout to finish paying.");
+    const resume = page.getByRole("link", { name: "Return to secure checkout" });
+    await expect(resume).toBeVisible();
+    await expect(resume).toHaveAttribute("href", redirectUrl);
+    await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+    await expect(page.locator("[data-guest-cart-remove]")).toBeDisabled();
+    await expect(page.locator("[data-guest-cart-qty]")).toBeDisabled();
+    expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 0, statusCalls: 1 });
+    expect(harness.blocked).toEqual([]);
   } finally { await context.close(); }
 });
