@@ -33,6 +33,7 @@ for (const awaitingStart of [false, true]) {
       if (awaitingStart) {
         await expect(page.locator("[data-guest-cart-status]")).toContainText("still pending");
         await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+        await expect(page.locator("[data-guest-cart-resume]")).toBeHidden();
         await page.getByRole("button", { name: "Check checkout status" }).click();
         await expect(page.locator("[data-guest-cart-status]")).toContainText("Order confirmed");
         await expect(page.locator("[data-guest-cart-empty]")).toBeVisible();
@@ -102,3 +103,40 @@ for (const diagnostic of ["CHECKOUT_STATUS_CAPABILITY_DENIED", "untrusted-privat
     } finally { await context.close(); }
   });
 }
+
+test("abandoned hosted checkout offers a way back to the open payment page from the cart", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  const redirectUrl = "https://checkout.stripe.com/c/pay/cs_test_fixture_open";
+  const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, {
+      baseURL: testInfo.project.use.baseURL as string, mutateCart: false,
+      digital: true, statusPendingRedirect: redirectUrl,
+    });
+    await page.addInitScript(() => {
+      localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
+      localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({ capabilityId: "fixture-cap-1",
+        capability: "fixture-cap-1.secret", attemptId: "fixture-attempt-open" }));
+    });
+    // Payments' cancel address is the store's cart, so Stripe's back link lands here.
+    await page.goto("/cart");
+    const resume = page.getByRole("link", { name: "Return to secure checkout" });
+    await expect(resume).toBeHidden();
+    await page.getByRole("button", { name: "Check checkout status" }).click();
+    const status = page.locator("[data-guest-cart-status]");
+    await expect(status).toHaveText("Your checkout is still open. Return to secure checkout to finish paying.");
+    await expect(status).toHaveAttribute("role", "status");
+    await expect(resume).toBeVisible();
+    await expect(resume).toHaveAttribute("href", redirectUrl);
+    await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
+    await expect(page.locator("[data-guest-cart-remove]")).toBeDisabled();
+    expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 0, statusCalls: 1 });
+    const proof = resolve("runs/abandoned-checkout-resume-20261018", testInfo.project.name);
+    await mkdir(proof, { recursive: true });
+    await page.screenshot({ path: resolve(proof, "cart-open-checkout.png"), fullPage: true });
+    // The harness blocks every other origin, so following the link is recorded, not loaded.
+    await resume.click();
+    await expect.poll(() => harness.blocked).toContain(redirectUrl);
+  } finally { await context.close(); }
+});

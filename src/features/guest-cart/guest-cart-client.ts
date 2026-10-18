@@ -52,6 +52,8 @@ let mutationNotice: string | null = null;
 let checkoutMessage: string | null = null;
 let checkoutMessageError = false;
 let checkoutProbePending = false;
+// Commerce's open hosted-checkout session, offered after a status check says pending.
+let checkoutResumeUrl: string | null = null;
 
 function checkoutLocked(): boolean {
   return pendingCheckout || checkoutProbePending || Boolean(readGuestCheckoutRetention(checkoutStorage()) &&
@@ -260,6 +262,7 @@ function renderCart(root: Element): void {
   const delivery = root.querySelector("[data-guest-cart-delivery]");
   const retry = root.querySelector("[data-guest-cart-retry]");
   const checkoutRecoveryButton = root.querySelector("[data-guest-cart-recover]");
+  const checkoutResume = root.querySelector("[data-guest-cart-resume]");
   if (empty instanceof HTMLElement) {
     empty.hidden = !current.empty || Boolean(current.snapshotError);
   }
@@ -294,6 +297,11 @@ function renderCart(root: Element): void {
   if (checkoutRecoveryButton instanceof HTMLButtonElement) {
     checkoutRecoveryButton.hidden = !checkoutRecovery;
     checkoutRecoveryButton.disabled = pendingCheckout;
+  }
+  if (checkoutResume instanceof HTMLAnchorElement) {
+    checkoutResume.hidden = !checkoutResumeUrl || pendingCheckout;
+    if (checkoutResumeUrl) checkoutResume.href = checkoutResumeUrl;
+    else checkoutResume.removeAttribute("href");
   }
   for (const control of root.querySelectorAll("[data-guest-cart-qty], [data-guest-cart-remove]")) {
     if (control instanceof HTMLInputElement || control instanceof HTMLButtonElement) {
@@ -399,6 +407,7 @@ async function recoverGuestCheckout(root: Element): Promise<void> {
   if (!checkoutController || pendingCheckout) return;
   pendingCheckout = true;
   checkoutRecovery = true;
+  checkoutResumeUrl = null;
   renderCart(root);
   const response = await checkoutController.status();
   if (response.failure || !response.result || !response.result.ok) {
@@ -422,7 +431,12 @@ async function recoverGuestCheckout(root: Element): Promise<void> {
   } else if (checkoutController.canStart()) {
     setCheckoutMessage("No checkout has started. You can continue to checkout.");
   } else {
-    setCheckoutMessage("Checkout is still pending. Check status before trying again.");
+    // A shopper who backed out of Stripe lands here; paying on the open
+    // session finishes this same attempt, so it cannot charge twice.
+    checkoutResumeUrl = guestCheckoutRetryUrl(response.result);
+    setCheckoutMessage(checkoutResumeUrl
+      ? "Your checkout is still open. Return to secure checkout to finish paying."
+      : "Checkout is still pending. Check status before trying again.");
   }
   pendingCheckout = false;
   renderCart(root);
@@ -548,6 +562,7 @@ export function hydrateGuestCartPage(): void {
   checkoutMessage = checkoutRecovery ? "Check checkout status before continuing." : null;
   checkoutMessageError = false;
   checkoutProbePending = false;
+  checkoutResumeUrl = null;
   snapshots = null;
   const retry = root.querySelector("[data-guest-cart-retry]");
   retry?.addEventListener("click", () => {
@@ -572,6 +587,7 @@ export function hydrateGuestCartPage(): void {
       const couponCode = undefined;
       pendingCheckout = true;
       checkoutRecovery = false;
+      checkoutResumeUrl = null;
       checkoutMessage = null;
       renderCart(root);
       const needsPreparation = !readGuestCheckoutRetention(checkoutStorage()) || checkoutController.canPrepareNew();

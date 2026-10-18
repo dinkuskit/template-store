@@ -53,6 +53,7 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
     <button type="button" data-guest-cart-checkout disabled>{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
     <p data-guest-cart-checkout-reason>{checkoutAdmission ? "" : GUEST_CHECKOUT_REASON}</p>
     <button type="button" data-guest-cart-retry hidden>Try again</button>
+    <a data-guest-cart-resume hidden rel="noopener noreferrer">Return to secure checkout</a>
     <button type="button" data-guest-cart-recover hidden>Check checkout status</button>
   </div>
 </section>
@@ -76,6 +77,8 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   .guest-cart-coupon p{margin:0;font-size:.9em}
   .guest-cart-coupon input::placeholder{color:var(--store-muted);opacity:1}
   .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800}
+  .guest-cart-checkout [data-guest-cart-resume]{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);color:inherit;font-weight:800;text-decoration:underline;text-underline-offset:.2em}
+  .guest-cart-checkout [data-guest-cart-resume][hidden]{display:none}
   [data-guest-cart-checkout]:disabled{color:var(--store-muted);cursor:not-allowed}
   .guest-cart :global([data-guest-cart-line]){padding:1.5rem;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface);min-width:0;overflow-wrap:anywhere}
   .guest-cart :global([data-guest-cart-line] h2){font-size:1.5rem;margin:0 0 1rem}
@@ -88,6 +91,7 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   .guest-cart :global([data-guest-cart-qty]:focus-visible),
   .guest-cart :global([data-guest-cart-remove]:focus-visible),
   .guest-cart :global([data-guest-cart-retry]:focus-visible),
+  .guest-cart :global([data-guest-cart-resume]:focus-visible),
   .guest-cart :global([data-guest-cart-empty]:focus-visible){outline:3px solid #215cc8;outline-offset:3px}
   @media(max-width:45rem){.guest-cart :global([data-guest-cart-line]),.guest-cart :global(.guest-cart-qty){min-width:0}}
 </style>
