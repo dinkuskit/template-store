@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import ts from "typescript";
 
+import { commerceProfile } from "../src/features/commerce-profile/profiles.mjs";
+
 const STATIC_ROUTE_KEYS = new Set(["public", "methods", "request", "cacheControl", "handler", "permission"]);
 
 function parse(file) {
@@ -206,7 +208,8 @@ function validateGuestRoute(file, source) {
   return metadata;
 }
 
-export function extractCommerceRoutes(commercePlugin) {
+export function extractCommerceRoutes(commercePlugin, { profile = process.env.DINKUS_COMMERCE_PROFILE } = {}) {
+  const { runtimeId } = commerceProfile(profile);
   const source = parse(commercePlugin);
   const bindings = importedBindings(commercePlugin, source);
   const routeBinding = bindings.get("pluginRoute");
@@ -256,7 +259,7 @@ export function extractCommerceRoutes(commercePlugin) {
       unsupported.push({ name: null, path: null, diagnostic: key.diagnostic });
       continue;
     }
-    const path = `/_emdash/api/plugins/r_gshdrqaldna3r7sn/${key.name}`;
+    const path = `/_emdash/api/plugins/${runtimeId}/${key.name}`;
     if (seenRoutes.has(key.name)) {
       unsupported.push({ name: key.name, path, diagnostic: diagnostic(commercePlugin, property, "duplicate route key is unsupported") });
       for (let index = result.length - 1; index >= 0; index -= 1) {

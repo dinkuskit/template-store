@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "localCandidateOnly": true,
+  "manifestSha256": "86cbba303b8780f7a1dfc74dfa7af3404215975f89a98aa4403596992de16e5e",
+  "backendSha256": "7ab9cf5c17986dc6ff6b39a561b5a7f8c97dffdf2bd44b96cf0a3afe44164eb4",
+  "runtimeId": "r_fjzjvld3ssb4j63o",
+  "actualWorkerd": true,
+  "publicDispatcher": "actual EmDash createPublicPluginApiRouteHandler wrapping owner fixture original plugin context",
+  "fixture": "Commerce owner registry-runtime.mjs synthetic issuer + Payments transport, shipped grants unchanged",
+  "catalogItemCount": 1,
+  "readinessSupported": true,
+  "preparePending": true,
+  "startAttemptCreated": true,
+  "statusAssociation": true,
+  "wrongProfile": "NOT_FOUND",
+  "privateAdmin": "NOT_FOUND",
+  "foreignOrigin": 403,
+  "malformedCapability": 503,
+  "transportCounts": {
+    "credentials": 8,
+    "transport": 5,
+    "scheduler": 0,
+    "acknowledgments": 0,
+    "coupons": 0,
+    "ship": 0,
+    "trades": 3
+  },
+  "publicCalls": [
+    "catalog/public",
+    "checkout/guest/readiness",
+    "checkout/guest/prepare",
+    "checkout/guest/status",
+    "checkout/guest/start",
+    "checkout/guest/status",
+    "checkout/guest/status"
+  ],
+  "liveProviderCalls": 0,
+  "limitation": "Not full Registry install/R2/middleware nor hosted E2E; backend from local reviewed archive. Fixture context adapter maps Request to actual workerd invokeRoute."
+}

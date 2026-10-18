@@ -6,8 +6,28 @@ import {
   isExactGuestCheckoutPath,
 } from "./features/security/public-boundary.js";
 import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
+import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-protocol.js";
 import { ensurePlaygroundDemoCatalog } from "./features/playground/demo-commerce-seed.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
+import {
+  playgroundCheckoutConfigured,
+  withCheckoutVisitor,
+} from "./features/playground-checkout/payments-port.js";
+import { playgroundAttemptBelongsToVisitor } from "./features/playground-checkout/binding-auth.js";
+import { playgroundCheckoutBindingsFor } from "./features/playground-checkout/binding-store.js";
+import {
+  checkoutJsonError,
+  checkoutLimited,
+  checkoutRouteKind,
+  nativeCheckoutPath,
+  NATIVE_COMMERCE_PLUGIN_ID,
+  isCheckoutEnabled,
+  MAX_CHECKOUT_BODY_BYTES,
+  SANDBOX_CLIENT_IP_MESSAGE,
+  SANDBOX_RATE_LIMITED_MESSAGE,
+  visitorIp,
+  validateCheckoutBody,
+} from "./features/playground-checkout/index.js";
 
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
@@ -44,6 +64,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
     process.env.DINKUS_PROOF_MODE === "1";
   const isPlayground =
     Boolean((context.locals as { __playgroundDb?: unknown }).__playgroundDb);
+  const playgroundEnv =
+    ((context.locals as { __playgroundEnv?: Record<string, unknown> }).__playgroundEnv ??
+      process.env) as Record<string, unknown>;
+  (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv = playgroundEnv;
+  // Resolve (and publish on locals) the persistent binding store once, so the
+  // /api/checkout/status route authorizes against the same store start wrote.
+  const playgroundBindings = isPlayground ? playgroundCheckoutBindingsFor(context.locals) : undefined;
 
   async function checkoutRouteAdmitted(): Promise<boolean> {
     const installed = { runtime: context.locals.emdash, request: context.request };
@@ -52,6 +79,32 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return pathForms.some((path) => path.endsWith("/prepare"))
       ? Boolean(await acquireGuestCheckoutAdmission(installed))
       : canDispatchInstalledGuestCheckout(installed);
+  }
+
+  // Sandbox checkout guard (playground/demo): flag, limiter and body
+  // validation run before the per-visitor DO/database is touched below.
+  const checkoutKind = checkoutRouteKind(context.url.pathname);
+  if (checkoutKind && (isPlayground || isDemoCatalogProfile())) {
+    const guarded = await guardSandboxCheckout(context.request, checkoutKind,
+      (context.locals as { __playgroundCheckoutLimiter?: unknown }).__playgroundCheckoutLimiter, isPlayground);
+    if (guarded) {
+      applySecurityHeaders(guarded.headers);
+      return guarded;
+    }
+    if (checkoutKind === "status" && isPlayground && playgroundCheckoutConfigured(playgroundEnv)) {
+      const statusAttemptId = await readStatusAttemptId(context.request);
+      if (statusAttemptId === TOO_LARGE) {
+        const refused = checkoutJsonError(413, "Checkout request is too large.");
+        applySecurityHeaders(refused.headers);
+        return refused;
+      }
+      const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
+      if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings, playgroundEnv))) {
+        const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
+        applySecurityHeaders(refused.headers);
+        return refused;
+      }
+    }
   }
 
   if (isPlayground) {
@@ -70,6 +123,54 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const { getDb } = await import("emdash/runtime");
     await ensurePlaygroundDemoCatalog(await getDb() as Parameters<typeof ensurePlaygroundDemoCatalog>[0])
       .catch((error: unknown) => { demoProfileSeeded = false; console.error("[demo-seed] failed", error); });
+  }
+
+  // Sandbox checkout opens ONLY for a playground session with the flag on and
+  // every Payments value present; the request has already passed body
+  // validation, the visitor-IP check and the limiter above. Registry-path calls
+  // from the cart are served by the playground's native Commerce routes.
+  if (checkoutKind && isPlayground && playgroundCheckoutConfigured(playgroundEnv)) {
+    const clientIp = visitorIp(context.request);
+    if (!clientIp && checkoutKind === "start") {
+      const refused = checkoutJsonError(400, SANDBOX_CLIENT_IP_MESSAGE);
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
+    const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
+    const response = await withCheckoutVisitor(clientIp ?? "", sessionId, async () => {
+      // Dispatch straight to the playground's native Commerce route. An Astro
+      // rewrite (next(path)) cannot do this: the Registry and native paths match
+      // the same dynamic EmDash plugin route, so the rewrite keeps the Registry
+      // plugin id and the cart's request 404s.
+      const nativeResponse = await dispatchNativeCheckout(context.locals, context.request, context.url, checkoutKind);
+      if (checkoutKind === "status") {
+        return authorizeNativeStatusResponse(nativeResponse, sessionId, playgroundBindings, playgroundEnv);
+      }
+      return nativeResponse;
+    }, playgroundBindings);
+    applySecurityHeaders(response.headers);
+    return response;
+  }
+
+  // Status recovery (/api/checkout/status) dispatches in-process to the native
+  // Commerce route; give its Payments lookup the same visitor context.
+  if (isPlayground && context.url.pathname === GUEST_CHECKOUT_STATUS_ENDPOINT &&
+      playgroundCheckoutConfigured(playgroundEnv)) {
+    const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
+    const statusAttemptId = await readStatusAttemptId(context.request);
+    if (statusAttemptId === TOO_LARGE) {
+      const refused = checkoutJsonError(413, "Checkout request is too large.");
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
+    if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings, playgroundEnv))) {
+      const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
+    const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", sessionId, () => next(), playgroundBindings);
+    applySecurityHeaders(response.headers);
+    return response;
   }
 
   if (isCloudflare && !isProofMode && !isPlayground) {
@@ -143,3 +244,151 @@ export const onRequest = defineMiddleware(async (context, next) => {
   applySecurityHeaders(response.headers);
   return response;
 });
+
+async function guardSandboxCheckout(
+  request: Request,
+  kind: NonNullable<ReturnType<typeof checkoutRouteKind>>,
+  limiter: unknown,
+  isPlayground: boolean,
+): Promise<Response | null> {
+  // Flag off: fall through to today's closed gates unchanged.
+  if (!isCheckoutEnabled()) return null;
+  if (request.method !== "POST") return checkoutJsonError(405, "Method not allowed.");
+  const declared = request.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_CHECKOUT_BODY_BYTES)) {
+    return checkoutJsonError(413, "Checkout request is too large.");
+  }
+  const raw = await boundedCheckoutBody(request);
+  if (raw === TOO_LARGE) return checkoutJsonError(413, "Checkout request is too large.");
+  if (raw === null || !validateCheckoutBody(kind, raw).ok) {
+    return checkoutJsonError(400, "Checkout request is invalid.");
+  }
+  // Payments needs the visitor IP for its per-visitor limit; refuse locally without one.
+  if (kind === "start" && isPlayground && !visitorIp(request)) {
+    return checkoutJsonError(400, SANDBOX_CLIENT_IP_MESSAGE);
+  }
+  // The playground limiter applies per visitor; the demo profile has no binding.
+  if (kind === "start" && isPlayground && await checkoutLimited(request, limiter)) {
+    const limited = checkoutJsonError(429, SANDBOX_RATE_LIMITED_MESSAGE);
+    limited.headers.set("Retry-After", "600");
+    return limited;
+  }
+  return null;
+}
+
+const TOO_LARGE = Symbol("checkout-body-too-large");
+
+async function boundedCheckoutBody(request: Request): Promise<string | null | typeof TOO_LARGE> {
+  if (!request.body) return "";
+  const reader = request.clone().body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.byteLength;
+      if (size > MAX_CHECKOUT_BODY_BYTES) {
+        // This reader is one branch of request.clone()'s tee. Cancelling a tee
+        // branch settles only once the other branch is consumed or cancelled,
+        // and the original body stays unread here, so never await it: reply
+        // 413 now and let the runtime discard the original request body.
+        reader.cancel().catch(() => {});
+        return TOO_LARGE;
+      }
+      chunks.push(next.value);
+    }
+  } catch {
+    return null;
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+async function readStatusAttemptId(request: Request): Promise<string | null | typeof TOO_LARGE> {
+  const raw = await boundedCheckoutBody(request);
+  if (raw === TOO_LARGE) return TOO_LARGE;
+  if (raw === null || raw === "") return null;
+  try {
+    const body = JSON.parse(raw) as { attemptId?: unknown };
+    return typeof body.attemptId === "string" && body.attemptId.length > 0 ? body.attemptId : null;
+  } catch {
+    return null;
+  }
+}
+
+type PublicPluginResult = {
+  success: boolean;
+  data?: unknown;
+  status?: number;
+  error?: { code?: string; message?: string; details?: unknown };
+};
+type PublicPluginDispatcher = (pluginId: string, method: string, path: string, request: Request) => Promise<PublicPluginResult>;
+
+/**
+ * Runs a guest checkout call on the playground's native Commerce plugin through
+ * EmDash's public plugin-route boundary (public routes only), answering with
+ * the same `{ success, data }` / `{ success, error }` envelope and status
+ * mapping as EmDash's own plugin API route. The request URL, headers and the
+ * already-validated body are forwarded unchanged, so Commerce's own origin and
+ * capability checks still decide.
+ */
+async function dispatchNativeCheckout(
+  locals: unknown,
+  request: Request,
+  url: URL,
+  kind: NonNullable<ReturnType<typeof checkoutRouteKind>>,
+): Promise<Response> {
+  const dispatch = (locals as { emdash?: { handlePublicPluginApiRoute?: PublicPluginDispatcher } } | undefined)
+    ?.emdash?.handlePublicPluginApiRoute;
+  if (typeof dispatch !== "function") return checkoutJsonError(503, "Checkout is not available yet.");
+  const target = new URL(nativeCheckoutPath(kind), url);
+  const forwarded = new Request(target, {
+    method: "POST",
+    headers: request.headers,
+    body: await request.text(),
+  });
+  const result = await dispatch(NATIVE_COMMERCE_PLUGIN_ID, "POST", `checkout/guest/${kind}`, forwarded);
+  const headers = { "Cache-Control": "private, no-store" };
+  if (!result?.success) {
+    const code = result?.error?.code ?? "PLUGIN_ERROR";
+    const message = code === "INTERNAL_ERROR" ? "Plugin route error" : result?.error?.message ?? "Plugin route error";
+    const status = result?.status ?? (code === "NOT_FOUND" ? 404 : 400);
+    const details = code !== "INTERNAL_ERROR" && result?.error?.details && typeof result.error.details === "object" &&
+      !Array.isArray(result.error.details) ? { details: result.error.details } : {};
+    return Response.json({ success: false, error: { code, message, ...details } }, { status, headers });
+  }
+  return Response.json({ success: true, data: result.data }, { status: 200, headers });
+}
+
+async function authorizeNativeStatusResponse(
+  response: Response,
+  sessionId: string,
+  bindings: Parameters<typeof playgroundAttemptBelongsToVisitor>[2],
+  env: Record<string, unknown>,
+): Promise<Response> {
+  try {
+    const body = await response.clone().json() as {
+      data?: { checkout?: { state?: unknown; attemptId?: unknown; order?: unknown } };
+      checkout?: { state?: unknown; attemptId?: unknown; order?: unknown };
+    };
+    const checkout = body.data?.checkout ?? body.checkout;
+    const terminal = checkout?.state === "paid" || checkout?.order !== null && checkout?.order !== undefined;
+    if (!terminal) return response;
+    if (typeof checkout?.attemptId !== "string" ||
+        !(await playgroundAttemptBelongsToVisitor(checkout.attemptId, sessionId, bindings, env))) {
+      return checkoutJsonError(403, "Checkout visitor session is not authorized.");
+    }
+    return response;
+  } catch {
+    return checkoutJsonError(503, "Checkout status unavailable.");
+  }
+}

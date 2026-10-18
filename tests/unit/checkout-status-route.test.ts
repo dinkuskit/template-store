@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "../../src/pages/api/checkout/status.js";
+import { checkoutCanConfirm, parseGuestCheckoutWireResult } from "../../src/features/guest-cart/index.js";
 
 const site = "https://store.example.test";
 const projection = { schema: "dinkuskit.commerce.guest-checkout-projection/v1", state: "pending",
@@ -45,6 +46,23 @@ describe("installed public status dispatcher", () => {
       capability: { capabilityId: "cap", capability: "cap.synthetic", retention: "json-body", header: "x-commerce-guest-capability" },
       checkout: { ...projection, private: "hidden" } } });
     expect(await (await call()).json()).toEqual({ ok: true, capabilityId: "cap", checkout: projection });
+  });
+  it("relays a paid answer the return page can confirm, with Commerce's line ids and pricing", async () => {
+    const money = (minor: string) => ({ currency: "USD", minor });
+    const line = { catalogItemId: "e2e-tee", name: "E2E Tee", quantity: 2, unitPrice: money("1500") };
+    const pricing = { merchandiseSubtotal: money("3000"), couponDiscount: money("0"), netMerchandise: money("3000"),
+      shipping: { mode: "flat", charge: money("500") }, finalTotal: money("3500") };
+    // Commerce's paid projection, as its guest status route answers it.
+    const paid = { ...projection, state: "paid", attemptId: "attempt-1", lines: [line], total: money("3500"),
+      pricing: { ...pricing, private: "hidden", shipping: { ...pricing.shipping, private: "hidden" } }, unavailable: null,
+      order: { orderId: "order-1", receiptId: "receipt-1", lines: [line], total: money("3500"), pricing } };
+    dispatch.mockResolvedValue({ success: true, data: { ok: true, capabilityId: "cap", checkout: paid } });
+    const body = await (await call()).json();
+    expect(body.checkout.order).toEqual({ orderId: "order-1", receiptId: "receipt-1", lines: [line], total: money("3500") });
+    expect(body.checkout.pricing).toEqual(pricing);
+    const relayed = parseGuestCheckoutWireResult(body);
+    expect(checkoutCanConfirm(relayed)).toBe(true);
+    expect(relayed?.ok && relayed.checkout.order?.lines).toEqual([{ id: "e2e-tee", quantity: 2, name: "E2E Tee", unitPrice: money("1500") }]);
   });
   it.each([undefined, null, {}, { handlePluginApiRoute: vi.fn() }])("fails closed without a public dispatcher: %j", async host => {
     const response = await POST({ request: request(), locals: host === undefined ? undefined : { emdash: host } } as never);
@@ -99,5 +117,73 @@ describe("original caller and body bounds", () => {
     } });
     expect((await call(request({}, body))).status).toBe(413);
     expect(pulls).toBeLessThanOrEqual(70); expect(dispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe("playground native status recovery", () => {
+  const READY = {
+    DINKUS_CHECKOUT_ENABLED: "1",
+    PAYMENTS_URL: "https://payments.local.test",
+    PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
+    PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
+  };
+  function playgroundCall(req = request()) {
+    return POST({ request: req, locals: { emdash: runtime, __playgroundDb: {} } } as never);
+  }
+  it("dispatches a configured playground session to its native Commerce status route", async () => {
+    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+    for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
+    const response = await playgroundCall(request({ cookie: "emdash_playground=s1", "cf-connecting-ip": "203.0.113.7" }));
+    expect(response.status).toBe(200);
+    const [id, method, path, forwarded] = dispatch.mock.calls[0];
+    expect([id, method, path]).toEqual(["dinkus-commerce", "POST", "checkout/guest/status"]);
+    expect(forwarded.url).toBe(site + "/_emdash/api/plugins/dinkus-commerce/checkout/guest/status");
+    expect(Object.fromEntries(forwarded.headers)).toEqual({ accept: "application/json", "content-type": "application/json",
+      origin: site, "x-commerce-guest-capability": "cap.synthetic" });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("requires the resolved terminal attempt to remain bound to the visitor", async () => {
+    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+    for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
+    dispatch.mockResolvedValue({
+      success: true,
+      data: {
+        ok: true,
+        capabilityId: "cap",
+        checkout: {
+          ...projection,
+          state: "paid",
+          attemptId: "attempt-paid",
+          order: { orderId: "order-1", receiptId: "receipt-1", lines: [{ catalogItemId: "fixture", quantity: 1 }] },
+        },
+      },
+    });
+    const bindings = {
+      get: vi.fn(async (attemptId: string) => attemptId === "attempt-paid"
+        ? { recordKind: "playground-checkout-binding", attemptId, sessionId: "visitor-a", expiresAt: Date.now() + 60_000 }
+        : null),
+      put: vi.fn(),
+    };
+    const response = await POST({
+      request: request({ cookie: "emdash_playground=visitor-a" }),
+      locals: { emdash: runtime, __playgroundDb: {}, __playgroundCheckoutBindings: bindings },
+    } as never);
+    expect(response.status).toBe(200);
+    const foreign = await POST({
+      request: request({ cookie: "emdash_playground=visitor-b" }),
+      locals: { emdash: runtime, __playgroundDb: {}, __playgroundCheckoutBindings: bindings },
+    } as never);
+    expect(foreign.status).toBe(403);
+  });
+  it("keeps capability and origin checks, and stays on the Registry gates when not configured", async () => {
+    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+    for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
+    const missing = request(); missing.headers.delete("x-commerce-guest-capability");
+    expect((await playgroundCall(missing)).status).toBe(400);
+    expect((await playgroundCall(request({ origin: "https://foreign.example.test" }))).status).toBe(403);
+    vi.stubEnv("DINKUS_CHECKOUT_ENABLED", "0");
+    expect((await playgroundCall()).status).toBe(503);
+    expect((await call()).status).toBe(503);
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

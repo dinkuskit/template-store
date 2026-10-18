@@ -16,13 +16,25 @@ target resources, build inputs and commands are configured.
   production store's Worker for this test branch.
 - Use Node 22.23.2 and pnpm 11.9.0, matching `.nvmrc` and `packageManager`.
 
-Do not assume a Git setup form selects the intended branch. Workers Builds
-provides `WORKERS_CI_BRANCH` and `WORKERS_CI_COMMIT_SHA`; this command requires
-them to match private `DINKUS_EXPECTED_BRANCH` and `DINKUS_EXPECTED_COMMIT`
-inputs before writing a config or building. Set the expected commit to the
-reviewed full SHA. An absent branch selector is a setup blocker, not permission
-to deploy the default branch. A subsequent source change deliberately fails
-until the expected SHA is updated after review.
+Do not assume a Git setup form selects the intended branch. In Workers Builds,
+`WORKERS_CI_BRANCH` must match `DINKUS_EXPECTED_BRANCH`, and
+`CLOUDFLARE_ACCOUNT_ID` must exactly match `DINKUS_EXPECTED_ACCOUNT_ID`.
+The project-root Git checkout is source authority: actual `HEAD` must match the
+reviewed full `DINKUS_EXPECTED_COMMIT`, resolve to a committed tree, and have no
+tracked staged or working changes. Missing Git, an incorrect repository root,
+unverifiable identity or dirty tracked source refuses before configuration or
+application build. Detached checkouts are supported; generated untracked or
+ignored output does not change the tracked-source requirement.
+
+`WORKERS_CI_COMMIT_SHA` is observational metadata, not source admission. A real
+provider build supplied a short stamp that differed from its correct Git HEAD.
+The command never rewrites or unsets this value: the safe source receipt reports
+only its length and whether it matches the verified checkout. A missing or
+mismatched stamp produces a bounded warning, while the actual Git source, branch
+and account checks remain mandatory. Raw stamps and Git error details are not
+printed. A subsequent source change deliberately fails until the expected full
+SHA is updated after review. Local builds outside Workers CI retain their
+existing behavior and do not acquire a new Git requirement.
 
 `build:registry` prepares the pinned source dependency, validates the inputs
 below, writes ignored `runs/registry/wrangler.jsonc`, and builds with that exact
@@ -47,6 +59,7 @@ non-secret inputs are serialized into the generated deployment config:
 | `DINKUS_EMDASH_ADMIN_ENABLED` | Optional: defaults to `0`; only set `1` after the outer admin/setup guard is verified |
 | `DINKUS_EXPECTED_BRANCH` | Required on Workers Builds: exact intended branch |
 | `DINKUS_EXPECTED_COMMIT` | Required on Workers Builds: reviewed full 40-character source SHA |
+| `DINKUS_EXPECTED_ACCOUNT_ID` | Required on Workers Builds: exact intended account ID, matching `CLOUDFLARE_ACCOUNT_ID` |
 
 Keep real account/resource identifiers in private build settings. Do not add
 secret values to these inputs. In particular, `EMDASH_ENCRYPTION_KEY` belongs in
@@ -160,3 +173,30 @@ never falls back to HTTP self-fetch, a private handler, or native Commerce.
 Missing locals or dispatcher admission remains unavailable. Request and
 serialized result sizes remain bounded; only validated checkout projection
 fields are returned. Status does not start a payment.
+
+## Commerce runtime profile
+
+`DINKUS_COMMERCE_PROFILE` is a trusted **build** input: omitted or `stable`
+selects `dinkus-commerce` (`r_gshdrqaldna3r7sn`); `beta` selects
+`dinkus-commerce-beta` (`r_fjzjvld3ssb4j63o`). Other values fail the build.
+`build:registry` records the validated profile in the generated config and passes
+it to Astro, which bakes one selection into both server and browser bundles.
+Changing a runtime variable alone cannot switch the bundled catalog or checkout.
+Keep the selected package installed in the same site's original namespace; a
+missing or mismatched installation fails closed. There is no runtime-ID, URL,
+query, or browser-storage selector and no cross-profile fallback.
+
+Catalog and item reads, readiness admission, prepare/start URLs, and the local
+status proxy all use that selection. Only its exact guest prepare/start/status
+POST paths pass the storefront boundary; private adjacent routes retain their
+existing admin protection. The source Access preview uses the same profile:
+`DINKUS_COMMERCE_PROFILE=beta node scripts/verify-access-routes.mjs --check`.
+Its AST extraction remains strict about public metadata and methods. Preview
+output is source evidence, **not an installed artifact or authority to apply
+Access changes**. The Access owner must match the installed package's exact
+route manifest and bytes before applying any exception.
+
+The beta manifest fixture is the qualified `0.3.0-beta.0` candidate manifest,
+SHA256 `86cbba303b8780f7a1dfc74dfa7af3404215975f89a98aa4403596992de16e5e`.
+It establishes the consumer route contract, not publication, a fresh hosted
+installation, successful service authentication, or a completed checkout.

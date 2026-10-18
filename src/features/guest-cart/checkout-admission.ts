@@ -103,7 +103,7 @@ export function parseCheckoutReadiness(data: unknown): CheckoutReadinessResponse
  * Query the installed Commerce runtime for checkout readiness advisory state.
  *
  * Calls GET checkout/guest/readiness via the same installed dispatcher and
- * namespace as catalog/public (r_gshdrqaldna3r7sn). Fails closed without native
+ * namespace as catalog/public for the selected build profile. Fails closed without native
  * fallback or browser credentials.
  */
 export async function readInstalledCheckoutReadiness(

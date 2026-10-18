@@ -4,10 +4,16 @@ import {
   COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT,
   COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_HEADER,
+  guestCheckoutWire,
   parseGuestCheckoutWireResult,
 } from "../../../features/guest-cart/checkout-protocol.js";
 
 import { canDispatchInstalledGuestCheckout } from "../../../features/guest-cart/checkout-admission.js";
+import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, playgroundCheckoutConfigured } from "../../../features/playground-checkout/index.js";
+import {
+  playgroundAttemptBelongsToVisitor,
+  playgroundCheckoutBindingsFromLocals,
+} from "../../../features/playground-checkout/binding-auth.js";
 
 export const prerender = false;
 const MAX_REQUEST_BYTES = 4 * 1024;
@@ -108,9 +114,9 @@ async function discardRequestBody(request: Request): Promise<void> {
 
 // Do not turn this proxy into a same-origin credential forwarder for foreign
 // callers. The configured store origin is authority; request Host is not.
-function trustedStatusOrigin(request: Request): string | null {
+function trustedStatusOrigin(request: Request, env: Record<string, unknown>): string | null {
   try {
-    const site = new URL(process.env.EMDASH_SITE_URL ?? "");
+    const site = new URL(typeof env.EMDASH_SITE_URL === "string" ? env.EMDASH_SITE_URL : "");
     const origin = new URL(request.headers.get("origin") ?? "");
     const canonical = (url: URL) =>
       (url.protocol === "https:" || url.protocol === "http:") &&
@@ -125,7 +131,18 @@ function trustedStatusOrigin(request: Request): string | null {
   }
 }
 
+/**
+ * A configured playground session serves guest checkout from its own native
+ * Commerce plugin (per-visitor runtime), not the Registry install, so status
+ * recovery dispatches there. Capability and origin checks above still apply.
+ */
+function playgroundNativeStatus(locals: unknown, env: Record<string, unknown>): boolean {
+  return Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb) &&
+    playgroundCheckoutConfigured(env);
+}
+
 export const POST: APIRoute = async ({ request, locals }) => {
+  const env = ((locals as { __playgroundEnv?: Record<string, unknown> } | undefined)?.__playgroundEnv ?? process.env);
   const requestBody = await boundedRequestText(request);
   if (requestBody === null) {
     return unavailable(413);
@@ -134,19 +151,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!capability) {
     return unavailable(400);
   }
-  const origin = trustedStatusOrigin(request);
+  const origin = trustedStatusOrigin(request, env);
   if (!origin) return unavailable(403, "CHECKOUT_STATUS_HOST_ORIGIN");
   const runtime = locals?.emdash;
   if (!runtime || typeof runtime.handlePublicPluginApiRoute !== "function") {
     return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
   }
   try {
-    if (!canDispatchInstalledGuestCheckout({ runtime, request })) {
+    const native = playgroundNativeStatus(locals, env);
+    if (!native && !canDispatchInstalledGuestCheckout({ runtime, request })) {
       return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
     }
-    const target = new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
-    const result = await runtime.handlePublicPluginApiRoute(
-      COMMERCE_REGISTRY_RUNTIME_ID,
+    const pluginId = native ? NATIVE_COMMERCE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID;
+    const target = native
+      ? new URL(nativeCheckoutPath("status"), origin)
+      : new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
+    const dispatch = () => runtime.handlePublicPluginApiRoute(
+      pluginId,
       "POST",
       "checkout/guest/status",
       new Request(target, {
@@ -161,6 +182,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         cache: "no-store",
       }),
     );
+    const result = await dispatch();
     let parsed: unknown;
     try {
       const text = JSON.stringify(result);
@@ -174,11 +196,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const validated = parseGuestCheckoutWireResult(parsed);
     if (!validated) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     if (!validated.ok) return unavailable(503, domainFailureCode(validated.error.code));
-    const { schema, state, attemptId, redirectUrl, order, retryAfter } = validated.checkout;
+    const isPlayground = Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb);
+    const terminal = validated.checkout.state === "paid" || validated.checkout.order !== null;
+    if (native && isPlayground && terminal) {
+      const sessionId = request.headers.get("cookie")?.match(/(?:^|;\s*)emdash_playground=([^;]+)/u)?.[1] ?? "";
+      // Published by the middleware: the same persistent store checkout start wrote.
+      const bindingStore = playgroundCheckoutBindingsFromLocals(locals);
+      if (!validated.checkout.attemptId ||
+          !(await playgroundAttemptBelongsToVisitor(validated.checkout.attemptId, sessionId, bindingStore, env))) {
+        return unavailable(403, "CHECKOUT_STATUS_CAPABILITY_DENIED");
+      }
+    }
     return Response.json({
       ok: true,
       capabilityId: validated.capabilityId,
-      checkout: { schema, state, attemptId, redirectUrl, order, retryAfter },
+      checkout: guestCheckoutWire(validated.checkout),
     }, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch {
     return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");

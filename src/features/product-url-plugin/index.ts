@@ -8,10 +8,15 @@ type ProductClaim = {
   path: string;
 };
 
+// EmDash 1.2.0 hands content-policy hooks the whole content item: id, slug and
+// status at the top level, the collection's fields under `data`.
 function itemIdOf(content: Record<string, unknown>): string {
-  return typeof content.commerce_item_id === "string"
-    ? content.commerce_item_id.trim()
-    : "";
+  const data = content.data;
+  const value =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>).commerce_item_id
+      : content.commerce_item_id;
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function entryIdOf(content: Record<string, unknown>): string {

@@ -1,3 +1,4 @@
+import { formatUsdMinor } from "../store-shell/price.js";
 import { isSafeGuestCartProductId, type GuestCartIntent, type GuestCartReadNotice } from "./intent.js";
 
 const availabilityLabels: Record<string, string> = {
@@ -12,6 +13,8 @@ export type GuestCartPublicPrice = Readonly<{
   listable: boolean;
   regularText: string | null;
   saleText: string | null;
+  /** USD minor units the shopper pays for one unit; absent when unknown. */
+  unitMinor?: string | null;
 }>;
 
 export type GuestCartPublicAvailability = Readonly<{
@@ -34,6 +37,9 @@ export type GuestCartCatalogSnapshot =
 
 export const GUEST_CHECKOUT_LABEL = "Checkout unavailable";
 export const GUEST_CHECKOUT_REASON = "Checkout is not available yet.";
+/** Shown when checkout is admitted but there is nothing to buy yet. */
+export const GUEST_CHECKOUT_READY_LABEL = "Checkout";
+export const GUEST_CHECKOUT_EMPTY_REASON = "Add products to your cart to check out.";
 
 export type GuestCartLineReason =
   | "missing"
@@ -48,6 +54,8 @@ export type GuestCartLineView = Readonly<{
   sku: string | null;
   regularText: string | null;
   saleText: string | null;
+  /** Unit price times quantity, or null when the unit amount is unknown. */
+  lineTotalText: string | null;
   availabilityLabel: string | null;
   sellable: boolean;
   canCheckout: false;
@@ -57,6 +65,8 @@ export type GuestCartLineView = Readonly<{
 
 export type GuestCartView = Readonly<{
   lines: readonly GuestCartLineView[];
+  /** Sum of line totals, or null when a line's amount is unknown. */
+  subtotalText: string | null;
   empty: boolean;
   pending: boolean;
   retrying: boolean;
@@ -155,6 +165,7 @@ export function presentGuestCart(options: {
   checkoutAdmitted?: boolean;
 }): GuestCartView {
   const byId = new Map((options.snapshots ?? []).map((snapshot) => [snapshot.id, snapshot]));
+  const totalsUnconfirmed = options.snapshotFailed === true || options.retrying === true;
   const lines = options.intent.lines.map((line) => {
     const snapshot = options.snapshots ? byId.get(line.id) : undefined;
     const blocked = options.snapshotFailed && !snapshot
@@ -172,6 +183,9 @@ export function presentGuestCart(options: {
       fulfillment: snapshot?.found ? snapshot.fulfillment ?? "physical" : "physical",
       regularText: snapshot?.found ? snapshot.price.regularText : null,
       saleText: snapshot?.found ? snapshot.price.saleText : null,
+      // A failed price check, and its retry, may leave older prices in place;
+      // show no totals until a check succeeds.
+      lineTotalText: totalsUnconfirmed ? null : minorText(lineTotalMinor(snapshot, line.quantity)),
       availabilityLabel:
         snapshot?.found
           ? availabilityLabels[snapshot.availability.status] ?? snapshot.availability.status
@@ -188,17 +202,24 @@ export function presentGuestCart(options: {
     !options.snapshotFailed &&
     lines.every((line) => line.sellable);
   const needsDelivery = lines.some((line) => line.fulfillment === "physical");
+  // An empty cart on a store that takes checkouts says the cart is empty, not
+  // that checkout is off.
+  const emptyAdmitted = options.checkoutAdmitted === true && lines.length === 0 &&
+    !options.pending && !options.snapshotFailed;
   return {
     lines,
+    subtotalText: totalsUnconfirmed ? null : cartSubtotalText(options.intent.lines, options.snapshots ?? null),
     empty: lines.length === 0,
     pending: options.pending === true,
     retrying: options.retrying === true,
     snapshotError: options.snapshotFailed ? snapshotErrorText() : null,
     storageNotice: storageNoticeText(options.storageNotice ?? null),
-    checkoutLabel: checkoutEnabled ? "Continue to secure checkout" : GUEST_CHECKOUT_LABEL,
+    checkoutLabel: checkoutEnabled
+      ? "Continue to secure checkout"
+      : emptyAdmitted ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL,
     checkoutReason: checkoutEnabled
       ? "Commerce will confirm the final amount and availability."
-      : GUEST_CHECKOUT_REASON,
+      : emptyAdmitted ? GUEST_CHECKOUT_EMPTY_REASON : GUEST_CHECKOUT_REASON,
     checkoutEnabled,
     needsDelivery,
   };
@@ -235,6 +256,37 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+const UNIT_MINOR = /^(0|[1-9][0-9]{0,15})$/u;
+
+function lineTotalMinor(
+  snapshot: GuestCartCatalogSnapshot | undefined,
+  quantity: number,
+): bigint | null {
+  if (!snapshot?.found || !snapshot.price.listable) return null;
+  const unit = snapshot.price.unitMinor;
+  if (typeof unit !== "string" || !UNIT_MINOR.test(unit)) return null;
+  return BigInt(unit) * BigInt(quantity);
+}
+
+function minorText(minor: bigint | null): string | null {
+  return minor === null ? null : formatUsdMinor(minor.toString());
+}
+
+/** Display subtotal; null unless every line has a known amount. */
+function cartSubtotalText(
+  lines: GuestCartIntent["lines"],
+  snapshots: readonly GuestCartCatalogSnapshot[] | null,
+): string | null {
+  if (lines.length === 0 || !snapshots) return null;
+  let total = 0n;
+  for (const line of lines) {
+    const minor = lineTotalMinor(snapshots.find((snapshot) => snapshot.id === line.id), line.quantity);
+    if (minor === null) return null;
+    total += minor;
+  }
+  return minorText(total);
+}
+
 function projectPublicPrice(value: unknown): GuestCartPublicPrice | null {
   if (!isPlainObject(value) || typeof value.listable !== "boolean") return null;
   if (value.regularText !== null && typeof value.regularText !== "string") return null;
@@ -243,6 +295,9 @@ function projectPublicPrice(value: unknown): GuestCartPublicPrice | null {
     listable: value.listable,
     regularText: value.regularText,
     saleText: value.saleText,
+    ...(typeof value.unitMinor === "string" && UNIT_MINOR.test(value.unitMinor)
+      ? { unitMinor: value.unitMinor }
+      : {}),
   };
 }
 

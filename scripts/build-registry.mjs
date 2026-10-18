@@ -1,7 +1,9 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { registryAccessOptions, registryConfigPath } from "./registry-access.mjs";
+
+import { commerceProfile } from "../src/features/commerce-profile/profiles.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const configRelativePath = registryConfigPath;
@@ -13,12 +15,42 @@ function required(env, name, pattern) {
   return value;
 }
 
-export function assertBuildSource(env) {
+// Only this project checkout can establish the source used by the build. Git
+// errors/status details never reach the receipt or operator logs.
+function readCheckoutGit(checkoutRoot, args) {
+  const result = spawnSync("git", ["-C", checkoutRoot, ...args], {
+    encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    timeout: 10_000, maxBuffer: 1024 * 1024,
+  });
+  if (result.error || result.status !== 0 || typeof result.stdout !== "string") {
+    throw new Error("Unable to verify Workers Builds Git checkout");
+  }
+  return result.stdout.trim();
+}
+
+export function assertBuildSource(env, checkoutRoot = root) {
   if (!env.WORKERS_CI) return;
   const branch = required(env, "DINKUS_EXPECTED_BRANCH", /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/);
-  const commit = required(env, "DINKUS_EXPECTED_COMMIT", /^[a-f0-9]{40}$/i);
+  const commit = required(env, "DINKUS_EXPECTED_COMMIT", /^[a-f0-9]{40}$/i).toLowerCase();
+  const account = required(env, "DINKUS_EXPECTED_ACCOUNT_ID", /^[a-f0-9]{32}$/i);
   if (env.WORKERS_CI_BRANCH !== branch) throw new Error("Workers Builds branch does not match DINKUS_EXPECTED_BRANCH");
-  if (env.WORKERS_CI_COMMIT_SHA !== commit) throw new Error("Workers Builds commit does not match DINKUS_EXPECTED_COMMIT");
+  if (env.CLOUDFLARE_ACCOUNT_ID !== account) throw new Error("Workers Builds account does not match DINKUS_EXPECTED_ACCOUNT_ID");
+  let projectRoot;
+  try { projectRoot = realpathSync(checkoutRoot); }
+  catch { throw new Error("Unable to verify Workers Builds Git checkout"); }
+  if (readCheckoutGit(projectRoot, ["rev-parse", "--show-toplevel"]) !== projectRoot) {
+    throw new Error("Workers Builds Git root does not match the project root");
+  }
+  const head = readCheckoutGit(projectRoot, ["rev-parse", "--verify", "HEAD^{commit}"]);
+  if (head !== commit) throw new Error("Workers Builds Git HEAD does not match DINKUS_EXPECTED_COMMIT");
+  const tree = readCheckoutGit(projectRoot, ["rev-parse", "--verify", "HEAD^{tree}"]);
+  if (!/^[a-f0-9]{40}$/.test(tree)) throw new Error("Unable to verify Workers Builds Git tree");
+  if (readCheckoutGit(projectRoot, ["status", "--porcelain=v1", "--untracked-files=no"])) {
+    throw new Error("Workers Builds tracked source is not clean");
+  }
+  const stamp = typeof env.WORKERS_CI_COMMIT_SHA === "string" ? env.WORKERS_CI_COMMIT_SHA : "";
+  return { authority: "git-checkout", commit: head, tree, trackedClean: true,
+    providerCommitStamp: { role: "observational", length: stamp.length, matchesCheckout: stamp === head } };
 }
 
 export function registryConfig(env) {
@@ -54,6 +86,7 @@ export function registryConfig(env) {
     workers_dev: false,
     preview_urls: false,
     vars: {
+      DINKUS_COMMERCE_PROFILE: commerceProfile(env.DINKUS_COMMERCE_PROFILE).name,
       DINKUS_CATALOG_PROFILE: "shipping",
       DINKUS_STOREFRONT_PROFILE: "shipping",
       DINKUS_PROOF_MODE: "0",
@@ -89,7 +122,10 @@ if (import.meta.main) {
     try {
       if (args.some(arg => !["--dry-run", "--config-only", "--json"].includes(arg)) ||
           (args.includes("--dry-run") && args.includes("--config-only"))) throw new Error("Invalid arguments; use --help");
-      assertBuildSource(process.env);
+      const source = assertBuildSource(process.env);
+      if (source && !source.providerCommitStamp.matchesCheckout) {
+        console.error("Workers Builds commit stamp is unqualified; source verified from the clean Git checkout.");
+      }
       const config = registryConfig(process.env);
       const dryRun = args.includes("--dry-run");
       let status = dryRun ? "validated" : "configured";
@@ -106,7 +142,7 @@ if (import.meta.main) {
           status = "built";
         }
       }
-      const receipt = { status, config: configRelativePath, profile: "shipping", adminEnabled: config.vars.DINKUS_EMDASH_ADMIN_ENABLED === "1", deployed: false };
+      const receipt = { ...(source ? { source } : {}), status, config: configRelativePath, profile: "shipping", adminEnabled: config.vars.DINKUS_EMDASH_ADMIN_ENABLED === "1", deployed: false };
       console.log(args.includes("--json") ? JSON.stringify(receipt) : `Registry ${status}: ${configRelativePath}; no deployment performed.`);
     } catch (error) {
       console.error(error.message);

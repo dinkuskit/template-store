@@ -19,7 +19,7 @@ describe("installed Commerce public catalog consumer", () => {
     const ctx = context([{ products: [], cursor: "opaque/one" }, { products: [item("second")], cursor: "opaque/two" }, { products: [item("third")] }]);
     const products = await readInstalledCommerceCatalog(ctx);
     expect(products.map(product => product.id)).toEqual(["second", "third"]);
-    expect(products[0]!.price).toEqual({ listable: true, regularText: "$1.25", saleText: null });
+    expect(products[0]!.price).toEqual({ listable: true, regularText: "$1.25", saleText: null, unitMinor: "125" });
     expect(products[0]!.image).toBeNull();
     expect(products[0]!.gallery).toEqual([]);
     expect(ctx.runtime.handlePublicPluginApiRoute).toHaveBeenCalledTimes(3);

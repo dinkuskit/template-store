@@ -1,7 +1,13 @@
 ---
-import { GuestCart, GuestCartNav } from "../features/guest-cart/ui.ts";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import { GuestCart } from "../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import SandboxCheckoutNotice from "../features/playground-checkout/SandboxCheckoutNotice.astro";
+import { isCheckoutEnabled, playgroundCheckoutAdmission, showsSandboxCheckoutNotice } from "../features/playground-checkout/index.js";
+import { playgroundCheckoutConfigured } from "../features/playground-checkout/payments-port.js";
+import { isDemoCatalogProfile } from "../features/playground/demo-products.js";
+import { storeBannerText } from "../features/store-shell/checkout-copy.js";
 import "../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -10,6 +16,12 @@ const checkoutAdmission = await acquireGuestCheckoutAdmission({
   runtime: Astro.locals.emdash,
   request: Astro.request,
 }).catch(() => null);
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const gate = { profile, isPlayground, isDemo: isDemoCatalogProfile(), checkoutEnabled: isCheckoutEnabled() };
+const sandboxCheckout = showsSandboxCheckoutNotice(gate);
+// Only a configured playground session admits checkout; everything else stays closed.
+const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured());
+const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
 ---
 <!doctype html>
 <html lang="en">
@@ -19,16 +31,11 @@ const checkoutAdmission = await acquireGuestCheckoutAdmission({
     <title>Cart | {STORE_TITLE}</title>
   </head>
   <body data-storefront-profile={profile}>
-    <div class="store-demo-banner" data-store-demo-banner role="status">{checkoutAdmission ? "Test checkout is available. No live purchases." : "Demo / Test Store — Purchases and checkout are unavailable."}</div>
-    <header class="store-header">
-      <a class="store-header__mark" href="/">DinkusKit / Store</a>
-      <nav class="store-header__nav" aria-label="Store">
-        <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
-        <GuestCartNav />
-      </nav>
-    </header>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(Boolean(effectiveAdmission))} role="status">{storeBannerText(Boolean(effectiveAdmission))}</div>
+    <StoreHeader profile={profile} />
     <main>
-      <GuestCart checkoutAdmission={checkoutAdmission} />
+      {sandboxCheckout && <SandboxCheckoutNotice />}
+      <GuestCart checkoutAdmission={playgroundAdmission ?? (isPlayground ? undefined : checkoutAdmission ?? undefined)} />
     </main>
   </body>
 </html>

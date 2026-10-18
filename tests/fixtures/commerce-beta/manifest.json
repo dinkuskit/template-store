@@ -1,0 +1,265 @@
+{
+  "id": "dinkus-commerce-beta",
+  "version": "0.3.0-beta.0",
+  "declaredAccess": {
+    "media": {
+      "read": {}
+    },
+    "network": {
+      "request": {
+        "allowedHosts": [
+          "payments.dinkuskit.com",
+          "coupons.dinkuskit.com",
+          "ship.dinkuskit.com",
+          "ship.sm0ky.dev",
+          "dinkuskit.com"
+        ]
+      }
+    }
+  },
+  "capabilities": [
+    "media:read",
+    "network:request"
+  ],
+  "allowedHosts": [
+    "payments.dinkuskit.com",
+    "coupons.dinkuskit.com",
+    "ship.dinkuskit.com",
+    "ship.sm0ky.dev",
+    "dinkuskit.com"
+  ],
+  "storage": {
+    "catalog_items": {
+      "indexes": [],
+      "uniqueIndexes": [
+        "commandId",
+        "skuKey"
+      ]
+    },
+    "catalog_backorder_policies": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "catalog_manual_availability": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "catalog_prices": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "product_feed_eligibility": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "catalog_media": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "managed_sku_claims": {
+      "indexes": [
+        "catalogItemId"
+      ],
+      "uniqueIndexes": [
+        "claimKey",
+        "operationId"
+      ]
+    },
+    "store_inventory_configurations": {
+      "indexes": [],
+      "uniqueIndexes": [
+        "configurationKey"
+      ]
+    },
+    "storefront_availability_settings": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "storefront_out_of_stock_listing": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "storefront_placeholder_image": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "checkout_carts": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "checkout_guest_capabilities": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "checkout_payment_associations": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "checkout_readiness": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "orders": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "order_numbers": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "store_shipping_policy": {
+      "indexes": [],
+      "uniqueIndexes": []
+    },
+    "store_return_policy": {
+      "indexes": [],
+      "uniqueIndexes": []
+    }
+  },
+  "hooks": [
+    "plugin:activate",
+    "cron"
+  ],
+  "routes": [
+    {
+      "name": "catalog/public",
+      "methods": [
+        "GET"
+      ],
+      "request": {
+        "body": "none"
+      },
+      "public": true,
+      "cacheControl": "no-store"
+    },
+    {
+      "name": "catalog/public/item",
+      "methods": [
+        "GET"
+      ],
+      "request": {
+        "body": "none"
+      },
+      "public": true,
+      "cacheControl": "no-store"
+    },
+    {
+      "name": "policies/public",
+      "methods": [
+        "GET"
+      ],
+      "request": {
+        "body": "none"
+      },
+      "public": true,
+      "cacheControl": "no-store"
+    },
+    {
+      "name": "admin",
+      "methods": [
+        "POST"
+      ],
+      "public": false,
+      "permission": "content:edit_any"
+    },
+    {
+      "name": "orders",
+      "methods": [
+        "POST"
+      ],
+      "public": false,
+      "permission": "plugins:manage"
+    },
+    {
+      "name": "checkout/guest/prepare",
+      "methods": [
+        "POST"
+      ],
+      "request": {
+        "body": "json",
+        "headers": [
+          "x-commerce-guest-capability",
+          "origin",
+          "sec-fetch-site"
+        ]
+      },
+      "public": true
+    },
+    {
+      "name": "checkout/guest/start",
+      "methods": [
+        "POST"
+      ],
+      "request": {
+        "body": "json",
+        "headers": [
+          "x-commerce-guest-capability",
+          "origin",
+          "sec-fetch-site"
+        ]
+      },
+      "public": true
+    },
+    {
+      "name": "checkout/guest/status",
+      "methods": [
+        "POST"
+      ],
+      "request": {
+        "body": "json",
+        "headers": [
+          "x-commerce-guest-capability",
+          "origin",
+          "sec-fetch-site"
+        ]
+      },
+      "public": true
+    },
+    {
+      "name": "checkout/guest/readiness",
+      "methods": [
+        "GET"
+      ],
+      "request": {
+        "body": "none",
+        "headers": [
+          "origin"
+        ]
+      },
+      "public": true,
+      "cacheControl": "no-store"
+    }
+  ],
+  "admin": {
+    "settingsSchema": {
+      "installedCheckout": {
+        "label": "Checkout settings",
+        "description": "Paste from the Set up Commerce box on DinkusKit.com. Empty or switched off keeps checkout unavailable.",
+        "type": "string"
+      },
+      "storeKey": {
+        "label": "Store key",
+        "description": "Paste from the Set up Commerce box on DinkusKit.com. Commerce trades it there for short passes to Payments and Ship; Replace key on DinkusKit.com stops this one.",
+        "type": "secret"
+      }
+    },
+    "pages": [
+      {
+        "path": "/orders",
+        "label": "Commerce Orders",
+        "icon": "storefront"
+      },
+      {
+        "path": "/products",
+        "label": "Commerce Products",
+        "icon": "storefront"
+      },
+      {
+        "path": "/settings",
+        "label": "Commerce Settings",
+        "icon": "settings"
+      }
+    ],
+    "widgets": []
+  }
+}
