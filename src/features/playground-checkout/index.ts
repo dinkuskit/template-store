@@ -9,6 +9,11 @@
  *                                        https://dinkuskit.com/api/store-passes for a short-lived pass.
  * - PAYMENTS_STRIPE_ACCOUNT_ID    var    Stripe test account id (acct_...) of the Payments playground tenant.
  * - PLAYGROUND_CHECKOUT_LIMITER   ratelimit binding, 3 checkout starts per 10 minutes per visitor IP.
+ * - EMDASH_SITE_URL               var    Canonical store origin the paid return is confirmed against, e.g.
+ *                                        https://playground.dinkuskit.com (bare https origin, no path). Not a
+ *                                        secret. /api/checkout/status refuses every return without it, so
+ *                                        checkout is not admitted until it is set. http://127.0.0.1 or
+ *                                        http://localhost is accepted only under DINKUS_LOCAL_PROOF="1".
  */
 import {
   GUEST_CART_MAX_LINES,
@@ -75,13 +80,38 @@ export function readStripeAccount(env: EnvLike = process.env): string | null {
   return typeof value === "string" && /^acct_[A-Za-z0-9]{1,64}$/u.test(value.trim()) ? value.trim() : null;
 }
 
+export const SITE_URL_ENV = "EMDASH_SITE_URL";
+const LOCAL_PROOF_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
 /**
- * True only when the flag is "1" and every value the playground port needs is
- * present and well formed. Dependency-free so request handlers can gate on it
- * without loading the Commerce payment port.
+ * The canonical return origin /api/checkout/status trusts (EMDASH_SITE_URL),
+ * or null when it is absent or not a bare origin. Production needs https; a
+ * loopback http origin is accepted only for the local proof harness. The
+ * status route keeps its own origin checks against this same value.
+ */
+export function readTrustedReturnOrigin(env: EnvLike = process.env): string | null {
+  const raw = env[SITE_URL_ENV];
+  if (typeof raw !== "string" || raw.trim() === "") return null;
+  try {
+    const url = new URL(raw);
+    if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) return null;
+    if (url.protocol === "https:") return url.origin;
+    if (url.protocol === "http:" && env.DINKUS_LOCAL_PROOF === "1" && LOCAL_PROOF_HOSTS.has(url.hostname)) return url.origin;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True only when the flag is "1", every value the playground port needs is
+ * present and well formed, and the trusted return origin is configured (the
+ * status route cannot confirm a paid return without it). Dependency-free so
+ * request handlers can gate on it without loading the Commerce payment port.
  */
 export function playgroundCheckoutConfigured(env: EnvLike = process.env): boolean {
-  return isCheckoutEnabled(env) && readPaymentsConfig(env) !== null && readStripeAccount(env) !== null;
+  return isCheckoutEnabled(env) && readPaymentsConfig(env) !== null && readStripeAccount(env) !== null &&
+    readTrustedReturnOrigin(env) !== null;
 }
 
 // --- Store pass exchange (dinkuskit/dinkuskit src/account/store-passes.ts) -----

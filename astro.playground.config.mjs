@@ -8,8 +8,9 @@ import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 
 // The playground always serves the synthetic native catalog; the playground
 // middleware seeds it into each per-visitor DB. Sandbox checkout stays closed
-// unless DINKUS_CHECKOUT_ENABLED="1" and the Payments env is present; then the
-// native Commerce plugin gets the playground's host-side Payments port.
+// unless DINKUS_CHECKOUT_ENABLED="1" and the Payments env and the trusted
+// return origin (EMDASH_SITE_URL) are present; then the native Commerce plugin
+// gets the playground's host-side Payments port.
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),

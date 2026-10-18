@@ -6,6 +6,7 @@ vi.mock("../../src/features/playground/demo-commerce-seed.js", () => ({ ensurePl
 const { onRequest } = await import("../../src/middleware.js");
 const { COMMERCE_REGISTRY_RUNTIME_ID } = await import("../../src/features/guest-cart/checkout-protocol.js");
 const { playgroundCheckoutAdmission } = await import("../../src/features/playground-checkout/index.js");
+const { storeBannerText } = await import("../../src/features/store-shell/checkout-copy.js");
 const { playgroundCheckoutConfigured } = await import("../../src/features/playground-checkout/payments-port.js");
 
 const registryStart = `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/start`;
@@ -16,8 +17,9 @@ const READY = {
   PAYMENTS_URL: "https://payments.local.test",
   PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
   PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
+  EMDASH_SITE_URL: "https://playground.example",
 };
-const KEYS = [...Object.keys(READY), "DINKUS_STOREFRONT_PROFILE", "DINKUS_CATALOG_PROFILE", "DINKUS_HOSTING_PROFILE"];
+const KEYS = [...Object.keys(READY), "DINKUS_STOREFRONT_PROFILE", "DINKUS_CATALOG_PROFILE", "DINKUS_HOSTING_PROFILE", "DINKUS_LOCAL_PROOF"];
 let saved: Record<string, string | undefined>;
 beforeEach(() => { saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]])); for (const k of KEYS) delete process.env[k]; });
 afterEach(() => { for (const k of KEYS) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } });
@@ -61,7 +63,7 @@ describe("playground sandbox checkout gates", () => {
   });
 
   it("stay closed on the playground when required env is missing", async () => {
-    for (const missing of ["PAYMENTS_URL", "PAYMENTS_STORE_KEY", "PAYMENTS_STRIPE_ACCOUNT_ID"]) {
+    for (const missing of ["PAYMENTS_URL", "PAYMENTS_STORE_KEY", "PAYMENTS_STRIPE_ACCOUNT_ID", "EMDASH_SITE_URL"]) {
       Object.assign(process.env, READY);
       delete process.env[missing];
       const { response, next } = await call(registryStart);
@@ -100,6 +102,37 @@ describe("playground sandbox checkout gates", () => {
     expect(playgroundCheckoutAdmission(true, false)).toBeNull();
     expect(playgroundCheckoutConfigured({ ...READY, DINKUS_CHECKOUT_ENABLED: "true" })).toBe(false);
     expect(playgroundCheckoutConfigured({ ...READY, PAYMENTS_STRIPE_ACCOUNT_ID: "sk_test_x" })).toBe(false);
+  });
+
+  it("does not admit checkout without a valid trusted return origin, even with the flag and Payments env", async () => {
+    const payments: Record<string, string> = { ...READY };
+    delete payments.EMDASH_SITE_URL;
+    const invalid = [undefined, "", "   ", "not a url", "playground.example", "ftp://playground.example",
+      "http://playground.example", "http://127.0.0.1:4397", "https://user:pw@playground.example",
+      "https://playground.example/shop", "https://playground.example/?x=1", "https://playground.example/#top"];
+    for (const site of invalid) {
+      const env = site === undefined ? payments : { ...payments, EMDASH_SITE_URL: site };
+      expect(playgroundCheckoutConfigured(env), String(site)).toBe(false);
+      // The cart derives its admission and banner from the same gate: checkout shows unavailable.
+      const admission = playgroundCheckoutAdmission(true, playgroundCheckoutConfigured(env));
+      expect(admission).toBeNull();
+      expect(storeBannerText(Boolean(admission))).toContain("checkout are unavailable");
+    }
+    // Loopback http is accepted only for the local proof harness.
+    expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "http://127.0.0.1:4397", DINKUS_LOCAL_PROOF: "1" })).toBe(true);
+    expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "http://localhost:4397", DINKUS_LOCAL_PROOF: "1" })).toBe(true);
+    expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "http://playground.example", DINKUS_LOCAL_PROOF: "1" })).toBe(false);
+    expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "https://playground.example" })).toBe(true);
+
+    // The live gates stay closed too: no Commerce dispatch for the cart's checkout calls.
+    Object.assign(process.env, payments);
+    const registry = await call(registryStart);
+    expect(registry.response.status).toBe(503);
+    expect(registry.next).not.toHaveBeenCalled();
+    expect((await call(nativeStart)).response.status).toBe(405);
+    // Nothing reaches the playground's native Commerce checkout route.
+    const routed = await call(registryStart, { commerce: true });
+    expect(routed.dispatch.mock.calls.map((args) => args[0])).not.toContain("dinkus-commerce");
   });
 });
 
