@@ -6,7 +6,26 @@
  * Product URL and built-in SEO checks are required for the shipping starter.
  * Feed checks remain owned by the follow-up product data issue.
  */
+import { readFileSync } from "node:fs";
+import { registerHooks } from "node:module";
 import process from "node:process";
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.endsWith(".js") && context.parentURL?.startsWith("file:")) {
+      try {
+        return nextResolve(specifier, context);
+      } catch {
+        return nextResolve(specifier.replace(/\.js$/u, ".ts"), context);
+      }
+    }
+    return nextResolve(specifier, context);
+  },
+});
+
+const { DEMO_PRODUCTS } = await import("../scripts/demo-seed-policy.ts");
+const { demoPlaceholderImage, demoProductKind } = await import("../src/features/playground/demo-products.ts");
+const { buildMerchCollections } = await import("../src/features/store-shell/merch-catalog.ts");
 
 const REQUIRED_LANDED_CHECKS = true;
 const originArg = process.argv[2];
@@ -29,6 +48,25 @@ const visited = new Set();
 const discovered = new Set(["/"]);
 const sitemapPaths = new Set();
 const pages = new Map();
+const fetchedResponses = new Map();
+
+function deriveProductImagePaths() {
+  const paths = new Set();
+  const seed = JSON.parse(readFileSync(new URL("../seed/seed.json", import.meta.url), "utf8"));
+  const collections = buildMerchCollections(seed.content?.products ?? [], seed.content?.categories ?? []);
+  for (const collection of collections) {
+    for (const item of collection.items) {
+      paths.add(`/merch/${item.illustration}.svg`);
+    }
+  }
+  for (const product of DEMO_PRODUCTS) {
+    const src = demoPlaceholderImage(product.sku, `demo-${demoProductKind(product)}`);
+    if (src) paths.add(src);
+  }
+  return paths;
+}
+
+const productImagePaths = deriveProductImagePaths();
 
 function result(name, status, detail) {
   results.push({ name, status, detail });
@@ -69,7 +107,10 @@ async function request(url, method = "GET") {
       method,
       redirect: "manual",
       signal: controller.signal,
-      headers: { "user-agent": "dinkuskit-verify-site/1.0" },
+      headers: {
+        "user-agent": "dinkuskit-verify-site/1.0",
+        ...(LOOPBACK_HOSTS.has(origin.hostname) ? { "cf-connecting-ip": "127.0.0.1" } : {}),
+      },
     });
   } finally {
     clearTimeout(timer);
@@ -110,6 +151,19 @@ function parseLinks(html, pageUrl) {
     link.hash = "";
     checkPathShape(link, `link on ${pageUrl.pathname}`);
     discovered.add(link.pathname + link.search);
+  }
+  for (const match of html.matchAll(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi)) {
+    const raw = match[1];
+    if (/^(?:data:)/i.test(raw)) continue;
+    try {
+      const imgUrl = new URL(raw, pageUrl);
+      if (imgUrl.origin === base) {
+        imgUrl.hash = "";
+        productImagePaths.add(imgUrl.pathname + imgUrl.search);
+      }
+    } catch {
+      // Malformed URLs are already reported by the general href/src loop above.
+    }
   }
 }
 
@@ -187,6 +241,8 @@ async function inspect(path, from = "crawl") {
     result("HTTP availability", "FAIL", `${url.pathname}: ${error.message}`);
     return null;
   }
+  const type = response.headers.get("content-type") ?? "";
+  fetchedResponses.set(url.pathname + url.search, { status: response.status, contentType: type });
   if (response.status >= 300 && response.status < 400) {
     const listed = sitemapPaths.has(url.pathname + url.search);
     if (listed) {
@@ -211,12 +267,11 @@ async function inspect(path, from = "crawl") {
         "FAIL",
         `${url.pathname} is listed in the sitemap but returned ${response.status}`,
       );
-    } else {
+    } else if (!productImagePaths.has(url.pathname + url.search)) {
       result("HTTP availability", "FAIL", `${url.pathname} returned ${response.status}`);
     }
     return response;
   }
-  const type = response.headers.get("content-type") ?? "";
   const body = await response.text();
   if (type.includes("html")) {
     parseLinks(body, url);
@@ -240,6 +295,54 @@ async function drainDiscovered() {
     for (const path of pending) await inspect(path);
   }
   result("Crawl coverage", "FAIL", `Stopped after ${maxPages} URLs; nested public links remain unvisited`);
+}
+
+async function verifyProductImages() {
+  let imageFailures = 0;
+  for (const imagePath of productImagePaths) {
+    const url = absoluteUrl(imagePath);
+    checkPathShape(url, "product image");
+    let info = fetchedResponses.get(url.pathname + url.search);
+    if (!info) {
+      visited.add(url.href);
+      try {
+        const response = await request(url);
+        info = {
+          status: response.status,
+          contentType: response.headers.get("content-type") ?? "",
+        };
+        fetchedResponses.set(url.pathname + url.search, info);
+      } catch (error) {
+        imageFailures += 1;
+        result("Product images", "FAIL", `${imagePath}: ${error.message}`);
+        continue;
+      }
+    }
+    if (info.status !== 200) {
+      imageFailures += 1;
+      result(
+        "Product images",
+        "FAIL",
+        `${imagePath} returned ${info.status} (Content-Type: ${info.contentType || "none"})`,
+      );
+      continue;
+    }
+    if (!/^image\//i.test(info.contentType)) {
+      imageFailures += 1;
+      result(
+        "Product images",
+        "FAIL",
+        `${imagePath} returned non-image Content-Type: ${info.contentType || "none"}`,
+      );
+    }
+  }
+  if (imageFailures === 0) {
+    result(
+      "Product images",
+      "PASS",
+      `${productImagePaths.size} seeded/demo product image(s) served with image/* Content-Type`,
+    );
+  }
 }
 
 console.log(`verify-site: ${base}${demoHost ? " (demo-host policy)" : ""}`);
@@ -341,6 +444,7 @@ for (const legacyPath of ["/shop/dinkus-template-managed-product", "/collections
 }
 
 await drainDiscovered();
+await verifyProductImages();
 
 for (const path of sitemapPaths) {
   if (!pages.has(path)) {

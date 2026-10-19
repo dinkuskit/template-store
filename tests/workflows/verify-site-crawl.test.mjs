@@ -16,6 +16,15 @@ function html(links) {
     .join("")}</body></html>`;
 }
 
+function serveSvgIfProductImage(pathname, res) {
+  if (/^\/(?:merch|images\/products)\/[a-z]+\.svg$/.test(pathname)) {
+    res.writeHead(200, { "content-type": "image/svg+xml" });
+    res.end("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"/>");
+    return true;
+  }
+  return false;
+}
+
 function listen(handler) {
   return new Promise((resolveListen, reject) => {
     const server = createServer(handler);
@@ -57,6 +66,7 @@ test("drains a nested internal link discovered on a child page and can fail on i
   const { server, origin } = await listen((req, res) => {
     const url = new URL(req.url ?? "/", origin);
     fetched.push(url.pathname);
+    if (serveSvgIfProductImage(url.pathname, res)) return;
     if (url.pathname === "/") {
       res.writeHead(200, { "content-type": "text/html" });
       res.end(html(["/child"]));
@@ -105,6 +115,7 @@ test("rewrites loopback sitemap child locs onto the verifier origin", async () =
     const url = new URL(req.url ?? "/", origin);
     fetched.push(url.pathname);
     const port = new URL(origin).port;
+    if (serveSvgIfProductImage(url.pathname, res)) return;
     if (url.pathname === "/") {
       res.writeHead(200, { "content-type": "text/html" });
       res.end(html([]));
@@ -140,7 +151,10 @@ test("rewrites loopback sitemap child locs onto the verifier origin", async () =
     const result = await runVerifier(origin);
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.match(result.stdout, /Sitemap availability/);
+    assert.match(result.stdout, /PASS Product images/);
     assert.equal(fetched.includes("/sitemap-pages.xml"), true);
+    assert.equal(fetched.includes("/merch/tee.svg"), true);
+    assert.equal(fetched.includes("/images/products/tote.svg"), true);
   } finally {
     await new Promise((resolveClose) => server.close(resolveClose));
   }
@@ -149,6 +163,7 @@ test("rewrites loopback sitemap child locs onto the verifier origin", async () =
 test("skips an empty sitemap index on this starter", async () => {
   const { server, origin } = await listen((req, res) => {
     const url = new URL(req.url ?? "/", origin);
+    if (serveSvgIfProductImage(url.pathname, res)) return;
     if (url.pathname === "/") {
       res.writeHead(200, { "content-type": "text/html" });
       res.end(html([]));
@@ -188,6 +203,7 @@ test("fails when a sitemap-listed URL redirects instead of serving a page", asyn
   const { server, origin } = await listen((req, res) => {
     const url = new URL(req.url ?? "/", origin);
     fetched.push(url.pathname);
+    if (serveSvgIfProductImage(url.pathname, res)) return;
     if (url.pathname === "/") {
       res.writeHead(200, { "content-type": "text/html" });
       res.end(html([]));
@@ -227,6 +243,54 @@ test("fails when a sitemap-listed URL redirects instead of serving a page", asyn
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     assert.match(`${result.stdout}\n${result.stderr}`, /listed in the sitemap but returned 302/);
     assert.equal(fetched.includes("/old"), true);
+  } finally {
+    await new Promise((resolveClose) => server.close(resolveClose));
+  }
+});
+
+test("fails when a seeded or demo product image returns 404 or a non-image content type", async () => {
+  const { server, origin } = await listen((req, res) => {
+    const url = new URL(req.url ?? "/", origin);
+    if (url.pathname === "/images/products/tote.svg") {
+      res.writeHead(404, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "Route not found." }));
+      return;
+    }
+    if (url.pathname === "/images/products/mug.svg") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<!doctype html><title>not an image</title>");
+      return;
+    }
+    if (serveSvgIfProductImage(url.pathname, res)) return;
+    if (url.pathname === "/") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(html([]));
+      return;
+    }
+    if (url.pathname === "/home") {
+      res.writeHead(302, { location: "/", "cache-control": "no-store" });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/robots.txt") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    if (url.pathname === "/sitemap.xml") {
+      res.writeHead(200, { "content-type": "application/xml" });
+      res.end(
+        `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></sitemapindex>`,
+      );
+      return;
+    }
+    res.writeHead(404).end();
+  });
+  try {
+    const result = await runVerifier(origin);
+    assert.notEqual(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /FAIL Product images — \/images\/products\/tote\.svg returned 404/);
+    assert.match(result.stdout, /FAIL Product images — \/images\/products\/mug\.svg returned non-image Content-Type: text\/html/);
   } finally {
     await new Promise((resolveClose) => server.close(resolveClose));
   }

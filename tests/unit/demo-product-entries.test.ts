@@ -31,7 +31,7 @@ describe("demo EmDash product entries", () => {
   it("gives every demo product a local placeholder image and no other SKU one", () => {
     for (const product of DEMO_PRODUCTS) {
       const src = demoPlaceholderImage(product.sku, `demo-${demoProductKind(product)}`);
-      expect(src).toMatch(/^\/products\/[a-z]+\.svg$/);
+      expect(src).toMatch(/^\/images\/products\/[a-z]+\.svg$/);
       expect(existsSync(`public${src}`)).toBe(true);
     }
     expect(demoPlaceholderImage("MERCHANT-HAT", "demo-shirt")).toBeNull();

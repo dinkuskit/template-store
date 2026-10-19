@@ -30,6 +30,10 @@ This document defines the seeding and reset procedure for the hosted DinkusKit T
 
 The Everyday Hoodie is one product with a Size option (Small, Medium); each size is its own `DEMO-HOSTED-*` SKU and is reset to the same baseline.
 
+### Demo Product Placeholder Assets
+
+Local SVG placeholders for the nine demo products live under `public/images/products/{tote,tray,mug,hoodie,shirt,socks,bottle,cap,throw}.svg` and are served at `/images/products/<kind>.svg`. Keeping these static assets under `/images/products/` rather than `/products/` avoids colliding with the `/products/[id]` route and the Cloudflare Worker's slug-only `/products/[a-zA-Z0-9_-]+` boundary check (which previously returned a JSON 404 before static asset lookup), while keeping Commerce demo placeholders distinct from the seeded editorial garment illustrations under `/merch/*.svg`.
+
 ---
 
 ## Seeding Procedure
