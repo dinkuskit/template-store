@@ -77,10 +77,7 @@ export function admitCandidate(candidate, pullRequest) {
 	if (!SHA.test(baseSha) || !SHA.test(headSha) || !pullAuthor) return null;
 
 	const maintainer = MAINTAINER_ASSOCIATIONS.has(candidate.association);
-	const authorRerun =
-		candidate.command !== "review" &&
-		candidate.actorLogin.toLowerCase() === pullAuthor.toLowerCase();
-	if (!maintainer && !authorRerun) return null;
+	if (!maintainer) return null;
 
 	return {
 		requested: true,
