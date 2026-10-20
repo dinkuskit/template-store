@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Store starter and integration proof for EmDash, Commerce, and Inventory",
   "engines": {
-    "node": ">=22.16.0 <23"
+    "node": ">=24"
   },
   "packageManager": "pnpm@11.9.0",
   "emdash": {

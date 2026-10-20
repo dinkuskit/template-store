@@ -10,8 +10,8 @@ import {
 // EmDash's local SQLite adapter needs node:sqlite StatementSync.columns() (Node >=22.16).
 // Older Node fails every migration with "statement.columns is not a function".
 const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
-if (nodeMajor !== 22 || nodeMinor < 16) {
-  console.error(`start-e2e-server: Node ${process.versions.node} is unsupported; use Node 22.16+ (.nvmrc pins 22.23.2).`);
+if (nodeMajor < 24) {
+  console.error(`start-e2e-server: Node ${process.versions.node} is unsupported; use Node 24+ (.nvmrc pins 24.21.0).`);
   process.exit(1);
 }
 
