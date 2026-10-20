@@ -11,7 +11,7 @@ const artifactDir = resolve(root, relativeDir);
 const databasePath = resolve(artifactDir, dbFile);
 
 if (!existsSync(entry)) {
-  throw new Error("Production built fallback requires dist/server/entry.mjs; run the pinned Node 22 astro build first.");
+  throw new Error("Production built fallback requires dist/server/entry.mjs; run the pinned Node 24 astro build first.");
 }
 if (!existsSync(databasePath)) {
   throw new Error("Production built fallback requires a SQLite backup copy in the isolated artifact directory.");

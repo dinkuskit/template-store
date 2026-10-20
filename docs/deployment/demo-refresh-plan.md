@@ -12,7 +12,7 @@ reconciled against a fresh read-only inspection.
 
 ## 1. Qualify the installed artifact
 
-1. Build the exact source revision with Node `22.23.2` and frozen lockfile
+1. Build the exact source revision with Node `24.22.0` and frozen lockfile
    dependencies.
 2. Require the Commerce owner's immutable artifact identity and digest matching
    the TemplateStore dependency contract. A source alias, native local mount,
@@ -77,7 +77,7 @@ authority, and the demo redeploy still needs the owner's separate approval.
 Safe local checks for that head:
 
 ```sh
-node -v # must print v22.23.2
+node -v # must print v24.22.0
 pnpm install --frozen-lockfile
 pnpm verify
 ./scripts/grilltrack --project . validate
