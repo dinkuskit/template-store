@@ -1,8 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { buildProductJsonLd } from "@dinkuskit/commerce/features/structured-data";
+import {
+  buildProductJsonLd,
+  buildProductPreviewJsonLd,
+} from "@dinkuskit/commerce/features/structured-data";
 import { jsonLdScript } from "../../src/features/store-shell/structured-data.js";
 
 describe("#35 Commerce structured data contract", () => {
+  it("emits only page facts for an editorial preview", () => {
+    expect(buildProductPreviewJsonLd({
+      url: "https://shop.example.test/products/preview",
+      name: "Editorial Preview",
+      description: "A preview product",
+      images: ["https://shop.example.test/merch/tee.svg"],
+    })).toEqual({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: "Editorial Preview",
+      url: "https://shop.example.test/products/preview",
+      description: "A preview product",
+      image: "https://shop.example.test/merch/tee.svg",
+    });
+  });
+
   it("keeps visible Commerce facts and the canonical URL in one Product block", () => {
     const jsonLd = buildProductJsonLd({
       product: {

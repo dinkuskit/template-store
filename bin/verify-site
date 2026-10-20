@@ -500,19 +500,19 @@ for (const path of productPaths) {
   const sku = page.body.match(/\bdata-product-sku=["']([^"']+)["']/u)?.[1];
   const commerceLinked = Boolean(sku);
   if (commerceLinked) commerceLinkedPages += 1;
-  if (commerceLinked && products.length !== 1) {
+  if (products.length !== 1) {
     jsonLdFailures += 1;
-    result("Product JSON-LD (#35)", "FAIL", `${path} shows SKU ${sku} but has ${products.length} Product JSON-LD block(s)`);
+    result("Product JSON-LD (#35)", "FAIL", `${path} ${commerceLinked ? `shows SKU ${sku}` : "is an editorial preview"} but has ${products.length} Product JSON-LD block(s)`);
     continue;
   }
-  if (!commerceLinked && products.length !== 0) {
-    jsonLdFailures += 1;
-    result("Product JSON-LD (#35)", "FAIL", `${path} has no visible Commerce SKU but emits Product JSON-LD`);
-    continue;
-  }
-  if (!commerceLinked) continue;
   const product = products[0];
-  if (product.sku !== sku) {
+  const canonical = page.canonical[0];
+  if (!commerceLinked && product.offers !== undefined) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} editorial preview emits an Offer`);
+    continue;
+  }
+  if (commerceLinked && product.sku !== sku) {
     jsonLdFailures += 1;
     result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD sku ${product.sku} does not match visible SKU ${sku}`);
   }
@@ -520,12 +520,11 @@ for (const path of productPaths) {
     jsonLdFailures += 1;
     result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD includes a stock quantity`);
   }
-  const canonical = page.canonical[0];
   if (canonical && product.url !== canonical) {
     jsonLdFailures += 1;
     result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD url ${product.url} does not match canonical ${canonical}`);
   }
-  if (product.offers && canonical && product.offers.url !== canonical) {
+  if (commerceLinked && product.offers && canonical && product.offers.url !== canonical) {
     jsonLdFailures += 1;
     result("Product JSON-LD (#35)", "FAIL", `${path} Offer url does not match canonical ${canonical}`);
   }

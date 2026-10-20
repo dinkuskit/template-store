@@ -16,6 +16,16 @@ const policies = await readInstalledCommercePolicies(
 ).catch(() => null);
 const returns = policies?.returns ?? null;
 const canonical = canonicalUrl("/returns", Astro.site, Astro.url);
+const returnMethodLabels = {
+  ReturnByMail: "Return by mail",
+  ReturnInStore: "Return in store",
+  ReturnAtKiosk: "Return at a kiosk",
+} as const;
+const returnFeeLabels = {
+  FreeReturn: "Free returns",
+  ReturnFeesCustomerResponsibility: "Return fees are the customer's responsibility",
+  ReturnShippingFees: "Return shipping fees apply",
+} as const;
 ---
 <!doctype html>
 <html lang="en">
@@ -28,11 +38,10 @@ const canonical = canonicalUrl("/returns", Astro.site, Astro.url);
       <p>{(entry?.data as { intro?: string } | undefined)?.intro ?? "Return details are configured by the connected Commerce store."}</p>
       {returns ? (
         <dl data-return-policy data-policy-revision={returns.revision} data-return-days={returns.merchantReturnDays} data-return-category={returns.returnPolicyCategory} data-return-method={returns.returnMethod} data-return-fees={returns.returnFees} data-return-countries={returns.applicableCountry?.join(",")}>
-          <dt>Revision</dt><dd>{returns.revision}</dd>
           {returns.returnPolicyCategory && <><dt>Return policy</dt><dd>{returns.returnPolicyCategory.replace("MerchantReturn", "").replaceAll("FiniteReturnWindow", "finite return window")}</dd></>}
           {returns.merchantReturnDays !== undefined && <><dt>Return window</dt><dd>{returns.merchantReturnDays} days</dd></>}
-          {returns.returnMethod && <><dt>Return method</dt><dd>{returns.returnMethod.replace("Return", "return ")}</dd></>}
-          {returns.returnFees && <><dt>Return fees</dt><dd>{returns.returnFees}</dd></>}
+          {returns.returnMethod && <><dt>Return method</dt><dd>{returnMethodLabels[returns.returnMethod]}</dd></>}
+          {returns.returnFees && <><dt>Return fees</dt><dd>{returnFeeLabels[returns.returnFees]}</dd></>}
           {returns.applicableCountry && <><dt>Applicable countries</dt><dd>{returns.applicableCountry.join(", ")}</dd></>}
         </dl>
       ) : <p role="status" data-return-policy-unset>Return policy is not configured.</p>}

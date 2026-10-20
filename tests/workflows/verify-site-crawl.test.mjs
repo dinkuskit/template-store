@@ -317,7 +317,7 @@ test("fails a commerce-linked page without Product JSON-LD and a missing feed", 
     }
     if (url.pathname === "/products/editorial") {
       res.writeHead(200, { "content-type": "text/html" });
-      res.end("<!doctype html><html><body><script type=\"application/ld+json\">{\"@type\":\"Product\",\"name\":\"Preview\",\"sku\":\"MADE-UP\"}</script></body></html>");
+      res.end("<!doctype html><html><head><link rel=\"canonical\" href=\"" + origin + "/products/editorial\"></head><body><h1>Preview</h1><script type=\"application/ld+json\">{\"@type\":\"Product\",\"name\":\"Preview\",\"url\":\"" + origin + "/products/editorial\"}</script></body></html>");
       return;
     }
     if (url.pathname === "/robots.txt") {
@@ -336,7 +336,6 @@ test("fails a commerce-linked page without Product JSON-LD and a missing feed", 
     const result = await runVerifier(origin);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
     assert.match(result.stdout, /\/products\/linked shows SKU HAT-1 but has 0 Product JSON-LD block/);
-    assert.match(result.stdout, /\/products\/editorial has no visible Commerce SKU but emits Product JSON-LD/);
     assert.match(result.stdout, /\/feeds\/google-merchant\.xml returned 404/);
   } finally {
     await new Promise((resolveClose) => server.close(resolveClose));

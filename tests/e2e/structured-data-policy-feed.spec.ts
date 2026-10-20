@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { expect, test, type APIResponse, type Page } from "@playwright/test";
 import {
   buildProductJsonLd,
+  buildProductPreviewJsonLd,
   type StructuredPoliciesInput,
   type StructuredReturnPolicy,
   type StructuredShippingPolicy,
@@ -190,7 +191,15 @@ test("published Commerce products, policies, and feeds share one public revision
     for (const editorial of ["/products/everyday-tee", "/products/canvas-cap", "/products/boxy-tee-preview"]) {
       const response = await page.goto(editorial);
       expect(response?.ok(), editorial).toBe(true);
-      await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+      const preview = await productScript(page);
+      expect(preview).toEqual(buildProductPreviewJsonLd({
+        url: await page.locator('link[rel="canonical"]').getAttribute("href") ?? "",
+        name: await page.locator("h1").innerText(),
+        description: await page.locator(".product-detail__description").innerText(),
+        images: [new URL(await page.locator(".product-detail__visual img").getAttribute("src") ?? "", page.url()).href],
+      }));
+      expect(preview).not.toHaveProperty("sku");
+      expect(preview).not.toHaveProperty("offers");
       await expect(page.locator("[data-product-sku]")).toHaveCount(0);
     }
 
@@ -310,6 +319,7 @@ test("published Commerce products, policies, and feeds share one public revision
       await expect(page.locator("[data-shipping-policy]")).toContainText(
         `$${Number(revision.shipping.amount.minor) / 100}`,
       );
+      await expect(page.locator("[data-shipping-policy]")).not.toContainText("Revision");
       await expect(page.locator("[data-shipping-countries]")).toHaveAttribute(
         "data-shipping-countries",
         revision.shipping.shippingDestinationCountries.join(","),
@@ -323,6 +333,13 @@ test("published Commerce products, policies, and feeds share one public revision
       expect(returnRevision).toBeGreaterThan(previousReturn);
       previousReturn = returnRevision;
       await expect(page.locator("[data-return-policy]")).toContainText(`${revision.returns.merchantReturnDays} days`);
+      await expect(page.locator("[data-return-policy]")).toContainText("Return by mail");
+      await expect(page.locator("[data-return-policy]")).toContainText(
+        revision.returns.returnFees === "FreeReturn" ? "Free returns" : "Return shipping fees apply",
+      );
+      await expect(page.locator("[data-return-policy]")).not.toContainText("ReturnByMail");
+      await expect(page.locator("[data-return-policy]")).not.toContainText("ReturnShippingFees");
+      await expect(page.locator("[data-return-policy]")).not.toContainText("Revision");
       const policies = await policyInput(page);
       await page.goto("/products/demo-shirt");
       const shirtCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");

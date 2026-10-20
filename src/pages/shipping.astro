@@ -28,7 +28,6 @@ const canonical = canonicalUrl("/shipping", Astro.site, Astro.url);
       <p>{(entry?.data as { intro?: string } | undefined)?.intro ?? "Shipping details are configured by the connected Commerce store."}</p>
       {shipping ? (
         <dl data-shipping-policy data-policy-revision={shipping.revision} data-shipping-configuration-id={shipping.configurationId} data-shipping-mode={shipping.mode} data-shipping-minor={shipping.amount?.minor} data-shipping-countries={shipping.shippingDestinationCountries?.join(",")} data-handling-min={shipping.handlingTimeDays?.min} data-handling-max={shipping.handlingTimeDays?.max} data-transit-min={shipping.transitTimeDays?.min} data-transit-max={shipping.transitTimeDays?.max}>
-          <dt>Revision</dt><dd>{shipping.revision}</dd>
           <dt>Shipping charge</dt><dd>{shipping.mode === "free" ? "Free shipping" : shipping.amount ? formatUsdMinor(shipping.amount.minor) : "Configured shipping charge"}</dd>
           {shipping.shippingDestinationCountries && <><dt>Ships to</dt><dd>{shipping.shippingDestinationCountries.join(", ")}</dd></>}
           {shipping.handlingTimeDays && <><dt>Handling time</dt><dd>{shipping.handlingTimeDays.min}–{shipping.handlingTimeDays.max} days</dd></>}

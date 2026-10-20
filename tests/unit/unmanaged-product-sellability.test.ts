@@ -70,7 +70,7 @@ describe("unmanaged product sellability", () => {
       sellable: true,
     });
     expect(restored.provenance).toEqual({
-      commerce: "cbc636eab20ee7759107f3a10ddff776cebe7dd8",
+      commerce: "c61d63647b3eb7f990d935f170dd93eb6d1c56dd",
       inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
     });
   });

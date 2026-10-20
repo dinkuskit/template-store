@@ -53,15 +53,15 @@ internal links discovered on child pages until the queue is empty. A deployment
 is complete only after the production run passes. Product JSON-LD and the
 public feed checks run from fetched bytes. A commerce-linked product page
 (one that shows a Commerce SKU) must contain exactly one Product block whose
-sku and canonical URL match the page. Editorial pages without a Commerce SKU
-must not emit a Product block. When those linked pages are present, the
-slashless feed URLs must answer 200. When only editorial product pages are
-present, the feeds must fail closed with 503. An origin with no product URL
-does not fail only because the product pages or feeds are absent. A trailing
-slash on a feed URL must not be a second document. An editorial page is not
-given a fabricated SKU or Product block. Native-development feeds join
-`loadProductFeedEligibility` because this Commerce pin's public catalog does
-not project `feedChannels`; a registry profile does not open that storage.
+sku and canonical URL match the page. A valid editorial page must also contain
+exactly one page-facts-only Product block with no Offer; 404, removed, and 503
+routes emit none. When those linked pages are present, the slashless feed URLs
+must answer 200. When only editorial product pages are present, the feeds must
+fail closed with 503. An origin with no product URL does not fail only because
+the product pages or feeds are absent. A trailing slash on a feed URL must not
+be a second document. Native-development feeds may join
+`loadProductFeedEligibility`; shipping and registry profiles consume only the
+installed public `feedChannels` projection and do not open storage.
 
 ## Authorized guest cart
 
@@ -168,4 +168,13 @@ For a separate Cloudflare Registry target, `DINKUS_WRANGLER_CONFIG` selects both
 
 Git builds use `pnpm run build:registry` with preprovisioned resource identities from private build variables. [Registry Git build settings](docs/implementation/registry-git-build.md) define the build/deploy commands and inputs. `tests/workflows/registry-build.test.mjs` checks missing-input refusal, pinned resource IDs, shipping selection, and closed bootstrap defaults.
 
-The current local candidate source pin is Commerce `cbc636eab20ee7759107f3a10ddff776cebe7dd8` (current main), with EmDash `1.2.0`. Existing Commerce49/Payments12 package verifiers are historical exact-artifact fixtures and intentionally refuse this new pairing. They are not proof of this candidate. The optional cart coupon passes only intent to canonical checkout; it stays subject to Commerce support. Checkout admission now consumes the exact owner-supplied TEST readiness response through the original installed public dispatcher; native-development catalogs, absent plugins, and missing/invalid configuration remain closed. Catalog or prepare success does not imply readiness. See [Registry merchant checkout](docs/implementation/registry-merchant-checkout.md).
+The current local source pin is Commerce `0.3.0` at
+`c61d63647b3eb7f990d935f170dd93eb6d1c56dd`, with EmDash `1.2.0`. Existing
+Commerce49/Payments12 package verifiers are historical exact-artifact fixtures
+and intentionally refuse this new pairing. They are not proof of this source
+candidate. The optional cart coupon passes only intent to canonical checkout;
+it stays subject to Commerce support. Checkout admission now consumes the
+exact owner-supplied TEST readiness response through the original installed
+public dispatcher; native-development catalogs, absent plugins, and
+missing/invalid configuration remain closed. Catalog or prepare success does
+not imply Registry readiness. See [Registry merchant checkout](docs/implementation/registry-merchant-checkout.md).

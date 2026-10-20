@@ -107,7 +107,11 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator("[data-product-sku]")).toHaveCount(0);
   await expect(page.locator("[data-product-gtin]")).toHaveCount(0);
   await expect(page.locator("[data-product-price]")).toHaveCount(0);
-  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
+  const previewJsonLd = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "");
+  expect(previewJsonLd["@type"]).toBe("Product");
+  expect(previewJsonLd.name).toBe("Boxy Tee");
+  expect(previewJsonLd.offers).toBeUndefined();
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
   expect((await page.goto("/products/everyday-tee"))?.status()).toBe(503);
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);

@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-20T22:31:51+00:00",
+    "confirmed_at": "2026-10-20T23:40:09+00:00",
     "domain": "template-store-35",
-    "started_at": "2026-10-20T22:31:51+00:00",
+    "started_at": "2026-10-20T23:40:01+00:00",
     "status": "confirmed",
-    "summary": "Owner said: lets do it. get Template Store #35 finished using the coordinator and AI Shed. Scope is issue 35 acceptance, existing design, implementation and proof; merge and deployment retain separate gates."
+    "summary": "Finish the already-confirmed structured data, policy, and feed slice by consuming the reviewed exact Commerce source pin, emitting truthful editorial preview Product facts, preserving linked Commerce facts, and proving desktop/mobile local behavior without Registry installation or channel-account claims."
   },
   "decisions": [
     {
@@ -3429,10 +3429,66 @@
           "review_source_identity": null,
           "to": "verified",
           "verification_ref": null
+        },
+        {
+          "at": "2026-10-20T23:40:01+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "verified",
+          "implementation_ref": "file:src/pages/products/[id].astro;file:src/features/commerce-feeds/index.ts;file:src/features/commerce-policies/index.ts;file:docs/implementation/structured-data-policy-feed-035.md",
+          "note": "Consume reviewed Commerce 0.3.0 source pin; replace editorial zero-Product limitation with page-facts-only previews and consume projected feedChannels.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "reopened",
+          "verification_ref": "file:tests/e2e/structured-data-policy-feed.spec.ts;file:proof/structured-data-policy-feed-035/PROOF.md"
+        },
+        {
+          "at": "2026-10-20T23:40:15+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "reopened",
+          "implementation_ref": "file:src/pages/products/[id].astro;file:src/features/commerce-feeds/index.ts;file:src/features/commerce-policies/index.ts;file:docs/implementation/structured-data-policy-feed-035.md",
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": "file:tests/e2e/structured-data-policy-feed.spec.ts;file:proof/structured-data-policy-feed-035/PROOF.md"
+        },
+        {
+          "at": "2026-10-20T23:40:15+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "locked",
+          "implementation_ref": "file:src/pages/products/[id].astro;file:src/features/commerce-feeds/index.ts;file:src/features/commerce-policies/index.ts;file:docs/implementation/structured-data-policy-feed-035.md",
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": "file:tests/e2e/structured-data-policy-feed.spec.ts;file:proof/structured-data-policy-feed-035/PROOF.md"
+        },
+        {
+          "at": "2026-10-20T23:54:38+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "implemented",
+          "implementation_ref": "file:package.json;file:src/pages/products/[id].astro;file:src/pages/shipping.astro;file:src/pages/returns.astro;file:bin/verify-site;file:docs/implementation/structured-data-policy-feed-035.md;file:FEATURE_MAP.md;file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": "file:tests/e2e/structured-data-policy-feed.spec.ts;file:proof/structured-data-policy-feed-035/PROOF.md"
         }
       ],
       "id": "structured-data-policy-feed-035",
-      "implementation_ref": "file:src/pages/products/[id].astro;file:src/features/commerce-feeds/index.ts;file:src/features/commerce-policies/index.ts;file:docs/implementation/structured-data-policy-feed-035.md",
+      "implementation_ref": "file:package.json;file:src/pages/products/[id].astro;file:src/pages/shipping.astro;file:src/pages/returns.astro;file:bin/verify-site;file:docs/implementation/structured-data-policy-feed-035.md;file:FEATURE_MAP.md;file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md",
       "question": "How will the starter publish truthful product metadata, policies and feeds?",
       "rationale": "Owner explicitly requested finishing issue 35 with coordinator and AI Shed on 2026-10-20; all three prerequisite issues are closed.",
       "repair_required": false,
@@ -3443,12 +3499,12 @@
       "review_source_identity": null,
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-10-20T23:31:24+00:00",
-      "verification_ref": "file:tests/e2e/structured-data-policy-feed.spec.ts;file:proof/structured-data-policy-feed-035/PROOF.md"
+      "updated_at": "2026-10-20T23:54:38+00:00",
+      "verification_ref": "file:runs/issue35-runs/finish-typecheck.log;file:runs/issue35-runs/finish-focused-unit.log;file:runs/issue35-runs/finish-verify-site-crawl.log;file:runs/issue35-runs/finish-playwright-structured.log;file:runs/issue35-runs/finish-playwright-shipping-rerun.log;file:runs/issue35-runs/finish-pnpm-verify-final.log;file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md"
     }
   ],
   "last_activation": {
-    "at": "2026-10-08T19:35:31+00:00",
+    "at": "2026-10-20T23:40:01+00:00",
     "mechanism": "implicit"
   },
   "last_pause": null,
@@ -3467,5 +3523,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-20T23:31:24+00:00"
+  "updated_at": "2026-10-20T23:54:38+00:00"
 }

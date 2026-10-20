@@ -10,7 +10,10 @@ import { readInstalledCommerceProduct } from "../../features/commerce-catalog/in
 import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
 import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
-import { buildProductJsonLd } from "@dinkuskit/commerce/features/structured-data";
+import {
+  buildProductJsonLd,
+  buildProductPreviewJsonLd,
+} from "@dinkuskit/commerce/features/structured-data";
 import { canonicalUrl, jsonLdScript } from "../../features/store-shell/structured-data.js";
 import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
@@ -114,11 +117,14 @@ const structuredPriceMinor = selectedVariant?.unitMinor ?? linkedProduct?.price.
 const productCanonical = item
   ? canonicalUrl(`/products/${item.id}`, Astro.site, Astro.url)
   : "";
-// A resolved public Commerce product already has a real SKU. Editorial pages
-// that do not resolve stay without a Product block; the builder cannot
-// represent them without a fabricated SKU.
-const productJsonLd = linkedProduct && item && productName
-  ? buildProductJsonLd({
+// Linked products use Commerce's authoritative identity and offer facts.
+// Editorial pages use the preview builder, which emits only visible page facts.
+// Unavailable routes never receive structured product data.
+const productJsonLd = item && productName &&
+  (item.availabilitySource === "preview" || !lookupUnavailable) &&
+  !noLongerAvailable
+  ? linkedProduct
+    ? buildProductJsonLd({
     product: {
       id: linkedProduct.id,
       name: productName,
@@ -138,6 +144,12 @@ const productJsonLd = linkedProduct && item && productName
     },
     ...(policies ? { policies } : {}),
   })
+    : buildProductPreviewJsonLd({
+      url: productCanonical,
+      name: productName,
+      ...(item.description ? { description: item.description } : {}),
+      images: [new URL(`/merch/${item.illustration}.svg`, productCanonical).href],
+    })
   : null;
 ---
 <!doctype html>
