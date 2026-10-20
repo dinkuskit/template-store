@@ -81,9 +81,9 @@ do not establish released artifact, registry, checkout, or Cloudflare readiness.
 Publishing packages, deployment, production mutation, secrets or permissions
 changes, and merges require separate authorization.
 
-Use Node 22.23.2 per `.nvmrc` and verify `node -v`. In Cursor cloud agents put
+Use Node 24.22.0 per `.nvmrc` and verify `node -v`. In Cursor cloud agents put
 nvm's Node ahead of `/exec-daemon` on `PATH` with
-`export PATH="$HOME/.nvm/versions/node/v22.23.2/bin:$PATH"`. In Claude Code
+`export PATH="$HOME/.nvm/versions/node/v24.22.0/bin:$PATH"`. In Claude Code
 cloud sessions the environment supplies that Node and pnpm, and
 `.claude/hooks/session-start.sh` installs dependencies from the lockfile, the
 pinned Commerce source, the pinned agent skills and the Playwright browser,

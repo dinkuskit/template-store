@@ -111,7 +111,7 @@ Dinkus Portable Text Query Cards continue rendering on unmigrated content. See
 
 ## Development
 
-Requires Node `22.23.2` or another compatible Node 22 release and pnpm 11.
+Requires Node `24.22.0` or another compatible Node 24 release (`>=24.15.0`) and pnpm 11.
 
 ```bash
 pnpm install
