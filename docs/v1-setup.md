@@ -26,7 +26,11 @@ Purchasing, orders, payment and shipping require the release gates in
 
 ## Current local developer pilot
 
-Use this exact candidate source checkout, Node 24 and the checked-in pnpm lockfile:
+Use this exact candidate source checkout, Node 24 (`.nvmrc` pins 24.22.0; `engines`
+allows `^24.15.0 || ^26.0.0`) and the checked-in pnpm lockfile. To upgrade a
+checkout last installed under Node 22, run `nvm install && nvm use`, then
+`rm -rf node_modules && pnpm install --frozen-lockfile` so better-sqlite3 is
+rebuilt for Node 24 (see the README's Development section):
 
 ```sh
 pnpm install --frozen-lockfile

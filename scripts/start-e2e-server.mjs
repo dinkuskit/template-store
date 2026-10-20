@@ -8,10 +8,12 @@ import {
 } from "./lib/offline-e2e-environment.mjs";
 
 // EmDash's local SQLite adapter needs node:sqlite StatementSync.columns(), and Node 22's
-// node:sqlite has critical bugs; the supported range is package.json engines (>=24.15.0 <25).
+// node:sqlite has critical bugs. Keep this in step with package.json engines
+// (^24.15.0 || ^26.0.0): @emdash-cms/registry-verification needs ^24.15.0 || >=26.0.0
+// (no Node 25) and better-sqlite3 supports up to 26.x.
 const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
-if (nodeMajor !== 24 || nodeMinor < 15) {
-  console.error(`start-e2e-server: Node ${process.versions.node} is unsupported; use Node 24.15+ (.nvmrc pins 24.22.0).`);
+if (!((nodeMajor === 24 && nodeMinor >= 15) || nodeMajor === 26)) {
+  console.error(`start-e2e-server: Node ${process.versions.node} is unsupported; use Node ^24.15.0 || ^26.0.0 (.nvmrc pins 24.22.0).`);
   process.exit(1);
 }
 

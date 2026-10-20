@@ -111,7 +111,8 @@ Dinkus Portable Text Query Cards continue rendering on unmigrated content. See
 
 ## Development
 
-Requires Node `24.22.0` or another compatible Node 24 release (`>=24.15.0`) and pnpm 11.
+Requires Node `24.22.0` (`.nvmrc`) or another release in the `engines` range
+`^24.15.0 || ^26.0.0` (Node 25 is not supported), and pnpm 11.
 
 To move an existing Node 22 checkout, stop the dev server, switch to Node
 24.22.0 (`nvm use` reads `.nvmrc`), run `corepack enable`, then reinstall so

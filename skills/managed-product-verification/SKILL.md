@@ -9,7 +9,7 @@ Use this project-local skill when changing the store shell, CMS block
 composition, Commerce catalog/managed-SKU wiring, unmanaged manual
 availability, Inventory adapter, stock presentation, or proof routes.
 
-Use Node `>=24.15.0 <25` and the package-pinned pnpm version. Install with
+Use Node `^24.15.0 || ^26.0.0` (`.nvmrc` pins 24.22.0) and the package-pinned pnpm version. Install with
 `pnpm install --frozen-lockfile`. Source preparation fetches the exact public
 Commerce commit in `package.json` into ignored `.artifacts/source-deps/`; it
 must not be replaced with a sibling checkout or a floating branch.
