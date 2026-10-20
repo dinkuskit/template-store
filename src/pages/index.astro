@@ -9,6 +9,7 @@ import UnknownBlock from "../features/store-shell/blocks/UnknownBlock.astro";
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
 import { leftCommerceCatalog, withoutRemovedProducts } from "../features/store-shell/merch-catalog.js";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
@@ -50,10 +51,13 @@ const removedEntryIds = new Set(profile === "shipping" && !catalogUnavailable
   : []);
 const shownCollections = withoutRemovedProducts(collections, removedEntryIds);
 const productPaths = new Map(productLinks.products.map((product) => [product.commerceItemId, canonicalProductPath(product.slug)]));
-const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
-  runtime: Astro.locals.emdash,
-  request: Astro.request,
-}).catch(() => null));
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+// A configured playground admits its sandbox checkout, as the cart page does.
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+  Boolean(await acquireGuestCheckoutAdmission({
+    runtime: Astro.locals.emdash,
+    request: Astro.request,
+  }).catch(() => null));
 const guidanceState = catalogUnavailable ? "unavailable" : commerceProducts.length === 0 ? "empty" : "ready";
 const guidance = catalogGuidanceCopy(guidanceState, checkoutAvailable);
 // A store with no published "home" page still greets shoppers with its name

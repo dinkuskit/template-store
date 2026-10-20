@@ -313,9 +313,12 @@ jobs:
         if: github.event_name == 'push'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PLAYGROUND_API_TOKEN }}
+        # --keep-vars keeps the sandbox checkout settings set on the Worker
+        # (README "Playground"); without it every main deploy erases them.
         run: >-
           pnpm exec wrangler deploy
           --config dist/server/wrangler.json
+          --keep-vars
           --message "${{ steps.commits.outputs.message }}"
 
   cleanup-playground-preview:

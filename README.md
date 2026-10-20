@@ -111,7 +111,17 @@ Dinkus Portable Text Query Cards continue rendering on unmigrated content. See
 
 ## Development
 
-Requires Node `22.23.2` or another compatible Node 22 release and pnpm 11.
+Requires Node `24.22.0` or another compatible Node 24 release (`>=24.15.0`) and pnpm 11.
+
+To move an existing Node 22 checkout, stop the dev server, switch to Node
+24.22.0 (`nvm use` reads `.nvmrc`), run `corepack enable`, then reinstall so
+native modules rebuild: `pnpm rebuild`, or `rm -rf node_modules && pnpm install
+--frozen-lockfile`. A plain `pnpm install --frozen-lockfile` over the old
+`node_modules` reports "Already up to date" and leaves better-sqlite3 built for
+Node 22 (`NODE_MODULE_VERSION 127 ... requires 137`). The local database
+(`.artifacts/dev/content.db`, which also holds store settings) and uploads
+(`.artifacts/dev/uploads/`) are gitignored and open unchanged under Node 24,
+with no migration or reseed.
 
 ```bash
 pnpm install
@@ -158,6 +168,8 @@ canonical https origin of that deployment (for example
 `https://playground.dinkuskit.com`, or `https://pr-N.playground.dinkuskit.com`
 for a preview), not a secret. `/api/checkout/status` confirms paid returns only
 against it, so without a valid value the cart shows checkout as unavailable.
+The `main` deploy passes `--keep-vars`, so these values, once set on the
+`dinkuskit-template-playground` Worker, survive every deploy.
 
 Before a public preview is enabled, infra-keeper must add a Cloudflare Rate
 Limit bindings named `PLAYGROUND_CREATION_LIMITER` and
