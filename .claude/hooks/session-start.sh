@@ -55,15 +55,20 @@ if [ -f "$stamp_file" ] && [ "$(cat "$stamp_file")" = "$stamp" ]; then
 elif pnpm install --frozen-lockfile >&2; then
   # Over a node_modules built by another Node (such as 22), pnpm reports
   # "Already up to date" and leaves better-sqlite3 on the old ABI; rebuild it.
+  # Stamp only a working install, so a failed rebuild is retried next session.
+  native_ok=1
   if ! node -e 'new (require("better-sqlite3"))(":memory:")' 2>/dev/null; then
     if pnpm rebuild >&2 && node -e 'new (require("better-sqlite3"))(":memory:")' 2>/dev/null; then
       status+=("native modules rebuilt for Node $have")
     else
+      native_ok=0
       status+=("better-sqlite3 does not load under Node $have even after pnpm rebuild; run rm -rf node_modules && pnpm install --frozen-lockfile")
     fi
   fi
-  printf '%s' "$stamp" > "$stamp_file"
-  status+=("dependencies installed with pnpm install --frozen-lockfile")
+  if [ "$native_ok" = 1 ]; then
+    printf '%s' "$stamp" > "$stamp_file"
+    status+=("dependencies installed with pnpm install --frozen-lockfile")
+  fi
 else
   # Cloud sessions fetch github: dependency tarballs only for repositories
   # attached to the session, so name them.
