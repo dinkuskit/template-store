@@ -168,6 +168,8 @@ canonical https origin of that deployment (for example
 `https://playground.dinkuskit.com`, or `https://pr-N.playground.dinkuskit.com`
 for a preview), not a secret. `/api/checkout/status` confirms paid returns only
 against it, so without a valid value the cart shows checkout as unavailable.
+The `main` deploy passes `--keep-vars`, so these values, once set on the
+`dinkuskit-template-playground` Worker, survive every deploy.
 
 Before a public preview is enabled, infra-keeper must add a Cloudflare Rate
 Limit bindings named `PLAYGROUND_CREATION_LIMITER` and
