@@ -53,6 +53,15 @@ stamp="$have $have_pnpm $(sha256sum pnpm-lock.yaml | cut -d' ' -f1)"
 if [ -f "$stamp_file" ] && [ "$(cat "$stamp_file")" = "$stamp" ]; then
   status+=("dependencies already match pnpm-lock.yaml")
 elif pnpm install --frozen-lockfile >&2; then
+  # Over a node_modules built by another Node (such as 22), pnpm reports
+  # "Already up to date" and leaves better-sqlite3 on the old ABI; rebuild it.
+  if ! node -e 'new (require("better-sqlite3"))(":memory:")' 2>/dev/null; then
+    if pnpm rebuild >&2 && node -e 'new (require("better-sqlite3"))(":memory:")' 2>/dev/null; then
+      status+=("native modules rebuilt for Node $have")
+    else
+      status+=("better-sqlite3 does not load under Node $have even after pnpm rebuild; run rm -rf node_modules && pnpm install --frozen-lockfile")
+    fi
+  fi
   printf '%s' "$stamp" > "$stamp_file"
   status+=("dependencies installed with pnpm install --frozen-lockfile")
 else

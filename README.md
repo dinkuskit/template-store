@@ -113,6 +113,16 @@ Dinkus Portable Text Query Cards continue rendering on unmigrated content. See
 
 Requires Node `24.22.0` or another compatible Node 24 release (`>=24.15.0`) and pnpm 11.
 
+To move an existing Node 22 checkout, stop the dev server, switch to Node
+24.22.0 (`nvm use` reads `.nvmrc`), run `corepack enable`, then reinstall so
+native modules rebuild: `pnpm rebuild`, or `rm -rf node_modules && pnpm install
+--frozen-lockfile`. A plain `pnpm install --frozen-lockfile` over the old
+`node_modules` reports "Already up to date" and leaves better-sqlite3 built for
+Node 22 (`NODE_MODULE_VERSION 127 ... requires 137`). The local database
+(`.artifacts/dev/content.db`, which also holds store settings) and uploads
+(`.artifacts/dev/uploads/`) are gitignored and open unchanged under Node 24,
+with no migration or reseed.
+
 ```bash
 pnpm install
 pnpm verify

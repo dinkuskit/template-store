@@ -88,5 +88,7 @@ cloud sessions the environment supplies that Node and pnpm, and
 `.claude/hooks/session-start.sh` installs dependencies from the lockfile, the
 pinned Commerce source, the pinned agent skills and the Playwright browser,
 then reports anything missing; read that report before running project
-scripts. Attach `dinkuskit/inventory` to the session too: the cloud proxy
+scripts. A checkout last installed under Node 22 needs `pnpm rebuild` after switching
+to Node 24, because `pnpm install --frozen-lockfile` leaves better-sqlite3 built
+for Node 22; the session hook rebuilds it automatically. Attach `dinkuskit/inventory` to the session too: the cloud proxy
 serves `github:` dependency tarballs only for attached repositories.
