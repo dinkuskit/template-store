@@ -25,6 +25,7 @@ describe("storefront checkout wording", () => {
     for (const path of STOREFRONT_PAGES) {
       const page = readFileSync(path, "utf8");
       expect(page, path).toContain("acquireGuestCheckoutAdmission");
+      expect(page, path).toContain("playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())");
       expect(page, path).toMatch(/data-store-demo-banner data-checkout-available=\{String\(/);
       expect(page, path).toContain("{storeBannerText(");
       expect(page, path).not.toContain("Synthetic demonstration. Purchases and checkout are unavailable.");

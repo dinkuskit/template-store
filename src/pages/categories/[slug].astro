@@ -3,6 +3,7 @@ import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { getEmDashCollection } from "emdash";
 import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../../features/playground-checkout/index.js";
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { readCommerceCatalog } from "../../features/commerce-catalog/index.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
@@ -20,10 +21,13 @@ const { profile, demonstrations, collections } = await loadStorefrontRouteContex
 );
 const listedCategory = collections.find((group) => group.slug === Astro.params.slug);
 if (!listedCategory) Astro.response.status = 404;
-const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
-  runtime: Astro.locals.emdash,
-  request: Astro.request,
-}).catch(() => null));
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+// A configured playground admits its sandbox checkout, as the cart page does.
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+  Boolean(await acquireGuestCheckoutAdmission({
+    runtime: Astro.locals.emdash,
+    request: Astro.request,
+  }).catch(() => null));
 // Shipping stores show linked Commerce products with their real availability
 // and price instead of calling them previews.
 let catalogRead = false;
