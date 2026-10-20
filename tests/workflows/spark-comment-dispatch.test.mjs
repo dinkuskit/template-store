@@ -16,7 +16,7 @@ const head = "b".repeat(40);
 function bind({ command = "re-run", actor = "author", association = "CONTRIBUTOR", type = "User", kind = "issue_comment", draft = false, defaultHead = base } = {}) {
 	const root = mkdtempSync(join(tmpdir(), "store-spark-bind-"));
 	try {
-		writeFileSync(join(root, "event.json"), JSON.stringify({ action: "created", issue: { pull_request: {} }, comment: { body: `@clawsweeper ${command}`, author_association: association, user: { login: actor, type } } }));
+		writeFileSync(join(root, "event.json"), JSON.stringify({ action: "created", issue: { pull_request: { url: "https://api.github.com/repos/dinkuskit/template-store/pulls/19" } }, comment: { body: `@clawsweeper ${command}`, author_association: association, user: { login: actor, type } } }));
 		writeFileSync(join(root, "api.json"), JSON.stringify({
 			"repos/dinkuskit/template-store": { id: 1306882668, default_branch: "main" },
 			"repos/dinkuskit/template-store/pulls/19": { state: "open", draft, user: { login: "author" }, base: { repo: { id: 1306882668 }, ref: "main", sha: base }, head: { sha: head } },
@@ -37,13 +37,13 @@ function bind({ command = "re-run", actor = "author", association = "CONTRIBUTOR
 	}
 }
 
-test("actual Spark binder admits exact author rerun aliases without publication", () => {
+test("actual Spark binder refuses non-maintainer author rerun aliases", () => {
 	const jobGate = workflow.slice(workflow.indexOf("jobs:"), workflow.indexOf("runs-on:"));
-	assert.doesNotMatch(jobGate, /author_association/);
+	assert.match(jobGate, /author_association/);
 	for (const command of ["re-run", "re-review"]) {
 		const r = bind({ command });
 		assert.equal(r.status, 0, r.stderr);
-		assert.deepEqual(r.outputs, { requested: "true", pr_number: "19", base_sha: base, head_sha: head, publish: "false" });
+		assert.deepEqual(r.outputs, { requested: "false" });
 	}
 });
 
@@ -58,7 +58,7 @@ test("Spark binder preserves maintainer publication and rejects unrelated or amb
 
 test("manual Spark admission remains nonpublishing and rejects a moved base", () => {
 	assert.equal(bind({ kind: "workflow_dispatch" }).outputs.publish, "false");
-	const r = bind({ defaultHead: "c".repeat(40) });
+	const r = bind({ command: "review", actor: "maintainer", association: "OWNER", defaultHead: "c".repeat(40) });
 	assert.notEqual(r.status, 0);
 	assert.match(r.stderr, /Base moved during admission/);
 });

@@ -63,7 +63,7 @@ test("accepts a maintainer review request and binds the live PR tuple", () => {
 	});
 });
 
-test("lets the exact PR author request a fresh read-only re-review", () => {
+test("refuses an exact PR author re-review without maintainer association", () => {
 	const candidate = commentCandidate(
 		event({
 			comment: {
@@ -74,7 +74,7 @@ test("lets the exact PR author request a fresh read-only re-review", () => {
 		}),
 	);
 	assert.ok(candidate);
-	assert.ok(admitCandidate(candidate, pull()));
+	assert.equal(admitCandidate(candidate, pull()), null);
 });
 
 test("does not let an untrusted contributor start review or rerun another PR", () => {
