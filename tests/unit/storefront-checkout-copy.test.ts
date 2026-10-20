@@ -99,6 +99,7 @@ describe("neutral seed copy", () => {
   it("no longer tells shoppers checkout is unavailable", () => {
     const seed = readFileSync("seed/seed.json", "utf8");
     expect(seed).not.toContain("Checkout is not available yet");
+    expect(seed).not.toContain("Not available yet");
     expect(seed).toContain("Browse products published in Commerce.");
   });
 });
