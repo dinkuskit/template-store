@@ -12,7 +12,7 @@ import { demoPlaceholderImage } from "../../features/playground/demo-products.js
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, productPageOffersCart, readProductEntries } from "../../features/store-shell/product-routes.js";
 import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
-import { playgroundCheckoutConfigured, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
@@ -75,10 +75,12 @@ const cartProduct = linkedProduct && selectedVariant
   ? { ...linkedProduct, id: selectedVariant.id, availability: { ...selectedVariant.availability, listable: true } }
   : linkedProduct;
 const linkedStatus = selectedVariant?.availability.status ?? linkedProduct?.availability.status;
-const checkoutAvailable = Boolean(await acquireGuestCheckoutAdmission({
-  runtime: Astro.locals.emdash,
-  request: Astro.request,
-}).catch(() => null));
+// A configured playground admits its sandbox checkout, as the cart page does.
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+  Boolean(await acquireGuestCheckoutAdmission({
+    runtime: Astro.locals.emdash,
+    request: Astro.request,
+  }).catch(() => null));
 // A Commerce-linked product on a shipping store says nothing extra when it can
 // be bought; the notice appears only when it really cannot.
 const purchasable = Boolean(cartProduct) && linkedProductPurchasable({
