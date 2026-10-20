@@ -104,8 +104,32 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   );
   await expect(page.locator("[data-product-status]")).toHaveText("Preview only · not purchasable");
   await expect(page.locator("[data-stock-value]")).toHaveCount(0);
+  await expect(page.locator("[data-product-sku]")).toHaveCount(0);
+  await expect(page.locator("[data-product-gtin]")).toHaveCount(0);
+  await expect(page.locator("[data-product-price]")).toHaveCount(0);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
   expect((await page.goto("/products/everyday-tee"))?.status()).toBe(503);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+  expect((await request.get("/shipping")).status()).toBe(200);
+  expect((await request.get("/returns")).status()).toBe(200);
+  await page.goto("/shipping");
+  await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
+  await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/);
+  await page.goto("/returns");
+  await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
+  await expect(page.locator("main")).not.toContainText(/\$\d|\d+ days/);
+  const googleFeed = await request.get("/feeds/google-merchant.xml");
+  const metaFeed = await request.get("/feeds/meta-catalog.csv");
+  expect(googleFeed.status()).toBe(503);
+  expect(metaFeed.status()).toBe(503);
+  expect(await googleFeed.text()).not.toContain("boxy-tee");
+  expect(await metaFeed.text()).not.toContain("boxy-tee");
+  const googleSlash = await request.get("/feeds/google-merchant.xml/", { maxRedirects: 0 });
+  expect(googleSlash.status()).not.toBe(200);
+  if (googleSlash.status() === 301 || googleSlash.status() === 302) {
+    expect(new URL(googleSlash.headers().location ?? "", googleSlash.url()).pathname).toBe("/feeds/google-merchant.xml");
+  }
 
   await page.goto("/");
   expect(

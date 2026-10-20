@@ -7,34 +7,19 @@ import {
   listCatalogProducts, resolveCatalogItemPrice, resolveStorefrontAvailability,
   type CatalogStorageRecord, type CatalogPriceRecord, type CatalogManualAvailabilityRecord,
   type CatalogBackorderPolicyRecord, type StoreInventoryConfigurationRecord,
-  type StorefrontAvailabilitySettingsRecord, type StorefrontAvailabilityResult,
+  type StorefrontAvailabilitySettingsRecord,
 } from "@dinkuskit/commerce";
 import { readInstalledCommerceCatalog, type InstalledCatalogContext } from "./installed.js";
-import type { PublicCommerceImage } from "./media.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
+import type { PublicCommerceProduct } from "./types.js";
 
 export type { PublicCommerceImage } from "./media.js";
-
-export interface PublicCommerceProduct {
-  id: string;
-  name: string;
-  sku: string;
-  fulfillment?: "physical" | "digital";
-  price: PublicPriceView;
-  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
-  image: PublicCommerceImage | null;
-  gallery: readonly PublicCommerceImage[];
-  /** Server-projected variant members (e.g. sizes/colors); absent for simple items. */
-  variants?: readonly PublicCommerceVariant[];
-}
-
-export interface PublicCommerceVariant {
-  id: string;
-  /** Option label to value label, e.g. [["Size", "Small"]]. */
-  selections: readonly (readonly [string, string])[];
-  priceText: string;
-  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable">;
-}
+export {
+  PUBLIC_FEED_CHANNELS,
+  type PublicCommerceProduct,
+  type PublicCommerceVariant,
+  type PublicFeedChannel,
+} from "./types.js";
 
 export const availabilityLabels: Record<string, string> = {
   "in-stock": "In stock",

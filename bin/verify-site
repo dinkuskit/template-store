@@ -3,8 +3,8 @@
 /**
  * Read-only public URL contract verifier.
  *
- * Product URL and built-in SEO checks are required for the shipping starter.
- * Feed checks remain owned by the follow-up product data issue.
+ * Product URL, Product JSON-LD, and public feed checks are required.
+ * An origin with no product URL does not fail only because those pages are absent.
  */
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
@@ -179,13 +179,15 @@ function parseCanonical(html, pageUrl) {
 }
 
 function parseJsonLd(html, pageUrl) {
+  const nodes = [];
   for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
-      JSON.parse(match[1].trim());
+      nodes.push(JSON.parse(match[1].trim()));
     } catch {
       result("JSON-LD syntax", "FAIL", `${pageUrl.pathname} contains invalid JSON-LD`);
     }
   }
+  return nodes;
 }
 
 function sitemapLocations(xml) {
@@ -275,11 +277,11 @@ async function inspect(path, from = "crawl") {
   const body = await response.text();
   if (type.includes("html")) {
     parseLinks(body, url);
-    parseJsonLd(body, url);
     pages.set(url.pathname, {
       url,
       body,
       canonical: parseCanonical(body, url),
+      jsonLd: parseJsonLd(body, url),
       noindex: /noindex/i.test(response.headers.get("x-robots-tag") ?? "") ||
         /<meta\b[^>]*(?:name=["']robots["'][^>]*content=["'][^"']*\bnoindex\b|content=["'][^"']*\bnoindex\b[^"']*["'][^>]*name=["']robots["'])/i.test(body),
     });
@@ -489,8 +491,84 @@ requiredOrSkip(
   "Product/category canonical routes are not landed",
   productPaths.every((path) => !path.endsWith("/")),
 );
-result("Product JSON-LD and feed contract (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
-result("Feeds (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
+let jsonLdFailures = 0;
+let commerceLinkedPages = 0;
+for (const path of productPaths) {
+  const page = pages.get(path);
+  if (!page) continue;
+  const products = page.jsonLd.filter((node) => node && typeof node === "object" && node["@type"] === "Product");
+  const sku = page.body.match(/\bdata-product-sku=["']([^"']+)["']/u)?.[1];
+  const commerceLinked = Boolean(sku);
+  if (commerceLinked) commerceLinkedPages += 1;
+  if (commerceLinked && products.length !== 1) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} shows SKU ${sku} but has ${products.length} Product JSON-LD block(s)`);
+    continue;
+  }
+  if (!commerceLinked && products.length !== 0) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} has no visible Commerce SKU but emits Product JSON-LD`);
+    continue;
+  }
+  if (!commerceLinked) continue;
+  const product = products[0];
+  if (product.sku !== sku) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD sku ${product.sku} does not match visible SKU ${sku}`);
+  }
+  if (product.offers?.inventoryLevel !== undefined || Object.hasOwn(product, "inventoryLevel")) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD includes a stock quantity`);
+  }
+  const canonical = page.canonical[0];
+  if (canonical && product.url !== canonical) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD url ${product.url} does not match canonical ${canonical}`);
+  }
+  if (product.offers && canonical && product.offers.url !== canonical) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} Offer url does not match canonical ${canonical}`);
+  }
+}
+if (productPaths.length === 0) {
+  result("Product JSON-LD (#35)", "PASS", "no product URL on this origin; that absence is not a failure");
+} else if (jsonLdFailures === 0) {
+  result(
+    "Product JSON-LD (#35)",
+    "PASS",
+    `${commerceLinkedPages} commerce-linked product page(s) and ${productPaths.length - commerceLinkedPages} editorial page(s) of ${productPaths.length}`,
+  );
+}
+for (const feedPath of ["/feeds/google-merchant.xml", "/feeds/meta-catalog.csv"]) {
+  const feedResponse = await request(absoluteUrl(feedPath));
+  const slashResponse = await request(absoluteUrl(`${feedPath}/`));
+  if (slashResponse.status === 200) {
+    result("Feeds (#35)", "FAIL", `${feedPath}/ returned 200; a trailing slash must not be a second feed document`);
+    continue;
+  }
+  if (productPaths.length === 0) {
+    result("Feeds (#35)", "PASS", `no product URL on this origin; ${feedPath} returned ${feedResponse.status} and that absence is not a failure`);
+    continue;
+  }
+  if (commerceLinkedPages > 0) {
+    const type = feedResponse.headers.get("content-type") ?? "";
+    const productive = feedResponse.status === 200 && (
+      feedPath.endsWith(".xml") ? type.includes("xml") : type.includes("csv")
+    );
+    if (!productive) {
+      result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} ${type} while ${commerceLinkedPages} commerce-linked product page(s) are public`);
+    } else {
+      result("Feeds (#35)", "PASS", `${feedPath} served for ${commerceLinkedPages} commerce-linked product page(s); slash twin status ${slashResponse.status}`);
+    }
+    continue;
+  }
+  if (feedResponse.status === 503) {
+    const body = await feedResponse.text();
+    result("Feeds (#35)", "PASS", `${feedPath} fails closed (${feedResponse.status}) with no installed catalog; ${body.length} byte(s)`);
+  } else {
+    result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} for ${productPaths.length} editorial product page(s); expected fail-closed 503`);
+  }
+}
 
 const failures = results.filter(({ status }) => status === "FAIL").length;
 const skips = results.filter(({ status }) => status === "SKIP").length;

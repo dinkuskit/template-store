@@ -17,6 +17,10 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/sitemap.xml",
   "/api/guest-cart/snapshot",
   "/api/checkout/status",
+  "/shipping",
+  "/returns",
+  "/feeds/google-merchant.xml",
+  "/feeds/meta-catalog.csv",
 ]);
 
 const ALLOWED_PATH_PATTERNS = [
@@ -39,6 +43,14 @@ function slashlessCollectionPath(pathname: string): string | undefined {
     return pathname.slice(0, -1);
   }
   if (/^\/(?:products|categories)\/[^/]+\/$/.test(pathname)) {
+    return pathname.slice(0, -1);
+  }
+  if (
+    pathname === "/shipping/" ||
+    pathname === "/returns/" ||
+    pathname === "/feeds/google-merchant.xml/" ||
+    pathname === "/feeds/meta-catalog.csv/"
+  ) {
     return pathname.slice(0, -1);
   }
   return undefined;

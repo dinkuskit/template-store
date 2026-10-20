@@ -1,0 +1,104 @@
+import { PluginStorageRepository } from "emdash";
+import { getDb } from "emdash/runtime";
+import {
+  COMMERCE_PLUGIN_ID,
+  PRODUCT_FEED_ELIGIBILITY_COLLECTION,
+} from "@dinkuskit/commerce";
+import {
+  buildGoogleMerchantFeed,
+  buildMetaCatalogFeed,
+  loadProductFeedEligibility,
+  type ProductFeedChannel,
+  type ProductFeedEligibilityRecord,
+  type ProductFeedFacts,
+} from "@dinkuskit/commerce/features/feeds";
+import {
+  readInstalledCommerceCatalog,
+  type InstalledCatalogContext,
+} from "../commerce-catalog/installed.js";
+import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
+import { canonicalProductPath, readProductEntries } from "../store-shell/product-routes.js";
+import { canonicalUrl } from "../store-shell/structured-data.js";
+
+export interface CommerceFeedContext extends InstalledCatalogContext {
+  /** Same `Astro.site` value the product page uses for its canonical link. */
+  site?: URL | null;
+}
+
+async function publishedLinks() {
+  const productsCollection = await import("emdash").then(({ getEmDashCollection }) =>
+    getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" }));
+  const categories = await import("emdash").then(({ getEmDashCollection }) =>
+    getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" }));
+  return readProductEntries(productsCollection.entries, categories.entries).products;
+}
+
+/**
+ * Native installs do not receive channel eligibility on `catalog/public`.
+ * The public feeds export reads the same eligibility record the authenticated
+ * `catalog-items/set-feed-eligibility` route writes. Shipping/registry stays
+ * on the public projection and does not open this collection.
+ */
+async function nativeFeedEligibility(itemId: string): Promise<readonly ProductFeedChannel[]> {
+  const db = await getDb();
+  const storage = new PluginStorageRepository<ProductFeedEligibilityRecord>(
+    db,
+    COMMERCE_PLUGIN_ID,
+    PRODUCT_FEED_ELIGIBILITY_COLLECTION,
+    [],
+  );
+  return loadProductFeedEligibility(storage, itemId);
+}
+
+function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["product"] {
+  return {
+    id: product.id,
+    name: product.name,
+    sku: product.sku,
+    availability: {
+      status: product.availability.status,
+      sellable: product.availability.sellable,
+      listable: product.availability.listable,
+    },
+    image: product.image,
+    gallery: [...product.gallery],
+    ...(product.price.unitMinor
+      ? { price: { currency: "USD" as const, minor: product.price.unitMinor } }
+      : {}),
+    ...(product.gtin ? { gtin: product.gtin } : {}),
+    ...(product.mpn ? { mpn: product.mpn } : {}),
+    ...(product.brand ? { brand: product.brand } : {}),
+  };
+}
+
+export async function buildInstalledCommerceFeedFacts(
+  context: CommerceFeedContext,
+): Promise<ProductFeedFacts[]> {
+  const products = await readInstalledCommerceCatalog(context);
+  const links = await publishedLinks();
+  const byCommerceId = new Map(links.map((entry) => [entry.commerceItemId, entry]));
+  const nativeEligibility = process.env.DINKUS_CATALOG_PROFILE === "native-development";
+  const facts: ProductFeedFacts[] = [];
+  for (const product of products) {
+    const entry = byCommerceId.get(product.id);
+    // A catalog item with no published CMS page has no canonical storefront URL.
+    if (!entry) continue;
+    const eligibility = product.feedChannels !== undefined
+      ? product.feedChannels
+      : nativeEligibility
+        ? await nativeFeedEligibility(product.id)
+        : [];
+    facts.push({
+      product: catalogProduct(product),
+      content: {
+        canonicalUrl: canonicalUrl(canonicalProductPath(entry.slug), context.site, context.request.url),
+        title: product.name,
+        ...(entry.description ? { description: entry.description } : {}),
+      },
+      eligibility,
+    });
+  }
+  return facts;
+}
+
+export { buildGoogleMerchantFeed, buildMetaCatalogFeed };

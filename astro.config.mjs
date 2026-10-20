@@ -105,6 +105,24 @@ export default defineConfig({
             import.meta.url,
           ),
         ),
+        "@dinkuskit/commerce/features/structured-data": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/structured-data/index.ts",
+            import.meta.url,
+          ),
+        ),
+        "@dinkuskit/commerce/features/feeds": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/feeds/index.ts",
+            import.meta.url,
+          ),
+        ),
+        "@dinkuskit/commerce/features/store-policies": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/store-policies/index.ts",
+            import.meta.url,
+          ),
+        ),
         "@dinkuskit/commerce/admin": fileURLToPath(
           new URL(
             "./.artifacts/source-deps/commerce/src/admin/native.ts",

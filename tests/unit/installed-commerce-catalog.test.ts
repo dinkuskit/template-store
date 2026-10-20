@@ -143,15 +143,32 @@ describe("installed Commerce public catalog consumer", () => {
     const product = await readInstalledCommerceProduct("hoodie", context([value]));
     expect(product?.price.regularText).toBe("from $56.00");
     expect(product?.variants).toEqual([
-      { id: "hoodie-s", selections: [["Size", "Small"]], priceText: "$56.00", availability: { status: "in-stock", sellable: true } },
-      { id: "hoodie-m", selections: [["Size", "Medium"]], priceText: "$60.00", availability: { status: "out-of-stock", sellable: false } },
+      { id: "hoodie-s", selections: [["Size", "Small"]], unitMinor: "5600", priceText: "$56.00", availability: { status: "in-stock", sellable: true } },
+      { id: "hoodie-m", selections: [["Size", "Medium"]], unitMinor: "6000", priceText: "$60.00", availability: { status: "out-of-stock", sellable: false } },
     ]);
+  });
+
+  it("keeps public GTIN and an explicit feed channel list, including an empty opt-out", async () => {
+    const products = await readInstalledCommerceCatalog(context([{ products: [
+      { ...item("hat"), gtin: "4006381333931", mpn: "HAT-MPN", brand: "Neutral", feedChannels: ["meta-catalog", "google-merchant"] },
+      { ...item("cap"), feedChannels: [] },
+      item("mug"),
+    ] }]));
+    expect(products[0]).toMatchObject({
+      gtin: "4006381333931",
+      mpn: "HAT-MPN",
+      brand: "Neutral",
+      feedChannels: ["google-merchant", "meta-catalog"],
+    });
+    expect(products[1]!.feedChannels).toEqual([]);
+    expect(products[2]).not.toHaveProperty("feedChannels");
   });
 
   it.each([
     [{ ...item("bad"), price: { currency: "USD", minor: "1.25" } }, "invalid price"],
     [{ ...item("bad"), availability: { status: "in-stock", sellable: true, listable: false } }, "invalid availability"],
     [{ ...item("bad"), price: undefined }, "missing price"],
+    [{ ...item("bad"), feedChannels: ["not-a-channel"] }, "invalid feed channels"],
   ])("skips one malformed item, renders the others, and warns without PII", async (bad, reason) => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const products = await readInstalledCommerceCatalog(context([{ products: [item("first"), bad, item("last")] }]));

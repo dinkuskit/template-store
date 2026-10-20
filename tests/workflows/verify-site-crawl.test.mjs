@@ -295,3 +295,50 @@ test("fails when a seeded or demo product image returns 404 or a non-image conte
     await new Promise((resolveClose) => server.close(resolveClose));
   }
 });
+
+test("fails a commerce-linked page without Product JSON-LD and a missing feed", async () => {
+  const { server, origin } = await listen((req, res) => {
+    const url = new URL(req.url ?? "/", origin);
+    if (serveSvgIfProductImage(url.pathname, res)) return;
+    if (url.pathname === "/") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(html(["/products/linked", "/products/editorial"]));
+      return;
+    }
+    if (url.pathname === "/home") {
+      res.writeHead(302, { location: "/", "cache-control": "no-store" });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/products/linked") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<!doctype html><html><head><link rel=\"canonical\" href=\"" + origin + "/products/linked\"></head><body><article data-product-sku=\"HAT-1\"><h1>Hat</h1></article></body></html>");
+      return;
+    }
+    if (url.pathname === "/products/editorial") {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end("<!doctype html><html><body><script type=\"application/ld+json\">{\"@type\":\"Product\",\"name\":\"Preview\",\"sku\":\"MADE-UP\"}</script></body></html>");
+      return;
+    }
+    if (url.pathname === "/robots.txt") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("User-agent: *\nAllow: /\n");
+      return;
+    }
+    if (url.pathname === "/sitemap.xml") {
+      res.writeHead(404, { "content-type": "text/plain" });
+      res.end("missing");
+      return;
+    }
+    res.writeHead(404).end();
+  });
+  try {
+    const result = await runVerifier(origin);
+    assert.notEqual(result.status, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /\/products\/linked shows SKU HAT-1 but has 0 Product JSON-LD block/);
+    assert.match(result.stdout, /\/products\/editorial has no visible Commerce SKU but emits Product JSON-LD/);
+    assert.match(result.stdout, /\/feeds\/google-merchant\.xml returned 404/);
+  } finally {
+    await new Promise((resolveClose) => server.close(resolveClose));
+  }
+});

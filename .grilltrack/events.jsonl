@@ -63,3 +63,9 @@
 {"action": "shared_understanding_confirmed", "at": "2026-10-15T18:35:59+00:00", "data": {"summary": "Root explicitly approved this bounded source guard, account pin, focused tests/docs and exact qualification; no merge/deployment."}, "event_id": "5bc81b09-5591-4b88-a7e7-954b703b9441"}
 {"action": "decision_implemented", "at": "2026-10-15T18:38:12+00:00", "data": {"decision_id": "workers-build-source-guard-001"}, "event_id": "3c569471-59bf-45ce-ac93-d828aa91885e"}
 {"action": "decision_verified", "at": "2026-10-15T18:38:12+00:00", "data": {"decision_id": "workers-build-source-guard-001"}, "event_id": "25796236-95e6-4038-8110-3dcb9ec39a6f"}
+{"action": "focus_started", "at": "2026-10-20T22:31:51+00:00", "data": {"cadence": "sequential", "domain": "template-store-35"}, "event_id": "516279c5-1cd2-4cae-af47-a80d13f58009"}
+{"action": "decision_proposed", "at": "2026-10-20T22:31:51+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "354e3f36-6187-4b5c-b402-e1b792ab5960"}
+{"action": "decision_locked", "at": "2026-10-20T22:31:51+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "35acc86f-f8ca-47fc-9b91-20b762f55f42"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-20T22:31:51+00:00", "data": {"summary": "Owner said: lets do it. get Template Store #35 finished using the coordinator and AI Shed. Scope is issue 35 acceptance, existing design, implementation and proof; merge and deployment retain separate gates."}, "event_id": "f9c5dafe-07d4-4baf-bd8e-c5083a1dfeb0"}
+{"action": "decision_implemented", "at": "2026-10-20T23:31:15+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "9f7e93c2-f926-4781-8b57-b86a310da384"}
+{"action": "decision_verified", "at": "2026-10-20T23:31:24+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "6c08b011-6faf-4ee7-99aa-3f6f68ee4f43"}

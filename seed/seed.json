@@ -290,6 +290,22 @@
             }
           ]
         }
+      },
+      {
+        "id": "shipping",
+        "slug": "shipping",
+        "status": "published",
+        "data": {
+          "title": "Shipping"
+        }
+      },
+      {
+        "id": "returns",
+        "slug": "returns",
+        "status": "published",
+        "data": {
+          "title": "Returns"
+        }
       }
     ],
     "categories": [
