@@ -209,6 +209,11 @@
 
     .store-header__nav {
       order: 2;
+      gap: 0.65rem;
+    }
+
+    .store-header__status {
+      display: none;
     }
 
     .store-main-nav {
@@ -336,9 +341,16 @@
     border-left-color: var(--store-alert-ink);
   }
 
+  .store-header__account,
   .store-header__cart {
     font-weight: 800;
     text-underline-offset: 0.2em;
+  }
+
+  .store-header .store-header__account:hover,
+  .store-header .store-header__account[aria-current="page"],
+  .store-header .store-header__cart:hover {
+    text-decoration: underline;
   }
 
   .store-header__cart span {

@@ -67,6 +67,11 @@
       }
     }
   ],
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
   "previews": {
     "vars": {
       "DINKUS_DEMO_NOINDEX": "1",
@@ -104,6 +109,11 @@
           "limit": 3,
           "period": 60
         }
+      }
+    ],
+    "send_email": [
+      {
+        "name": "EMAIL"
       }
     ]
   }

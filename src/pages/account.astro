@@ -1,0 +1,37 @@
+---
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import { ShopperAccount } from "../features/shopper-account/ui.ts";
+import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
+import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { playgroundCheckoutAdmission } from "../features/playground-checkout/index.js";
+import { playgroundCheckoutConfigured } from "../features/playground-checkout/payments-port.js";
+import { isDemoCatalogProfile } from "../features/playground/demo-products.js";
+import { storeBannerText } from "../features/store-shell/checkout-copy.js";
+import "../features/store-shell/global.css";
+
+const profile = readStorefrontProfile();
+Astro.response.headers.set("Cache-Control", "no-store");
+const checkoutAdmission = await acquireGuestCheckoutAdmission({
+  runtime: Astro.locals.emdash,
+  request: Astro.request,
+}).catch(() => null);
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured());
+const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
+const playgroundMode = isPlayground || isDemoCatalogProfile();
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Account | {STORE_TITLE}</title>
+  </head>
+  <body data-storefront-profile={profile}>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(Boolean(effectiveAdmission))} role="status">{storeBannerText(Boolean(effectiveAdmission))}</div>
+    <StoreHeader profile={profile} />
+    <main>
+      <ShopperAccount playgroundMode={playgroundMode} />
+    </main>
+  </body>
+</html>

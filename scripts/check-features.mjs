@@ -9,7 +9,7 @@ const expectedPins = {
   "@dinkuskit/inventory":
     "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
 };
-const expectedCommerceCommit = "288199275f61aec084c0e1e72b370ec74ea35369";
+const expectedCommerceCommit = "c42597bddd35d949f4e69f8ca97cc26206200da0";
 
 const failures = [];
 for (const feature of [
@@ -17,6 +17,7 @@ for (const feature of [
   "dinkus.managed-product-availability",
   "dinkus.unmanaged-product-sellability",
   "dinkus.guest-cart",
+  "dinkus.shopper-account",
   "dinkus.test-checkout-host",
   "dinkus.paired-checkout-consumer",
 ]) {
@@ -87,6 +88,10 @@ for (const path of [
   "src/features/managed-product-availability/index.ts",
   "src/features/unmanaged-product-sellability/index.ts",
   "src/features/guest-cart/index.ts",
+  "src/features/shopper-account/index.ts",
+  "src/features/shopper-account/ui.ts",
+  "src/pages/account.astro",
+  "src/pages/api/account/demo-session.ts",
   "src/features/test-checkout-host/index.ts",
   "src/features/paired-checkout/index.ts",
   "scripts/verify-checkout-package.mjs",
@@ -136,9 +141,12 @@ for (const relative of [
   "src/pages/categories/[slug].astro",
   "src/pages/products/[id].astro",
   "src/pages/cart.astro",
+  "src/pages/account.astro",
   "src/pages/api/guest-cart/snapshot.ts",
+  "src/pages/api/account/demo-session.ts",
   "src/pages/api/proof/stock.ts",
   "src/pages/api/proof/unmanaged-availability.ts",
+  "src/pages/api/proof/shopper-account.ts",
 ]) {
   const source = readFileSync(resolve(root, relative), "utf8");
   if (

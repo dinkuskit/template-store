@@ -1,0 +1,280 @@
+---
+interface Props {
+  playgroundMode?: boolean;
+}
+
+const { playgroundMode = false } = Astro.props;
+---
+<section class="shopper-account" aria-labelledby="shopper-account-title" data-shopper-account data-playground-mode={playgroundMode ? "true" : "false"}>
+  <h1 id="shopper-account-title">Account</h1>
+  <p data-account-status role="status" hidden></p>
+
+  <div class="account-signed-out" data-account-signed-out>
+    <div class="account-card">
+      <h2>{playgroundMode ? "Option 1: Verified Email Sign-In + Updates Opt-In" : "Sign in with a 6-digit email code"}</h2>
+      <p>
+        {playgroundMode
+          ? "Enter your email address and check the updates box to receive a real 6-digit verification PIN. Verified opt-in emails are saved so we can share DinkusKit project milestones."
+          : "Enter the email address you use at checkout. We will send a one-time 6-digit verification code to view your orders and manage your default shipping address."}
+      </p>
+      <form class="account-form" data-account-start-form novalidate>
+        <label for="account-email">Email address</label>
+        <input id="account-email" data-account-email type="email" maxlength="254" autocomplete="email" required />
+        {playgroundMode && (
+          <label class="account-checkbox" for="account-opt-in">
+            <input id="account-opt-in" data-account-opt-in type="checkbox" />
+            <span>Opt in to DinkusKit project updates and send a 6-digit verification PIN to my email</span>
+          </label>
+        )}
+        <button type="submit" data-account-start>Send 6-digit PIN</button>
+      </form>
+
+      <form class="account-form account-verify-form" data-account-verify-form hidden novalidate>
+        <label for="account-code">6-digit verification code</label>
+        <input id="account-code" data-account-code type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required />
+        <button type="submit" data-account-verify>Verify &amp; sign in</button>
+      </form>
+    </div>
+
+    {playgroundMode && (
+      <div class="account-card account-card--demo" data-account-demo-card>
+        <h2>Option 2: Opt-Out Instant Demo Account (No PIN Required)</h2>
+        <p>
+          Prefer to explore the store without entering an email or receiving marketing updates? Sign straight into the sandbox demo shopper account (<code>shopper@example.com</code>) with a pre-seeded order and saved shipping address. Nothing is logged to the leads database.
+        </p>
+        <button type="button" data-account-demo-signin>Continue as demo shopper (no PIN required)</button>
+      </div>
+    )}
+  </div>
+
+  <div class="account-signed-in" data-account-signed-in hidden>
+    <div class="account-session-bar">
+      <p>Signed in as <strong data-account-current-email></strong></p>
+      <button type="button" data-account-signout>Sign out</button>
+    </div>
+
+    <div class="account-grid">
+      <section class="account-card" aria-labelledby="account-orders-heading" data-account-orders>
+        <h2 id="account-orders-heading">Order history</h2>
+        <p data-account-orders-empty>No paid orders match this email address yet.</p>
+        <div class="account-orders-list" data-account-orders-list></div>
+      </section>
+
+      <section class="account-card" aria-labelledby="account-profile-heading">
+        <h2 id="account-profile-heading">Default shipping address</h2>
+        <p>Saved details prefill checkout on this device and never alter historical orders.</p>
+        <form class="account-form" data-account-profile-form novalidate>
+          <label for="account-profile-phone">Phone <span>(optional)</span></label>
+          <input id="account-profile-phone" data-account-profile-phone type="tel" maxlength="40" autocomplete="tel" />
+
+          <label for="account-profile-name">Recipient</label>
+          <input id="account-profile-name" data-account-profile-name maxlength="200" autocomplete="shipping name" />
+
+          <label for="account-profile-line1">Address line 1</label>
+          <input id="account-profile-line1" data-account-profile-line1 maxlength="200" autocomplete="shipping address-line1" />
+
+          <label for="account-profile-line2">Address line 2 <span>(optional)</span></label>
+          <input id="account-profile-line2" data-account-profile-line2 maxlength="200" autocomplete="shipping address-line2" />
+
+          <label for="account-profile-city">City</label>
+          <input id="account-profile-city" data-account-profile-city maxlength="200" autocomplete="shipping address-level2" />
+
+          <label for="account-profile-region">State or region <span>(optional)</span></label>
+          <input id="account-profile-region" data-account-profile-region maxlength="200" autocomplete="shipping address-level1" />
+
+          <label for="account-profile-postal-code">Postal code</label>
+          <input id="account-profile-postal-code" data-account-profile-postal-code maxlength="200" autocomplete="shipping postal-code" />
+
+          <label for="account-profile-country">Country</label>
+          <select id="account-profile-country" data-account-profile-country autocomplete="shipping country">
+            <option value="US">United States</option>
+          </select>
+
+          <div class="account-form__actions">
+            <button type="submit" data-account-profile-save>Save shipping profile</button>
+            <button type="button" data-account-profile-clear>Clear saved address</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+</section>
+<style>
+  .shopper-account {
+    width: min(70rem, calc(100% - 2rem));
+    margin: 3rem auto;
+    min-height: 65vh;
+    overflow-wrap: anywhere;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    letter-spacing: -0.05em;
+    margin: 0 0 1.25rem;
+  }
+  [data-account-status] {
+    margin: 0 0 1.25rem;
+    padding: 0.8rem 1rem;
+    border-radius: 0.6rem;
+    background: var(--store-surface);
+    border: 1px solid var(--store-line);
+    line-height: 1.5;
+  }
+  [data-account-status][role="alert"] {
+    color: var(--store-alert-ink);
+    background: var(--store-alert);
+    border-color: var(--store-alert-ink);
+  }
+  .account-signed-out {
+    display: grid;
+    gap: 1.5rem;
+    max-width: 42rem;
+  }
+  .account-signed-in[hidden],
+  .account-signed-out[hidden],
+  .account-verify-form[hidden],
+  [data-account-status][hidden],
+  [data-account-orders-empty][hidden] {
+    display: none;
+  }
+  .account-session-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 0 1.5rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--store-line);
+    border-radius: 0.75rem;
+    background: var(--store-surface);
+  }
+  .account-session-bar p {
+    margin: 0;
+  }
+  .account-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    align-items: start;
+  }
+  .account-card {
+    padding: 1.35rem;
+    border: 1px solid var(--store-line);
+    border-radius: 0.85rem;
+    background: var(--store-surface);
+    min-width: 0;
+  }
+  .account-card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.35rem;
+  }
+  .account-card p {
+    margin: 0 0 1rem;
+    color: var(--store-muted);
+    line-height: 1.5;
+  }
+  .account-form {
+    display: grid;
+    gap: 0.55rem;
+  }
+  .account-verify-form {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--store-line);
+  }
+  .account-form label {
+    font-weight: 700;
+  }
+  .account-form label span {
+    color: var(--store-muted);
+    font-weight: 400;
+    font-size: 0.9em;
+  }
+  .account-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0.35rem 0;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .account-checkbox input {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+  }
+  .account-form input:not([type="checkbox"]),
+  .account-form select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem;
+    border: 1px solid var(--store-line);
+    border-radius: 0.35rem;
+    background: var(--store-surface);
+    font: inherit;
+  }
+  .shopper-account button {
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--store-line);
+    border-radius: 0.4rem;
+    background: var(--store-surface);
+    color: inherit;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .account-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 0.5rem;
+  }
+  .account-orders-list {
+    display: grid;
+    gap: 1rem;
+  }
+  .shopper-account :global(.account-order-card) {
+    padding: 1rem;
+    border: 1px solid var(--store-line);
+    border-radius: 0.65rem;
+    background: #faf8f2;
+  }
+  .shopper-account :global(.account-order-card__header) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .shopper-account :global(.account-order-card__header h3) {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .shopper-account :global(.account-order-card__badge) {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    background: var(--store-stock);
+    color: var(--store-stock-ink);
+  }
+  .shopper-account :global(.account-order-card__meta),
+  .shopper-account :global(.account-order-card__delivery) {
+    margin: 0.35rem 0;
+    font-size: 0.92rem;
+    color: var(--store-muted);
+  }
+  .shopper-account :global(.account-order-card__lines) {
+    margin: 0.5rem 0;
+    padding-left: 1.2rem;
+  }
+</style>
+<script>
+  import { hydrateShopperAccountPage } from "./shopper-account-client.ts";
+  hydrateShopperAccountPage();
+</script>

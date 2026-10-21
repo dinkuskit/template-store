@@ -4,12 +4,14 @@
  * options stay inert until DINKUS_CHECKOUT_ENABLED and the Payments env are set.
  */
 import { createPlugin as createCommercePlugin, type CommercePluginOptions } from "@dinkuskit/commerce";
+import { playgroundShopperAccountHostOptions } from "../shopper-account/playground-runtime.js";
 
 import { playgroundCheckoutHostOptions } from "./payments-port.js";
 
 export function createPlugin(options: CommercePluginOptions = {}) {
   const checkout = playgroundCheckoutHostOptions();
-  return createCommercePlugin({ ...options, checkout });
+  const customers = playgroundShopperAccountHostOptions();
+  return createCommercePlugin({ ...options, checkout, customers });
 }
 
 export default createPlugin;

@@ -89,8 +89,20 @@ for (const profile of ["stable", "beta"]) {
     const source = ".artifacts/source-deps/commerce/src/plugin.ts";
     const extracted = extractCommerceRoutes(source, { profile });
     assert.equal(extracted.unsupported.length, 0);
-    assert.deepEqual(extracted.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
-      manifest.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })));
+    const shopperAccountRoutes = [
+      { name: "account/sign-in/start", methods: ["POST"], public: true },
+      { name: "account/sign-in/verify", methods: ["POST"], public: true },
+      { name: "account/sign-out", methods: ["POST"], public: true },
+      { name: "account/orders", methods: ["GET"], public: true },
+      { name: "account/profile", methods: ["GET", "POST"], public: true },
+    ];
+    assert.deepEqual(
+      extracted.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
+      [
+        ...manifest.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
+        ...shopperAccountRoutes,
+      ],
+    );
     assert.ok(extracted.routes.every(r => r.path.startsWith(`/_emdash/api/plugins/${runtimeId}/`)));
     assert.equal(extracted.routes.find(r => r.name === "admin").public, false);
     for (const route of ["checkout/guest/prepare", "checkout/guest/start", "checkout/guest/status"]) {

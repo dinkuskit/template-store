@@ -10,6 +10,7 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/",
   "/home",
   "/cart",
+  "/account",
   "/checkout/success",
   "/checkout/cancel",
   "/favicon.ico",
@@ -35,7 +36,12 @@ const ALLOWED_PATH_PATTERNS = [
 
 const GUEST_CHECKOUT_POST_PATH =
   new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/checkout/guest/(prepare|start|status)$`);
+const SHOPPER_ACCOUNT_POST_PATH =
+  new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/account/(sign-in/start|sign-in/verify|sign-out|profile)$`);
+const SHOPPER_ACCOUNT_GET_PATH =
+  new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/account/(orders|profile)$`);
 const LOCAL_CHECKOUT_STATUS_POST_PATH = /^\/api\/checkout\/status$/;
+const LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH = /^\/api\/account\/demo-session$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 function slashlessCollectionPath(pathname: string): string | undefined {
   if (!pathname.endsWith("/") || pathname === "/") return undefined;
@@ -46,6 +52,7 @@ function slashlessCollectionPath(pathname: string): string | undefined {
     return pathname.slice(0, -1);
   }
   if (
+    pathname === "/account/" ||
     pathname === "/shipping/" ||
     pathname === "/returns/" ||
     pathname === "/feeds/google-merchant.xml/" ||
@@ -214,14 +221,17 @@ export function evaluatePublicBoundary(
   }
 
   const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
+  const isShopperAccountPost = pathForms.some((path) => SHOPPER_ACCOUNT_POST_PATH.test(path));
+  const isShopperAccountGet = pathForms.some((path) => SHOPPER_ACCOUNT_GET_PATH.test(path));
   const isLocalCheckoutStatusPost = pathForms.some((path) => LOCAL_CHECKOUT_STATUS_POST_PATH.test(path));
+  const isLocalAccountDemoSessionPost = pathForms.some((path) => LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH.test(path));
   const isAllowedEmdashAdminRequest = allowEmdashAdmin;
 
-  // 2. Reject mutations and non-read HTTP methods, except the three exact
-  // Commerce guest POSTs admitted below.
+  // 2. Reject mutations and non-read HTTP methods, except the exact
+  // Commerce guest and shopper account POSTs admitted below.
   if (
     !isAllowedEmdashAdminRequest &&
-    ((normalizedMethod === "POST" && !isGuestCheckoutPost && !isLocalCheckoutStatusPost) ||
+    ((normalizedMethod === "POST" && !isGuestCheckoutPost && !isShopperAccountPost && !isLocalCheckoutStatusPost && !isLocalAccountDemoSessionPost) ||
       normalizedMethod === "PUT" ||
       normalizedMethod === "PATCH" ||
       normalizedMethod === "DELETE")
@@ -238,7 +248,9 @@ export function evaluatePublicBoundary(
     normalizedMethod !== "GET" &&
     normalizedMethod !== "HEAD" &&
     !isGuestCheckoutPost &&
-    !isLocalCheckoutStatusPost
+    !isShopperAccountPost &&
+    !isLocalCheckoutStatusPost &&
+    !isLocalAccountDemoSessionPost
   ) {
     return {
       allowed: false,
@@ -259,7 +271,16 @@ export function evaluatePublicBoundary(
     }
     return { allowed: true, status: 200 };
   }
-  if (LOCAL_CHECKOUT_STATUS_POST_PATH.test(decodedPath)) {
+  if (SHOPPER_ACCOUNT_POST_PATH.test(decodedPath) || SHOPPER_ACCOUNT_GET_PATH.test(decodedPath)) {
+    if (normalizedMethod === "POST" && isShopperAccountPost) {
+      return { allowed: true, status: 200 };
+    }
+    if ((normalizedMethod === "GET" || normalizedMethod === "HEAD") && isShopperAccountGet) {
+      return { allowed: true, status: 200 };
+    }
+    return { allowed: false, status: 405, reason: "Method not allowed." };
+  }
+  if (LOCAL_CHECKOUT_STATUS_POST_PATH.test(decodedPath) || LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH.test(decodedPath)) {
     return normalizedMethod === "POST"
       ? { allowed: true, status: 200 }
       : { allowed: false, status: 405, reason: "Method not allowed." };

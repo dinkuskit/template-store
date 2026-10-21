@@ -31,6 +31,7 @@ export default {
     const session = readPlaygroundSession(request);
     const staleSession = session !== undefined && !isUsablePlaygroundSession(session);
     if (staleSession) request = withoutPlaygroundSession(request);
+    (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv = env;
     let response = await (
       astroHandler as {
         fetch(
