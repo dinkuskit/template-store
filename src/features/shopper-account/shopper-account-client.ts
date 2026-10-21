@@ -321,13 +321,11 @@ export function hydrateShopperAccountPage(): void {
           setAccountStatus(root, message, true);
           return;
         }
-        saveStoredShopperSession(stored);
         if (verifyForm instanceof HTMLElement) verifyForm.hidden = true;
-        if (!(await loadSignedInDashboard(root, stored))) {
-          // A session whose profile never loaded would show the same error on every visit.
-          clearStoredShopperSession();
-          return;
-        }
+        // Kept only once its profile loads, so a failed or thrown load never
+        // leaves a session that shows the same error on every visit.
+        if (!(await loadSignedInDashboard(root, stored))) return;
+        saveStoredShopperSession(stored);
         setAccountStatus(root, null);
         announceSignedIn(root);
       } catch {
@@ -356,12 +354,8 @@ export function hydrateShopperAccountPage(): void {
           setAccountStatus(root, "Could not start the demo shopper session.", true);
           return;
         }
+        if (!(await loadSignedInDashboard(root, stored))) return;
         saveStoredShopperSession(stored);
-        if (!(await loadSignedInDashboard(root, stored))) {
-          // A session whose profile never loaded would show the same error on every visit.
-          clearStoredShopperSession();
-          return;
-        }
         setAccountStatus(
           root,
           "Demo account: no PIN required and no email recorded.",

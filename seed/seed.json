@@ -88,8 +88,8 @@
     },
     {
       "slug": "categories",
-      "label": "Categories",
-      "labelSingular": "Category",
+      "label": "Product categories",
+      "labelSingular": "Product category",
       "urlPattern": "/categories/{slug}",
       "seo": true,
       "supports": [
@@ -107,8 +107,26 @@
           "slug": "description",
           "label": "Description",
           "type": "string"
+        },
+        {
+          "slug": "products",
+          "label": "Products in this category",
+          "type": "reference",
+          "validation": {
+            "relation": "product_categories",
+            "relationSide": "parent"
+          }
         }
       ]
+    }
+  ],
+  "taxonomies": [
+    {
+      "name": "category",
+      "label": "Post categories",
+      "labelSingular": "Post category",
+      "hierarchical": true,
+      "collections": ["posts"]
     }
   ],
   "relations": [

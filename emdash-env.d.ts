@@ -87,6 +87,10 @@ export interface Product {
   terms?: Record<string, TaxonomyTerm[]>;
 }
 
+export interface CategoryReferences {
+  products: ReferencePage<Product>;
+}
+
 export interface ProductReferences {
   categories: ReferencePage<Category>;
 }
@@ -98,6 +102,7 @@ declare module "emdash" {
     products: Product;
   }
   interface EmDashCollectionReferences {
+    categories: CategoryReferences;
     products: ProductReferences;
   }
 }
