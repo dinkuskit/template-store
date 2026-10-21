@@ -5,15 +5,15 @@
 - Base: `2c0bdf627ee6b6405e421387a856c31cdc5a357c`, including merged PR #113.
 - Scope: [AGENTS.md](../../../AGENTS.md) and this public-safe proof only.
 
-The contract now explicitly includes required checks/proof, commits, non-force
-pushes to the assigned branch, pull-request creation/updates, review requests,
-and bounded in-scope repairs in an assigned source task. These steps do not
+The contract now explicitly includes implementation of locked or approved
+GrillTrack decisions within an assigned source task, required checks/proof,
+commits, non-force pushes to the assigned branch, pull-request creation/updates,
+review requests, and bounded in-scope repairs. These steps do not
 need another permission question. One writer, an isolated branch/worktree,
 and review evidence for the exact current head remain required.
 
-Package publishing, deployment, production mutation, secrets/permissions
-changes, destructive data/infrastructure operations, and merges remain
-separately authorized actions. This grants no standing merge authority. The
+The existing publishing, deployment, production mutation, secrets/permissions
+and merge gates remain unchanged. This grants no standing merge authority. The
 scoped active-policy check found no fixed-count repair cap to remove.
 
 Validation:
@@ -23,6 +23,8 @@ Validation:
 - Markdown links resolve; unchanged contract sections and preserved gates
   checked against the exact base.
 - `git diff --check`: passed.
+- PR #115 carries `verification-only`; CI/review coordination remains separate
+  from source preparation and does not authorize deployment.
 
 This is source-policy proof. No product code, decision ledger, dependency,
 runtime, deployment, credential, installed skill, or global configuration
