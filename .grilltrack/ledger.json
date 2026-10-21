@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-10-21T02:54:32+00:00",
-    "domain": "shopper-accounts-playground",
-    "started_at": "2026-10-21T02:54:31+00:00",
+    "confirmed_at": "2026-10-21T22:55:23+00:00",
+    "domain": "storefront-missing-product-media",
+    "started_at": "2026-10-21T22:55:23+00:00",
     "status": "confirmed",
-    "summary": "Add store-local shopper accounts (/account, StoreHeader entry, /cart prefill) and two-path playground sign-in (verified email OTP + PLAYGROUND_LEADS_DB opt-in vs instant no-PIN shopper@example.com demo opt-out)."
+    "summary": "Owner confirmed the neutral placeholder rule for missing product media; implement on PR 133 first, then 130/131."
   },
   "decisions": [
     {
@@ -4007,6 +4007,47 @@
       "superseded_by": null,
       "updated_at": "2026-10-21T13:56:06+00:00",
       "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
+    },
+    {
+      "baseline_ref": "git:6515a394010d6c493d12d35832e4e40ad9170a87",
+      "candidate_refs": [],
+      "choice": "Show real Commerce media resolved through the shared ProductMedia resolver contract (same-origin path or runtime-approved http(s) public media URL). Otherwise render a neutral 'No image' placeholder. Never infer or guess artwork from product name, SKU, or id; never reuse another product's image. Applies to guest cart (#121), order confirmation (#123), and account history (#124).",
+      "context_ref": "github:dinkuskit/template-store#133",
+      "created_at": "2026-10-21T22:55:23+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-21T22:55:23+00:00",
+          "choice": "Show real Commerce media resolved through the shared ProductMedia resolver contract (same-origin path or runtime-approved http(s) public media URL). Otherwise render a neutral 'No image' placeholder. Never infer or guess artwork from product name, SKU, or id; never reuse another product's image. Applies to guest cart (#121), order confirmation (#123), and account history (#124).",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "storefront-missing-media-001",
+      "implementation_ref": null,
+      "question": "When a cart line, order receipt, or account history card has no resolvable Commerce product image, what does the storefront show?",
+      "rationale": "Owner answer 2026-10-21: guessed garment art misrepresents merchant products; ClawSweeper flagged guessing on PRs 130 and 131.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-21T22:55:23+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4029,5 +4070,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-21T13:56:06+00:00"
+  "updated_at": "2026-10-21T22:55:23+00:00"
 }

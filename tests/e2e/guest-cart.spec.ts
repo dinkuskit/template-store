@@ -142,6 +142,17 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.getByRole("link", { name: /Cart/ }).click();
   await expect(shopper.locator("[data-guest-cart]")).toBeVisible();
   await expect(shopper.getByRole("heading", { name, exact: true })).toBeVisible();
+  const lineArticle = shopper.locator(`[data-guest-cart-line="${id}"]`);
+  const thumbnailFrame = lineArticle.locator("[data-guest-cart-line-thumbnail]");
+  const lineCopy = lineArticle.locator("[data-guest-cart-line-copy]");
+  await expect(thumbnailFrame).toBeVisible();
+  // The proof product has no Commerce media: a neutral placeholder, never artwork guessed from "hat".
+  await expect(thumbnailFrame.locator("[data-guest-cart-thumbnail-placeholder]")).toHaveText("No image");
+  await expect(thumbnailFrame.locator("img")).toHaveCount(0);
+  const [thumbBox, copyBox] = await Promise.all([thumbnailFrame.boundingBox(), lineCopy.boundingBox()]);
+  expect(thumbBox).not.toBeNull();
+  expect(copyBox).not.toBeNull();
+  expect(thumbBox!.x + thumbBox!.width).toBeLessThanOrEqual(copyBox!.x + 4);
   const qty = shopper.locator(`[data-guest-cart-qty="${id}"]`);
   const remove = shopper.locator(`[data-guest-cart-remove="${id}"]`);
   await expect(qty).toHaveValue("1");

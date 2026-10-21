@@ -9,6 +9,7 @@ import {
   canAddCommerceProductToCart,
   emptyGuestCartIntent,
   guestCartItemCount,
+  isSafeGuestCartThumbnailSrc,
   guestCartRetryControlState,
   guestReturnQueryIsPresent,
   loadGuestCartIntent,
@@ -183,6 +184,7 @@ describe("guest cart snapshot presentation", () => {
     expect(failed.lines[0]).toMatchObject({
       id: "hat-1",
       quantity: 2,
+      thumbnail: null,
       canCheckout: false,
     });
     expect(failed.snapshotError).toBe("We couldn't load the latest prices.");
@@ -246,6 +248,7 @@ describe("guest cart snapshot presentation", () => {
         name: "hat-1",
         sku: "",
         fulfillment: "physical",
+        thumbnail: null,
         price: { listable: false, regularText: null, saleText: null },
         availability: { status: "in-stock", sellable: false, listable: false },
       },
@@ -275,10 +278,80 @@ describe("guest cart snapshot presentation", () => {
         name: "Merchant hat",
         sku: "HAT-1",
         fulfillment: "physical",
+        thumbnail: null,
         price: { listable: true, regularText: "$24.00", saleText: null },
         availability: { status: "in-stock", sellable: true, listable: true },
       },
     ]);
+  });
+});
+
+describe("guest cart thumbnails", () => {
+  const listed = (thumbnail: unknown, listable = true) => ({
+    id: "hoodie-olive-m",
+    found: true,
+    name: "Pullover Hoodie",
+    sku: "HOODIE-M",
+    thumbnail,
+    price: { listable, regularText: listable ? "$60.00" : null, saleText: null, unitMinor: listable ? "6000" : null },
+    availability: { status: "in-stock", sellable: listable, listable },
+  });
+
+  it("accepts the Commerce image resolver's public URL shapes", () => {
+    expect(isSafeGuestCartThumbnailSrc("/_emdash/api/media/file/media-hoodie.png")).toBe(true);
+    expect(isSafeGuestCartThumbnailSrc("https://media.example.test/main.jpg")).toBe(true);
+    expect(isSafeGuestCartThumbnailSrc("http://media.example.test/main.jpg")).toBe(true);
+  });
+
+  it("rejects unsafe thumbnail URLs", () => {
+    for (const src of [
+      "",
+      "javascript:alert(1)",
+      "data:image/svg+xml,<svg/>",
+      "//evil.example/x.png",
+      "/_emdash/api/media/file/../secret.png",
+      "/_emdash/api/media/file/%2e%2e/secret.png",
+      "/media\\x.png",
+      "https://reviewer@media.example.test/x.png",
+      "ftp://media.example.test/x.png",
+      "/a b.png",
+      `/${"a".repeat(2050)}`,
+    ]) {
+      expect(isSafeGuestCartThumbnailSrc(src), src).toBe(false);
+    }
+  });
+
+  it("carries a runtime-approved HTTPS media URL from snapshot to cart line", () => {
+    const snapshots = projectGuestCartCatalogSnapshots([
+      listed({ src: "https://media.example.test/main.jpg", alt: "Olive pullover hoodie" }),
+    ]);
+    expect(snapshots?.[0]).toMatchObject({
+      thumbnail: { src: "https://media.example.test/main.jpg", alt: "Olive pullover hoodie" },
+    });
+    const view = presentGuestCart({
+      intent: addGuestCartLine(emptyGuestCartIntent(), "hoodie-olive-m", 1).intent,
+      snapshots,
+    });
+    expect(view.lines[0]?.thumbnail).toEqual({ src: "https://media.example.test/main.jpg", alt: "Olive pullover hoodie" });
+  });
+
+  it("uses the product name as alt text when media alt is blank", () => {
+    const snapshots = projectGuestCartCatalogSnapshots([listed({ src: "/_emdash/api/media/file/m.png", alt: " " })]);
+    expect(snapshots?.[0]).toMatchObject({ thumbnail: { src: "/_emdash/api/media/file/m.png", alt: "Pullover Hoodie" } });
+  });
+
+  it("never guesses artwork: missing, unsafe, or unlisted media yields the neutral placeholder", () => {
+    for (const candidate of [undefined, null, {}, { src: "javascript:alert(1)", alt: "x" }]) {
+      expect(projectGuestCartCatalogSnapshots([listed(candidate)])?.[0]).toMatchObject({ thumbnail: null });
+    }
+    expect(
+      projectGuestCartCatalogSnapshots([listed({ src: "https://media.example.test/main.jpg", alt: "x" }, false)])?.[0],
+    ).toMatchObject({ name: "hoodie-olive-m", thumbnail: null });
+    const missing = presentGuestCart({
+      intent: addGuestCartLine(emptyGuestCartIntent(), "hoodie-olive-m", 1).intent,
+      snapshots: [{ id: "hoodie-olive-m", found: false }],
+    });
+    expect(missing.lines[0]?.thumbnail).toBeNull();
   });
 });
 
