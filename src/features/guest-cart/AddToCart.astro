@@ -1,24 +1,121 @@
 ---
 import { canAddCommerceProductToCart } from "./index.js";
-import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
+import type { PublicCommerceProduct, PublicCommerceVariant } from "../commerce-catalog/index.js";
 
 interface Props {
   product: PublicCommerceProduct;
+  variants?: readonly PublicCommerceVariant[];
 }
 
-const { product } = Astro.props;
-const allowed = canAddCommerceProductToCart(product);
+const { product, variants = [] } = Astro.props;
+const sellableVariants = variants.filter((member) => member.availability.sellable);
+const allowed = canAddCommerceProductToCart(product) || sellableVariants.length > 0;
+const qtyInputId = `guest-cart-add-qty-${product.id}`;
 ---
 {allowed ? (
   <div class="guest-cart-add">
-    <button type="button" data-add-to-cart={product.id}>Add to cart</button>
+    <div class="guest-cart-add__single" data-add-to-cart-single hidden={!canAddCommerceProductToCart(product)}>
+      <div class="guest-cart-add__qty">
+        <label for={qtyInputId}>Quantity</label>
+        <div class="guest-cart-add__stepper">
+          <button
+            type="button"
+            class="guest-cart-add__step"
+            data-add-to-cart-qty-step="-1"
+            data-add-to-cart-qty-decrease
+            aria-label="Decrease quantity"
+          >−</button>
+          <input
+            id={qtyInputId}
+            type="text"
+            inputmode="numeric"
+            min="1"
+            max="99"
+            value="1"
+            data-add-to-cart-qty
+          />
+          <button
+            type="button"
+            class="guest-cart-add__step"
+            data-add-to-cart-qty-step="1"
+            data-add-to-cart-qty-increase
+            aria-label="Increase quantity"
+          >+</button>
+        </div>
+      </div>
+      <button type="button" data-add-to-cart={product.id}>Add to cart</button>
+    </div>
+    {variants.length > 0 && sellableVariants.length > 0 && (
+      <fieldset class="guest-cart-add__variants" data-add-to-cart-variants>
+        <legend>Quantity by option</legend>
+        {variants.map((member) => {
+          const label = member.selections.map(([, value]) => value).join(" / ");
+          const variantInputId = `guest-cart-variant-qty-${member.id}`;
+          return (
+            <div
+              class="guest-cart-add__variant-row"
+              data-variant-batch-row={member.id}
+              data-variant-sellable={String(member.availability.sellable)}
+            >
+              <div class="guest-cart-add__variant-info">
+                <label class="guest-cart-add__variant-label" for={variantInputId}>{label} quantity</label>
+                <span class="guest-cart-add__variant-meta">{member.priceText}</span>
+              </div>
+              <div class="guest-cart-add__stepper">
+                <button
+                  type="button"
+                  class="guest-cart-add__step"
+                  data-variant-qty-step="-1"
+                  data-variant-qty-decrease={member.id}
+                  data-variant-qty-target={member.id}
+                  aria-label={`Decrease ${label} quantity`}
+                  disabled={!member.availability.sellable}
+                >−</button>
+                <input
+                  id={variantInputId}
+                  type="text"
+                  inputmode="numeric"
+                  min="0"
+                  max="99"
+                  value="0"
+                  data-variant-qty={member.id}
+                  disabled={!member.availability.sellable}
+                />
+                <button
+                  type="button"
+                  class="guest-cart-add__step"
+                  data-variant-qty-step="1"
+                  data-variant-qty-increase={member.id}
+                  data-variant-qty-target={member.id}
+                  aria-label={`Increase ${label} quantity`}
+                  disabled={!member.availability.sellable}
+                >+</button>
+              </div>
+            </div>
+          );
+        })}
+        <button type="button" data-add-to-cart-batch>Add selected variants to cart</button>
+      </fieldset>
+    )}
     <p data-add-to-cart-status hidden role="status"></p>
   </div>
 ) : null}
 <style>
-  .guest-cart-add{margin-top:1rem}
+  .guest-cart-add{margin-top:1rem;display:grid;gap:.85rem}
+  .guest-cart-add__single{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.65rem}
+  .guest-cart-add__qty{display:grid;gap:.3rem}
+  .guest-cart-add__qty label,.guest-cart-add__variant-label{font-size:.9rem;font-weight:700}
+  .guest-cart-add__stepper{display:inline-flex;align-items:center;border:1px solid var(--store-line,#d8d2c7);border-radius:.4rem;background:var(--store-surface,#fff);overflow:hidden}
+  .guest-cart-add__stepper input{width:3.25rem;padding:.45rem .35rem;border:0;border-inline:1px solid var(--store-line,#d8d2c7);background:transparent;color:inherit;font:inherit;font-weight:700;text-align:center}
   .guest-cart-add button{padding:.7rem 1rem;border:0;border-radius:.4rem;background:var(--dinkus-action-background);color:var(--dinkus-action-color);font:inherit;font-weight:800;cursor:pointer}
-  .guest-cart-add p{margin:.6rem 0 0;color:var(--store-muted)}
+  .guest-cart-add button.guest-cart-add__step{padding:.45rem .65rem;border-radius:0;background:transparent;color:inherit;font-weight:800;line-height:1}
+  .guest-cart-add button:disabled,.guest-cart-add input:disabled{opacity:.5;cursor:not-allowed}
+  .guest-cart-add__variants{margin:0;padding:.75rem;border:1px solid var(--store-line,#d8d2c7);border-radius:.5rem;display:grid;gap:.6rem}
+  .guest-cart-add__variants legend{padding:0 .35rem;font-size:.82rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--store-muted)}
+  .guest-cart-add__variant-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem}
+  .guest-cart-add__variant-info{display:flex;align-items:baseline;gap:.45rem;flex-wrap:wrap}
+  .guest-cart-add__variant-meta{color:var(--store-muted);font-size:.9rem}
+  .guest-cart-add p{margin:.2rem 0 0;color:var(--store-muted)}
 </style>
 <script>
   import { hydrateGuestCartControls } from "./guest-cart-client.ts";

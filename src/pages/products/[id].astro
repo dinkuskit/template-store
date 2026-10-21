@@ -104,7 +104,7 @@ const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unm
 const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability unavailable" : managed ? `${managed.inventory.available} available` : unmanaged ? ({
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
-} as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
+} as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only \u00b7 not purchasable";
 const policies = linkedProduct
   ? await readInstalledCommercePolicies(
     { runtime: Astro.locals.emdash, request: Astro.request },
@@ -204,9 +204,9 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
-            {cartProduct && offersCart && <AddToCart product={cartProduct} />}
+            {cartProduct && offersCart && <AddToCart product={cartProduct} variants={variants} />}
             {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>Demo product. Cart and checkout are unavailable.</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
-            {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
+            {category && <a class="product-detail__back" href={categoryPath(category.slug)}>{"\u2190"} Back to {category.name}</a>}
           </div>
         </article>
       ) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
@@ -234,7 +234,11 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
       }
       if (add) {
         add.dataset.addToCart = input.value;
-        add.closest<HTMLElement>(".guest-cart-add")!.hidden = input.dataset.variantSellable !== "true";
+        const sellable = input.dataset.variantSellable === "true";
+        const single = add.closest<HTMLElement>("[data-add-to-cart-single]");
+        const container = add.closest<HTMLElement>(".guest-cart-add");
+        if (single) single.hidden = !sellable;
+        else if (container) container.hidden = !sellable;
       }
     });
   }
