@@ -167,6 +167,20 @@ export function resolvePlaygroundAccountSiteOrigin(env: EnvLike = process.env): 
   return PLAYGROUND_ORIGIN;
 }
 
+/**
+ * True on a Playground PR preview (pr-N.playground.dinkuskit.com). Commerce
+ * pins shopper accounts to the playground's own origin, so a preview can only
+ * say accounts are unavailable there.
+ */
+export function isPlaygroundPreviewHost(requestUrl: URL, trustedOrigin: string): boolean {
+  try {
+    const trusted = new URL(trustedOrigin);
+    return requestUrl.origin !== trusted.origin && requestUrl.hostname.endsWith(`.${trusted.hostname}`);
+  } catch {
+    return false;
+  }
+}
+
 export function playgroundShopperAccountHostOptions(
   env: EnvLike = process.env,
 ): ShopperAccountHostOptions {
