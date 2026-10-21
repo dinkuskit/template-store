@@ -38,7 +38,9 @@ import {
   DEMO_SHOPPER_ORDER_ID,
 } from "../../src/features/shopper-account/index.js";
 import {
+  PRE_UPGRADE_SHOPPER_ORDER_ID,
   ensureDemoShopperOrder,
+  ensurePreUpgradeShopperOrder,
   mintDemoShopperSession,
 } from "../../src/features/shopper-account/playground-runtime.js";
 
@@ -91,7 +93,7 @@ describe("playground visitor database state", () => {
   });
 
   it("preserves existing shopper orders, saved profile addresses, and sessions across repeat seeding and rejects foreign/revoked/expired sessions", async () => {
-    const trustedOrigin = "https://pr-117.playground.dinkuskit.com";
+    const trustedOrigin = "https://playground.dinkuskit.com";
     const baseMs = Date.parse("2026-10-20T18:00:00.000Z");
     let currentMs = baseMs;
 
@@ -129,7 +131,7 @@ describe("playground visitor database state", () => {
         host: {
           siteUrl: trustedOrigin,
           storeName: "DinkusKit Playground",
-          now: () => currentMs,
+          now: () => Math.floor(currentMs / 1000),
           loadOrdersForEmail: (emailKey: string) =>
             listOrdersForEmail(storage[ORDERS_COLLECTION] as unknown as OrdersCollection, emailKey),
           loadShippingCountries: async () => ({
@@ -141,6 +143,8 @@ describe("playground visitor database state", () => {
     };
 
     await ensurePlaygroundDemoCatalog(db as never);
+    // Populate a pre-upgrade paid order in the existing visitor DB before any shopper account seed/sign-in runs.
+    await ensurePreUpgradeShopperOrder(db as never);
     const issued = await mintDemoShopperSession(db as never, trustedOrigin, {
       DINKUS_LOCAL_PROOF: "1",
       DINKUS_LOCAL_PROOF_NOW: String(currentMs),
@@ -178,6 +182,7 @@ describe("playground visitor database state", () => {
     if (ordersRes.ok) {
       expect(ordersRes.orders).toEqual([
         expect.objectContaining({ orderId: DEMO_SHOPPER_ORDER_ID, number: 1001 }),
+        expect.objectContaining({ orderId: PRE_UPGRADE_SHOPPER_ORDER_ID, number: 1002 }),
       ]);
     }
 
@@ -238,11 +243,20 @@ describe("playground visitor database state", () => {
       error: expect.objectContaining({ code: "SESSION_DENIED" }),
     });
 
-    // Mint a second session and verify sign-out revokes it immediately.
+    // Mint a second demo session and verify it replaces the fixed demo session slot and sign-out revokes it immediately.
     currentMs = baseMs + 10 * 60_000;
     const secondSession = await mintDemoShopperSession(db as never, trustedOrigin, {
       DINKUS_LOCAL_PROOF: "1",
       DINKUS_LOCAL_PROOF_NOW: String(currentMs),
+    });
+    expect(secondSession.capability.sessionId).toBe("csess_demo_shopper");
+    expect(secondSession.capability.session).not.toBe(issued.capability.session);
+    const priorTokenAfterRotation = await readShopperAccountProfile(reopenedRuntimeA, {
+      [CUSTOMER_SESSION_HEADER]: issued.capability.session,
+    });
+    expect(priorTokenAfterRotation).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "SESSION_DENIED" }),
     });
     const signOutRes = await signOutShopperSession(
       reopenedRuntimeA,

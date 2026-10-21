@@ -81,7 +81,7 @@
     "vars": {
       "DINKUS_DEMO_NOINDEX": "1",
       "DINKUS_CATALOG_PROFILE": "native-development",
-      "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN": "https://pr-*.playground.dinkuskit.com"
+      "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN": "https://playground.dinkuskit.com"
     },
     "durable_objects": {
       "bindings": [

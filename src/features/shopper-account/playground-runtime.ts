@@ -33,9 +33,10 @@ export const PLAYGROUND_EMAIL_BINDING = "EMAIL";
 export const PLAYGROUND_DEFAULT_FROM_EMAIL = "accounts@dinkuskit.com";
 export const PLAYGROUND_ORIGIN = "https://playground.dinkuskit.com";
 export const PLAYGROUND_ACCOUNT_ORIGIN_ENV = "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN";
-export const PLAYGROUND_PREVIEW_ORIGIN_WILDCARD = "https://pr-*.playground.dinkuskit.com";
+export const DEMO_SHOPPER_SESSION_ID = "csess_demo_shopper";
+export const PRE_UPGRADE_SHOPPER_ORDER_ID = "ord_pre_upgrade_1000";
+export const PRE_UPGRADE_SHOPPER_ORDER_NUMBER = 1002;
 
-const PR_PREVIEW_ORIGIN_PATTERN = /^https:\/\/pr-[1-9][0-9]*\.playground\.dinkuskit\.com$/u;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 type ShopperAccountRequestContext = Readonly<{
@@ -58,14 +59,6 @@ function resolveActiveEnv(env: EnvLike = process.env): EnvLike {
     requestContext.getStore()?.env ??
     (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ??
     env
-  );
-}
-
-function resolveActiveRequestOrigin(explicitOrigin?: string): string | undefined {
-  return (
-    explicitOrigin ??
-    requestContext.getStore()?.requestOrigin ??
-    (globalThis as { __dinkusPlaygroundRequestOrigin?: string }).__dinkusPlaygroundRequestOrigin
   );
 }
 
@@ -184,9 +177,17 @@ export function isPlaygroundLeadStorageConfigured(env: EnvLike = process.env): b
   if (isD1Database(leadsDb) || isLeadsDurableObjectNamespace(leadsDb)) {
     return true;
   }
-  return activeEnv.DINKUS_LOCAL_PROOF === "1";
+  return isLocalProofOrDemoMode(activeEnv);
 }
 
+/**
+ * Sends a transactional OTP email through Cloudflare's native Email Service
+ * (`send_email` binding `EMAIL`). Cloudflare Workers' `SendEmail.send()`
+ * natively accepts the structured `EmailMessageBuilder` JSON payload
+ * (`{ to, from, subject, text }`, see Cloudflare Email Service / `send_email`
+ * binding docs), without requiring `cloudflare:email` `EmailMessage` MIME
+ * wrapping.
+ */
 export async function deliverPlaygroundShopperEmail(
   message: ShopperEmailMessage,
   env: EnvLike = process.env,
@@ -242,35 +243,49 @@ function parseBareOrigin(raw: unknown, allowLoopbackHttp: boolean): string | nul
 
 export function resolvePlaygroundAccountSiteOrigin(
   env: EnvLike = process.env,
-  explicitRequestOrigin?: string,
 ): string | undefined {
   const activeEnv = resolveActiveEnv(env);
   const trustedSiteUrl = readTrustedReturnOrigin(activeEnv);
   if (trustedSiteUrl) {
     return trustedSiteUrl;
   }
-  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
-    const localProofOrigin = parseBareOrigin(activeEnv.DINKUS_LOCAL_PROOF_SITE_URL, true);
+  if (isLocalProofOrDemoMode(activeEnv)) {
+    const localProofOrigin =
+      parseBareOrigin(activeEnv.DINKUS_LOCAL_PROOF_SITE_URL, true) ??
+      parseBareOrigin(activeEnv.EMDASH_SITE_URL, true);
     if (localProofOrigin) {
       return localProofOrigin;
     }
   }
   const configuredAccountOrigin = activeEnv[PLAYGROUND_ACCOUNT_ORIGIN_ENV];
   if (typeof configuredAccountOrigin === "string") {
-    const trimmed = configuredAccountOrigin.trim();
-    if (trimmed === PLAYGROUND_PREVIEW_ORIGIN_WILDCARD) {
-      const requestOrigin = resolveActiveRequestOrigin(explicitRequestOrigin);
-      if (typeof requestOrigin === "string" && PR_PREVIEW_ORIGIN_PATTERN.test(requestOrigin)) {
-        return requestOrigin;
-      }
-      return undefined;
-    }
-    const bareHttps = parseBareOrigin(trimmed, false);
+    const bareHttps = parseBareOrigin(configuredAccountOrigin.trim(), false);
     if (bareHttps) {
       return bareHttps;
     }
   }
   return undefined;
+}
+
+/**
+ * True on a Playground PR preview (pr-N.playground.dinkuskit.com). Commerce
+ * pins shopper accounts to the playground's own origin, so a preview can only
+ * say accounts are unavailable there.
+ */
+export function isPlaygroundPreviewHost(
+  requestUrl: URL,
+  trustedOrigin: string | undefined,
+): boolean {
+  if (!trustedOrigin) return false;
+  try {
+    const trusted = new URL(trustedOrigin);
+    return (
+      requestUrl.origin !== trusted.origin &&
+      requestUrl.hostname.endsWith(`.${trusted.hostname}`)
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function playgroundShopperAccountHostOptions(
@@ -285,7 +300,7 @@ export function playgroundShopperAccountHostOptions(
       return resolvePlaygroundAccountSiteOrigin(env) ?? fallbackSiteUrl;
     },
     storeName: "DinkusKit Store",
-    now: () => playgroundNow(resolveActiveEnv(env)),
+    now: () => Math.floor(playgroundNow(resolveActiveEnv(env)) / 1000),
     sendEmail: (message: ShopperEmailMessage) => deliverPlaygroundShopperEmail(message, env),
   };
 }
@@ -328,7 +343,7 @@ export async function recordVerifiedPlaygroundLead(
       )
       .bind(normalized, timestamp, timestamp, "playground-account-otp")
       .run();
-    if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+    if (isLocalProofOrDemoMode(activeEnv)) {
       const existing = capturedProofLeads.get(normalized);
       capturedProofLeads.set(normalized, {
         email: normalized,
@@ -357,7 +372,7 @@ export async function recordVerifiedPlaygroundLead(
         verification_count = playground_email_leads.verification_count + 1`,
       [normalized, timestamp, timestamp, "playground-account-otp"],
     );
-    if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+    if (isLocalProofOrDemoMode(activeEnv)) {
       const existing = capturedProofLeads.get(normalized);
       capturedProofLeads.set(normalized, {
         email: normalized,
@@ -370,7 +385,7 @@ export async function recordVerifiedPlaygroundLead(
     return true;
   }
 
-  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+  if (isLocalProofOrDemoMode(activeEnv)) {
     const existing = capturedProofLeads.get(normalized);
     capturedProofLeads.set(normalized, {
       email: normalized,
@@ -424,7 +439,7 @@ export async function readVerifiedPlaygroundLeads(
     }));
   }
 
-  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+  if (isLocalProofOrDemoMode(activeEnv)) {
     return readCapturedProofLeads();
   }
 
@@ -494,6 +509,57 @@ export async function ensureDemoShopperOrder(db: Db): Promise<void> {
   await orders.compareAndSet(DEMO_SHOPPER_ORDER_ID, null, demoOrder);
 }
 
+export async function ensurePreUpgradeShopperOrder(db: Db): Promise<void> {
+  const orders = new PluginStorageRepository<OrderRecord>(
+    db,
+    COMMERCE_PLUGIN_ID,
+    ORDERS_COLLECTION,
+    [],
+  );
+  const existing = await orders.get(PRE_UPGRADE_SHOPPER_ORDER_ID);
+  if (existing) return;
+  const preUpgradeOrder: OrderRecord = {
+    number: PRE_UPGRADE_SHOPPER_ORDER_NUMBER,
+    revision: 1,
+    paidOrder: {
+      schema: PAID_ORDER_SCHEMA,
+      orderId: PRE_UPGRADE_SHOPPER_ORDER_ID,
+      receiptId: "rcpt_pre_upgrade_1000",
+      attemptId: "att_pre_upgrade_1000",
+      paymentId: "pay_pre_upgrade_1000",
+      paidAt: "2026-10-10T10:00:00.000Z",
+      mode: "test",
+      lines: [
+        {
+          catalogItemId: "demo-hosted-cap",
+          name: "Dinkus Demo Canvas Cap",
+          quantity: 1,
+          unitPrice: { currency: "USD", minor: "1800" },
+        },
+      ],
+      total: { currency: "USD", minor: "2400" },
+      contactSnapshot: {
+        schema: "dinkuskit.commerce.checkout-contact/v1",
+        requirePhoneNumber: false,
+        revision: null,
+        contact: {
+          email: DEMO_SHOPPER_EMAIL,
+          phone: "+1 555 010 1999",
+          delivery: {
+            name: "Alex Rivera",
+            line1: "100 Pre-Upgrade Way",
+            city: "Springfield",
+            region: "OR",
+            postalCode: "97477",
+            country: "US",
+          },
+        },
+      },
+    },
+  };
+  await orders.compareAndSet(PRE_UPGRADE_SHOPPER_ORDER_ID, null, preUpgradeOrder);
+}
+
 export async function mintDemoShopperSession(
   db: Db,
   siteOrigin: string,
@@ -541,9 +607,11 @@ export async function mintDemoShopperSession(
       [],
     ),
   };
-  // Clear a previous demo login code record so the instant demo sign-in button
-  // works repeatedly without waiting for the 30-second email resend cooldown.
+  // Clear prior demo login code and fixed demo session record so the
+  // instant demo sign-in button works repeatedly and overwrites one bounded
+  // session slot instead of accumulating unbounded session rows per visitor.
   await storage[NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes].delete(DEMO_SHOPPER_EMAIL);
+  await storage[NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions].delete(DEMO_SHOPPER_SESSION_ID);
   let capturedCode: string | null = null;
   const runtime = bindShopperAccountRuntime(storage, NATIVE_SHOPPER_ACCOUNT_STORAGE, {
     runtimeSiteUrl: siteOrigin,
@@ -552,7 +620,8 @@ export async function mintDemoShopperSession(
     host: {
       siteUrl: siteOrigin,
       storeName: "DinkusKit Playground",
-      now: () => playgroundNow(activeEnv),
+      now: () => Math.floor(playgroundNow(activeEnv) / 1000),
+      createSessionId: () => DEMO_SHOPPER_SESSION_ID,
       sendEmail: async (message: ShopperEmailMessage) => {
         capturedCode = extractSixDigitCode(message.text);
       },

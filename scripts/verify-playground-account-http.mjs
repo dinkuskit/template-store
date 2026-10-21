@@ -12,6 +12,13 @@ const origin = `http://127.0.0.1:${appPort}`;
 const trace = [];
 const cases = {};
 
+const baseNowMs = Date.now();
+const secondOtpNowMs = baseNowMs + 60 * 1000;
+const futureNowMs = baseNowMs + 31 * 24 * 60 * 60 * 1000;
+const baseNowIso = new Date(baseNowMs).toISOString();
+const secondOtpNowIso = new Date(secondOtpNowMs).toISOString();
+const leadEmail = `verified.lead.${baseNowMs}@example.com`;
+
 const wranglerProofConfig = join(artifact, "wrangler.playground.account-proof.jsonc");
 const wranglerConfig = JSON.parse(readFileSync(join(root, "wrangler.playground.jsonc"), "utf8"));
 wranglerConfig.main = "../../src/playground-worker.ts";
@@ -22,6 +29,7 @@ wranglerConfig.vars = {
   DINKUS_PROOF_MODE: "1",
   DINKUS_LOCAL_PROOF_SITE_URL: origin,
   DINKUS_PLAYGROUND_ACCOUNT_ORIGIN: origin,
+  DINKUS_LOCAL_PROOF_NOW: String(baseNowMs),
 };
 wranglerConfig.previews = {
   ...wranglerConfig.previews,
@@ -29,7 +37,23 @@ wranglerConfig.previews = {
 };
 writeFileSync(wranglerProofConfig, JSON.stringify(wranglerConfig, null, 2));
 
-const futureNowMs = Date.now() + 31 * 24 * 60 * 60 * 1000;
+const restartedProofConfig = join(artifact, "wrangler.playground.account-restarted.jsonc");
+writeFileSync(
+  restartedProofConfig,
+  JSON.stringify(
+    {
+      ...wranglerConfig,
+      vars: { ...wranglerConfig.vars, DINKUS_LOCAL_PROOF_NOW: String(secondOtpNowMs) },
+      previews: {
+        ...wranglerConfig.previews,
+        vars: { ...wranglerConfig.vars, DINKUS_LOCAL_PROOF_NOW: String(secondOtpNowMs) },
+      },
+    },
+    null,
+    2,
+  ),
+);
+
 const expiredProofConfig = join(artifact, "wrangler.playground.account-expired.jsonc");
 writeFileSync(
   expiredProofConfig,
@@ -73,6 +97,7 @@ const serverEnv = {
   DINKUS_PROOF_MODE: "1",
   DINKUS_LOCAL_PROOF_SITE_URL: origin,
   DINKUS_PLAYGROUND_ACCOUNT_ORIGIN: origin,
+  DINKUS_LOCAL_PROOF_NOW: String(baseNowMs),
   DINKUS_TEMPLATE_DB_URL: `file:${join(artifact, "visitor.db")}`,
   DINKUS_TEMPLATE_UPLOADS_DIR: join(artifact, "uploads"),
   DINKUS_PLAYGROUND_WRANGLER_CONFIG: wranglerProofConfig,
@@ -224,6 +249,86 @@ const cookieA = await initSession("203.0.113.41", live.output);
 const cookieB = await initSession("203.0.113.42", live.output);
 const cookieReset = await initSession("203.0.113.43", live.output);
 
+// 0. Seed a pre-upgrade paid order (#1002, ord_pre_upgrade_1000) in Visitor A's existing DB before any account route runs
+const preUpgradeSeedRes = await fetch(`${origin}/api/proof/shopper-account`, {
+  method: "POST",
+  headers: {
+    origin,
+    cookie: cookieA,
+    "cf-connecting-ip": "203.0.113.41",
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({}),
+});
+const preUpgradeSeedBody = await preUpgradeSeedRes.json().catch(() => null);
+if (!preUpgradeSeedRes.ok || preUpgradeSeedBody?.preUpgradeOrderId !== "ord_pre_upgrade_1000") {
+  throw new Error(
+    `pre-upgrade order seed failed (${preUpgradeSeedRes.status}): ${JSON.stringify(preUpgradeSeedBody)}`,
+  );
+}
+cases["live:pre-upgrade-seed:visitorA"] = {
+  label: "live:pre-upgrade-seed:visitorA",
+  method: "POST",
+  path: "/api/proof/shopper-account",
+  cookie: cookieA.replace(/=.*/, "=redacted"),
+  sessionToken: null,
+  origin,
+  status: preUpgradeSeedRes.status,
+  errorCode: null,
+  orderIds: [preUpgradeSeedBody.preUpgradeOrderId],
+  profileLine1: null,
+  signedOut: null,
+};
+trace.push(cases["live:pre-upgrade-seed:visitorA"]);
+
+// 0b. Mint a shopper session in Visitor Reset, then execute /_playground/reset -> /playground -> /_playground/init
+const demoSessionResetBefore = await callAccount({
+  label: "live:demo-session:visitorReset-before-reset",
+  method: "POST",
+  path: "/api/account/demo-session",
+  cookie: cookieReset,
+  ip: "203.0.113.43",
+  body: {},
+});
+const tokenResetBefore = demoSessionResetBefore.raw?.capability?.session;
+if (typeof tokenResetBefore !== "string") {
+  throw new Error(
+    `visitorReset demo-session did not issue a shopper session token: ${JSON.stringify(demoSessionResetBefore.raw)}`,
+  );
+}
+const resetResponse = await fetch(`${origin}/_playground/reset`, {
+  method: "GET",
+  redirect: "manual",
+  headers: {
+    origin,
+    cookie: cookieReset,
+    "cf-connecting-ip": "203.0.113.43",
+  },
+});
+if (resetResponse.status !== 302) {
+  throw new Error(`/_playground/reset did not redirect with 302 (${resetResponse.status})`);
+}
+const cookieAfterReset = await initSession("203.0.113.43", live.output);
+if (cookieAfterReset === cookieReset) {
+  throw new Error("/_playground/reset did not rotate the visitor sandbox session cookie");
+}
+await callAccount({
+  label: "live:registry:orders:own-token-after-playground-reset",
+  method: "GET",
+  path: `${REGISTRY_PREFIX}/orders`,
+  cookie: cookieAfterReset,
+  sessionToken: tokenResetBefore,
+  ip: "203.0.113.43",
+});
+await callAccount({
+  label: "live:native:orders:own-token-after-playground-reset",
+  method: "GET",
+  path: `${NATIVE_PREFIX}/orders`,
+  cookie: cookieAfterReset,
+  sessionToken: tokenResetBefore,
+  ip: "203.0.113.43",
+});
+
 // 1. Mint demo session in Visitor A
 const demoSessionA = await callAccount({
   label: "live:demo-session:visitorA",
@@ -264,17 +369,17 @@ await callAccount({
   method: "POST",
   path: `${REGISTRY_PREFIX}/sign-in/start`,
   cookie: cookieA,
-  body: { email: "verified.lead@example.com", optInUpdates: false },
+  body: { email: leadEmail, optInUpdates: false },
 });
 await callAccount({
   label: "live:registry:otp-start:with-optin",
   method: "POST",
   path: `${REGISTRY_PREFIX}/sign-in/start`,
   cookie: cookieA,
-  body: { email: "verified.lead@example.com", optInUpdates: true },
+  body: { email: leadEmail, optInUpdates: true },
 });
 const proofEmailRes = await fetch(
-  `${origin}/api/proof/shopper-account?email=${encodeURIComponent("verified.lead@example.com")}`,
+  `${origin}/api/proof/shopper-account?email=${encodeURIComponent(leadEmail)}`,
   { headers: { cookie: cookieA } },
 );
 const proofEmailBody = await proofEmailRes.json();
@@ -287,12 +392,34 @@ const verifiedOtp = await callAccount({
   method: "POST",
   path: `${REGISTRY_PREFIX}/sign-in/verify`,
   cookie: cookieA,
-  body: { email: "verified.lead@example.com", code: otpCode, optInUpdates: true },
+  body: { email: leadEmail, code: otpCode, optInUpdates: true },
 });
 const otpTokenA = verifiedOtp.raw?.capability?.session;
 if (typeof otpTokenA !== "string") {
   throw new Error(`otp verify did not issue a shopper session token: ${JSON.stringify(verifiedOtp.raw)}`);
 }
+const liveLeadsRes = await fetch(`${origin}/api/proof/shopper-account`, {
+  headers: { cookie: cookieA },
+});
+const liveLeadsBody = await liveLeadsRes.json().catch(() => null);
+const liveLeadRow = Array.isArray(liveLeadsBody?.leads)
+  ? liveLeadsBody.leads.find((lead) => lead.email === leadEmail) ?? null
+  : null;
+cases["live:leads-db:after-first-otp"] = {
+  label: "live:leads-db:after-first-otp",
+  method: "GET",
+  path: "/api/proof/shopper-account",
+  cookie: cookieA.replace(/=.*/, "=redacted"),
+  sessionToken: null,
+  origin,
+  status: liveLeadsRes.status,
+  errorCode: null,
+  orderIds: null,
+  profileLine1: null,
+  signedOut: null,
+  lead: liveLeadRow ? { ...liveLeadRow, email: "verified.lead@example.com" } : null,
+};
+trace.push(cases["live:leads-db:after-first-otp"]);
 
 // 4. Run authority matrix across both Registry and Native entrypoints while live
 async function runAuthorityMatrix(phase) {
@@ -400,14 +527,95 @@ await callAccount({
 
 await stopServer(live.child);
 
-// 5. Restart server over the same existing database and verify existing-state persistence + foreign refusal
-const restarted = startServer(serverEnv);
+// 5. Restart server over the same existing database and verify existing-state persistence + foreign refusal + durable leads
+const restartedEnv = {
+  ...serverEnv,
+  DINKUS_LOCAL_PROOF_NOW: String(secondOtpNowMs),
+  DINKUS_PLAYGROUND_WRANGLER_CONFIG: restartedProofConfig,
+};
+const restarted = startServer(restartedEnv);
 await waitForHttp(`${origin}/`, restarted.output);
 await waitForReady(restarted.output);
 await warmSession(cookieA, "203.0.113.41");
 await warmSession(cookieB, "203.0.113.42");
 await warmSession(cookieReset, "203.0.113.43");
 await runAuthorityMatrix("restarted");
+
+const restartedLeadsBeforeRes = await fetch(`${origin}/api/proof/shopper-account`, {
+  headers: { cookie: cookieA },
+});
+const restartedLeadsBeforeBody = await restartedLeadsBeforeRes.json().catch(() => null);
+const restartedLeadBeforeRow = Array.isArray(restartedLeadsBeforeBody?.leads)
+  ? restartedLeadsBeforeBody.leads.find((lead) => lead.email === leadEmail) ?? null
+  : null;
+cases["restarted:leads-db:before-second-otp"] = {
+  label: "restarted:leads-db:before-second-otp",
+  method: "GET",
+  path: "/api/proof/shopper-account",
+  cookie: cookieA.replace(/=.*/, "=redacted"),
+  sessionToken: null,
+  origin,
+  status: restartedLeadsBeforeRes.status,
+  errorCode: null,
+  orderIds: null,
+  profileLine1: null,
+  signedOut: null,
+  lead: restartedLeadBeforeRow
+    ? { ...restartedLeadBeforeRow, email: "verified.lead@example.com" }
+    : null,
+};
+trace.push(cases["restarted:leads-db:before-second-otp"]);
+
+await callAccount({
+  label: "restarted:registry:otp-start:with-optin",
+  method: "POST",
+  path: `${REGISTRY_PREFIX}/sign-in/start`,
+  cookie: cookieA,
+  body: { email: leadEmail, optInUpdates: true },
+});
+const secondProofEmailRes = await fetch(
+  `${origin}/api/proof/shopper-account?email=${encodeURIComponent(leadEmail)}`,
+  { headers: { cookie: cookieA } },
+);
+const secondProofEmailBody = await secondProofEmailRes.json();
+const secondOtpCode = secondProofEmailBody?.email?.code;
+if (!/^[0-9]{6}$/.test(String(secondOtpCode ?? ""))) {
+  throw new Error(
+    `restarted proof endpoint did not return 6-digit OTP code: ${JSON.stringify(secondProofEmailBody)}`,
+  );
+}
+await callAccount({
+  label: "restarted:registry:otp-verify:with-optin",
+  method: "POST",
+  path: `${REGISTRY_PREFIX}/sign-in/verify`,
+  cookie: cookieA,
+  body: { email: leadEmail, code: secondOtpCode, optInUpdates: true },
+});
+const restartedLeadsAfterRes = await fetch(`${origin}/api/proof/shopper-account`, {
+  headers: { cookie: cookieA },
+});
+const restartedLeadsAfterBody = await restartedLeadsAfterRes.json().catch(() => null);
+const restartedLeadAfterRow = Array.isArray(restartedLeadsAfterBody?.leads)
+  ? restartedLeadsAfterBody.leads.find((lead) => lead.email === leadEmail) ?? null
+  : null;
+cases["restarted:leads-db:after-second-otp"] = {
+  label: "restarted:leads-db:after-second-otp",
+  method: "GET",
+  path: "/api/proof/shopper-account",
+  cookie: cookieA.replace(/=.*/, "=redacted"),
+  sessionToken: null,
+  origin,
+  status: restartedLeadsAfterRes.status,
+  errorCode: null,
+  orderIds: null,
+  profileLine1: null,
+  signedOut: null,
+  lead: restartedLeadAfterRow
+    ? { ...restartedLeadAfterRow, email: "verified.lead@example.com" }
+    : null,
+};
+trace.push(cases["restarted:leads-db:after-second-otp"]);
+
 await stopServer(restarted.child);
 
 // 6. Advance clock past session TTL and verify expired session refusal
@@ -480,6 +688,7 @@ const summary = Object.fromEntries(
       orderIds: entry.orderIds,
       profileLine1: entry.profileLine1,
       signedOut: entry.signedOut,
+      ...(entry.lead ? { lead: entry.lead } : {}),
     },
   ]),
 );
@@ -490,7 +699,11 @@ const failures = [];
 for (const phase of ["live", "restarted"]) {
   for (const surface of ["registry", "native"]) {
     const ordersEntry = cases[`${phase}:${surface}:orders:authorized`];
-    if (ordersEntry?.status !== 200 || !ordersEntry.orderIds?.includes("ord_demo_shopper_1001")) {
+    if (
+      ordersEntry?.status !== 200 ||
+      !ordersEntry.orderIds?.includes("ord_demo_shopper_1001") ||
+      !ordersEntry.orderIds?.includes("ord_pre_upgrade_1000")
+    ) {
       failures.push(`${phase}:${surface}:orders:authorized failed -> ${JSON.stringify(ordersEntry)}`);
     }
     const profileEntry = cases[`${phase}:${surface}:profile:authorized`];
@@ -509,6 +722,44 @@ for (const phase of ["live", "restarted"]) {
       }
     }
   }
+}
+
+for (const resetOwnCase of [
+  "live:registry:orders:own-token-after-playground-reset",
+  "live:native:orders:own-token-after-playground-reset",
+]) {
+  const entry = cases[resetOwnCase];
+  if (entry?.status !== 401 || entry.errorCode !== "SESSION_DENIED" || entry.orderIds) {
+    failures.push(`${resetOwnCase} must return 401 SESSION_DENIED -> ${JSON.stringify(entry)}`);
+  }
+}
+
+const liveLead = cases["live:leads-db:after-first-otp"]?.lead;
+if (
+  liveLead?.email !== "verified.lead@example.com" ||
+  liveLead?.firstVerifiedAt !== baseNowIso ||
+  liveLead?.lastVerifiedAt !== baseNowIso ||
+  liveLead?.verificationCount !== 1
+) {
+  failures.push(`live:leads-db:after-first-otp mismatch -> ${JSON.stringify(liveLead)}`);
+}
+const restartedLeadBefore = cases["restarted:leads-db:before-second-otp"]?.lead;
+if (
+  restartedLeadBefore?.email !== "verified.lead@example.com" ||
+  restartedLeadBefore?.firstVerifiedAt !== baseNowIso ||
+  restartedLeadBefore?.lastVerifiedAt !== baseNowIso ||
+  restartedLeadBefore?.verificationCount !== 1
+) {
+  failures.push(`restarted:leads-db:before-second-otp mismatch -> ${JSON.stringify(restartedLeadBefore)}`);
+}
+const restartedLeadAfter = cases["restarted:leads-db:after-second-otp"]?.lead;
+if (
+  restartedLeadAfter?.email !== "verified.lead@example.com" ||
+  restartedLeadAfter?.firstVerifiedAt !== baseNowIso ||
+  restartedLeadAfter?.lastVerifiedAt !== secondOtpNowIso ||
+  restartedLeadAfter?.verificationCount !== 2
+) {
+  failures.push(`restarted:leads-db:after-second-otp mismatch -> ${JSON.stringify(restartedLeadAfter)}`);
 }
 
 if (cases["live:registry:otp-start:without-optin-refused"]?.status !== 400) {

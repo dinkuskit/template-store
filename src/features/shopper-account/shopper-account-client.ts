@@ -211,6 +211,7 @@ async function loadSignedInDashboard(
 export function hydrateShopperAccountPage(): void {
   const root = document.querySelector("[data-shopper-account]");
   if (!(root instanceof HTMLElement)) return;
+  if (root.dataset.accountPreviewUnavailable === "true") return;
   const isPlaygroundMode = root.dataset.playgroundMode === "true";
 
   const startForm = root.querySelector("[data-account-start-form]");

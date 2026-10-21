@@ -1,12 +1,24 @@
 ---
 interface Props {
   playgroundMode?: boolean;
+  /** Set on a Playground PR preview, where Commerce refuses account calls. */
+  previewUnavailableOrigin?: string;
 }
 
-const { playgroundMode = false } = Astro.props;
+const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
 ---
-<section class="shopper-account" aria-labelledby="shopper-account-title" data-shopper-account data-playground-mode={playgroundMode ? "true" : "false"}>
+<section class="shopper-account" aria-labelledby="shopper-account-title" data-shopper-account data-playground-mode={playgroundMode ? "true" : "false"} data-account-preview-unavailable={previewUnavailableOrigin ? "true" : "false"}>
   <h1 id="shopper-account-title">Account</h1>
+  {previewUnavailableOrigin ? (
+  <div class="account-card account-card--unavailable" data-account-preview-notice role="status">
+    <h2>Accounts aren't available in a PR preview</h2>
+    <p>
+      Shopper sign-in only works on the main Playground. Try it at
+      <a href={`${previewUnavailableOrigin}/account`}>{new URL(previewUnavailableOrigin).host}/account</a>.
+    </p>
+  </div>
+  ) : (
+  <>
   <p data-account-status role="status" hidden></p>
 
   <div class="account-signed-out" data-account-signed-out>
@@ -102,6 +114,8 @@ const { playgroundMode = false } = Astro.props;
       </section>
     </div>
   </div>
+  </>
+  )}
 </section>
 <style>
   .shopper-account {
@@ -127,6 +141,15 @@ const { playgroundMode = false } = Astro.props;
     color: var(--store-alert-ink);
     background: var(--store-alert);
     border-color: var(--store-alert-ink);
+  }
+  .account-card--unavailable {
+    max-width: 42rem;
+    border-color: var(--store-alert-ink);
+    border-left-width: 0.4rem;
+  }
+  .account-card--unavailable a {
+    color: inherit;
+    font-weight: 800;
   }
   .account-signed-out {
     display: grid;
