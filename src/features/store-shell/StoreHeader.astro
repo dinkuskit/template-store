@@ -55,6 +55,7 @@ const linkProps = (item: StoreMenuItem) => ({
   )}
   <nav class="store-header__nav" aria-label="Store">
     <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
+    <a class="store-header__account" href="/account" data-shopper-account-nav aria-current={path === "/account" ? "page" : undefined}>Account</a>
     <GuestCartNav />
   </nav>
 </header>

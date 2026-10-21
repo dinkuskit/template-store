@@ -21,6 +21,9 @@ const isCloudflare =
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
 );
+const playgroundCommerceEntry = fileURLToPath(
+  new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
+);
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
 );
@@ -87,10 +90,13 @@ export default defineConfig({
           entrypoint: productUrlEntry,
         },
         ...(process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
-          dinkusCommerce({
-            enableLocalStockManagement,
-            ...(siteUrl ? { siteUrl } : {}),
-          }),
+          {
+            ...dinkusCommerce({
+              enableLocalStockManagement,
+              ...(siteUrl ? { siteUrl } : {}),
+            }),
+            entrypoint: playgroundCommerceEntry,
+          },
         ] : []),
       ],
     }),
@@ -102,6 +108,18 @@ export default defineConfig({
         "@dinkuskit/commerce/features/checkout": fileURLToPath(
           new URL(
             "./.artifacts/source-deps/commerce/src/features/checkout/index.ts",
+            import.meta.url,
+          ),
+        ),
+        "@dinkuskit/commerce/features/customers": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/customers/index.ts",
+            import.meta.url,
+          ),
+        ),
+        "@dinkuskit/commerce/features/orders": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/orders/index.ts",
             import.meta.url,
           ),
         ),

@@ -28,6 +28,11 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/readiness",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/start",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/verify",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-out",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/orders",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/profile",
   ]);
   assert.deepEqual(policy.payments.publicRoutes, []);
   assert.deepEqual(policy.undeclaredRoutes, []);

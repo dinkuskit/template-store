@@ -31,6 +31,12 @@ import {
   type GuestCheckoutTransport,
   type GuestCheckoutWireResult,
 } from "./index.js";
+import {
+  SHOPPER_ORDERS_ENDPOINT,
+  SHOPPER_SESSION_HEADER,
+  readStoredShopperSession,
+  unwrapPluginEnvelope,
+} from "../shopper-account/index.js";
 
 // A live store's price check took up to 4.7 s on beta; leave room above that.
 const SNAPSHOT_TIMEOUT_MS = 15_000;
@@ -138,6 +144,57 @@ function escapeText(value: string): string {
 function inputValue(root: Element, selector: string): string {
   const input = root.querySelector(selector);
   return input instanceof HTMLInputElement || input instanceof HTMLSelectElement ? input.value.trim() : "";
+}
+
+function setEmptyFieldValue(root: Element, selector: string, value: string | undefined | null): void {
+  if (!value) return;
+  const field = root.querySelector(selector);
+  if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)) return;
+  if (field.value.trim().length > 0) return;
+  field.value = value;
+}
+
+async function prefillShopperContact(root: Element): Promise<void> {
+  const shopperSession = readStoredShopperSession();
+  if (!shopperSession) return;
+  setEmptyFieldValue(root, "[data-guest-cart-email]", shopperSession.email);
+  try {
+    const response = await fetch(SHOPPER_ORDERS_ENDPOINT, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        [SHOPPER_SESSION_HEADER]: shopperSession.sessionToken,
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return;
+    const body = unwrapPluginEnvelope(await response.json());
+    if (!body || body.ok !== true || typeof body.profile !== "object" || body.profile === null) return;
+    const profile = body.profile as {
+      email?: string;
+      delivery?: {
+        name?: string;
+        line1?: string;
+        line2?: string;
+        city?: string;
+        region?: string;
+        postalCode?: string;
+        country?: string;
+      } | null;
+    };
+    setEmptyFieldValue(root, "[data-guest-cart-email]", profile.email);
+    const delivery = profile.delivery;
+    if (!delivery) return;
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-name]", delivery.name);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-line1]", delivery.line1);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-line2]", delivery.line2);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-city]", delivery.city);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-region]", delivery.region);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-postal-code]", delivery.postalCode);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-country]", delivery.country);
+  } catch {
+    // Best-effort shopper profile prefill; checkout fields remain editable.
+  }
 }
 
 function readCheckoutContact(
@@ -677,6 +734,7 @@ export function hydrateGuestCartPage(): void {
   }
   renderCart(root);
   void refreshSnapshot(root);
+  void prefillShopperContact(root);
   void (async () => {
     if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) {
       await recoverGuestCheckout(root);

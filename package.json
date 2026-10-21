@@ -15,7 +15,7 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "commit": "288199275f61aec084c0e1e72b370ec74ea35369"
+        "commit": "c42597bddd35d949f4e69f8ca97cc26206200da0"
       }
     }
   },
@@ -37,6 +37,7 @@
     "verify:playground-config": "node scripts/verify-playground-config.mjs",
     "verify:playground-authority": "pnpm prepare:sources && node scripts/verify-playground-checkout-authority.mjs",
     "verify:playground-http": "pnpm prepare:sources && node scripts/verify-playground-checkout-http.mjs",
+    "verify:playground-account-http": "pnpm prepare:sources && node scripts/verify-playground-account-http.mjs",
     "seed:bundle": "node scripts/build-seed-bundle.mjs",
     "seed:demo": "node --import ./scripts/cloudflare-workers-hook.mjs .artifacts/seed/seed-synthetic-demo.mjs",
     "verify:quick": "bin/verify-web quick",

@@ -13,7 +13,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "DINKUS_DEMO_NOINDEX": "1",
-    "DINKUS_CATALOG_PROFILE": "native-development"
+    "DINKUS_CATALOG_PROFILE": "native-development",
+    "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN": "https://playground.dinkuskit.com"
   },
   "assets": {
     "binding": "ASSETS",
@@ -24,6 +25,10 @@
     "bindings": [
       {
         "name": "PLAYGROUND_DB",
+        "class_name": "EmDashPreviewDB"
+      },
+      {
+        "name": "PLAYGROUND_LEADS_DB",
         "class_name": "EmDashPreviewDB"
       }
     ]
@@ -67,15 +72,25 @@
       }
     }
   ],
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
   "previews": {
     "vars": {
       "DINKUS_DEMO_NOINDEX": "1",
-      "DINKUS_CATALOG_PROFILE": "native-development"
+      "DINKUS_CATALOG_PROFILE": "native-development",
+      "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN": "https://playground.dinkuskit.com"
     },
     "durable_objects": {
       "bindings": [
         {
           "name": "PLAYGROUND_DB",
+          "class_name": "EmDashPreviewDB"
+        },
+        {
+          "name": "PLAYGROUND_LEADS_DB",
           "class_name": "EmDashPreviewDB"
         }
       ]
@@ -104,6 +119,11 @@
           "limit": 3,
           "period": 60
         }
+      }
+    ],
+    "send_email": [
+      {
+        "name": "EMAIL"
       }
     ]
   }

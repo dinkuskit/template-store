@@ -12,6 +12,7 @@ import {
   recoverFromPlaygroundInitFailure,
   withoutPlaygroundSession,
 } from "./features/playground/contract.js";
+import { withShopperAccountRequest } from "./features/shopper-account/playground-runtime.js";
 
 export { EmDashPreviewDB };
 
@@ -31,15 +32,21 @@ export default {
     const session = readPlaygroundSession(request);
     const staleSession = session !== undefined && !isUsablePlaygroundSession(session);
     if (staleSession) request = withoutPlaygroundSession(request);
-    let response = await (
-      astroHandler as {
-        fetch(
-          request: Request,
-          env: Record<string, unknown>,
-          ctx: WorkerExecutionContext,
-        ): Promise<Response>;
-      }
-    ).fetch(request, env, ctx);
+    const requestOrigin = new URL(request.url).origin;
+    (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv = env;
+    (globalThis as { __dinkusPlaygroundRequestOrigin?: string }).__dinkusPlaygroundRequestOrigin =
+      requestOrigin;
+    let response = await withShopperAccountRequest(requestOrigin, env, () =>
+      (
+        astroHandler as {
+          fetch(
+            request: Request,
+            env: Record<string, unknown>,
+            ctx: WorkerExecutionContext,
+          ): Promise<Response>;
+        }
+      ).fetch(request, env, ctx),
+    );
     if (await isPlaygroundInitFailure(response)) {
       console.error("[playground] init failed; resetting the visitor session");
       response = recoverFromPlaygroundInitFailure(request, response);
