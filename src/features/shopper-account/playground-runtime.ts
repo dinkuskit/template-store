@@ -177,7 +177,7 @@ export function isPlaygroundLeadStorageConfigured(env: EnvLike = process.env): b
   if (isD1Database(leadsDb) || isLeadsDurableObjectNamespace(leadsDb)) {
     return true;
   }
-  return activeEnv.DINKUS_LOCAL_PROOF === "1";
+  return isLocalProofOrDemoMode(activeEnv);
 }
 
 /**
@@ -249,8 +249,10 @@ export function resolvePlaygroundAccountSiteOrigin(
   if (trustedSiteUrl) {
     return trustedSiteUrl;
   }
-  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
-    const localProofOrigin = parseBareOrigin(activeEnv.DINKUS_LOCAL_PROOF_SITE_URL, true);
+  if (isLocalProofOrDemoMode(activeEnv)) {
+    const localProofOrigin =
+      parseBareOrigin(activeEnv.DINKUS_LOCAL_PROOF_SITE_URL, true) ??
+      parseBareOrigin(activeEnv.EMDASH_SITE_URL, true);
     if (localProofOrigin) {
       return localProofOrigin;
     }
@@ -298,7 +300,7 @@ export function playgroundShopperAccountHostOptions(
       return resolvePlaygroundAccountSiteOrigin(env) ?? fallbackSiteUrl;
     },
     storeName: "DinkusKit Store",
-    now: () => playgroundNow(resolveActiveEnv(env)),
+    now: () => Math.floor(playgroundNow(resolveActiveEnv(env)) / 1000),
     sendEmail: (message: ShopperEmailMessage) => deliverPlaygroundShopperEmail(message, env),
   };
 }
@@ -341,7 +343,7 @@ export async function recordVerifiedPlaygroundLead(
       )
       .bind(normalized, timestamp, timestamp, "playground-account-otp")
       .run();
-    if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+    if (isLocalProofOrDemoMode(activeEnv)) {
       const existing = capturedProofLeads.get(normalized);
       capturedProofLeads.set(normalized, {
         email: normalized,
@@ -370,7 +372,7 @@ export async function recordVerifiedPlaygroundLead(
         verification_count = playground_email_leads.verification_count + 1`,
       [normalized, timestamp, timestamp, "playground-account-otp"],
     );
-    if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+    if (isLocalProofOrDemoMode(activeEnv)) {
       const existing = capturedProofLeads.get(normalized);
       capturedProofLeads.set(normalized, {
         email: normalized,
@@ -383,7 +385,7 @@ export async function recordVerifiedPlaygroundLead(
     return true;
   }
 
-  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+  if (isLocalProofOrDemoMode(activeEnv)) {
     const existing = capturedProofLeads.get(normalized);
     capturedProofLeads.set(normalized, {
       email: normalized,
@@ -437,7 +439,7 @@ export async function readVerifiedPlaygroundLeads(
     }));
   }
 
-  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+  if (isLocalProofOrDemoMode(activeEnv)) {
     return readCapturedProofLeads();
   }
 
@@ -618,7 +620,7 @@ export async function mintDemoShopperSession(
     host: {
       siteUrl: siteOrigin,
       storeName: "DinkusKit Playground",
-      now: () => playgroundNow(activeEnv),
+      now: () => Math.floor(playgroundNow(activeEnv) / 1000),
       createSessionId: () => DEMO_SHOPPER_SESSION_ID,
       sendEmail: async (message: ShopperEmailMessage) => {
         capturedCode = extractSixDigitCode(message.text);

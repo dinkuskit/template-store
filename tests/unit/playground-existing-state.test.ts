@@ -131,7 +131,7 @@ describe("playground visitor database state", () => {
         host: {
           siteUrl: trustedOrigin,
           storeName: "DinkusKit Playground",
-          now: () => currentMs,
+          now: () => Math.floor(currentMs / 1000),
           loadOrdersForEmail: (emailKey: string) =>
             listOrdersForEmail(storage[ORDERS_COLLECTION] as unknown as OrdersCollection, emailKey),
           loadShippingCountries: async () => ({
