@@ -27,6 +27,8 @@ test("storefront /account supports both instant demo opt-out and verified email 
   // 1. Path 2: Opt-Out Instant Demo Account (No PIN required, zero marketing lead capture)
   await page.locator("[data-account-demo-signin]").click();
   await expect(page.locator("[data-account-signed-in]")).toBeVisible();
+  await expect(page.locator("[data-account-signed-out]")).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Welcome, shopper@example.com" })).toBeFocused();
   await expect(page.locator("[data-account-current-email]")).toHaveText("shopper@example.com");
   await expect(page.locator('[data-account-order="ord_demo_shopper_1001"]')).toBeVisible();
   await expect(page.locator("[data-account-order-number]")).toContainText("Order #1001");
@@ -92,6 +94,7 @@ test("storefront /account supports both instant demo opt-out and verified email 
   await page.locator("[data-account-verify]").click();
 
   await expect(page.locator("[data-account-signed-in]")).toBeVisible();
+  await expect(page.getByRole("heading", { name: `Welcome, ${testEmail}` })).toBeFocused();
   await expect(page.locator("[data-account-current-email]")).toHaveText(testEmail);
   await expect(page.locator("[data-account-orders-empty]")).toBeVisible();
   await page.screenshot({ path: resolve(root, "account-verified-otp-signed-in.png") });

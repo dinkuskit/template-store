@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     (locals as { __playgroundEnv?: Record<string, unknown> }).__playgroundEnv ??
     (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv ??
     process.env;
-  const trustedOrigin = resolvePlaygroundAccountSiteOrigin(playgroundEnv, url.origin);
+  const trustedOrigin = resolvePlaygroundAccountSiteOrigin(playgroundEnv);
   if (!trustedOrigin) {
     return new Response(
       JSON.stringify({

@@ -33,9 +33,9 @@ export const PLAYGROUND_EMAIL_BINDING = "EMAIL";
 export const PLAYGROUND_DEFAULT_FROM_EMAIL = "accounts@dinkuskit.com";
 export const PLAYGROUND_ORIGIN = "https://playground.dinkuskit.com";
 export const PLAYGROUND_ACCOUNT_ORIGIN_ENV = "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN";
-export const PLAYGROUND_PREVIEW_ORIGIN_WILDCARD = "https://pr-*.playground.dinkuskit.com";
+export const PRE_UPGRADE_SHOPPER_ORDER_ID = "ord_pre_upgrade_1000";
+export const PRE_UPGRADE_SHOPPER_ORDER_NUMBER = 1002;
 
-const PR_PREVIEW_ORIGIN_PATTERN = /^https:\/\/pr-[1-9][0-9]*\.playground\.dinkuskit\.com$/u;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 type ShopperAccountRequestContext = Readonly<{
@@ -58,14 +58,6 @@ function resolveActiveEnv(env: EnvLike = process.env): EnvLike {
     requestContext.getStore()?.env ??
     (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ??
     env
-  );
-}
-
-function resolveActiveRequestOrigin(explicitOrigin?: string): string | undefined {
-  return (
-    explicitOrigin ??
-    requestContext.getStore()?.requestOrigin ??
-    (globalThis as { __dinkusPlaygroundRequestOrigin?: string }).__dinkusPlaygroundRequestOrigin
   );
 }
 
@@ -242,7 +234,6 @@ function parseBareOrigin(raw: unknown, allowLoopbackHttp: boolean): string | nul
 
 export function resolvePlaygroundAccountSiteOrigin(
   env: EnvLike = process.env,
-  explicitRequestOrigin?: string,
 ): string | undefined {
   const activeEnv = resolveActiveEnv(env);
   const trustedSiteUrl = readTrustedReturnOrigin(activeEnv);
@@ -257,20 +248,33 @@ export function resolvePlaygroundAccountSiteOrigin(
   }
   const configuredAccountOrigin = activeEnv[PLAYGROUND_ACCOUNT_ORIGIN_ENV];
   if (typeof configuredAccountOrigin === "string") {
-    const trimmed = configuredAccountOrigin.trim();
-    if (trimmed === PLAYGROUND_PREVIEW_ORIGIN_WILDCARD) {
-      const requestOrigin = resolveActiveRequestOrigin(explicitRequestOrigin);
-      if (typeof requestOrigin === "string" && PR_PREVIEW_ORIGIN_PATTERN.test(requestOrigin)) {
-        return requestOrigin;
-      }
-      return undefined;
-    }
-    const bareHttps = parseBareOrigin(trimmed, false);
+    const bareHttps = parseBareOrigin(configuredAccountOrigin.trim(), false);
     if (bareHttps) {
       return bareHttps;
     }
   }
   return undefined;
+}
+
+/**
+ * True on a Playground PR preview (pr-N.playground.dinkuskit.com). Commerce
+ * pins shopper accounts to the playground's own origin, so a preview can only
+ * say accounts are unavailable there.
+ */
+export function isPlaygroundPreviewHost(
+  requestUrl: URL,
+  trustedOrigin: string | undefined,
+): boolean {
+  if (!trustedOrigin) return false;
+  try {
+    const trusted = new URL(trustedOrigin);
+    return (
+      requestUrl.origin !== trusted.origin &&
+      requestUrl.hostname.endsWith(`.${trusted.hostname}`)
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function playgroundShopperAccountHostOptions(
@@ -492,6 +496,57 @@ export async function ensureDemoShopperOrder(db: Db): Promise<void> {
     },
   };
   await orders.compareAndSet(DEMO_SHOPPER_ORDER_ID, null, demoOrder);
+}
+
+export async function ensurePreUpgradeShopperOrder(db: Db): Promise<void> {
+  const orders = new PluginStorageRepository<OrderRecord>(
+    db,
+    COMMERCE_PLUGIN_ID,
+    ORDERS_COLLECTION,
+    [],
+  );
+  const existing = await orders.get(PRE_UPGRADE_SHOPPER_ORDER_ID);
+  if (existing) return;
+  const preUpgradeOrder: OrderRecord = {
+    number: PRE_UPGRADE_SHOPPER_ORDER_NUMBER,
+    revision: 1,
+    paidOrder: {
+      schema: PAID_ORDER_SCHEMA,
+      orderId: PRE_UPGRADE_SHOPPER_ORDER_ID,
+      receiptId: "rcpt_pre_upgrade_1000",
+      attemptId: "att_pre_upgrade_1000",
+      paymentId: "pay_pre_upgrade_1000",
+      paidAt: "2026-10-10T10:00:00.000Z",
+      mode: "test",
+      lines: [
+        {
+          catalogItemId: "demo-hosted-cap",
+          name: "Dinkus Demo Canvas Cap",
+          quantity: 1,
+          unitPrice: { currency: "USD", minor: "1800" },
+        },
+      ],
+      total: { currency: "USD", minor: "2400" },
+      contactSnapshot: {
+        schema: "dinkuskit.commerce.checkout-contact/v1",
+        requirePhoneNumber: false,
+        revision: null,
+        contact: {
+          email: DEMO_SHOPPER_EMAIL,
+          phone: "+1 555 010 1999",
+          delivery: {
+            name: "Alex Rivera",
+            line1: "100 Pre-Upgrade Way",
+            city: "Springfield",
+            region: "OR",
+            postalCode: "97477",
+            country: "US",
+          },
+        },
+      },
+    },
+  };
+  await orders.compareAndSet(PRE_UPGRADE_SHOPPER_ORDER_ID, null, preUpgradeOrder);
 }
 
 export async function mintDemoShopperSession(

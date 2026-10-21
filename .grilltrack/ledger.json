@@ -3864,10 +3864,54 @@
           "review_source_identity": null,
           "to": "verified",
           "verification_ref": "tests/e2e/shopper-account.spec.ts"
+        },
+        {
+          "at": "2026-10-21T13:45:22+00:00",
+          "choice": "Pin @dinkuskit/commerce c42597bddd35d949f4e69f8ca97cc26206200da0; add Account link in StoreHeader and /account page with 6-digit OTP sign-in, matching paid order history, and saved shipping address + phone editor; prefill /cart contact and delivery fields from active shopper profile; keep playground.dinkuskit.com immediately browsable with two /account sign-in paths: (1) Verified Email + Updates Opt-In sending real 6-digit OTP via Cloudflare EMAIL (send_email) and recording verified opt-in emails to PLAYGROUND_LEADS_DB (D1), and (2) Opt-Out Instant Demo Sign-In signing straight into shopper@example.com with a pre-seeded demo order and zero D1 lead logging.",
+          "from": "verified",
+          "implementation_ref": "src/features/shopper-account/playground-runtime.ts",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
+        },
+        {
+          "at": "2026-10-21T13:45:22+00:00",
+          "choice": "Pin @dinkuskit/commerce c42597bddd35d949f4e69f8ca97cc26206200da0; add Account link in StoreHeader and /account page with 6-digit OTP sign-in, matching paid order history, and saved shipping address + phone editor; prefill /cart contact and delivery fields from active shopper profile; keep playground.dinkuskit.com immediately browsable with two /account sign-in paths: (1) Verified Email + Updates Opt-In sending real 6-digit OTP via Cloudflare EMAIL (send_email) and recording verified opt-in emails to PLAYGROUND_LEADS_DB (D1), and (2) Opt-Out Instant Demo Sign-In signing straight into shopper@example.com with a pre-seeded demo order and zero D1 lead logging.",
+          "from": "needs_reverification",
+          "implementation_ref": "src/features/shopper-account/playground-runtime.ts",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md",
+          "review_result": "findings",
+          "review_source_identity": "git:905ce283c3b26f6130bce15b57e4c4767d0c330e",
+          "to": "implemented",
+          "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
+        },
+        {
+          "at": "2026-10-21T13:45:22+00:00",
+          "choice": "Pin @dinkuskit/commerce c42597bddd35d949f4e69f8ca97cc26206200da0; add Account link in StoreHeader and /account page with 6-digit OTP sign-in, matching paid order history, and saved shipping address + phone editor; prefill /cart contact and delivery fields from active shopper profile; keep playground.dinkuskit.com immediately browsable with two /account sign-in paths: (1) Verified Email + Updates Opt-In sending real 6-digit OTP via Cloudflare EMAIL (send_email) and recording verified opt-in emails to PLAYGROUND_LEADS_DB (D1), and (2) Opt-Out Instant Demo Sign-In signing straight into shopper@example.com with a pre-seeded demo order and zero D1 lead logging.",
+          "from": "implemented",
+          "implementation_ref": "src/features/shopper-account/shopper-account-client.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
         }
       ],
       "id": "shopper-accounts-playground-20261020",
-      "implementation_ref": "src/features/shopper-account/playground-runtime.ts",
+      "implementation_ref": "src/features/shopper-account/shopper-account-client.ts",
       "question": "How should template-store and playground.dinkuskit.com expose Commerce shopper accounts, checkout prefill, and playground opt-in vs opt-out sign-in?",
       "rationale": "Owner locked the two-path playground account sign-in (verified email OTP + D1 opt-in vs instant no-PIN shopper@example.com opt-out), /account order history + profile editor, and /cart prefill.",
       "repair_required": false,
@@ -3881,6 +3925,15 @@
           "result": "findings",
           "reviewed_at": "2026-10-21T12:53:21+00:00",
           "source_identity": "git:900f90a5d5b760a30c78651573722ddfd8957c2b"
+        },
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-21T13:45:22+00:00",
+          "source_identity": "git:905ce283c3b26f6130bce15b57e4c4767d0c330e"
         }
       ],
       "review_ref": null,
@@ -3888,7 +3941,7 @@
       "review_source_identity": null,
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-10-21T12:53:21+00:00",
+      "updated_at": "2026-10-21T13:45:22+00:00",
       "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
     }
   ],
@@ -3912,5 +3965,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-21T12:53:21+00:00"
+  "updated_at": "2026-10-21T13:45:22+00:00"
 }

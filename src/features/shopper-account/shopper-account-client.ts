@@ -143,6 +143,15 @@ function showSignedInState(root: Element, signedIn: boolean, email = ""): void {
   }
 }
 
+/** Moves the shopper to the signed-in view so the change is hard to miss. */
+function announceSignedIn(root: Element): void {
+  const heading = root.querySelector("[data-account-welcome]");
+  if (heading instanceof HTMLElement) {
+    heading.focus({ preventScroll: true });
+  }
+  root.scrollIntoView({ block: "start" });
+}
+
 async function fetchAccountEndpoint(
   url: string,
   init: RequestInit,
@@ -175,7 +184,11 @@ async function loadSignedInDashboard(
     ordersRes.body.ok !== true ||
     !isRecord(ordersRes.body.profile)
   ) {
-    setAccountStatus(root, "Could not load your shopper profile right now.", true);
+    setAccountStatus(
+      root,
+      "Could not load your shopper profile right now. Please try again.",
+      true,
+    );
     return false;
   }
   const rawProfile = ordersRes.body.profile;
@@ -198,6 +211,7 @@ async function loadSignedInDashboard(
 export function hydrateShopperAccountPage(): void {
   const root = document.querySelector("[data-shopper-account]");
   if (!(root instanceof HTMLElement)) return;
+  if (root.dataset.accountPreviewUnavailable === "true") return;
   const isPlaygroundMode = root.dataset.playgroundMode === "true";
 
   const startForm = root.querySelector("[data-account-start-form]");
@@ -309,8 +323,13 @@ export function hydrateShopperAccountPage(): void {
         }
         saveStoredShopperSession(stored);
         if (verifyForm instanceof HTMLElement) verifyForm.hidden = true;
-        await loadSignedInDashboard(root, stored);
-        setAccountStatus(root, `Signed in as ${stored.email}.`, false);
+        if (!(await loadSignedInDashboard(root, stored))) {
+          // A session whose profile never loaded would show the same error on every visit.
+          clearStoredShopperSession();
+          return;
+        }
+        setAccountStatus(root, null);
+        announceSignedIn(root);
       } catch {
         setAccountStatus(root, "Could not verify your code right now.", true);
       } finally {
@@ -338,12 +357,17 @@ export function hydrateShopperAccountPage(): void {
           return;
         }
         saveStoredShopperSession(stored);
-        await loadSignedInDashboard(root, stored);
+        if (!(await loadSignedInDashboard(root, stored))) {
+          // A session whose profile never loaded would show the same error on every visit.
+          clearStoredShopperSession();
+          return;
+        }
         setAccountStatus(
           root,
-          `Signed into demo account ${stored.email} (no PIN required, no email recorded).`,
+          "Demo account: no PIN required and no email recorded.",
           false,
         );
+        announceSignedIn(root);
       } catch {
         setAccountStatus(root, "Could not start the demo shopper session.", true);
       } finally {

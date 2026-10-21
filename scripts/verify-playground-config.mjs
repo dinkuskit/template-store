@@ -19,7 +19,6 @@ for (const required of [
   '"previews": {',
   '"DINKUS_DEMO_NOINDEX": "1"',
   '"DINKUS_PLAYGROUND_ACCOUNT_ORIGIN": "https://playground.dinkuskit.com"',
-  '"DINKUS_PLAYGROUND_ACCOUNT_ORIGIN": "https://pr-*.playground.dinkuskit.com"',
   '"name": "PLAYGROUND_LEADS_DB"',
   '"name": "PLAYGROUND_CREATION_LIMITER"',
   '"name": "PLAYGROUND_GLOBAL_LIMITER"',

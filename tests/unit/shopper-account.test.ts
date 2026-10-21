@@ -26,11 +26,11 @@ import {
 import {
   PLAYGROUND_LEADS_DO_NAME,
   PLAYGROUND_ORIGIN,
-  PLAYGROUND_PREVIEW_ORIGIN_WILDCARD,
   clearCapturedProofEmails,
   clearCapturedProofLeads,
   deliverPlaygroundShopperEmail,
   isPlaygroundLeadStorageConfigured,
+  isPlaygroundPreviewHost,
   playgroundShopperAccountHostOptions,
   readCapturedProofEmail,
   readCapturedProofLeads,
@@ -164,39 +164,35 @@ describe("shopper-account browser session and public routes", () => {
     expect(evaluatePublicBoundary("GET", "/api/proof/shopper-account").allowed).toBe(false);
   });
 
-  it("resolves trusted production, PR preview, and local proof origins and fails closed when unconfigured", () => {
+  it("resolves the main Playground and local proof origins while keeping PR preview hosts closed", () => {
     expect(resolvePlaygroundAccountSiteOrigin({})).toBeUndefined();
     expect(
       resolvePlaygroundAccountSiteOrigin({
         DINKUS_PLAYGROUND_ACCOUNT_ORIGIN: PLAYGROUND_ORIGIN,
       }),
     ).toBe(PLAYGROUND_ORIGIN);
-
-    const previewEnv = {
-      DINKUS_PLAYGROUND_ACCOUNT_ORIGIN: PLAYGROUND_PREVIEW_ORIGIN_WILDCARD,
-    };
     expect(
-      resolvePlaygroundAccountSiteOrigin(previewEnv, "https://pr-117.playground.dinkuskit.com"),
-    ).toBe("https://pr-117.playground.dinkuskit.com");
+      isPlaygroundPreviewHost(
+        new URL("https://pr-117.playground.dinkuskit.com/account"),
+        PLAYGROUND_ORIGIN,
+      ),
+    ).toBe(true);
     expect(
-      resolvePlaygroundAccountSiteOrigin(previewEnv, "https://pr-0.playground.dinkuskit.com"),
-    ).toBeUndefined();
-    expect(
-      resolvePlaygroundAccountSiteOrigin(previewEnv, "https://evil.playground.dinkuskit.com"),
-    ).toBeUndefined();
-    expect(
-      resolvePlaygroundAccountSiteOrigin(previewEnv, "http://pr-117.playground.dinkuskit.com"),
-    ).toBeUndefined();
+      isPlaygroundPreviewHost(
+        new URL("https://playground.dinkuskit.com/account"),
+        PLAYGROUND_ORIGIN,
+      ),
+    ).toBe(false);
 
     // Dynamic per-request resolution via withShopperAccountRequest on host options created at build time.
     const hostOptions = playgroundShopperAccountHostOptions({});
     expect(hostOptions.siteUrl).toBeUndefined();
-    const resolvedInPreview = withShopperAccountRequest(
-      "https://pr-117.playground.dinkuskit.com",
-      previewEnv,
+    const resolvedInPlayground = withShopperAccountRequest(
+      PLAYGROUND_ORIGIN,
+      { DINKUS_PLAYGROUND_ACCOUNT_ORIGIN: PLAYGROUND_ORIGIN },
       () => hostOptions.siteUrl,
     );
-    expect(resolvedInPreview).toBe("https://pr-117.playground.dinkuskit.com");
+    expect(resolvedInPlayground).toBe(PLAYGROUND_ORIGIN);
   });
 
   it("captures OTP email in local proof mode and sends through Cloudflare EMAIL binding when configured", async () => {

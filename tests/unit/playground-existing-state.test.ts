@@ -38,7 +38,9 @@ import {
   DEMO_SHOPPER_ORDER_ID,
 } from "../../src/features/shopper-account/index.js";
 import {
+  PRE_UPGRADE_SHOPPER_ORDER_ID,
   ensureDemoShopperOrder,
+  ensurePreUpgradeShopperOrder,
   mintDemoShopperSession,
 } from "../../src/features/shopper-account/playground-runtime.js";
 
@@ -91,7 +93,7 @@ describe("playground visitor database state", () => {
   });
 
   it("preserves existing shopper orders, saved profile addresses, and sessions across repeat seeding and rejects foreign/revoked/expired sessions", async () => {
-    const trustedOrigin = "https://pr-117.playground.dinkuskit.com";
+    const trustedOrigin = "https://playground.dinkuskit.com";
     const baseMs = Date.parse("2026-10-20T18:00:00.000Z");
     let currentMs = baseMs;
 
@@ -141,6 +143,8 @@ describe("playground visitor database state", () => {
     };
 
     await ensurePlaygroundDemoCatalog(db as never);
+    // Populate a pre-upgrade paid order in the existing visitor DB before any shopper account seed/sign-in runs.
+    await ensurePreUpgradeShopperOrder(db as never);
     const issued = await mintDemoShopperSession(db as never, trustedOrigin, {
       DINKUS_LOCAL_PROOF: "1",
       DINKUS_LOCAL_PROOF_NOW: String(currentMs),
@@ -178,6 +182,7 @@ describe("playground visitor database state", () => {
     if (ordersRes.ok) {
       expect(ordersRes.orders).toEqual([
         expect.objectContaining({ orderId: DEMO_SHOPPER_ORDER_ID, number: 1001 }),
+        expect.objectContaining({ orderId: PRE_UPGRADE_SHOPPER_ORDER_ID, number: 1002 }),
       ]);
     }
 
