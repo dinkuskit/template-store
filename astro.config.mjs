@@ -34,6 +34,12 @@ const databaseUrl =
   process.env.DINKUS_TEMPLATE_DB_URL ?? "file:./.artifacts/dev/content.db";
 const uploadsDirectory =
   process.env.DINKUS_TEMPLATE_UPLOADS_DIR ?? "./.artifacts/dev/uploads";
+const artifactSlotMatch = databaseUrl.match(
+  /^\.?\/?(?:file:\.?\/?)?\.artifacts\/([a-z0-9_-]+)\//iu,
+);
+const viteCacheDir = artifactSlotMatch
+  ? `.artifacts/${artifactSlotMatch[1]}/vite-cache`
+  : "node_modules/.vite";
 
 const enableLocalStockManagement =
   !isCloudflare &&
@@ -102,7 +108,28 @@ export default defineConfig({
     }),
   ],
   vite: {
+    cacheDir: viteCacheDir,
     define: commerceProfileDefine(process.env),
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "react-dom/client",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+      ],
+    },
+    server: {
+      watch: {
+        ignored: [
+          "**/.artifacts/**",
+          "**/.astro/**",
+          "**/dist/**",
+          "**/runs/**",
+          "**/test-results/**",
+        ],
+      },
+    },
     resolve: {
       alias: {
         "@dinkuskit/commerce/features/checkout": fileURLToPath(
