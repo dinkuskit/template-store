@@ -56,9 +56,11 @@ public feed checks run from fetched bytes. A commerce-linked product page
 sku and canonical URL match the page. A valid editorial page must also contain
 exactly one page-facts-only Product block with no Offer; 404, removed, and 503
 routes emit none. When those linked pages are present, the slashless feed URLs
-must answer 200. When only editorial product pages are present, the feeds must
-fail closed with 503. An origin with no product URL does not fail only because
-the product pages or feeds are absent. A trailing slash on a feed URL must not
+must answer 200. With only editorial pages or an empty catalog, valid empty
+200 feeds pass; unavailable Commerce still fails closed with 503. Malformed
+empty documents, wrong content types, and other errors fail verification.
+An origin with no product URL does not fail only because the product pages
+or feed routes are absent. A trailing slash on a feed URL must not
 be a second document. Native-development feeds may join
 `loadProductFeedEligibility`; shipping and registry profiles consume only the
 installed public `feedChannels` projection and do not open storage.

@@ -538,6 +538,13 @@ if (productPaths.length === 0) {
     `${commerceLinkedPages} commerce-linked product page(s) and ${productPaths.length - commerceLinkedPages} editorial page(s) of ${productPaths.length}`,
   );
 }
+function emptyFeedDocument(path, body) {
+  if (path.endsWith(".xml")) {
+    return /^(?:<\?xml[^?]*\?>\s*)?<rss\b(?=[^>]*\bversion=["']2\.0["'])(?=[^>]*\bxmlns:g=["']http:\/\/base\.google\.com\/ns\/1\.0["'])[^>]*>\s*<channel>\s*<\/channel>\s*<\/rss>\s*$/u.test(body.trim());
+  }
+  return body.trim() === '"id","retailer_id","title","description","availability","condition","price","link","image_link","additional_image_link","brand","gtin","mpn","shipping"';
+}
+
 for (const feedPath of ["/feeds/google-merchant.xml", "/feeds/meta-catalog.csv"]) {
   const feedResponse = await request(absoluteUrl(feedPath));
   const slashResponse = await request(absoluteUrl(`${feedPath}/`));
@@ -545,15 +552,10 @@ for (const feedPath of ["/feeds/google-merchant.xml", "/feeds/meta-catalog.csv"]
     result("Feeds (#35)", "FAIL", `${feedPath}/ returned 200; a trailing slash must not be a second feed document`);
     continue;
   }
-  if (productPaths.length === 0) {
-    result("Feeds (#35)", "PASS", `no product URL on this origin; ${feedPath} returned ${feedResponse.status} and that absence is not a failure`);
-    continue;
-  }
+  const type = feedResponse.headers.get("content-type") ?? "";
+  const feedType = feedPath.endsWith(".xml") ? type.includes("xml") : type.includes("csv");
   if (commerceLinkedPages > 0) {
-    const type = feedResponse.headers.get("content-type") ?? "";
-    const productive = feedResponse.status === 200 && (
-      feedPath.endsWith(".xml") ? type.includes("xml") : type.includes("csv")
-    );
+    const productive = feedResponse.status === 200 && feedType;
     if (!productive) {
       result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} ${type} while ${commerceLinkedPages} commerce-linked product page(s) are public`);
     } else {
@@ -561,11 +563,16 @@ for (const feedPath of ["/feeds/google-merchant.xml", "/feeds/meta-catalog.csv"]
     }
     continue;
   }
-  if (feedResponse.status === 503) {
+  if (feedResponse.status === 200) {
+    const validEmpty = feedType && emptyFeedDocument(feedPath, await feedResponse.text());
+    result("Feeds (#35)", validEmpty ? "PASS" : "FAIL", `${feedPath} ${validEmpty ? "served a valid empty feed" : "did not serve a valid empty feed"} with no commerce-linked product page; slash twin status ${slashResponse.status}`);
+  } else if (feedResponse.status === 503) {
     const body = await feedResponse.text();
     result("Feeds (#35)", "PASS", `${feedPath} fails closed (${feedResponse.status}) with no installed catalog; ${body.length} byte(s)`);
+  } else if (productPaths.length === 0 && feedResponse.status === 404) {
+    result("Feeds (#35)", "PASS", `no product URL or ${feedPath} on this origin; that absence is not a failure`);
   } else {
-    result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} for ${productPaths.length} editorial product page(s); expected fail-closed 503`);
+    result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} with no commerce-linked product page; expected a valid empty 200 feed or fail-closed 503`);
   }
 }
 

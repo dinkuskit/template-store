@@ -94,7 +94,7 @@ metadata finding; it is superseded by the four-test run above.
 The full suite was not rerun for this follow-up. Fresh PR CI must cover the final
 head; the historical full-suite result above is not substituted for that gate.
 
-## Current policy validation repair
+## Prior policy validation repair: `16d0b201ee0f4f17c0167538e9eac8e03350675e`
 
 [POLICY-VALIDATION-REPAIR.md](POLICY-VALIDATION-REPAIR.md) accepts the optional-field
 validation finding against `7e278d7fcd8434eceb9685ca0d0a33bf92291572` and explains
@@ -104,7 +104,7 @@ remaining public policy field shapes before either page text or JSON-LD can
 consume them. Null policies and valid omitted optionals remain supported.
 The native fallback is retained and validated through the same decoder.
 
-Current verification:
+Verification for that policy repair:
 
 - Before repair, `pnpm exec vitest run tests/unit/commerce-policies.test.ts`
   reproduced 23 failures. Log:
@@ -121,10 +121,61 @@ Current verification:
   `runs/structured-data-policy-feed-035-runs/policy-validation-browser.log`.
   Command: `pnpm exec playwright test tests/e2e/structured-data-policy-feed.spec.ts tests/e2e/shipping-storefront-profile.spec.ts --project=chromium-desktop --project=chromium-mobile --project=shipping-chromium-desktop --project=shipping-chromium-mobile`.
 
- The prior full-suite and targeted
-results above remain attributed to their own source revisions; they are not
-claimed as full-suite results for this repair. Fresh final-head CI/review is
-still required.
+The prior full-suite and targeted results above remain attributed to their
+own source revisions. They are not substituted for final-head CI/review.
+
+## Final automatic repair cycle: feed media and empty catalogs
+
+[FEED-REPAIR-2.md](FEED-REPAIR-2.md) accepts the two distinct feed findings
+against `16d0b201ee0f4f17c0167538e9eac8e03350675e`. The source manifest binds
+this repair to Commerce `288199275f61aec084c0e1e72b370ec74ea35369`.
+Primary/gallery media now enter the existing Commerce XML/CSV builders through
+`content.imageUrls`, after the same approved media resolution used by product
+images. The verifier accepts the exact empty XML/CSV documents emitted by the
+pinned builders for healthy empty or editorial-only catalogs. It retains the
+503 unavailable path, MIME/canonical checks, and slash-twin rejection; corrupt
+empty responses and server errors fail.
+
+Focused verification on this repair:
+
+- `pnpm exec vitest run tests/unit/commerce-feeds.test.ts` reproduced both new
+  image regressions before the fix: 2 failed, 2 passed. Log:
+  `runs/structured-data-policy-feed-035-runs/feed-images-before.log`.
+- `pnpm exec vitest run tests/unit/commerce-feeds.test.ts tests/unit/commerce-catalog-media.test.ts`
+  passed 6 tests. These use the real resolver and feed builders to prove
+  primary/gallery XML and CSV fields, canonical origin, approved CDN origin,
+  deduplication, and unsafe/unapproved omissions. Log:
+  `runs/structured-data-policy-feed-035-runs/feed-images-after.log`.
+- `node --test tests/workflows/verify-site-crawl.test.mjs` passed all 15 tests,
+  including 9 new real-HTTP verifier scenarios. Log:
+  `runs/structured-data-policy-feed-035-runs/empty-feeds-after.log`.
+  The initial workflow run had 3 failures and an incomplete sitemap fixture;
+  that fixture was corrected before the passing run. Its output is retained
+  at `runs/structured-data-policy-feed-035-runs/empty-feeds-before.log` and is
+  not treated as an isolated reproduction of the product bug.
+- `pnpm typecheck` passed with 0 errors, 0 warnings, and 2 existing hints. Log:
+  `runs/structured-data-policy-feed-035-runs/feed-repair-typecheck.log`.
+- `pnpm exec playwright test tests/e2e/structured-data-policy-feed.spec.ts tests/e2e/shipping-storefront-profile.spec.ts --project=chromium-desktop --project=chromium-mobile --project=shipping-chromium-desktop --project=shipping-chromium-mobile`
+  passed all 4 tests. Log:
+  `runs/structured-data-policy-feed-035-runs/feed-repair-browser.log`.
+
+The required full `pnpm verify` (`bin/verify-web full`) then passed on the
+same repair source: 384 unit tests, 81 workflow tests (2 explicit skips), 63
+browser tests (9 explicit skips), typecheck, feature/text audits, and the build.
+The final `verify-site` checked 26 URLs with no failures and 2 intentional
+sitemap skips; its absent-Commerce feeds returned 503 as expected. Log:
+`runs/structured-data-policy-feed-035-runs/feed-repair-pnpm-verify.log`.
+Both desktop and mobile profiles ran. The source manifest identifies the
+runtime and test bytes used for this full run; later changes are proof and
+CLI ledger records only.
+
+Final feature/text audits and `git diff --check` also passed after proof
+updates. Log:
+`runs/structured-data-policy-feed-035-runs/feed-repair-final-source-checks.log`.
+
+Further findings require coordinator adjudication after this second automatic
+repair cycle. Fresh CI and both required reviews must cover the final commit;
+local verification does not replace those promotion gates.
 
 This is exact source/local proof. It does not establish a Registry install,
 deployment, publication, checkout, or Google/Meta channel-account connection.

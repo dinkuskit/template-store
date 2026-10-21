@@ -56,7 +56,18 @@ The exact Commerce `0.3.0` source pin is
 passes a non-empty projection to the feed builders and excludes missing or
 empty eligibility. Native-development may still use its explicitly isolated
 storage fallback. Shipping and registry profiles do not open that collection.
-Feeds return 503 when the public catalog route is unavailable.
+Primary and gallery media ids resolve through the same approved media lookup
+as storefront images. Only resolved public image URLs enter the Commerce feed
+builders; payload-supplied URLs and unreadable or unsafe media are omitted.
+Relative approved URLs use the canonical site origin, while approved absolute
+media URLs retain their origin.
+
+Feeds return 503 when the public catalog route is unavailable. A healthy
+catalog with no eligible published product links returns a valid empty 200
+feed. The verifier accepts that empty XML/CSV document independently of
+whether it discovers Commerce-linked or editorial-only pages, and rejects
+malformed empty documents and wrong content types. A slash twin is never a
+second feed document.
 
 This is exact source/local proof only. It does not claim a Registry
 installation, deployment, publication, or Google/Meta channel-account

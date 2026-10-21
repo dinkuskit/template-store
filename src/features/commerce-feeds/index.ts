@@ -1,4 +1,4 @@
-import { PluginStorageRepository } from "emdash";
+import { handleMediaGet, PluginStorageRepository } from "emdash";
 import { getDb } from "emdash/runtime";
 import {
   COMMERCE_PLUGIN_ID,
@@ -17,6 +17,7 @@ import {
   type InstalledCatalogContext,
 } from "../commerce-catalog/installed.js";
 import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
+import { resolveCommerceImage } from "../commerce-catalog/media.js";
 import { canonicalProductPath, readProductEntries } from "../store-shell/product-routes.js";
 import { canonicalUrl } from "../store-shell/structured-data.js";
 
@@ -71,6 +72,22 @@ function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["produ
   };
 }
 
+async function publicImageUrls(product: PublicCommerceProduct, context: CommerceFeedContext): Promise<string[]> {
+  const origin = context.site?.origin ?? new URL(context.request.url).origin;
+  const runtime = context.runtime as { getPublicMediaUrl?: (storageKey: string) => string } | null | undefined;
+  const resolved = await Promise.all([product.image, ...product.gallery].map((image) => resolveCommerceImage(image, {
+    origin,
+    getPublicMediaUrl: runtime?.getPublicMediaUrl,
+    async getMedia(id) {
+      const result = await handleMediaGet(await getDb(), id);
+      const item = result.success ? result.data?.item : null;
+      if (!item?.storageKey || !item.mimeType) return null;
+      return { mimeType: item.mimeType, storageKey: item.storageKey, status: item.status };
+    },
+  })));
+  return [...new Set(resolved.flatMap((image) => image ? [new URL(image.src, origin).href] : []))];
+}
+
 export async function buildInstalledCommerceFeedFacts(
   context: CommerceFeedContext,
 ): Promise<ProductFeedFacts[]> {
@@ -88,12 +105,14 @@ export async function buildInstalledCommerceFeedFacts(
       : nativeEligibility
         ? await nativeFeedEligibility(product.id)
         : [];
+    const imageUrls = await publicImageUrls(product, context);
     facts.push({
       product: catalogProduct(product),
       content: {
         canonicalUrl: canonicalUrl(canonicalProductPath(entry.slug), context.site, context.request.url),
         title: product.name,
         ...(entry.description ? { description: entry.description } : {}),
+        ...(imageUrls.length ? { imageUrls } : {}),
       },
       eligibility,
     });

@@ -341,3 +341,46 @@ test("fails a commerce-linked page without Product JSON-LD and a missing feed", 
     await new Promise((resolveClose) => server.close(resolveClose));
   }
 });
+
+const EMPTY_GOOGLE_FEED = '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:g="http://base.google.com/ns/1.0"><channel></channel></rss>';
+const EMPTY_META_FEED = '"id","retailer_id","title","description","availability","condition","price","link","image_link","additional_image_link","brand","gtin","mpn","shipping"\n';
+
+for (const scenario of [
+  { name: 'healthy empty feeds with editorial pages', status: 200, editorial: true, pass: true },
+  { name: 'healthy empty feeds with no product pages', status: 200, editorial: false, pass: true },
+  { name: 'absent Commerce with editorial pages', status: 503, editorial: true, pass: true },
+  { name: 'corrupt empty XML', status: 200, editorial: true, xml: '<rss><channel>broken', pass: false },
+  { name: 'corrupt empty XML without product pages', status: 200, editorial: false, xml: '<rss><channel>broken', pass: false },
+  { name: 'corrupt empty CSV', status: 200, editorial: true, csv: 'error,not a feed\n', pass: false },
+  { name: 'wrong empty feed content type', status: 200, editorial: true, type: 'text/html', pass: false },
+  { name: 'feed server error', status: 500, editorial: true, pass: false },
+  { name: 'duplicate trailing slash feed', status: 200, editorial: true, slash: true, pass: false },
+]) {
+  test(`feed verification distinguishes ${scenario.name}`, async () => {
+    const { server, origin } = await listen((req, res) => {
+      const path = new URL(req.url ?? '/', origin).pathname;
+      if (serveSvgIfProductImage(path, res)) return;
+      if (path === '/') return res.writeHead(200, { 'content-type': 'text/html' }).end(html(scenario.editorial ? ['/products/editorial'] : []));
+      if (path === '/home') return res.writeHead(302, { location: '/' }).end();
+      if (path === '/robots.txt') return res.writeHead(200).end('User-agent: *\nAllow: /\n');
+      if (path === '/sitemap.xml') return res.writeHead(200, { 'content-type': 'application/xml' })
+        .end(`<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url>${scenario.editorial ? `<url><loc>${origin}/products/editorial</loc></url>` : ''}</urlset>`);
+      if (path === '/products/editorial') {
+        return res.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><link rel="canonical" href="${origin}${path}"><h1>Preview</h1><script type="application/ld+json">${JSON.stringify({ '@type': 'Product', name: 'Preview', url: origin + path })}</script>`);
+      }
+      if (path === '/feeds/google-merchant.xml' || path === '/feeds/meta-catalog.csv' || (scenario.slash && /^\/feeds\/.+\/$/.test(path))) {
+        const xml = path.includes('.xml');
+        return res.writeHead(scenario.status, { 'content-type': scenario.type ?? (xml ? 'application/xml' : 'text/csv') })
+          .end(scenario.status === 200 ? (xml ? scenario.xml ?? EMPTY_GOOGLE_FEED : scenario.csv ?? EMPTY_META_FEED) : 'Feed unavailable');
+      }
+      return res.writeHead(404).end();
+    });
+    try {
+      const result = await runVerifier(origin);
+      assert.equal(result.status === 0, scenario.pass, result.stdout + result.stderr);
+      assert.match(result.stdout, scenario.pass ? /PASS Feeds/ : /FAIL Feeds/);
+    } finally {
+      await new Promise((done) => server.close(done));
+    }
+  });
+}
