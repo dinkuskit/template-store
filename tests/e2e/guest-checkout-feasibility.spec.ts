@@ -443,6 +443,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     await physical.getByLabel("Recipient", { exact: true }).fill("Proof shopper");
     await physical.getByLabel("Address line 1", { exact: true }).fill("1 Example Way");
     await physical.getByLabel("City", { exact: true }).fill("Testville");
+    await physical.getByLabel("State or region (required for United States delivery)", { exact: true }).fill("NY");
     await physical.getByLabel("Postal code", { exact: true }).fill("00000");
     await physical.getByLabel("Country", { exact: true }).selectOption("US");
     await expect(physical.getByRole("option", { name: "Canada (coming soon)" })).toBeDisabled();
@@ -455,6 +456,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
 
     await physical.getByLabel("Recipient", { exact: true }).fill("");
     await physical.getByLabel("Address line 1", { exact: true }).fill("");
+    await physical.getByLabel("State or region (required for United States delivery)", { exact: true }).fill("");
     await physical.getByLabel("Postal code", { exact: true }).fill("");
     await physical.getByLabel("Country", { exact: true }).selectOption("");
     await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
@@ -484,15 +486,16 @@ test("checkout start sends delivery only while the cart needs it, even after fie
   browser,
 }, testInfo) => {
   test.setTimeout(60_000);
-  test.skip(testInfo.project.name !== "shipping-chromium-desktop", "Payload proof is captured once on desktop.");
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
   const baseURL = testInfo.project.use.baseURL as string;
   const root = resolve("runs/checkout-contact-proof", testInfo.project.name);
   await mkdir(root, { recursive: true });
   const address = {
     name: "Proof shopper",
     line1: "1 Example Way",
-    city: "Testville",
-    postalCode: "00000",
+    city: "New York",
+    region: "NY",
+    postalCode: "10001",
     country: "US",
   };
   const seedCart = () => {
@@ -518,7 +521,15 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     await page.addInitScript(seedCart);
     await page.goto("/cart");
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
+    await expect(page.getByLabel("State or region (required for United States delivery)", { exact: true })).toBeVisible();
     await fillContact(page);
+    await page.getByRole("button", { name: "Continue to secure checkout" }).click();
+    const status = page.locator("[data-guest-cart-status]");
+    await expect(status).toHaveAttribute("role", "alert");
+    await expect(status).toHaveText("Enter a state for United States delivery.");
+    expect(harness.counts().startCalls).toBe(0);
+    await page.screenshot({ path: resolve(root, "physical-missing-us-region.png"), fullPage: true, animations: "disabled" });
+    await page.getByLabel("State or region (required for United States delivery)", { exact: true }).fill(address.region);
     await page.getByRole("button", { name: "Continue to secure checkout" }).click();
     await expect.poll(() => harness.counts().startCalls).toBe(1);
     physicalBodies = harness.startBodies();
@@ -561,6 +572,7 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     await page.goto("/cart");
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
     await fillContact(page);
+    await page.getByLabel("State or region (required for United States delivery)", { exact: true }).fill(address.region);
     await page.unroute("**/api/guest-cart/snapshot**");
     // The remaining line becomes digital-only after Commerce's next catalog answer,
     // but the first refresh after removing the mug fails.
