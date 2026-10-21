@@ -247,7 +247,7 @@ describe("guest cart quantity mutation", () => {
     });
   });
 
-  it("wires PDP quantity stepper and multi-variant batch add controls in AddToCart and hydrateGuestCartControls", () => {
+  it("wires PDP quantity stepper and multi-variant batch add controls independently and respects hidden/unavailable state", () => {
     const addToCartAstro = readFileSync("src/features/guest-cart/AddToCart.astro", "utf8");
     const productPageAstro = readFileSync("src/pages/products/[id].astro", "utf8");
     expect(addToCartAstro).toContain("data-add-to-cart-qty");
@@ -256,7 +256,11 @@ describe("guest cart quantity mutation", () => {
     expect(addToCartAstro).toContain("data-variant-qty");
     expect(addToCartAstro).toContain("data-variant-qty-step");
     expect(addToCartAstro).toContain("data-add-to-cart-batch");
+    expect(addToCartAstro).toContain(".guest-cart-add :global([hidden]){display:none}");
+    expect(addToCartAstro).toContain(".guest-cart-add__single:not([hidden]){display:flex");
+    expect(addToCartAstro).toContain("data-add-to-cart-sellable");
     expect(productPageAstro).toContain("<AddToCart product={cartProduct} variants={variants} />");
+    expect(productPageAstro).toContain("add.dataset.addToCartSellable = String(sellable)");
 
     class MockElement {
       dataset: Record<string, string> = {};
@@ -280,7 +284,13 @@ describe("guest cart quantity mutation", () => {
         for (const cb of this.listeners.get("click") ?? []) cb();
       }
       closest(selector: string): MockElement | null {
-        if (selector === ".guest-cart-add") return this.parentElement;
+        let cur: MockElement | null = this;
+        while (cur) {
+          if (selector === ".guest-cart-add" && cur.getAttribute("data-mock-role") === "container") return cur;
+          if (selector === "[data-add-to-cart-single]" && cur.getAttribute("data-mock-role") === "single") return cur;
+          if (selector === "[hidden]" && cur.hidden) return cur;
+          cur = cur.parentElement;
+        }
         return null;
       }
       querySelector(_selector: string): MockElement | null {
@@ -315,6 +325,7 @@ describe("guest cart quantity mutation", () => {
     smallStepUp.setAttribute("data-variant-qty-target", "hoodie-small-indigo");
     const addButton = new MockButton();
     addButton.setAttribute("data-add-to-cart", "hoodie-small-indigo");
+    addButton.setAttribute("data-add-to-cart-sellable", "true");
     const batchButton = new MockButton();
     const status = new MockElement();
     status.hidden = true;
@@ -323,7 +334,14 @@ describe("guest cart quantity mutation", () => {
     navLink.querySelector = (sel: string) => (sel === "[data-guest-cart-count]" ? navBadge : null);
 
     const container = new MockElement();
-    for (const child of [qtyInput, stepUp, stepDown, smallQty, xlQty, smallStepUp, addButton, batchButton, status]) {
+    container.setAttribute("data-mock-role", "container");
+    const singleWrapper = new MockElement();
+    singleWrapper.setAttribute("data-mock-role", "single");
+    singleWrapper.parentElement = container;
+    for (const child of [qtyInput, stepUp, stepDown, addButton]) {
+      child.parentElement = singleWrapper;
+    }
+    for (const child of [smallQty, xlQty, smallStepUp, batchButton, status]) {
       child.parentElement = container;
     }
     container.querySelector = (selector: string) => {
@@ -376,10 +394,44 @@ describe("guest cart quantity mutation", () => {
       expect(status.getAttribute("role")).toBe("alert");
       qtyInput.value = "1";
 
-      // Step small variant twice (to 2), set XL variant to 1, and batch add
+      // Single-item add button stays independent even when a per-variant batch input has a nonzero value
       smallStepUp.click();
       smallStepUp.click();
       expect(smallQty.value).toBe("2");
+      addButton.setAttribute("data-add-to-cart", "hoodie-xl-vermilion");
+      qtyInput.value = "3";
+      addButton.click();
+      expect(status.textContent).toBe("Added to cart.");
+      // Batch input was NOT consumed or reset by the single-item Add to cart button
+      expect(smallQty.value).toBe("2");
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 3 },
+        { id: "hoodie-xl-vermilion", quantity: 3 },
+      ]);
+
+      // Selecting an unavailable variant hides singleWrapper and marks addButton unsellable;
+      // clicking addButton must refuse to add the unavailable variant.
+      addButton.setAttribute("data-add-to-cart", "hoodie-medium-indigo");
+      addButton.setAttribute("data-add-to-cart-sellable", "false");
+      singleWrapper.hidden = true;
+      addButton.disabled = true;
+      status.textContent = "";
+      addButton.click();
+      expect(status.textContent).toBe("");
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 3 },
+        { id: "hoodie-xl-vermilion", quantity: 3 },
+      ]);
+
+      // Even if someone removes disabled, hidden singleWrapper or sellable="false" still blocks single-add
+      addButton.disabled = false;
+      addButton.click();
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 3 },
+        { id: "hoodie-xl-vermilion", quantity: 3 },
+      ]);
+
+      // Meanwhile batch add remains usable for sellable variants while the unavailable radio is selected
       xlQty.value = "1";
       batchButton.click();
       expect(status.textContent).toBe("Added to cart.");
@@ -387,9 +439,9 @@ describe("guest cart quantity mutation", () => {
       expect(xlQty.value).toBe("0");
       expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
         { id: "hoodie-small-indigo", quantity: 5 },
-        { id: "hoodie-xl-vermilion", quantity: 1 },
+        { id: "hoodie-xl-vermilion", quantity: 4 },
       ]);
-      expect(navBadge.textContent).toBe("6");
+      expect(navBadge.textContent).toBe("9");
     } finally {
       vi.unstubAllGlobals();
     }

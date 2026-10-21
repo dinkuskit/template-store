@@ -646,9 +646,27 @@ function runVariantBatchAdd(container: Element | null | undefined, button: HTMLB
   button.disabled = false;
 }
 
+function isSingleAddBlocked(button: HTMLButtonElement, container: Element | null | undefined): boolean {
+  if (button.disabled || button.hidden) return true;
+  if (button.getAttribute("data-add-to-cart-sellable") === "false") return true;
+  const single = button.closest("[data-add-to-cart-single]");
+  if (single instanceof HTMLElement && single.hidden) return true;
+  if (container instanceof HTMLElement && container.hidden) return true;
+  if (button.closest("[hidden]") !== null) return true;
+  return false;
+}
+
+let hydrateListenerRegistered = false;
+
 export function hydrateGuestCartControls(): void {
   session = loadSession();
   renderNav();
+  if (!hydrateListenerRegistered && typeof document.addEventListener === "function") {
+    hydrateListenerRegistered = true;
+    document.addEventListener("dinkus:guest-cart-hydrate", () => {
+      hydrateGuestCartControls();
+    });
+  }
   document.querySelectorAll("[data-add-to-cart-qty-step]").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.guestCartStepReady === "1") return;
     button.dataset.guestCartStepReady = "1";
@@ -688,11 +706,7 @@ export function hydrateGuestCartControls(): void {
     button.dataset.guestCartReady = "1";
     button.addEventListener("click", () => {
       const container = button.closest(".guest-cart-add") ?? button.parentElement;
-      const batchInputs = readVariantBatchInputs(container);
-      if (batchInputs.some((input) => input.value.trim() !== "" && input.value.trim() !== "0")) {
-        runVariantBatchAdd(container, button);
-        return;
-      }
+      if (isSingleAddBlocked(button, container)) return;
       const id = button.getAttribute("data-add-to-cart");
       if (!isSafeGuestCartProductId(id)) return;
       button.disabled = true;

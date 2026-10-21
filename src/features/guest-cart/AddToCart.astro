@@ -9,12 +9,13 @@ interface Props {
 
 const { product, variants = [] } = Astro.props;
 const sellableVariants = variants.filter((member) => member.availability.sellable);
-const allowed = canAddCommerceProductToCart(product) || sellableVariants.length > 0;
+const singleSellable = canAddCommerceProductToCart(product);
+const allowed = singleSellable || sellableVariants.length > 0;
 const qtyInputId = `guest-cart-add-qty-${product.id}`;
 ---
 {allowed ? (
   <div class="guest-cart-add">
-    <div class="guest-cart-add__single" data-add-to-cart-single hidden={!canAddCommerceProductToCart(product)}>
+    <div class="guest-cart-add__single" data-add-to-cart-single hidden={!singleSellable}>
       <div class="guest-cart-add__qty">
         <label for={qtyInputId}>Quantity</label>
         <div class="guest-cart-add__stepper">
@@ -24,7 +25,7 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
             data-add-to-cart-qty-step="-1"
             data-add-to-cart-qty-decrease
             aria-label="Decrease quantity"
-          >−</button>
+          >{"\u2212"}</button>
           <input
             id={qtyInputId}
             type="text"
@@ -43,7 +44,12 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
           >+</button>
         </div>
       </div>
-      <button type="button" data-add-to-cart={product.id}>Add to cart</button>
+      <button
+        type="button"
+        data-add-to-cart={product.id}
+        data-add-to-cart-sellable={String(singleSellable)}
+        disabled={!singleSellable}
+      >Add to cart</button>
     </div>
     {variants.length > 0 && sellableVariants.length > 0 && (
       <fieldset class="guest-cart-add__variants" data-add-to-cart-variants>
@@ -70,7 +76,7 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
                   data-variant-qty-target={member.id}
                   aria-label={`Decrease ${label} quantity`}
                   disabled={!member.availability.sellable}
-                >−</button>
+                >{"\u2212"}</button>
                 <input
                   id={variantInputId}
                   type="text"
@@ -102,7 +108,8 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
 ) : null}
 <style>
   .guest-cart-add{margin-top:1rem;display:grid;gap:.85rem}
-  .guest-cart-add__single{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.65rem}
+  .guest-cart-add :global([hidden]){display:none}
+  .guest-cart-add__single:not([hidden]){display:flex;flex-wrap:wrap;align-items:flex-end;gap:.65rem}
   .guest-cart-add__qty{display:grid;gap:.3rem}
   .guest-cart-add__qty label,.guest-cart-add__variant-label{font-size:.9rem;font-weight:700}
   .guest-cart-add__stepper{display:inline-flex;align-items:center;border:1px solid var(--store-line,#d8d2c7);border-radius:.4rem;background:var(--store-surface,#fff);overflow:hidden}

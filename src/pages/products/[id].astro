@@ -235,6 +235,8 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
       if (add) {
         add.dataset.addToCart = input.value;
         const sellable = input.dataset.variantSellable === "true";
+        add.dataset.addToCartSellable = String(sellable);
+        if (add instanceof HTMLButtonElement) add.disabled = !sellable;
         const single = add.closest<HTMLElement>("[data-add-to-cart-single]");
         const container = add.closest<HTMLElement>(".guest-cart-add");
         if (single) single.hidden = !sellable;
