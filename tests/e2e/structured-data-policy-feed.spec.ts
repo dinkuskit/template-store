@@ -21,6 +21,7 @@ function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T
 const PLUGIN = "/_emdash/api/plugins/dinkus-commerce";
 const LIST_ROUTE = `${PLUGIN}/catalog-items/list`;
 const IDENTIFIERS_ROUTE = `${PLUGIN}/catalog-items/set-identifiers`;
+const AVAILABILITY_ROUTE = `${PLUGIN}/catalog-items/set-manual-availability`;
 const ELIGIBILITY_ROUTE = `${PLUGIN}/catalog-items/set-feed-eligibility`;
 const SHIPPING_ROUTE = `${PLUGIN}/settings/shipping-policy`;
 const RETURN_ROUTE = `${PLUGIN}/settings/return-policy`;
@@ -127,6 +128,7 @@ test("published Commerce products, policies, and feeds share one public revision
   }
 
   let shirtId = "";
+  let mediumHoodieId = "";
   let originalDescription: string | undefined;
   let productEntryId = "";
   try {
@@ -181,12 +183,35 @@ test("published Commerce products, policies, and feeds share one public revision
     expect((initialScript.offers as { url?: string }).url).toBe(canonical);
 
     await page.goto("/products/demo-hoodie");
+    mediumHoodieId = await page.getByLabel("Medium").getAttribute("value") ?? "";
+    expect(mediumHoodieId).not.toBe("");
+    const mediumUnavailable = await adminPost(admin, AVAILABILITY_ROUTE, { catalogItemId: mediumHoodieId, status: "out-of-stock" });
+    expect(mediumUnavailable.ok(), await mediumUnavailable.text()).toBe(true);
+    await page.reload();
+    const hoodieCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
     await expect(page.locator("[data-product-sku]")).toHaveAttribute("data-product-sku", "DEMO-HOSTED-HOODIE-S");
     await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
-    expect((await productScript(page)).offers).toMatchObject({ price: "56.00", priceCurrency: "USD" });
+    const initialHoodie = await productScript(page);
+    expect(initialHoodie.offers).toMatchObject({ price: "56.00", priceCurrency: "USD", availability: "https://schema.org/InStock" });
     await page.getByLabel("Medium").check();
     await expect(page.locator("[data-variant-price]")).toHaveText("$60.00");
-    expect((await productScript(page)).offers).toMatchObject({ price: "56.00" });
+    await expect(page.locator("[data-product-status]")).toHaveText("Out of stock");
+    await expect(page.locator("[data-product-status]")).toHaveAttribute("data-availability-status", "out-of-stock");
+    const selectedHoodie = await productScript(page);
+    expect(selectedHoodie.offers).toMatchObject({ price: "60.00", priceCurrency: "USD", availability: "https://schema.org/OutOfStock", url: hoodieCanonical });
+    expect(selectedHoodie.sku).toBe(await page.locator("[data-product-sku]").getAttribute("data-product-sku"));
+    expect(selectedHoodie.url).toBe(hoodieCanonical);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", hoodieCanonical ?? "");
+    await expect(page).toHaveURL(/\/products\/demo-hoodie$/);
+    await page.getByLabel("Small").check();
+    await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
+    await expect(page.locator("[data-product-status]")).toHaveText("In stock");
+    await expect(page.locator("[data-product-status]")).toHaveAttribute("data-availability-status", "in-stock");
+    expect(await productScript(page)).toEqual(initialHoodie);
+    await page.getByLabel("Medium").check();
+    await page.reload();
+    await expect(page.getByLabel("Small")).toBeChecked();
+    expect(await productScript(page)).toEqual(initialHoodie);
 
     for (const editorial of ["/products/everyday-tee", "/products/canvas-cap", "/products/boxy-tee-preview"]) {
       const response = await page.goto(editorial);
@@ -425,6 +450,9 @@ test("published Commerce products, policies, and feeds share one public revision
       }
     }
   } finally {
+    if (mediumHoodieId) {
+      await adminPost(admin, AVAILABILITY_ROUTE, { catalogItemId: mediumHoodieId, status: "in-stock" });
+    }
     if (shirtId) {
       await adminPost(admin, IDENTIFIERS_ROUTE, { catalogItemId: shirtId, gtin: null });
     }

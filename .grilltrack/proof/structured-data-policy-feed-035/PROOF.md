@@ -177,7 +177,7 @@ Further findings require coordinator adjudication after this second automatic
 repair cycle. Fresh CI and both required reviews must cover the final commit;
 local verification does not replace those promotion gates.
 
-## Owner-approved verifier follow-up
+## Prior owner-approved verifier follow-up: d05e4adb47032b3d621258919022f10ba6bf4352
 
 [VERIFIER-OWNER-REPAIR.md](VERIFIER-OWNER-REPAIR.md) records the two accepted
 findings on `a2138c73cfe9f6016c700186f093bc0c6af6d6e6` and the owner-approved
@@ -225,6 +225,54 @@ Runtime and tests stayed frozen for the full run; subsequent edits are proof
 and CLI ledger records. Fresh final-head CI and required reviews remain with
 the coordinator. This owner-approved pass is complete; any further finding
 returns for adjudication instead of another automatic repair.
+
+## Selected variant metadata repair
+
+VARIANT-REPAIR.md accepts the selected-member contradiction on
+d05e4adb47032b3d621258919022f10ba6bf4352. The prior tests deliberately retained
+56.00 metadata after the visible price became $60; they now require agreement.
+The server prepares each public member's Product with Commerce's builder.
+The picker replaces the sole Product script via textContent and updates the
+visible availability attribute. The initial SSR block, published/2xx gating,
+canonical URL, supplied public identity, and policy facts remain intact.
+The extra application/json lookup uses the existing script-safe serializer;
+the browser selects a prepared block rather than assembling an Offer.
+
+Targeted verification:
+
+- The updated product-page test failed before repair on the expected
+  60.00 versus actual 56.00 Offer. Log:
+  runs/structured-data-policy-feed-035-runs/variant-before.log.
+  Its trace and error context remain under variant-before-artifacts/.
+- The first post-fix run passed both product-page viewport checks but failed
+  both policy/feed tests before variant selection: the test tried to locate a
+  child SKU through the parent-only admin list. It now reads the actual public
+  member id from the Medium control. The failure log remains at
+  runs/structured-data-policy-feed-035-runs/variant-after.log, with traces under
+  variant-fixture-failure/. This was a fixture issue, not a passing behavior claim.
+- The corrected command, pnpm exec playwright test tests/e2e/product-pages.spec.ts
+  tests/e2e/structured-data-policy-feed.spec.ts --project=chromium-desktop
+  --project=chromium-mobile, passed all 4 tests. Log:
+  runs/structured-data-policy-feed-035-runs/variant-after-rerun.log.
+  It proves the selected $60 OutOfStock Offer, visible availability, public SKU
+  and canonical agreement, one Product script, Small reset, and reload default.
+  The temporary Medium availability mutation is restored in finally.
+- pnpm typecheck passed with 0 errors, 0 warnings, and 2 existing hints. Log:
+  runs/structured-data-policy-feed-035-runs/variant-typecheck.log.
+
+The single full pnpm verify run passed on the frozen runtime/test source:
+384 unit tests, 97 workflow tests (2 explicit skips), 63 browser tests
+(9 explicit skips), typecheck, build, and feature/text audits. Final verify-site
+passed with 0 failures, 2 intentional sitemap skips, and 26 URLs checked; absent
+Commerce feeds still returned 503. Log:
+runs/structured-data-policy-feed-035-runs/variant-pnpm-verify.log.
+
+The current source-manifest.sha256 covers 22 source/test/package files.
+Final hash verification, source/text audits, git diff --check, and GrillTrack
+validation passed. Log:
+runs/structured-data-policy-feed-035-runs/variant-final-source-checks.log.
+Runtime and tests were unchanged throughout the full run; only proof and CLI
+ledger records followed it. Fresh exact-head reviews remain with the coordinator.
 
 This is exact source/local proof. It does not establish a Registry install,
 deployment, publication, checkout, or Google/Meta channel-account connection.

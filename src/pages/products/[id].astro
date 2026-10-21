@@ -113,25 +113,22 @@ const policies = linkedProduct
       : COMMERCE_REGISTRY_RUNTIME_ID,
   ).catch(() => null)
   : null;
-const structuredPriceMinor = selectedVariant?.unitMinor ?? linkedProduct?.price.unitMinor;
 const productCanonical = item
   ? canonicalUrl(`/products/${item.id}`, Astro.site, Astro.url)
   : "";
-// Linked products use Commerce's authoritative identity and offer facts.
-// Editorial pages use the preview builder, which emits only visible page facts.
-// Unavailable routes never receive structured product data.
-const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item && productName &&
-  (item.availabilitySource === "preview" || !lookupUnavailable) &&
-  !noLongerAvailable
-  ? linkedProduct
-    ? buildProductJsonLd({
+// Produce every selectable block on the server through the Commerce builder.
+// The browser only selects a prepared block; it never recalculates an Offer.
+const linkedProductJsonLd = (variant: (typeof variants)[number] | null) => {
+  if (!linkedProduct || !item || !productName) return null;
+  const priceMinor = variant?.unitMinor ?? linkedProduct.price.unitMinor;
+  return buildProductJsonLd({
     product: {
       id: linkedProduct.id,
       name: productName,
       sku: linkedProduct.sku,
-      ...(structuredPriceMinor ? { price: { currency: "USD" as const, minor: structuredPriceMinor } } : {}),
-      availability: selectedVariant
-        ? { ...selectedVariant.availability, listable: true as const }
+      ...(priceMinor ? { price: { currency: "USD" as const, minor: priceMinor } } : {}),
+      availability: variant
+        ? { ...variant.availability, listable: true as const }
         : linkedProduct.availability,
       ...(linkedProduct.gtin ? { gtin: linkedProduct.gtin } : {}),
       ...(linkedProduct.mpn ? { mpn: linkedProduct.mpn } : {}),
@@ -143,13 +140,23 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
       ...(item.description ? { description: item.description } : {}),
     },
     ...(policies ? { policies } : {}),
-  })
+  });
+};
+// Editorial pages use the preview builder. Unavailable routes emit no data.
+const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item && productName &&
+  (item.availabilitySource === "preview" || !lookupUnavailable) &&
+  !noLongerAvailable
+  ? linkedProduct
+    ? linkedProductJsonLd(selectedVariant)
     : buildProductPreviewJsonLd({
       url: productCanonical,
       name: productName,
       ...(item.description ? { description: item.description } : {}),
       images: [new URL(`/merch/${item.illustration}.svg`, productCanonical).href],
     })
+  : null;
+const variantJsonLd = productJsonLd && linkedProduct && variants.length
+  ? Object.fromEntries(variants.map((variant) => [variant.id, linkedProductJsonLd(variant)]))
   : null;
 ---
 <!doctype html>
@@ -160,7 +167,8 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
     <meta name="description" content={noLongerAvailable ? "This product is no longer available." : item?.description ?? "Product not found."} />
     {item && <link rel="canonical" href={productCanonical} />}
     <title>{noLongerAvailable ? `No longer available | ${STORE_TITLE}` : item ? `${productName} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
-    {productJsonLd && <script type="application/ld+json" set:html={jsonLdScript(productJsonLd)} />}
+    {productJsonLd && <script type="application/ld+json" data-product-jsonld set:html={jsonLdScript(productJsonLd)} />}
+    {variantJsonLd && <script type="application/json" data-variant-product-jsonld set:html={jsonLdScript(variantJsonLd)} />}
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
@@ -187,6 +195,7 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
               {variants.map((member) => <label class="product-variant">
                 <input type="radio" name="variant" value={member.id} checked={member === selectedVariant}
                   data-variant-choice data-choice-price={member.priceText}
+                  data-variant-availability={member.availability.status}
                   data-variant-status={availabilityLabels[member.availability.status] ?? "Availability unavailable"}
                   data-variant-sellable={String(member.availability.sellable)} />
                 <span>{member.selections.map(([, value]) => value).join(" / ")}</span>
@@ -207,13 +216,22 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
 </html>
 <script>
   // Variant picker: show the chosen member's Commerce price and availability.
+  const productJsonLd = document.querySelector<HTMLScriptElement>("[data-product-jsonld]");
+  const variantJsonLdData = document.querySelector<HTMLScriptElement>("[data-variant-product-jsonld]");
+  const variantJsonLd = JSON.parse(variantJsonLdData?.textContent ?? "{}") as Record<string, unknown>;
   for (const input of document.querySelectorAll<HTMLInputElement>("[data-variant-choice]")) {
     input.addEventListener("change", () => {
       const price = document.querySelector("[data-variant-price]");
       const status = document.querySelector("[data-product-status]");
       const add = document.querySelector<HTMLElement>("[data-add-to-cart]");
       if (price) price.textContent = input.dataset.choicePrice ?? "";
-      if (status) status.textContent = input.dataset.variantStatus ?? "";
+      if (status) {
+        status.textContent = input.dataset.variantStatus ?? "";
+        status.setAttribute("data-availability-status", input.dataset.variantAvailability ?? "");
+      }
+      if (productJsonLd && Object.hasOwn(variantJsonLd, input.value)) {
+        productJsonLd.textContent = JSON.stringify(variantJsonLd[input.value]);
+      }
       if (add) {
         add.dataset.addToCart = input.value;
         add.closest<HTMLElement>(".guest-cart-add")!.hidden = input.dataset.variantSellable !== "true";
