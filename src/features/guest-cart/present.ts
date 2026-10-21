@@ -23,8 +23,6 @@ export type GuestCartPublicAvailability = Readonly<{
   listable: boolean;
 }>;
 
-export type GuestCartGarmentIllustration = "tee" | "hoodie" | "cap" | "beanie";
-
 export type GuestCartPublicThumbnail = Readonly<{
   src: string;
   alt: string;
@@ -38,7 +36,7 @@ export type GuestCartCatalogSnapshot =
       name: string;
       sku: string;
       fulfillment?: "physical" | "digital";
-      thumbnail?: GuestCartPublicThumbnail;
+      thumbnail?: GuestCartPublicThumbnail | null;
       price: GuestCartPublicPrice;
       availability: GuestCartPublicAvailability;
     }>;
@@ -61,7 +59,8 @@ export type GuestCartLineView = Readonly<{
   name: string;
   sku: string | null;
   fulfillment?: "physical" | "digital";
-  thumbnail: GuestCartPublicThumbnail;
+  /** Real product media, or null for the neutral placeholder. */
+  thumbnail: GuestCartPublicThumbnail | null;
   regularText: string | null;
   saleText: string | null;
   /** Unit price times quantity, or null when the unit amount is unknown. */
@@ -88,80 +87,61 @@ export type GuestCartView = Readonly<{
   needsDelivery: boolean;
 }>;
 
-const SAFE_MERCH_ILLUSTRATION_SRC = /^\/merch\/(?:tee|hoodie|cap|beanie)\.svg$/u;
-const SAFE_DEMO_PRODUCT_IMAGE_SRC = /^\/images\/products\/[a-z0-9_-]+\.svg$/u;
-const SAFE_MEDIA_FILE_SRC = /^\/_emdash\/api\/media\/file\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u;
+const THUMBNAIL_SRC_MAX_LENGTH = 2048;
 
-function hasSafeMediaFileSegments(pathname: string): boolean {
-  if (!SAFE_MEDIA_FILE_SRC.test(pathname)) return false;
-  return !pathname.split("/").includes("..");
+function hasTraversalSegment(pathname: string): boolean {
+  let decoded = pathname;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return true;
+  }
+  return decoded.split(/[/\\]/u).some((segment) => segment === "..");
 }
 
+/**
+ * Mirrors the Commerce image resolver's public-URL contract
+ * (`resolveCommerceImage` in commerce-catalog/media.ts): a same-origin path,
+ * or an absolute http(s) URL the host's `getPublicMediaUrl` approved.
+ * Anything else (scripts, data URIs, protocol-relative, credentials,
+ * traversal) is dropped so the cart shows the neutral placeholder.
+ */
 export function isSafeGuestCartThumbnailSrc(src: string): boolean {
-  if (SAFE_MERCH_ILLUSTRATION_SRC.test(src) || SAFE_DEMO_PRODUCT_IMAGE_SRC.test(src)) {
-    return true;
+  if (src.length === 0 || src.length > THUMBNAIL_SRC_MAX_LENGTH) return false;
+  if (/[\s\u0000-\u001f\u007f\\]/u.test(src)) return false;
+  if (src.startsWith("/")) {
+    if (src.startsWith("//")) return false;
+    const pathname = src.split(/[?#]/u, 1)[0] ?? "";
+    return !hasTraversalSegment(pathname);
   }
-  if (hasSafeMediaFileSegments(src)) {
-    return true;
+  try {
+    const url = new URL(src);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    if (url.username || url.password) return false;
+    return !hasTraversalSegment(url.pathname);
+  } catch {
+    return false;
   }
-  if (src.startsWith("/_image?")) {
-    try {
-      const parsed = new URL(src, "http://localhost");
-      const href = parsed.searchParams.get("href");
-      return typeof href === "string" && hasSafeMediaFileSegments(href);
-    } catch {
-      return false;
-    }
-  }
-  return false;
 }
 
-export function guestCartGarmentIllustration(
-  name: string,
-  sku?: string | null,
-  id?: string | null,
-): GuestCartGarmentIllustration {
-  const haystack = `${name} ${sku ?? ""} ${id ?? ""}`.toLowerCase();
-  if (/\b(?:hoodie|sweatshirt|pullover|fleece)\b/u.test(haystack) || haystack.includes("hoodie")) {
-    return "hoodie";
-  }
-  if (/\b(?:beanie|knit)\b/u.test(haystack) || haystack.includes("beanie")) {
-    return "beanie";
-  }
-  if (/\b(?:cap|hat)\b/u.test(haystack) || haystack.includes("cap") || haystack.includes("hat")) {
-    return "cap";
-  }
-  return "tee";
-}
-
-export function guestCartFallbackThumbnail(
-  name: string,
-  sku?: string | null,
-  id?: string | null,
-): GuestCartPublicThumbnail {
-  const label = name.trim() || id?.trim() || "Product";
-  const illustration = guestCartGarmentIllustration(label, sku, id);
-  return {
-    src: `/merch/${illustration}.svg`,
-    alt: `${label} illustration`,
-  };
-}
-
+/**
+ * A snapshot thumbnail when Commerce resolved real product media; otherwise
+ * null, and the cart renders a neutral "No image" placeholder. Never guess
+ * artwork from a product's name or SKU.
+ */
 function projectPublicThumbnail(
   candidate: unknown,
   name: string,
-  sku?: string | null,
-  id?: string | null,
-  listable = true,
-): GuestCartPublicThumbnail {
-  if (listable && isPlainObject(candidate) && typeof candidate.src === "string" && isSafeGuestCartThumbnailSrc(candidate.src)) {
-    const label = name.trim() || id?.trim() || "Product";
-    const alt = typeof candidate.alt === "string" && candidate.alt.trim() !== ""
-      ? candidate.alt.trim()
-      : `${label} illustration`;
-    return { src: candidate.src, alt };
-  }
-  return guestCartFallbackThumbnail(name, sku, id);
+  id: string,
+  listable: boolean,
+): GuestCartPublicThumbnail | null {
+  if (!listable || !isPlainObject(candidate) || typeof candidate.src !== "string") return null;
+  if (!isSafeGuestCartThumbnailSrc(candidate.src)) return null;
+  const label = name.trim() || id.trim() || "Product";
+  const alt = typeof candidate.alt === "string" && candidate.alt.trim() !== ""
+    ? candidate.alt.trim()
+    : label;
+  return { src: candidate.src, alt };
 }
 
 const STORAGE_NOTICES: Record<GuestCartReadNotice, string> = {
@@ -265,8 +245,8 @@ export function presentGuestCart(options: {
     const sku = snapshot?.found ? snapshot.sku : null;
     const listable = snapshot?.found ? snapshot.price.listable || snapshot.availability.listable : false;
     const thumbnail = snapshot?.found
-      ? projectPublicThumbnail(snapshot.thumbnail, name, sku, line.id, listable)
-      : guestCartFallbackThumbnail(line.id, null, line.id);
+      ? projectPublicThumbnail(snapshot.thumbnail, name, line.id, listable)
+      : null;
     return {
       id: line.id,
       quantity: line.quantity,
@@ -422,13 +402,7 @@ export function projectGuestCartCatalogSnapshot(value: unknown): GuestCartCatalo
   const listable = price.listable || availability.listable;
   const publicName = listable ? value.name : value.id;
   const publicSku = listable ? value.sku : "";
-  const thumbnail = projectPublicThumbnail(
-    value.thumbnail ?? value.image,
-    publicName,
-    publicSku,
-    value.id,
-    listable,
-  );
+  const thumbnail = projectPublicThumbnail(value.thumbnail, publicName, value.id, listable);
   return {
     id: value.id,
     found: true,

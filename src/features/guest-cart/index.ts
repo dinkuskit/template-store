@@ -36,8 +36,6 @@ export {
   GUEST_CHECKOUT_REASON,
   GUEST_CHECKOUT_READY_LABEL,
   canAddCommerceProductToCart,
-  guestCartFallbackThumbnail,
-  guestCartGarmentIllustration,
   guestReturnQueryIsPresent,
   isSafeGuestCartThumbnailSrc,
   lineBlockReason,
@@ -51,7 +49,6 @@ export {
 } from "./present.js";
 export type {
   GuestCartCatalogSnapshot,
-  GuestCartGarmentIllustration,
   GuestCartLineReason,
   GuestCartLineView,
   GuestCartPublicAvailability,

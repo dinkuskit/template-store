@@ -9,7 +9,7 @@ import {
   type CatalogBackorderPolicyRecord, type StoreInventoryConfigurationRecord,
   type StorefrontAvailabilitySettingsRecord,
 } from "@dinkuskit/commerce";
-import { guestCartFallbackThumbnail, type GuestCartPublicThumbnail } from "../guest-cart/present.js";
+import type { GuestCartPublicThumbnail } from "../guest-cart/present.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
 import { readInstalledCommerceCatalog, readInstalledCommerceProducts, type InstalledCatalogContext } from "./installed.js";
 import { resolveCommerceImage, type PublicCommerceImage } from "./media.js";
@@ -39,7 +39,7 @@ export type CommerceCatalogSnapshot =
       name: string;
       sku: string;
       fulfillment: "physical" | "digital";
-      thumbnail?: GuestCartPublicThumbnail;
+      thumbnail?: GuestCartPublicThumbnail | null;
       price: PublicPriceView;
       availability: Readonly<{ status: string; sellable: boolean; listable: boolean }>;
     }>;
@@ -92,39 +92,34 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
 /** Carts up to this many lines look items up one by one; larger carts read the catalog. */
 const SNAPSHOT_ITEM_LOOKUP_LIMIT = 8;
 
+/**
+ * Resolve a cart thumbnail through the same media contract as ProductMedia.
+ * No resolvable Commerce image means no thumbnail; the cart shows a neutral
+ * placeholder rather than artwork guessed from the product's name or SKU.
+ */
 async function resolveSnapshotThumbnail(
   image: PublicCommerceImage | null,
-  name: string,
-  sku: string,
-  id: string,
   listable: boolean,
   context?: InstalledCatalogContext,
-): Promise<GuestCartPublicThumbnail> {
-  if (!listable) {
-    return guestCartFallbackThumbnail(id, "", id);
-  }
-  if (image && context) {
-    const resolved = await resolveCommerceImage(image, {
-      origin: new URL(context.request.url).origin,
-      getPublicMediaUrl: (
-        context.runtime as { getPublicMediaUrl?: (storageKey: string) => string } | null | undefined
-      )?.getPublicMediaUrl,
-      async getMedia(mediaId) {
-        try {
-          const result = await handleMediaGet(await getDb(), mediaId);
-          const item = result.success ? result.data?.item : null;
-          if (!item?.storageKey || !item.mimeType) return null;
-          return { mimeType: item.mimeType, storageKey: item.storageKey, status: item.status };
-        } catch {
-          return null;
-        }
-      },
-    });
-    if (resolved) {
-      return { src: resolved.src, alt: resolved.alt };
-    }
-  }
-  return guestCartFallbackThumbnail(name, sku, id);
+): Promise<GuestCartPublicThumbnail | null> {
+  if (!listable || !image || !context) return null;
+  const resolved = await resolveCommerceImage(image, {
+    origin: new URL(context.request.url).origin,
+    getPublicMediaUrl: (
+      context.runtime as { getPublicMediaUrl?: (storageKey: string) => string } | null | undefined
+    )?.getPublicMediaUrl,
+    async getMedia(mediaId) {
+      try {
+        const result = await handleMediaGet(await getDb(), mediaId);
+        const item = result.success ? result.data?.item : null;
+        if (!item?.storageKey || !item.mimeType) return null;
+        return { mimeType: item.mimeType, storageKey: item.storageKey, status: item.status };
+      } catch {
+        return null;
+      }
+    },
+  });
+  return resolved ? { src: resolved.src, alt: resolved.alt } : null;
 }
 
 export async function readCommerceCatalogSnapshots(
@@ -145,14 +140,7 @@ export async function readCommerceCatalogSnapshots(
       const listable = product.price.listable || product.availability.listable;
       const publicName = listable ? product.name : id;
       const publicSku = listable ? product.sku : "";
-      const thumbnail = await resolveSnapshotThumbnail(
-        product.image,
-        publicName,
-        publicSku,
-        id,
-        listable,
-        context,
-      );
+      const thumbnail = await resolveSnapshotThumbnail(product.image, listable, context);
       return {
         ...product,
         name: publicName,
@@ -190,7 +178,7 @@ export async function readCommerceCatalogSnapshots(
       name: publicName,
       sku: publicSku,
       fulfillment: (product as unknown as { fulfillment?: "physical" | "digital" }).fulfillment ?? "physical",
-      thumbnail: guestCartFallbackThumbnail(publicName, publicSku, id),
+      thumbnail: null,
       price,
       availability: {
         status: availability.status,

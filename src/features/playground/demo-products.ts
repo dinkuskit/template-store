@@ -23,12 +23,7 @@ const VISUAL: Record<string, string> = { shirt: "TEE", cap: "CAP", hoodie: "HOOD
  * collide with the `/products/[id]` route or the `/merch/*.svg` illustrations.
  */
 export function demoPlaceholderImage(sku: string, entryId: string | null | undefined): string | null {
-  const upper = sku.toUpperCase();
-  const product = DEMO_PRODUCTS.find(
-    (candidate) =>
-      candidate.sku === upper ||
-      Boolean(candidate.variant?.values.some((value) => value.sku === upper)),
-  );
+  const product = DEMO_PRODUCTS.find((candidate) => candidate.sku === sku.toUpperCase());
   if (!product) return null;
   const kind = demoProductKind(product);
   return entryId === `demo-${kind}` ? `/images/products/${kind}.svg` : null;

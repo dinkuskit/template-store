@@ -244,6 +244,7 @@ export function readCheckoutContact(
 }
 
 function lineThumbnailMarkup(line: GuestCartView["lines"][number]): string {
+  if (!line.thumbnail) return `<p data-guest-cart-thumbnail-placeholder>No image</p>`;
   return `<img data-guest-cart-thumbnail-img src="${escapeText(line.thumbnail.src)}" alt="${escapeText(line.thumbnail.alt)}" width="160" height="120" loading="lazy" />`;
 }
 
@@ -279,11 +280,12 @@ function patchLine(article: HTMLElement, line: GuestCartView["lines"][number], c
   const thumbnail = article.querySelector("[data-guest-cart-line-thumbnail]");
   if (thumbnail instanceof HTMLElement) {
     const img = thumbnail.querySelector("img");
-    if (
-      !(img instanceof HTMLImageElement) ||
-      img.getAttribute("src") !== line.thumbnail.src ||
-      img.getAttribute("alt") !== line.thumbnail.alt
-    ) {
+    const stale = line.thumbnail
+      ? !(img instanceof HTMLImageElement) ||
+        img.getAttribute("src") !== line.thumbnail.src ||
+        img.getAttribute("alt") !== line.thumbnail.alt
+      : img !== null || !thumbnail.querySelector("[data-guest-cart-thumbnail-placeholder]");
+    if (stale) {
       thumbnail.innerHTML = lineThumbnailMarkup(line);
     }
   }
