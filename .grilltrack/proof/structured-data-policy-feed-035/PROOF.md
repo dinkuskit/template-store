@@ -5,6 +5,8 @@ Commerce source is prepared from the public repository at exact commit
 The source-preparation log is retained in
 `runs/structured-data-policy-feed-035-runs/pin-label-prepare-sources.log`.
 
+Commerce’s catalog-backed `buildProductJsonLd` already emits SKU, optional GTIN/MPN/brand, authoritative price/availability, and an Offer when a Commerce price is present; the page-facts-only limitation applies solely to the editorial preview helper.
+
 ## Verified contract
 
 - Linked products use Commerce `buildProductJsonLd`, preserving Commerce SKU,
@@ -52,9 +54,9 @@ verification, not reported as a full-suite run of the current follow-up.
   `runs/issue35-runs/finish-pnpm-verify.log`; it failed only on the stale
   expected source pin, which was updated before the passing final run.
 
-## Current targeted follow-up
+## Prior targeted follow-up: `7e278d7fcd8434eceb9685ca0d0a33bf92291572`
 
-The current follow-up updates the active Commerce pin/provenance, explicitly
+That follow-up updated the active Commerce pin/provenance, explicitly
 labels all three return categories, and gates Product JSON-LD on a successful
 HTTP response. It preserves the native eligibility fallback and response-status
 assignments. [COMMERCE-EQUIVALENCE.md](COMMERCE-EQUIVALENCE.md) records the empty
@@ -91,6 +93,38 @@ metadata finding; it is superseded by the four-test run above.
 
 The full suite was not rerun for this follow-up. Fresh PR CI must cover the final
 head; the historical full-suite result above is not substituted for that gate.
+
+## Current policy validation repair
+
+[POLICY-VALIDATION-REPAIR.md](POLICY-VALIDATION-REPAIR.md) accepts the optional-field
+validation finding against `7e278d7fcd8434eceb9685ca0d0a33bf92291572` and explains
+the bounded fix. The malformed-projection reproduction failed 23 cases before
+the fix. The consumer now reuses Commerce money validation and checks the
+remaining public policy field shapes before either page text or JSON-LD can
+consume them. Null policies and valid omitted optionals remain supported.
+The native fallback is retained and validated through the same decoder.
+
+Current verification:
+
+- Before repair, `pnpm exec vitest run tests/unit/commerce-policies.test.ts`
+  reproduced 23 failures. Log:
+  `runs/structured-data-policy-feed-035-runs/policy-validation-before.log`.
+- After repair, `pnpm exec vitest run tests/unit/commerce-policies.test.ts tests/unit/structured-data-policy.test.ts tests/unit/commerce-feeds.test.ts`
+  passed 35 tests in 3 files. Log:
+  `runs/structured-data-policy-feed-035-runs/policy-validation-after.log`.
+- `pnpm typecheck` passed with 0 errors, 0 warnings, and 2 existing hints.
+  Log: `runs/structured-data-policy-feed-035-runs/policy-validation-typecheck.log`.
+- Feature/text audits and `git diff --check` passed. Log:
+  `runs/structured-data-policy-feed-035-runs/policy-validation-source-checks.log`.
+- The structured-data/policy/feed and shipping-profile Playwright specs passed
+  all 4 desktop/mobile tests on the repaired source. Log:
+  `runs/structured-data-policy-feed-035-runs/policy-validation-browser.log`.
+  Command: `pnpm exec playwright test tests/e2e/structured-data-policy-feed.spec.ts tests/e2e/shipping-storefront-profile.spec.ts --project=chromium-desktop --project=chromium-mobile --project=shipping-chromium-desktop --project=shipping-chromium-mobile`.
+
+ The prior full-suite and targeted
+results above remain attributed to their own source revisions; they are not
+claimed as full-suite results for this repair. Fresh final-head CI/review is
+still required.
 
 This is exact source/local proof. It does not establish a Registry install,
 deployment, publication, checkout, or Google/Meta channel-account connection.

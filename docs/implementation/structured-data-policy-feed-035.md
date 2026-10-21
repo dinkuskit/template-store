@@ -25,6 +25,13 @@ invalid public payload still fails. With no policy records, both pages say the
 policy is not configured and JSON-LD omits `shippingDetails` and
 `hasMerchantReturnPolicy`. Seeds stay neutral.
 
+The policy consumer validates amount/mode consistency, configured country
+lists, day bounds, URLs, and known return enums before returning either record.
+It reuses Commerce's exported money validation. Null policies and omitted
+optional fields remain valid; malformed fields follow the existing failure
+path instead of reaching policy text or JSON-LD. Native-development reads pass
+through the same validation.
+
 Return categories display as `Limited return window`, `Returns not accepted`,
 or `Unlimited return window`. The original Commerce enum remains in the
 `data-return-category` attribute for policy and JSON-LD verification.
