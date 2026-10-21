@@ -348,4 +348,35 @@ describe("shopper-account browser session and public routes", () => {
     expect(DEMO_SHOPPER_ORDER_ID).toBe("ord_demo_shopper_1001");
     expect(DEMO_SHOPPER_ORDER_NUMBER).toBe(1001);
   });
+
+  it("retains captured proof emails and leads on globalThis across SSR module reloads", async () => {
+    await deliverPlaygroundShopperEmail(
+      {
+        to: "reload.proof@example.com",
+        subject: "Sign-in code",
+        text: "Your sign-in code is 654321.",
+      },
+      { DINKUS_PROOF_MODE: "1" },
+    );
+    await recordVerifiedPlaygroundLead(
+      "reload.proof@example.com",
+      { DINKUS_PROOF_MODE: "1" },
+      "2026-10-21T19:00:00.000Z",
+    );
+
+    const globalState = globalThis as {
+      __dinkusCapturedProofEmails?: Map<string, { code: string | null }>;
+      __dinkusCapturedProofLeads?: Map<string, { email: string }>;
+    };
+    expect(globalState.__dinkusCapturedProofEmails?.get("reload.proof@example.com")?.code).toBe(
+      "654321",
+    );
+    expect(globalState.__dinkusCapturedProofLeads?.get("reload.proof@example.com")?.email).toBe(
+      "reload.proof@example.com",
+    );
+    expect(readCapturedProofEmail("reload.proof@example.com")?.code).toBe("654321");
+    expect(readCapturedProofLeads().map((lead) => lead.email)).toContain(
+      "reload.proof@example.com",
+    );
+  });
 });

@@ -44,7 +44,18 @@ type ShopperAccountRequestContext = Readonly<{
   env: EnvLike;
 }>;
 
-const requestContext = new AsyncLocalStorage<ShopperAccountRequestContext>();
+type GlobalShopperAccountProofState = {
+  __dinkusShopperRequestContext?: AsyncLocalStorage<ShopperAccountRequestContext>;
+  __dinkusCapturedProofEmails?: Map<string, CapturedProofEmail>;
+  __dinkusCapturedProofLeads?: Map<string, PlaygroundLeadRecord>;
+};
+
+const globalProofState = globalThis as unknown as GlobalShopperAccountProofState;
+
+const requestContext =
+  globalProofState.__dinkusShopperRequestContext ??
+  (globalProofState.__dinkusShopperRequestContext =
+    new AsyncLocalStorage<ShopperAccountRequestContext>());
 
 export function withShopperAccountRequest<T>(
   requestOrigin: string,
@@ -111,8 +122,12 @@ export type PlaygroundLeadRecord = Readonly<{
   verificationCount: number;
 }>;
 
-const capturedProofEmails = new Map<string, CapturedProofEmail>();
-const capturedProofLeads = new Map<string, PlaygroundLeadRecord>();
+const capturedProofEmails =
+  globalProofState.__dinkusCapturedProofEmails ??
+  (globalProofState.__dinkusCapturedProofEmails = new Map<string, CapturedProofEmail>());
+const capturedProofLeads =
+  globalProofState.__dinkusCapturedProofLeads ??
+  (globalProofState.__dinkusCapturedProofLeads = new Map<string, PlaygroundLeadRecord>());
 
 function extractSixDigitCode(text: string): string | null {
   const match = text.match(/\b(\d{6})\b/u);
