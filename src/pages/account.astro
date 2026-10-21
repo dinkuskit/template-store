@@ -7,10 +7,6 @@ import { playgroundCheckoutAdmission } from "../features/playground-checkout/ind
 import { playgroundCheckoutConfigured } from "../features/playground-checkout/payments-port.js";
 import { isDemoCatalogProfile } from "../features/playground/demo-products.js";
 import { storeBannerText } from "../features/store-shell/checkout-copy.js";
-import {
-  isPlaygroundPreviewHost,
-  resolvePlaygroundAccountSiteOrigin,
-} from "../features/shopper-account/playground-runtime.js";
 import "../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -23,8 +19,6 @@ const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__pl
 const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured());
 const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
 const playgroundMode = isPlayground || isDemoCatalogProfile();
-const playgroundAccountOrigin = resolvePlaygroundAccountSiteOrigin();
-const previewUnavailable = isPlayground && isPlaygroundPreviewHost(Astro.url, playgroundAccountOrigin);
 ---
 <!doctype html>
 <html lang="en">
@@ -37,10 +31,7 @@ const previewUnavailable = isPlayground && isPlaygroundPreviewHost(Astro.url, pl
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(Boolean(effectiveAdmission))} role="status">{storeBannerText(Boolean(effectiveAdmission))}</div>
     <StoreHeader profile={profile} />
     <main>
-      <ShopperAccount
-        playgroundMode={playgroundMode}
-        previewUnavailableOrigin={previewUnavailable ? playgroundAccountOrigin : undefined}
-      />
+      <ShopperAccount playgroundMode={playgroundMode} />
     </main>
   </body>
 </html>
