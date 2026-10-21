@@ -226,7 +226,7 @@ and CLI ledger records. Fresh final-head CI and required reviews remain with
 the coordinator. This owner-approved pass is complete; any further finding
 returns for adjudication instead of another automatic repair.
 
-## Selected variant metadata repair
+## Prior selected variant metadata repair: a48c939a4ea9aba3a2b195d4fab72dffa68d3a45
 
 VARIANT-REPAIR.md accepts the selected-member contradiction on
 d05e4adb47032b3d621258919022f10ba6bf4352. The prior tests deliberately retained
@@ -267,12 +267,41 @@ passed with 0 failures, 2 intentional sitemap skips, and 26 URLs checked; absent
 Commerce feeds still returned 503. Log:
 runs/structured-data-policy-feed-035-runs/variant-pnpm-verify.log.
 
-The current source-manifest.sha256 covers 22 source/test/package files.
+At a48c939a4ea9aba3a2b195d4fab72dffa68d3a45, source-manifest.sha256 covered 22 source/test/package files.
 Final hash verification, source/text audits, git diff --check, and GrillTrack
 validation passed. Log:
 runs/structured-data-policy-feed-035-runs/variant-final-source-checks.log.
 Runtime and tests were unchanged throughout the full run; only proof and CLI
 ledger records followed it. Fresh exact-head reviews remain with the coordinator.
+
+## Fresh-main merge integration
+
+MAIN-INTEGRATION.md records the non-rebase merge of fresh main
+bd0170ce2462f4b7d89976dee9338f779609b120 (#114) into
+a48c939a4ea9aba3a2b195d4fab72dffa68d3a45. The sole conflict was the catalog
+index import block: the combined import preserves #114's item lookup and
+#35's shared public types. Both parent histories and the ledger/event bytes
+are preserved. The remote main identity was rechecked before this commit.
+
+Integration validation on the resolved source:
+
+- pnpm typecheck: 0 errors, 0 warnings, 2 existing hints.
+  Log: runs/structured-data-policy-feed-035-runs/main-integration-typecheck.log.
+- Focused installed catalog, cart snapshot/totals/intent, and structured-data
+  units: 43 passed in 5 files.
+  Log: runs/structured-data-policy-feed-035-runs/main-integration-units.log.
+- Guest cart, product page, structured-data/policy/feed, and shipping profile
+  Playwright checks: all 8 desktop/mobile tests passed. This exercises the
+  longer cart timeout, selected-member metadata, and installed shipping path.
+  Log: runs/structured-data-policy-feed-035-runs/main-integration-browser.log.
+- Final source/text audits, 28-file manifest verification, ledger validation,
+  and git diff --check passed. Owned test ports were closed.
+  Log: runs/structured-data-policy-feed-035-runs/main-integration-source-checks.log.
+
+The prior 384-unit/97-workflow/63-browser full run belongs to a48c939 above.
+It is not reported as a full run of this merge. This import-only resolution
+used targeted local integration checks; fresh exact-head CI must run the
+full suite and new reviews must bind to the merge commit.
 
 This is exact source/local proof. It does not establish a Registry install,
 deployment, publication, checkout, or Google/Meta channel-account connection.

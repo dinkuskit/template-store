@@ -19,7 +19,8 @@ const MAX_CAPABILITY_LENGTH = 512;
 const MAX_ATTEMPT_ID_LENGTH = 256;
 const MAX_COUPON_LENGTH = 128;
 const MAX_RESPONSE_BYTES = 64 * 1024;
-const REQUEST_TIMEOUT_MS = 8_000;
+// Commerce's checkout start took up to 8.1 s on beta; leave room above that.
+const REQUEST_TIMEOUT_MS = 20_000;
 export const MAX_GUEST_CHECKOUT_STATUS_CHECKS = 5;
 
 export type GuestCheckoutOrderLine = GuestCartLine & Readonly<{
