@@ -180,6 +180,14 @@ export function isPlaygroundLeadStorageConfigured(env: EnvLike = process.env): b
   return activeEnv.DINKUS_LOCAL_PROOF === "1";
 }
 
+/**
+ * Sends a transactional OTP email through Cloudflare's native Email Service
+ * (`send_email` binding `EMAIL`). Cloudflare Workers' `SendEmail.send()`
+ * natively accepts the structured `EmailMessageBuilder` JSON payload
+ * (`{ to, from, subject, text }`, see Cloudflare Email Service / `send_email`
+ * binding docs), without requiring `cloudflare:email` `EmailMessage` MIME
+ * wrapping.
+ */
 export async function deliverPlaygroundShopperEmail(
   message: ShopperEmailMessage,
   env: EnvLike = process.env,
@@ -597,7 +605,7 @@ export async function mintDemoShopperSession(
       [],
     ),
   };
-  // Clear any previous demo login code and fixed demo session record so the
+  // Clear prior demo login code and fixed demo session record so the
   // instant demo sign-in button works repeatedly and overwrites one bounded
   // session slot instead of accumulating unbounded session rows per visitor.
   await storage[NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes].delete(DEMO_SHOPPER_EMAIL);
