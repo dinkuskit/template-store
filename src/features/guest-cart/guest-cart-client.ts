@@ -197,7 +197,7 @@ async function prefillShopperContact(root: Element): Promise<void> {
   }
 }
 
-function readCheckoutContact(
+export function readCheckoutContact(
   root: Element,
   needsDelivery: boolean,
 ): { contact: GuestCheckoutContact | null; error: string | null } {
@@ -227,6 +227,9 @@ function readCheckoutContact(
   }
   if (!/^[A-Z]{2}$/u.test(fields.country)) {
     return { contact: null, error: "Choose a country this store ships to." };
+  }
+  if (fields.country === "US" && !fields.region) {
+    return { contact: null, error: "Enter a state for United States delivery." };
   }
   const delivery = {
     name: fields.name,
