@@ -65,6 +65,8 @@ function projection(state: ProjectionState, attemptId: string | null) {
       catalogItemId: "fixture-shirt",
       name: "Synthetic fixture shirt",
       quantity: 1,
+      imageUrl: "/images/products/shirt.svg",
+      imageAlt: "Synthetic fixture shirt thumbnail",
       unitPrice: { currency: "USD", minor: "2400" },
     }],
     total: { currency: "USD", minor: "2400" },
@@ -78,7 +80,14 @@ function projection(state: ProjectionState, attemptId: string | null) {
       ? {
         orderId: "order:fixture",
         receiptId: "receipt:fixture",
-        lines: [{ catalogItemId: "fixture-shirt", name: "Synthetic fixture shirt", quantity: 1, unitPrice: { currency: "USD", minor: "2400" } }],
+        lines: [{
+          catalogItemId: "fixture-shirt",
+          name: "Synthetic fixture shirt",
+          quantity: 1,
+          imageUrl: "/images/products/shirt.svg",
+          imageAlt: "Synthetic fixture shirt thumbnail",
+          unitPrice: { currency: "USD", minor: "2400" },
+        }],
         total: { currency: "USD", minor: "2400" },
       }
       : null,

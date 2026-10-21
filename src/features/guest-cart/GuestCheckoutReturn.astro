@@ -13,12 +13,42 @@ const { contactHref } = Astro.props;
     <h3>Items</h3>
     <ul data-guest-checkout-order-items></ul>
     <dl data-guest-checkout-order-totals></dl>
+    <section
+      class="guest-checkout-destination"
+      aria-labelledby="guest-checkout-destination-title"
+      data-guest-checkout-destination
+      data-guest-checkout-shipping
+      hidden
+    >
+      <h3 id="guest-checkout-destination-title">Shipping &amp; confirmation details</h3>
+      <div class="guest-checkout-destination__grid">
+        <div class="guest-checkout-destination__item" data-guest-checkout-email-row hidden>
+          <span class="guest-checkout-destination__label">Confirmation email</span>
+          <p class="guest-checkout-destination__value" data-guest-checkout-email></p>
+        </div>
+        <div class="guest-checkout-destination__item" data-guest-checkout-recipient-row hidden>
+          <span class="guest-checkout-destination__label">Recipient</span>
+          <p class="guest-checkout-destination__value" data-guest-checkout-recipient></p>
+        </div>
+        <div class="guest-checkout-destination__item" data-guest-checkout-address-row hidden>
+          <span class="guest-checkout-destination__label">Shipping address</span>
+          <p class="guest-checkout-destination__value" data-guest-checkout-address></p>
+        </div>
+        <div class="guest-checkout-destination__item" data-guest-checkout-shipping-method-row hidden>
+          <span class="guest-checkout-destination__label">Shipping method</span>
+          <p class="guest-checkout-destination__value" data-guest-checkout-shipping-method></p>
+        </div>
+      </div>
+    </section>
     <h3>What happens next</h3>
     <p>A confirmation email is coming. When your order ships, a shipping email with tracking will arrive.</p>
     {contactHref && <p data-guest-checkout-contact>Questions? <a href={contactHref}>Contact the store</a>.</p>}
   </div>
   <a data-guest-checkout-retry hidden rel="noopener noreferrer">Continue to secure checkout</a>
-  <a class="guest-checkout-continue" href="/">Continue shopping</a>
+  <div class="guest-checkout-actions" data-guest-checkout-actions>
+    <a class="guest-checkout-continue" href="/">Continue shopping</a>
+    <a class="guest-checkout-account" data-guest-checkout-account href="/account">Shopper account</a>
+  </div>
   <button type="button" data-guest-checkout-status-retry hidden>Check status again</button>
 </section>
 <script>

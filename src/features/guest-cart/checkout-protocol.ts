@@ -26,10 +26,28 @@ export const MAX_GUEST_CHECKOUT_STATUS_CHECKS = 5;
 export type GuestCheckoutOrderLine = GuestCartLine & Readonly<{
   name?: string;
   variant?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  sku?: string;
   unitPrice?: Readonly<{ currency: string; minor: string }>;
 }>;
 
 export type GuestCheckoutMoney = Readonly<{ currency: string; minor: string }>;
+
+export type GuestCheckoutDelivery = Readonly<{
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region?: string;
+  postalCode: string;
+  country: string;
+}>;
+
+export type GuestCheckoutContact = Readonly<{
+  email: string;
+  delivery?: GuestCheckoutDelivery;
+}>;
 
 export type GuestCheckoutProjection = Readonly<{
   schema: typeof GUEST_CHECKOUT_PROJECTION_SCHEMA;
@@ -42,7 +60,13 @@ export type GuestCheckoutProjection = Readonly<{
     lines: readonly GuestCheckoutOrderLine[];
     total?: GuestCheckoutMoney;
     test?: boolean;
+    contact?: GuestCheckoutContact;
+    delivery?: GuestCheckoutDelivery;
+    shippingMethod?: string;
   }> | null;
+  contact?: GuestCheckoutContact;
+  delivery?: GuestCheckoutDelivery;
+  shippingMethod?: string;
   retryAfter: string | null;
   [key: string]: unknown;
 }>;
@@ -66,6 +90,7 @@ export type GuestCheckoutRetention = Readonly<{
   capability: string;
   attemptId: string | null;
   awaitingStart?: true;
+  contact?: GuestCheckoutContact;
   cartSettlement?: Readonly<{ orderId: string; fingerprint: string; pending: boolean }>;
 }>;
 
@@ -83,21 +108,6 @@ export type GuestCheckoutCall =
   | Readonly<{ kind: "prepare" }>
   | Readonly<{ kind: "start"; intent: GuestCartIntent; couponCode?: string; contact?: GuestCheckoutContact }>
   | Readonly<{ kind: "status"; attemptId?: string }>;
-
-export type GuestCheckoutDelivery = Readonly<{
-  name: string;
-  line1: string;
-  line2?: string;
-  city: string;
-  region?: string;
-  postalCode: string;
-  country: string;
-}>;
-
-export type GuestCheckoutContact = Readonly<{
-  email: string;
-  delivery?: GuestCheckoutDelivery;
-}>;
 
 export type GuestCheckoutCouponReason =
   | "not-found" | "not-started" | "expired" | "minimum-not-met"
@@ -150,6 +160,105 @@ function safeCanonicalValue(value: unknown): value is string {
     /^[A-Za-z0-9._~:-]+$/u.test(value);
 }
 
+function boundedText(value: unknown, max = 200): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= max ? trimmed : undefined;
+}
+
+export function isSafeOrderLineImageUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > 2048 || /[\s\u0000-\u001f]/u.test(trimmed)) return false;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function parseSafeImageUrl(value: unknown): string | undefined {
+  const raw = typeof value === "string"
+    ? value
+    : isObject(value)
+      ? (value.url ?? value.src)
+      : undefined;
+  if (!isSafeOrderLineImageUrl(raw)) return undefined;
+  return raw.trim();
+}
+
+function parseSafeImageAlt(value: unknown): string | undefined {
+  return boundedText(value, 256);
+}
+
+function formatSelectionItems(value: unknown): string | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const parts: string[] = [];
+  for (const item of value) {
+    if (Array.isArray(item) && item.length >= 2) {
+      const option = boundedText(item[0], 80);
+      const choice = boundedText(item[1], 120);
+      if (option && choice) parts.push(`${option}: ${choice}`);
+      else if (choice ?? option) parts.push((choice ?? option)!);
+    } else if (isObject(item)) {
+      const option = boundedText(item.optionLabel ?? item.option ?? item.name, 80);
+      const choice = boundedText(item.valueLabel ?? item.value, 120);
+      if (option && choice) parts.push(`${option}: ${choice}`);
+      else if (choice ?? option) parts.push((choice ?? option)!);
+    }
+  }
+  const formatted = parts.join(" / ");
+  return formatted.length > 0 && formatted.length <= 256 ? formatted : undefined;
+}
+
+function parseVariantSelections(value: unknown): Map<string, string> {
+  const map = new Map<string, string>();
+  if (!Array.isArray(value)) return map;
+  for (const entry of value) {
+    if (!isObject(entry)) continue;
+    const itemId = boundedText(entry.catalogItemId ?? entry.id, 128);
+    const label = formatSelectionItems(entry.selections ?? entry.options);
+    if (itemId && label && !map.has(itemId)) {
+      map.set(itemId, label);
+    }
+  }
+  return map;
+}
+
+function parseDelivery(value: unknown): GuestCheckoutDelivery | undefined {
+  if (!isObject(value)) return undefined;
+  const name = boundedText(value.name);
+  const line1 = boundedText(value.line1);
+  const line2 = boundedText(value.line2);
+  const city = boundedText(value.city);
+  const region = boundedText(value.region, 64);
+  const postalCode = boundedText(value.postalCode, 32);
+  const country = boundedText(value.country, 64);
+  if (!name || !line1 || !city || !postalCode || !country) return undefined;
+  return {
+    name,
+    line1,
+    ...(line2 ? { line2 } : {}),
+    city,
+    ...(region ? { region } : {}),
+    postalCode,
+    country,
+  };
+}
+
+function parseContact(value: unknown, fallbackDelivery?: GuestCheckoutDelivery): GuestCheckoutContact | undefined {
+  if (!isObject(value)) return undefined;
+  const email = boundedText(value.email, 254);
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) return undefined;
+  const delivery = parseDelivery(value.delivery ?? value.shippingAddress) ?? fallbackDelivery;
+  return {
+    email,
+    ...(delivery ? { delivery } : {}),
+  };
+}
+
 function projectCheckout(value: unknown): GuestCheckoutProjection | null {
   if (!isObject(value) ||
       value.schema !== GUEST_CHECKOUT_PROJECTION_SCHEMA ||
@@ -159,6 +268,10 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
       (value.redirectUrl !== null && typeof value.redirectUrl !== "string")) {
     return null;
   }
+  const topDelivery = parseDelivery(value.delivery ?? value.shippingAddress);
+  const topContact = parseContact(value.contact ?? value.contactSnapshot, topDelivery) ??
+    (typeof value.email === "string" ? parseContact({ email: value.email }, topDelivery) : undefined);
+  const topShippingMethod = boundedText(value.shippingMethod, 160);
   let order: GuestCheckoutProjection["order"] = null;
   if (value.order !== null) {
     if (!isObject(value.order) ||
@@ -170,18 +283,35 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
     if (!purchased || purchased.lines.length === 0) return null;
     const rawOrder = value.order as Record<string, unknown>;
     const rawLines = rawOrder.lines as unknown[];
+    const variantByItem = parseVariantSelections(rawOrder.variantSelections ?? value.variantSelections);
     const lines = purchased.lines.map((line, index) => {
       const raw = rawLines[index];
       if (!isObject(raw)) return line;
       const name = typeof raw.name === "string" && raw.name.length <= 1024 ? raw.name : undefined;
-      const variant = typeof raw.variant === "string" && raw.variant.length <= 256 ? raw.variant : undefined;
+      const directVariant = typeof raw.variant === "string" && raw.variant.length <= 256
+        ? raw.variant
+        : typeof raw.variantLabel === "string" && raw.variantLabel.trim() && raw.variantLabel.length <= 256
+          ? raw.variantLabel.trim()
+          : formatSelectionItems(raw.selections ?? raw.options);
+      const variant = directVariant ?? variantByItem.get(line.id);
+      const imageUrl = parseSafeImageUrl(raw.imageUrl ?? raw.thumbnailUrl ?? raw.image);
+      const imageAlt = parseSafeImageAlt(raw.imageAlt ?? (isObject(raw.image) ? raw.image.alt : undefined));
+      const sku = boundedText(raw.sku, 128);
       const unitPrice = isObject(raw.unitPrice) &&
         typeof raw.unitPrice.currency === "string" &&
         typeof raw.unitPrice.minor === "string" &&
         /^-?\d+$/u.test(raw.unitPrice.minor)
         ? { currency: raw.unitPrice.currency, minor: raw.unitPrice.minor }
         : undefined;
-      return { ...line, ...(name ? { name } : {}), ...(variant ? { variant } : {}), ...(unitPrice ? { unitPrice } : {}) };
+      return {
+        ...line,
+        ...(name ? { name } : {}),
+        ...(variant ? { variant } : {}),
+        ...(imageUrl ? { imageUrl } : {}),
+        ...(imageAlt ? { imageAlt } : {}),
+        ...(sku ? { sku } : {}),
+        ...(unitPrice ? { unitPrice } : {}),
+      };
     });
     const rawTotal = rawOrder.total;
     const total = isObject(rawTotal) &&
@@ -190,12 +320,20 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
       /^-?\d+$/u.test(rawTotal.minor)
       ? { currency: rawTotal.currency, minor: rawTotal.minor }
       : undefined;
+    const orderDelivery = parseDelivery(rawOrder.delivery ?? rawOrder.shippingAddress) ?? topDelivery;
+    const orderContact = parseContact(rawOrder.contact ?? rawOrder.contactSnapshot, orderDelivery) ??
+      (typeof rawOrder.email === "string" ? parseContact({ email: rawOrder.email }, orderDelivery) : undefined) ??
+      topContact;
+    const orderShippingMethod = boundedText(rawOrder.shippingMethod, 160) ?? topShippingMethod;
     order = {
       orderId: value.order.orderId,
       receiptId: value.order.receiptId,
       lines,
       ...(total ? { total } : {}),
       ...(typeof rawOrder.test === "boolean" ? { test: rawOrder.test } : {}),
+      ...(orderContact ? { contact: orderContact } : {}),
+      ...(orderDelivery && !orderContact?.delivery ? { delivery: orderDelivery } : {}),
+      ...(orderShippingMethod ? { shippingMethod: orderShippingMethod } : {}),
     };
   }
   if (value.state === "paid" && !order) return null;
@@ -208,6 +346,9 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
     attemptId: value.attemptId as string | null,
     redirectUrl: value.redirectUrl as string | null,
     order,
+    ...(topContact ? { contact: topContact } : {}),
+    ...(topDelivery && !topContact?.delivery ? { delivery: topDelivery } : {}),
+    ...(topShippingMethod ? { shippingMethod: topShippingMethod } : {}),
     retryAfter: value.retryAfter as string | null,
   };
 }
@@ -242,13 +383,24 @@ export function guestCheckoutWire(checkout: GuestCheckoutProjection) {
     order: order && {
       orderId: order.orderId,
       receiptId: order.receiptId,
-      lines: order.lines.map(({ id, quantity, name, variant, unitPrice }) => ({
+      lines: order.lines.map(({ id, quantity, name, variant, imageUrl, imageAlt, sku, unitPrice }) => ({
         catalogItemId: id, quantity,
-        ...(name ? { name } : {}), ...(variant ? { variant } : {}), ...(unitPrice ? { unitPrice } : {}),
+        ...(name ? { name } : {}),
+        ...(variant ? { variant } : {}),
+        ...(imageUrl ? { imageUrl } : {}),
+        ...(imageAlt ? { imageAlt } : {}),
+        ...(sku ? { sku } : {}),
+        ...(unitPrice ? { unitPrice } : {}),
       })),
       ...(order.total ? { total: order.total } : {}),
       ...(order.test === undefined ? {} : { test: order.test }),
+      ...(order.contact ? { contact: order.contact } : {}),
+      ...(order.delivery ? { delivery: order.delivery } : {}),
+      ...(order.shippingMethod ? { shippingMethod: order.shippingMethod } : {}),
     },
+    ...(checkout.contact ? { contact: checkout.contact } : {}),
+    ...(checkout.delivery ? { delivery: checkout.delivery } : {}),
+    ...(checkout.shippingMethod ? { shippingMethod: checkout.shippingMethod } : {}),
     ...(Object.keys(pricing).length ? { pricing } : {}),
   };
 }
@@ -312,24 +464,27 @@ export function readGuestCheckoutRetention(
   if (!storage) return null;
   try {
     const raw = storage.getItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY);
-    if (!raw || raw.length > 2048) return null;
+    if (!raw || raw.length > 4096) return null;
     const value: unknown = JSON.parse(raw);
     if (!isObject(value) ||
         !safeId(value.capabilityId) ||
         !safeToken(value.capability) ||
         !value.capability.startsWith(`${value.capabilityId}.`) ||
         (value.awaitingStart !== undefined && typeof value.awaitingStart !== "boolean") ||
+        (value.contact !== undefined && !parseContact(value.contact)) ||
         (value.cartSettlement !== undefined && (!isObject(value.cartSettlement) ||
           !safeCanonicalValue(value.cartSettlement.orderId) ||
           typeof value.cartSettlement.fingerprint !== "string" ||
           !/^[a-f0-9]{64}$/u.test(value.cartSettlement.fingerprint) ||
           typeof value.cartSettlement.pending !== "boolean")) ||
         (value.attemptId !== null && !safeId(value.attemptId))) return null;
+    const retainedContact = parseContact(value.contact);
     return {
       capabilityId: value.capabilityId,
       capability: value.capability,
       attemptId: value.attemptId as string | null,
       ...(value.awaitingStart === true ? { awaitingStart: true as const } : {}),
+      ...(retainedContact ? { contact: retainedContact } : {}),
       ...(isObject(value.cartSettlement) ? { cartSettlement: value.cartSettlement as GuestCheckoutRetention["cartSettlement"] } : {}),
     };
   } catch {
@@ -607,8 +762,16 @@ export function createGuestCheckoutController(options: {
         // Persist before the request: a lost successor response must recover the
         // capability's CURRENT attempt rather than re-query its released parent.
         if (!options.storage) return { result: null, failure: "storage-unavailable" };
+        const validContact = contact ? parseContact(contact) : undefined;
         try {
-          options.storage.setItem(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY, JSON.stringify({ ...retention, awaitingStart: true }));
+          options.storage.setItem(
+            GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
+            JSON.stringify({
+              ...retention,
+              awaitingStart: true,
+              ...(validContact ? { contact: validContact } : {}),
+            }),
+          );
           if (!readGuestCheckoutRetention(options.storage)?.awaitingStart) {
             return { result: null, failure: "storage-unavailable" };
           }
