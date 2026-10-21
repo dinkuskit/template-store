@@ -312,7 +312,7 @@ describe("guest cart thumbnails", () => {
       "/_emdash/api/media/file/../secret.png",
       "/_emdash/api/media/file/%2e%2e/secret.png",
       "/media\\x.png",
-      "https://user:pass@media.example.test/x.png",
+      "https://reviewer@media.example.test/x.png",
       "ftp://media.example.test/x.png",
       "/a b.png",
       `/${"a".repeat(2050)}`,
