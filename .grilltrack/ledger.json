@@ -3617,10 +3617,54 @@
           "review_source_identity": null,
           "to": "verified",
           "verification_ref": "file:runs/structured-data-policy-feed-035-runs/policy-validation-after.log;file:runs/structured-data-policy-feed-035-runs/policy-validation-typecheck.log;file:runs/structured-data-policy-feed-035-runs/policy-validation-browser.log;file:.grilltrack/proof/structured-data-policy-feed-035/POLICY-VALIDATION-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md"
+        },
+        {
+          "at": "2026-10-21T00:41:08+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "verified",
+          "implementation_ref": "file:src/features/commerce-feeds/index.ts;file:bin/verify-site;file:tests/unit/commerce-feeds.test.ts;file:tests/workflows/verify-site-crawl.test.mjs",
+          "note": "adjudicated review requires a fix",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "needs_reverification",
+          "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/feed-repair-pnpm-verify.log;file:runs/structured-data-policy-feed-035-runs/feed-images-after.log;file:runs/structured-data-policy-feed-035-runs/empty-feeds-after.log;file:runs/structured-data-policy-feed-035-runs/feed-repair-browser.log"
+        },
+        {
+          "at": "2026-10-21T00:41:08+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "needs_reverification",
+          "implementation_ref": "file:src/features/commerce-feeds/index.ts;file:bin/verify-site;file:tests/unit/commerce-feeds.test.ts;file:tests/workflows/verify-site-crawl.test.mjs",
+          "note": "bounded implementation recorded",
+          "repair_required": true,
+          "review_classifications": [
+            "required_fix"
+          ],
+          "review_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/VERIFIER-OWNER-REPAIR.md",
+          "review_result": "findings",
+          "review_source_identity": "git:a2138c73cfe9f6016c700186f093bc0c6af6d6e6",
+          "to": "implemented",
+          "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/feed-repair-pnpm-verify.log;file:runs/structured-data-policy-feed-035-runs/feed-images-after.log;file:runs/structured-data-policy-feed-035-runs/empty-feeds-after.log;file:runs/structured-data-policy-feed-035-runs/feed-repair-browser.log"
+        },
+        {
+          "at": "2026-10-21T00:50:46+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "implemented",
+          "implementation_ref": "file:bin/verify-site;file:tests/workflows/verify-site-crawl.test.mjs;file:package.json;file:pnpm-lock.yaml",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/feed-repair-pnpm-verify.log;file:runs/structured-data-policy-feed-035-runs/feed-images-after.log;file:runs/structured-data-policy-feed-035-runs/empty-feeds-after.log;file:runs/structured-data-policy-feed-035-runs/feed-repair-browser.log"
         }
       ],
       "id": "structured-data-policy-feed-035",
-      "implementation_ref": "file:src/features/commerce-feeds/index.ts;file:bin/verify-site;file:tests/unit/commerce-feeds.test.ts;file:tests/workflows/verify-site-crawl.test.mjs",
+      "implementation_ref": "file:bin/verify-site;file:tests/workflows/verify-site-crawl.test.mjs;file:package.json;file:pnpm-lock.yaml",
       "question": "How will the starter publish truthful product metadata, policies and feeds?",
       "rationale": "Owner explicitly requested finishing issue 35 with coordinator and AI Shed on 2026-10-20; all three prerequisite issues are closed.",
       "repair_required": false,
@@ -3652,6 +3696,15 @@
           "result": "findings",
           "reviewed_at": "2026-10-21T00:20:01+00:00",
           "source_identity": "git:16d0b201ee0f4f17c0167538e9eac8e03350675e"
+        },
+        {
+          "classifications": [
+            "required_fix"
+          ],
+          "ref": "file:.grilltrack/proof/structured-data-policy-feed-035/VERIFIER-OWNER-REPAIR.md",
+          "result": "findings",
+          "reviewed_at": "2026-10-21T00:41:08+00:00",
+          "source_identity": "git:a2138c73cfe9f6016c700186f093bc0c6af6d6e6"
         }
       ],
       "review_ref": null,
@@ -3659,8 +3712,8 @@
       "review_source_identity": null,
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-10-21T00:31:23+00:00",
-      "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/feed-repair-pnpm-verify.log;file:runs/structured-data-policy-feed-035-runs/feed-images-after.log;file:runs/structured-data-policy-feed-035-runs/empty-feeds-after.log;file:runs/structured-data-policy-feed-035-runs/feed-repair-browser.log"
+      "updated_at": "2026-10-21T00:50:46+00:00",
+      "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/VERIFIER-OWNER-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/owner-pass-after.log;file:runs/structured-data-policy-feed-035-runs/owner-pass-pnpm-verify.log"
     }
   ],
   "last_activation": {
@@ -3683,5 +3736,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-21T00:31:23+00:00"
+  "updated_at": "2026-10-21T00:50:46+00:00"
 }

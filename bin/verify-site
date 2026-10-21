@@ -9,6 +9,9 @@
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
 import process from "node:process";
+import { parse as parseCsv } from "csv-parse/sync";
+import { decodeHTMLAttribute } from "entities";
+import sax from "sax";
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -497,7 +500,8 @@ for (const path of productPaths) {
   const page = pages.get(path);
   if (!page) continue;
   const products = page.jsonLd.filter((node) => node && typeof node === "object" && node["@type"] === "Product");
-  const sku = page.body.match(/\bdata-product-sku=["']([^"']+)["']/u)?.[1];
+  const skuAttribute = page.body.match(/\bdata-product-sku\s*=\s*(?:"([^"]*)"|'([^']*)')/u);
+  const sku = skuAttribute ? decodeHTMLAttribute(skuAttribute[1] ?? skuAttribute[2]) : undefined;
   const commerceLinked = Boolean(sku);
   if (commerceLinked) commerceLinkedPages += 1;
   if (products.length !== 1) {
@@ -538,11 +542,42 @@ if (productPaths.length === 0) {
     `${commerceLinkedPages} commerce-linked product page(s) and ${productPaths.length - commerceLinkedPages} editorial page(s) of ${productPaths.length}`,
   );
 }
-function emptyFeedDocument(path, body) {
-  if (path.endsWith(".xml")) {
-    return /^(?:<\?xml[^?]*\?>\s*)?<rss\b(?=[^>]*\bversion=["']2\.0["'])(?=[^>]*\bxmlns:g=["']http:\/\/base\.google\.com\/ns\/1\.0["'])[^>]*>\s*<channel>\s*<\/channel>\s*<\/rss>\s*$/u.test(body.trim());
+function validFeedDocument(path, body) {
+  try {
+    if (!path.endsWith(".xml")) {
+      const records = parseCsv(body, { bom: true, skip_empty_lines: true });
+      const columns = ["id", "retailer_id", "title", "description", "availability", "condition", "price", "link", "image_link", "additional_image_link", "brand", "gtin", "mpn", "shipping"];
+      return records.length > 0 && records[0].length === columns.length &&
+        columns.every((column, index) => records[0][index] === column) &&
+        records.every((record) => record.length === columns.length);
+    }
+    const parser = sax.parser(true, { xmlns: true, strictEntities: true });
+    const stack = [];
+    let roots = 0;
+    let channels = 0;
+    let valid = true;
+    parser.onopentag = (tag) => {
+      if (stack.length === 0) {
+        roots += 1;
+        valid &&= tag.name === "rss" && tag.attributes.version?.value === "2.0" &&
+          tag.ns.g === "http://base.google.com/ns/1.0";
+      } else if (stack.length === 1) {
+        channels += 1;
+        valid &&= tag.name === "channel";
+      } else if (stack.length === 2) {
+        valid &&= tag.name === "item";
+      }
+      stack.push(tag.name);
+    };
+    parser.onclosetag = () => stack.pop();
+    parser.ontext = (text) => { if (stack.length <= 2 && text.trim()) valid = false; };
+    parser.ondoctype = () => { valid = false; };
+    parser.onerror = (error) => { throw error; };
+    parser.write(body).close();
+    return valid && roots === 1 && channels === 1 && stack.length === 0;
+  } catch {
+    return false;
   }
-  return body.trim() === '"id","retailer_id","title","description","availability","condition","price","link","image_link","additional_image_link","brand","gtin","mpn","shipping"';
 }
 
 for (const feedPath of ["/feeds/google-merchant.xml", "/feeds/meta-catalog.csv"]) {
@@ -555,24 +590,24 @@ for (const feedPath of ["/feeds/google-merchant.xml", "/feeds/meta-catalog.csv"]
   const type = feedResponse.headers.get("content-type") ?? "";
   const feedType = feedPath.endsWith(".xml") ? type.includes("xml") : type.includes("csv");
   if (commerceLinkedPages > 0) {
-    const productive = feedResponse.status === 200 && feedType;
+    const productive = feedResponse.status === 200 && feedType && validFeedDocument(feedPath, await feedResponse.text());
     if (!productive) {
-      result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} ${type} while ${commerceLinkedPages} commerce-linked product page(s) are public`);
+      result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} ${type} without a valid feed document while ${commerceLinkedPages} commerce-linked product page(s) are public`);
     } else {
       result("Feeds (#35)", "PASS", `${feedPath} served for ${commerceLinkedPages} commerce-linked product page(s); slash twin status ${slashResponse.status}`);
     }
     continue;
   }
   if (feedResponse.status === 200) {
-    const validEmpty = feedType && emptyFeedDocument(feedPath, await feedResponse.text());
-    result("Feeds (#35)", validEmpty ? "PASS" : "FAIL", `${feedPath} ${validEmpty ? "served a valid empty feed" : "did not serve a valid empty feed"} with no commerce-linked product page; slash twin status ${slashResponse.status}`);
+    const validFeed = feedType && validFeedDocument(feedPath, await feedResponse.text());
+    result("Feeds (#35)", validFeed ? "PASS" : "FAIL", `${feedPath} ${validFeed ? "served a valid feed" : "did not serve a valid feed"} with no commerce-linked product page; slash twin status ${slashResponse.status}`);
   } else if (feedResponse.status === 503) {
     const body = await feedResponse.text();
     result("Feeds (#35)", "PASS", `${feedPath} fails closed (${feedResponse.status}) with no installed catalog; ${body.length} byte(s)`);
   } else if (productPaths.length === 0 && feedResponse.status === 404) {
     result("Feeds (#35)", "PASS", `no product URL or ${feedPath} on this origin; that absence is not a failure`);
   } else {
-    result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} with no commerce-linked product page; expected a valid empty 200 feed or fail-closed 503`);
+    result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} with no commerce-linked product page; expected a valid 200 feed or fail-closed 503`);
   }
 }
 

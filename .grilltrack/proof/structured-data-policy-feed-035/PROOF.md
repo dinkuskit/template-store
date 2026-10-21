@@ -124,11 +124,11 @@ Verification for that policy repair:
 The prior full-suite and targeted results above remain attributed to their
 own source revisions. They are not substituted for final-head CI/review.
 
-## Final automatic repair cycle: feed media and empty catalogs
+## Prior final automatic repair cycle: `a2138c73cfe9f6016c700186f093bc0c6af6d6e6`
 
 [FEED-REPAIR-2.md](FEED-REPAIR-2.md) accepts the two distinct feed findings
-against `16d0b201ee0f4f17c0167538e9eac8e03350675e`. The source manifest binds
-this repair to Commerce `288199275f61aec084c0e1e72b370ec74ea35369`.
+against `16d0b201ee0f4f17c0167538e9eac8e03350675e`. That committed repair used
+Commerce `288199275f61aec084c0e1e72b370ec74ea35369`.
 Primary/gallery media now enter the existing Commerce XML/CSV builders through
 `content.imageUrls`, after the same approved media resolution used by product
 images. The verifier accepts the exact empty XML/CSV documents emitted by the
@@ -165,9 +165,9 @@ browser tests (9 explicit skips), typecheck, feature/text audits, and the build.
 The final `verify-site` checked 26 URLs with no failures and 2 intentional
 sitemap skips; its absent-Commerce feeds returned 503 as expected. Log:
 `runs/structured-data-policy-feed-035-runs/feed-repair-pnpm-verify.log`.
-Both desktop and mobile profiles ran. The source manifest identifies the
-runtime and test bytes used for this full run; later changes are proof and
-CLI ledger records only.
+Both desktop and mobile profiles ran. These results belong to commit
+`a2138c73cfe9f6016c700186f093bc0c6af6d6e6`; they are retained as historical
+evidence after the owner-approved verifier follow-up below.
 
 Final feature/text audits and `git diff --check` also passed after proof
 updates. Log:
@@ -176,6 +176,55 @@ updates. Log:
 Further findings require coordinator adjudication after this second automatic
 repair cycle. Fresh CI and both required reviews must cover the final commit;
 local verification does not replace those promotion gates.
+
+## Owner-approved verifier follow-up
+
+[VERIFIER-OWNER-REPAIR.md](VERIFIER-OWNER-REPAIR.md) records the two accepted
+findings on `a2138c73cfe9f6016c700186f093bc0c6af6d6e6` and the owner-approved
+exception for one additional bounded pass. This does not reset the automatic
+repair cap. Changes are limited to the public verifier, focused HTTP tests,
+and its development parser dependencies.
+
+- `sax` 1.6.1 performs strict XML parsing and the verifier checks the expected
+  RSS/channel/item envelope. `csv-parse` 6.1.0 parses quoting/newlines and rejects
+  inconsistent row lengths; the verifier checks the exact Commerce header.
+  The same document check runs with and without discovered linked products,
+  including empty opted-out feeds. Discovery does not imply channel eligibility.
+- `entities` 6.0.1 decodes the HTML attribute value before SKU comparison.
+  Named, decimal/hex numeric, quoted, and apostrophe-containing values match
+  their JSON-LD value. A genuine mismatch still fails.
+- SAX and entities were already in the dependency tree; all three are now
+  direct exact-pinned development dependencies used by the verifier only.
+  Commerce and storefront runtime source are unchanged.
+- `node --test tests/workflows/verify-site-crawl.test.mjs` recorded 18 passed
+  and 13 failed before repair. Log:
+  `runs/structured-data-policy-feed-035-runs/owner-pass-before.log`.
+  These include malformed linked feeds, escaped SKU values, valid undiscovered
+  feeds, and the expected decoded text in the true-mismatch diagnostic.
+- The same command passed all 31 tests after repair. Sixteen new HTTP scenarios
+  use the actual prepared Commerce builders for valid populated/empty output,
+  including quotes, commas, newlines, and XML-escaped text. Existing absent
+  Commerce, wrong MIME, server error, slash twin, and route checks still pass.
+  Log: `runs/structured-data-policy-feed-035-runs/owner-pass-after.log`.
+
+The single required full `pnpm verify` (`bin/verify-web full`) passed on the
+frozen runtime/test source: 384 unit tests, 97 workflow tests (2 explicit skips),
+63 browser tests (9 explicit skips), typecheck (0 errors, 0 warnings, 2 existing
+hints), feature/text audits, and the build. Both desktop and mobile profiles
+ran. The final `verify-site` passed with 0 failures, 2 intentional sitemap
+skips, and 26 URLs checked; the absent-Commerce feeds remained 503. Log:
+`runs/structured-data-policy-feed-035-runs/owner-pass-pnpm-verify.log`.
+
+`source-manifest.sha256` identifies 21 source/test/package files for this
+follow-up, including the exact dependency lockfile. Final feature/text audits,
+manifest verification, GrillTrack validation, and `git diff --check` passed.
+Final source-check log:
+`runs/structured-data-policy-feed-035-runs/owner-pass-final-source-checks.log`.
+
+Runtime and tests stayed frozen for the full run; subsequent edits are proof
+and CLI ledger records. Fresh final-head CI and required reviews remain with
+the coordinator. This owner-approved pass is complete; any further finding
+returns for adjudication instead of another automatic repair.
 
 This is exact source/local proof. It does not establish a Registry install,
 deployment, publication, checkout, or Google/Meta channel-account connection.

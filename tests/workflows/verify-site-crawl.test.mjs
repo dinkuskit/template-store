@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
+import { registerHooks } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -9,6 +10,17 @@ import test from "node:test";
 const execFileAsync = promisify(execFile);
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const verifySite = resolve(root, "bin/verify-site");
+
+// Exercise the exact prepared Commerce builders, whose source imports use .js.
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.endsWith(".js") && context.parentURL?.includes("/.artifacts/source-deps/commerce/")) {
+      return nextResolve(specifier.replace(/\.js$/u, ".ts"), context);
+    }
+    return nextResolve(specifier, context);
+  },
+});
+const { buildGoogleMerchantFeed, buildMetaCatalogFeed } = await import("../../.artifacts/source-deps/commerce/src/features/feeds/builder.ts");
 
 function html(links) {
   return `<!doctype html><html><head><title>fixture</title></head><body>${links
@@ -379,6 +391,61 @@ for (const scenario of [
       const result = await runVerifier(origin);
       assert.equal(result.status === 0, scenario.pass, result.stdout + result.stderr);
       assert.match(result.stdout, scenario.pass ? /PASS Feeds/ : /FAIL Feeds/);
+    } finally {
+      await new Promise((done) => server.close(done));
+    }
+  });
+}
+
+for (const scenario of [
+  { name: "actual Commerce XML and CSV with quotes, newlines, and escaped text", linked: true, pass: true },
+  { name: "valid nonempty feeds without a discovered linked SKU", linked: false, pass: true },
+  { name: "empty Commerce feeds when a linked product opted out", linked: true, optedOut: true, pass: true },
+  { name: "truncated XML with a linked product", linked: true, xml: "<rss><channel>broken", pass: false },
+  { name: "mismatched XML tags with a linked product", linked: true, xml: "<rss><channel></rss>", pass: false },
+  { name: "a non-feed XML document with a linked product", linked: true, xml: "<error>Unavailable</error>", pass: false },
+  { name: "unterminated CSV quoting with a linked product", linked: true, csv: EMPTY_META_FEED + '"unterminated', pass: false },
+  { name: "a short CSV row with a linked product", linked: true, csv: EMPTY_META_FEED + '"id","short"\n', pass: false },
+  { name: "an extra CSV column with a linked product", linked: true, csv: EMPTY_META_FEED + Array(15).fill('"field"').join(",") + "\n", pass: false },
+  { name: "malformed nonempty CSV without a linked SKU", linked: false, csv: EMPTY_META_FEED + '"unterminated', pass: false },
+  { name: "named ampersand SKU entity", linked: true, attribute: "A&amp;B", sku: "A&B", pass: true },
+  { name: "quoted SKU entity", linked: true, attribute: "A&quot;B", sku: 'A"B', pass: true },
+  { name: "decimal numeric SKU entity", linked: true, attribute: "A&#38;B", sku: "A&B", pass: true },
+  { name: "hexadecimal numeric SKU entity", linked: true, attribute: "A&#x26;B", sku: "A&B", pass: true },
+  { name: "apostrophe within a double-quoted SKU attribute", linked: true, attribute: "A'B", sku: "A'B", pass: true },
+  { name: "a genuine decoded SKU mismatch", linked: true, attribute: "A&amp;B", sku: "DIFFERENT", pass: false, mismatch: true },
+]) {
+  test(`feed and SKU verification handles ${scenario.name}`, async () => {
+    const { server, origin } = await listen((req, res) => {
+      const path = new URL(req.url ?? "/", origin).pathname;
+      if (serveSvgIfProductImage(path, res)) return;
+      if (path === "/") return res.writeHead(200, { "content-type": "text/html" }).end(html(["/products/linked"]));
+      if (path === "/home") return res.writeHead(302, { location: "/" }).end();
+      if (path === "/robots.txt") return res.writeHead(200).end("User-agent: *\nAllow: /\n");
+      if (path === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml" })
+        .end(`<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url><url><loc>${origin}/products/linked</loc></url></urlset>`);
+      if (path === "/products/linked") {
+        const product = { "@type": "Product", name: "Bag", url: origin + path, ...(scenario.linked ? { sku: scenario.sku ?? "BAG-1" } : {}) };
+        const attribute = scenario.linked ? `data-product-sku="${scenario.attribute ?? "BAG-1"}"` : "";
+        return res.writeHead(200, { "content-type": "text/html" }).end(`<!doctype html><link rel="canonical" href="${origin}${path}"><article ${attribute}><h1>Bag</h1></article><script type="application/ld+json">${JSON.stringify(product)}</script>`);
+      }
+      if (path === "/feeds/google-merchant.xml" || path === "/feeds/meta-catalog.csv") {
+        const facts = [{
+          product: { id: "bag", name: "Bag", sku: "BAG-1", price: { currency: "USD", minor: "1000" }, availability: { status: "in-stock", sellable: true, listable: true } },
+          content: { canonicalUrl: `${origin}/products/linked`, title: 'Bag & "tag"', description: 'A quoted "bag", with\na newline & more.', imageUrls: [`${origin}/bag.jpg`] },
+          eligibility: scenario.optedOut ? [] : ["google-merchant", "meta-catalog"],
+        }];
+        const xml = path.endsWith(".xml");
+        const body = xml ? scenario.xml ?? buildGoogleMerchantFeed(facts) : scenario.csv ?? buildMetaCatalogFeed(facts);
+        return res.writeHead(200, { "content-type": xml ? "application/xml" : "text/csv" }).end(body);
+      }
+      return res.writeHead(404).end();
+    });
+    try {
+      const result = await runVerifier(origin);
+      assert.equal(result.status === 0, scenario.pass, result.stdout + result.stderr);
+      if (scenario.mismatch) assert.match(result.stdout, /JSON-LD sku DIFFERENT does not match visible SKU A&B/);
+      else assert.match(result.stdout, scenario.pass ? /PASS Feeds/ : /FAIL Feeds/);
     } finally {
       await new Promise((done) => server.close(done));
     }
