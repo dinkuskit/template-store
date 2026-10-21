@@ -1,5 +1,10 @@
 import { formatUsdMinor } from "../store-shell/price.js";
-import type { PublicCommerceProduct, PublicCommerceVariant } from "./index.js";
+import {
+  PUBLIC_FEED_CHANNELS,
+  type PublicCommerceProduct,
+  type PublicCommerceVariant,
+  type PublicFeedChannel,
+} from "./types.js";
 import { readCommerceGallery, readCommerceImage } from "./media.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
 
@@ -69,6 +74,7 @@ function variantMembers(variants: unknown): PublicCommerceVariant[] {
     members.push({
       id: member.catalogItemId,
       selections,
+      unitMinor: minor,
       priceText: formatUsdMinor(minor),
       availability: { status: availability.status as PublicCommerceVariant["availability"]["status"], sellable: availability.sellable },
     });
@@ -90,11 +96,27 @@ function publicGetRoute(runtime: NonNullable<InstalledCatalogContext["runtime"]>
 
 type ProductResult = { product: PublicCommerceProduct } | { id: string | null; reason: string };
 
+/** Keep an explicit public channel list. A missing field stays missing. */
+function feedChannels(value: Record<string, unknown>): PublicFeedChannel[] | "invalid" | undefined {
+  if (!Object.hasOwn(value, "feedChannels")) return undefined;
+  const raw = value.feedChannels;
+  if (!Array.isArray(raw)) return "invalid";
+  const channels: PublicFeedChannel[] = [];
+  for (const entry of raw) {
+    if (!(PUBLIC_FEED_CHANNELS as readonly string[]).includes(entry as string)) return "invalid";
+    const channel = entry as PublicFeedChannel;
+    if (!channels.includes(channel)) channels.push(channel);
+  }
+  return channels.sort();
+}
+
 function product(value: unknown): ProductResult {
   const id = object(value) && typeof value.id === "string" && /^[a-zA-Z0-9_-]+$/.test(value.id) ? value.id : null;
   const fail = (reason: string): ProductResult => ({ id, reason });
   if (!object(value) || id === null) return fail("invalid id");
   if (typeof value.name !== "string" || typeof value.sku !== "string") return fail("invalid name or sku");
+  const channels = feedChannels(value);
+  if (channels === "invalid") return fail("invalid feed channels");
   if (!object(value.availability) || typeof value.availability.status !== "string" ||
       !STATUSES.has(value.availability.status) || value.availability.listable !== true ||
       typeof value.availability.sellable !== "boolean") return fail("invalid availability");
@@ -111,6 +133,10 @@ function product(value: unknown): ProductResult {
   }
   return { product: {
     id, name: value.name, sku: value.sku,
+    ...(typeof value.gtin === "string" && value.gtin ? { gtin: value.gtin } : {}),
+    ...(typeof value.mpn === "string" && value.mpn ? { mpn: value.mpn } : {}),
+    ...(typeof value.brand === "string" && value.brand ? { brand: value.brand } : {}),
+    ...(channels !== undefined ? { feedChannels: channels } : {}),
     // Commerce's installed public projection does not expose simple-item
     // fulfillment yet; fail closed to physical so checkout never omits a
     // required delivery address.

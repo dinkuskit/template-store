@@ -3,12 +3,15 @@
 /**
  * Read-only public URL contract verifier.
  *
- * Product URL and built-in SEO checks are required for the shipping starter.
- * Feed checks remain owned by the follow-up product data issue.
+ * Product URL, Product JSON-LD, and public feed checks are required.
+ * An origin with no product URL does not fail only because those pages are absent.
  */
 import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
 import process from "node:process";
+import { parse as parseCsv } from "csv-parse/sync";
+import { decodeHTMLAttribute } from "entities";
+import sax from "sax";
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -179,13 +182,15 @@ function parseCanonical(html, pageUrl) {
 }
 
 function parseJsonLd(html, pageUrl) {
+  const nodes = [];
   for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
-      JSON.parse(match[1].trim());
+      nodes.push(JSON.parse(match[1].trim()));
     } catch {
       result("JSON-LD syntax", "FAIL", `${pageUrl.pathname} contains invalid JSON-LD`);
     }
   }
+  return nodes;
 }
 
 function sitemapLocations(xml) {
@@ -275,11 +280,11 @@ async function inspect(path, from = "crawl") {
   const body = await response.text();
   if (type.includes("html")) {
     parseLinks(body, url);
-    parseJsonLd(body, url);
     pages.set(url.pathname, {
       url,
       body,
       canonical: parseCanonical(body, url),
+      jsonLd: parseJsonLd(body, url),
       noindex: /noindex/i.test(response.headers.get("x-robots-tag") ?? "") ||
         /<meta\b[^>]*(?:name=["']robots["'][^>]*content=["'][^"']*\bnoindex\b|content=["'][^"']*\bnoindex\b[^"']*["'][^>]*name=["']robots["'])/i.test(body),
     });
@@ -489,8 +494,122 @@ requiredOrSkip(
   "Product/category canonical routes are not landed",
   productPaths.every((path) => !path.endsWith("/")),
 );
-result("Product JSON-LD and feed contract (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
-result("Feeds (#35)", "SKIP", "Owned by the separately scoped #35 follow-up.");
+let jsonLdFailures = 0;
+let commerceLinkedPages = 0;
+for (const path of productPaths) {
+  const page = pages.get(path);
+  if (!page) continue;
+  const products = page.jsonLd.filter((node) => node && typeof node === "object" && node["@type"] === "Product");
+  const skuAttribute = page.body.match(/\bdata-product-sku\s*=\s*(?:"([^"]*)"|'([^']*)')/u);
+  const sku = skuAttribute ? decodeHTMLAttribute(skuAttribute[1] ?? skuAttribute[2]) : undefined;
+  const commerceLinked = Boolean(sku);
+  if (commerceLinked) commerceLinkedPages += 1;
+  if (products.length !== 1) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} ${commerceLinked ? `shows SKU ${sku}` : "is an editorial preview"} but has ${products.length} Product JSON-LD block(s)`);
+    continue;
+  }
+  const product = products[0];
+  const canonical = page.canonical[0];
+  if (!commerceLinked && product.offers !== undefined) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} editorial preview emits an Offer`);
+    continue;
+  }
+  if (commerceLinked && product.sku !== sku) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD sku ${product.sku} does not match visible SKU ${sku}`);
+  }
+  if (product.offers?.inventoryLevel !== undefined || Object.hasOwn(product, "inventoryLevel")) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD includes a stock quantity`);
+  }
+  if (canonical && product.url !== canonical) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD url ${product.url} does not match canonical ${canonical}`);
+  }
+  if (commerceLinked && product.offers && canonical && product.offers.url !== canonical) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} Offer url does not match canonical ${canonical}`);
+  }
+}
+if (productPaths.length === 0) {
+  result("Product JSON-LD (#35)", "PASS", "no product URL on this origin; that absence is not a failure");
+} else if (jsonLdFailures === 0) {
+  result(
+    "Product JSON-LD (#35)",
+    "PASS",
+    `${commerceLinkedPages} commerce-linked product page(s) and ${productPaths.length - commerceLinkedPages} editorial page(s) of ${productPaths.length}`,
+  );
+}
+function validFeedDocument(path, body) {
+  try {
+    if (!path.endsWith(".xml")) {
+      const records = parseCsv(body, { bom: true, skip_empty_lines: true });
+      const columns = ["id", "retailer_id", "title", "description", "availability", "condition", "price", "link", "image_link", "additional_image_link", "brand", "gtin", "mpn", "shipping"];
+      return records.length > 0 && records[0].length === columns.length &&
+        columns.every((column, index) => records[0][index] === column) &&
+        records.every((record) => record.length === columns.length);
+    }
+    const parser = sax.parser(true, { xmlns: true, strictEntities: true });
+    const stack = [];
+    let roots = 0;
+    let channels = 0;
+    let valid = true;
+    parser.onopentag = (tag) => {
+      if (stack.length === 0) {
+        roots += 1;
+        valid &&= tag.name === "rss" && tag.attributes.version?.value === "2.0" &&
+          tag.ns.g === "http://base.google.com/ns/1.0";
+      } else if (stack.length === 1) {
+        channels += 1;
+        valid &&= tag.name === "channel";
+      } else if (stack.length === 2) {
+        valid &&= tag.name === "item";
+      }
+      stack.push(tag.name);
+    };
+    parser.onclosetag = () => stack.pop();
+    parser.ontext = (text) => { if (stack.length <= 2 && text.trim()) valid = false; };
+    parser.ondoctype = () => { valid = false; };
+    parser.onerror = (error) => { throw error; };
+    parser.write(body).close();
+    return valid && roots === 1 && channels === 1 && stack.length === 0;
+  } catch {
+    return false;
+  }
+}
+
+for (const feedPath of ["/feeds/google-merchant.xml", "/feeds/meta-catalog.csv"]) {
+  const feedResponse = await request(absoluteUrl(feedPath));
+  const slashResponse = await request(absoluteUrl(`${feedPath}/`));
+  if (slashResponse.status === 200) {
+    result("Feeds (#35)", "FAIL", `${feedPath}/ returned 200; a trailing slash must not be a second feed document`);
+    continue;
+  }
+  const type = feedResponse.headers.get("content-type") ?? "";
+  const feedType = feedPath.endsWith(".xml") ? type.includes("xml") : type.includes("csv");
+  if (commerceLinkedPages > 0) {
+    const productive = feedResponse.status === 200 && feedType && validFeedDocument(feedPath, await feedResponse.text());
+    if (!productive) {
+      result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} ${type} without a valid feed document while ${commerceLinkedPages} commerce-linked product page(s) are public`);
+    } else {
+      result("Feeds (#35)", "PASS", `${feedPath} served for ${commerceLinkedPages} commerce-linked product page(s); slash twin status ${slashResponse.status}`);
+    }
+    continue;
+  }
+  if (feedResponse.status === 200) {
+    const validFeed = feedType && validFeedDocument(feedPath, await feedResponse.text());
+    result("Feeds (#35)", validFeed ? "PASS" : "FAIL", `${feedPath} ${validFeed ? "served a valid feed" : "did not serve a valid feed"} with no commerce-linked product page; slash twin status ${slashResponse.status}`);
+  } else if (feedResponse.status === 503) {
+    const body = await feedResponse.text();
+    result("Feeds (#35)", "PASS", `${feedPath} fails closed (${feedResponse.status}) with no installed catalog; ${body.length} byte(s)`);
+  } else if (productPaths.length === 0 && feedResponse.status === 404) {
+    result("Feeds (#35)", "PASS", `no product URL or ${feedPath} on this origin; that absence is not a failure`);
+  } else {
+    result("Feeds (#35)", "FAIL", `${feedPath} returned ${feedResponse.status} with no commerce-linked product page; expected a valid 200 feed or fail-closed 503`);
+  }
+}
 
 const failures = results.filter(({ status }) => status === "FAIL").length;
 const skips = results.filter(({ status }) => status === "SKIP").length;

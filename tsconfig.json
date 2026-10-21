@@ -9,6 +9,15 @@
       "@dinkuskit/commerce/features/checkout": [
         "./.artifacts/source-deps/commerce/src/features/checkout/index.ts"
       ],
+      "@dinkuskit/commerce/features/structured-data": [
+        "./.artifacts/source-deps/commerce/src/features/structured-data/index.ts"
+      ],
+      "@dinkuskit/commerce/features/feeds": [
+        "./.artifacts/source-deps/commerce/src/features/feeds/index.ts"
+      ],
+      "@dinkuskit/commerce/features/store-policies": [
+        "./.artifacts/source-deps/commerce/src/features/store-policies/index.ts"
+      ],
       "@dinkuskit/inventory": [
         "./node_modules/@dinkuskit/inventory/src/index.ts"
       ],

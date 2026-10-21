@@ -7,6 +7,14 @@ import { linkedProductPurchasable, storeBannerText } from "../../features/store-
 import { AddToCart } from "../../features/guest-cart/ui.ts";
 import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
 import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
+import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
+import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
+import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
+import {
+  buildProductJsonLd,
+  buildProductPreviewJsonLd,
+} from "@dinkuskit/commerce/features/structured-data";
+import { allowsProductJsonLd, canonicalUrl, jsonLdScript } from "../../features/store-shell/structured-data.js";
 import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
@@ -97,6 +105,59 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
 } as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
+const policies = linkedProduct
+  ? await readInstalledCommercePolicies(
+    { runtime: Astro.locals.emdash, request: Astro.request },
+    process.env.DINKUS_CATALOG_PROFILE === "native-development"
+      ? COMMERCE_NATIVE_PLUGIN_ID
+      : COMMERCE_REGISTRY_RUNTIME_ID,
+  ).catch(() => null)
+  : null;
+const productCanonical = item
+  ? canonicalUrl(`/products/${item.id}`, Astro.site, Astro.url)
+  : "";
+// Produce every selectable block on the server through the Commerce builder.
+// The browser only selects a prepared block; it never recalculates an Offer.
+const linkedProductJsonLd = (variant: (typeof variants)[number] | null) => {
+  if (!linkedProduct || !item || !productName) return null;
+  const priceMinor = variant?.unitMinor ?? linkedProduct.price.unitMinor;
+  return buildProductJsonLd({
+    product: {
+      id: linkedProduct.id,
+      name: productName,
+      sku: linkedProduct.sku,
+      ...(priceMinor ? { price: { currency: "USD" as const, minor: priceMinor } } : {}),
+      availability: variant
+        ? { ...variant.availability, listable: true as const }
+        : linkedProduct.availability,
+      ...(linkedProduct.gtin ? { gtin: linkedProduct.gtin } : {}),
+      ...(linkedProduct.mpn ? { mpn: linkedProduct.mpn } : {}),
+      ...(linkedProduct.brand ? { brand: linkedProduct.brand } : {}),
+    },
+    page: {
+      url: productCanonical,
+      name: productName,
+      ...(item.description ? { description: item.description } : {}),
+    },
+    ...(policies ? { policies } : {}),
+  });
+};
+// Editorial pages use the preview builder. Unavailable routes emit no data.
+const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item && productName &&
+  (item.availabilitySource === "preview" || !lookupUnavailable) &&
+  !noLongerAvailable
+  ? linkedProduct
+    ? linkedProductJsonLd(selectedVariant)
+    : buildProductPreviewJsonLd({
+      url: productCanonical,
+      name: productName,
+      ...(item.description ? { description: item.description } : {}),
+      images: [new URL(`/merch/${item.illustration}.svg`, productCanonical).href],
+    })
+  : null;
+const variantJsonLd = productJsonLd && linkedProduct && variants.length
+  ? Object.fromEntries(variants.map((variant) => [variant.id, linkedProductJsonLd(variant)]))
+  : null;
 ---
 <!doctype html>
 <html lang="en">
@@ -104,8 +165,10 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={noLongerAvailable ? "This product is no longer available." : item?.description ?? "Product not found."} />
-    {item && <link rel="canonical" href={new URL(`/products/${item.id}`, Astro.site ?? Astro.url).href} />}
+    {item && <link rel="canonical" href={productCanonical} />}
     <title>{noLongerAvailable ? `No longer available | ${STORE_TITLE}` : item ? `${productName} | ${STORE_TITLE}` : `Product not found | ${STORE_TITLE}`}</title>
+    {productJsonLd && <script type="application/ld+json" data-product-jsonld set:html={jsonLdScript(productJsonLd)} />}
+    {variantJsonLd && <script type="application/json" data-variant-product-jsonld set:html={jsonLdScript(variantJsonLd)} />}
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
@@ -113,7 +176,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
     <main class="product-page">
     <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{noLongerAvailable ? "No longer available" : productName ?? "Not found"}</span></nav>
       {noLongerAvailable ? <section class="product-removed" data-product-removed><h1>This product is no longer available</h1><p>It has been removed from the shop.</p><a href="/">Browse the shop</a></section> : item ? (
-        <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource}>
+        <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource} data-commerce-item={linkedProduct?.id}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
               {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
             </div>
@@ -121,6 +184,10 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
             <h1>{productName}</h1>
             <p class="product-detail__description">{item.description}</p>
+            {linkedProduct && <p class="product-detail__identifier" data-product-sku={linkedProduct.sku}>SKU {linkedProduct.sku}</p>}
+            {linkedProduct?.gtin && <p class="product-detail__identifier" data-product-gtin={linkedProduct.gtin}>GTIN {linkedProduct.gtin}</p>}
+            {linkedProduct?.mpn && <p class="product-detail__identifier" data-product-mpn={linkedProduct.mpn}>MPN {linkedProduct.mpn}</p>}
+            {linkedProduct?.brand && <p class="product-detail__identifier" data-product-brand={linkedProduct.brand}>Brand {linkedProduct.brand}</p>}
             {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price data-variant-price>{selectedVariant?.priceText ?? linkedProduct.price.regularText}</strong>}</p>}
             {variants.length > 0 && <p class="product-detail__from" data-product-from-price>{linkedProduct!.price.regularText}</p>}
             {variants.length > 0 && <fieldset class="product-variants" data-product-variants>
@@ -128,6 +195,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
               {variants.map((member) => <label class="product-variant">
                 <input type="radio" name="variant" value={member.id} checked={member === selectedVariant}
                   data-variant-choice data-choice-price={member.priceText}
+                  data-variant-availability={member.availability.status}
                   data-variant-status={availabilityLabels[member.availability.status] ?? "Availability unavailable"}
                   data-variant-sellable={String(member.availability.sellable)} />
                 <span>{member.selections.map(([, value]) => value).join(" / ")}</span>
@@ -148,13 +216,22 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
 </html>
 <script>
   // Variant picker: show the chosen member's Commerce price and availability.
+  const productJsonLd = document.querySelector<HTMLScriptElement>("[data-product-jsonld]");
+  const variantJsonLdData = document.querySelector<HTMLScriptElement>("[data-variant-product-jsonld]");
+  const variantJsonLd = JSON.parse(variantJsonLdData?.textContent ?? "{}") as Record<string, unknown>;
   for (const input of document.querySelectorAll<HTMLInputElement>("[data-variant-choice]")) {
     input.addEventListener("change", () => {
       const price = document.querySelector("[data-variant-price]");
       const status = document.querySelector("[data-product-status]");
       const add = document.querySelector<HTMLElement>("[data-add-to-cart]");
       if (price) price.textContent = input.dataset.choicePrice ?? "";
-      if (status) status.textContent = input.dataset.variantStatus ?? "";
+      if (status) {
+        status.textContent = input.dataset.variantStatus ?? "";
+        status.setAttribute("data-availability-status", input.dataset.variantAvailability ?? "");
+      }
+      if (productJsonLd && Object.hasOwn(variantJsonLd, input.value)) {
+        productJsonLd.textContent = JSON.stringify(variantJsonLd[input.value]);
+      }
       if (add) {
         add.dataset.addToCart = input.value;
         add.closest<HTMLElement>(".guest-cart-add")!.hidden = input.dataset.variantSellable !== "true";

@@ -4,6 +4,7 @@ import {
   decodedForms,
   evaluatePublicBoundary,
   isExactGuestCheckoutPath,
+  slashlessRedirectPath,
 } from "./features/security/public-boundary.js";
 import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
 import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-protocol.js";
@@ -50,6 +51,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const response = new Response(null, {
       status: 302,
       headers: { Location: new URL("/cart", context.url).href },
+    });
+    applySecurityHeaders(response.headers);
+    return response;
+  }
+  const slashlessPath = slashlessRedirectPath(context.url.pathname);
+  if (
+    slashlessPath &&
+    (slashlessPath === "/shipping" || slashlessPath === "/returns" || slashlessPath.startsWith("/feeds/")) &&
+    (context.request.method === "GET" || context.request.method === "HEAD")
+  ) {
+    const response = new Response(null, {
+      status: 301,
+      headers: {
+        Location: new URL(slashlessPath + context.url.search, context.url).href,
+        "Cache-Control": "no-store",
+      },
     });
     applySecurityHeaders(response.headers);
     return response;

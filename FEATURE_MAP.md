@@ -9,7 +9,7 @@ components through the explicit public `ui.ts` entry.
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `dinkus.store-shell` | Neutral Astro/EmDash shell, first-class page layout renderers with Portable Text fallback, copied Home opener and query card, canonical slashless products/categories, Commerce-linked product resolver, document metadata, shared page frame, and the store header with the EmDash `primary` main menu | `src/features/store-shell/`; `src/pages/index.astro`; `src/pages/categories/`; `src/pages/products/`; `src/live.config.ts`; `seed/`; `tests/unit/store-menu.test.ts`; `tests/e2e/store-header-nav.spec.ts` | `src/features/store-shell/index.ts` | EmDash; installed Commerce public item lookup; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | canonical URL candidate |
-| `dinkus.site-verifier` | Read-only public-origin crawler for URL status, redirects, sitemap, robots, canonical, and structured-data contract | `bin/verify-site` | `bin/verify-site <origin>` | Public EmDash routes | `bin/verify-site <local-origin>` | `bin/verify-web full` | #34 product URL checks required; #35 product data/feed checks remain skipped |
+| `dinkus.site-verifier` | Read-only public-origin crawler for URL status, redirects, sitemap, robots, canonical, and structured-data/feed contract | `bin/verify-site` | `bin/verify-site <origin>` | Public EmDash routes | `bin/verify-site <local-origin>` | `bin/verify-web full` | #34 URL checks and #35 Product JSON-LD/feed checks run from fetched bytes; an origin with no product URL does not fail only for that absence |
 | `dinkus.access-route-policy` | Fail-closed Cloudflare Access policy generation from installed Commerce/Payments route declarations; no plugin-wide bypasses | `scripts/verify-access-routes.mjs`; `DEPLOY.md`; `tests/workflows/access-route-policy.test.mjs` | `pnpm verify:access-routes`; `node scripts/verify-access-routes.mjs --format=markdown` | Pinned Commerce source; paired Payments route manifest; separately authorized Access operator | `node --test tests/workflows/access-route-policy.test.mjs` | `pnpm verify:access-routes` plus production `bin/verify-site` | source-pin preview only, not deployment authority; live rules blocked on Commerce #79 installed manifest; no live Access mutation |
 | `dinkus.managed-product-availability` | Commerce catalog identity, official Configure Inventory orchestration, Inventory registration/opening/read/adjust composition, proof adapter, proof-only HTTP action, and storefront availability panel | `src/features/managed-product-availability/`; `src/pages/api/proof/stock.ts` | `src/features/managed-product-availability/index.ts` | `@dinkuskit/commerce` package root; `@dinkuskit/inventory` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
 | `dinkus.unmanaged-product-sellability` | Unmanaged Commerce catalog identity, isolated manual availability, unified storefront resolver, proof-only HTTP action, and storefront sellability panel that never contacts Inventory or shows quantity | `src/features/unmanaged-product-sellability/`; `src/pages/api/proof/unmanaged-availability.ts` | `src/features/unmanaged-product-sellability/index.ts`; pure identities through `src/features/unmanaged-product-sellability/identity/index.ts` | `@dinkuskit/commerce` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
@@ -50,9 +50,20 @@ Run the site verifier in order against the local server, a preview origin,
 then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD
 checks and crawls the homepage, sitemap-linked internal URLs, and nested
 internal links discovered on child pages until the queue is empty. A deployment
-is complete only after the production run passes. Checks owned by the not-yet
-landed product data/feed work remains an explicit `SKIP` owned by #35; the
-canonical product/collection URL checks are required.
+is complete only after the production run passes. Product JSON-LD and the
+public feed checks run from fetched bytes. A commerce-linked product page
+(one that shows a Commerce SKU) must contain exactly one Product block whose
+sku and canonical URL match the page. A valid editorial page must also contain
+exactly one page-facts-only Product block with no Offer; 404, removed, and 503
+routes emit none. When those linked pages are present, the slashless feed URLs
+must answer 200. With only editorial pages or an empty catalog, valid empty
+200 feeds pass; unavailable Commerce still fails closed with 503. Malformed
+empty documents, wrong content types, and other errors fail verification.
+An origin with no product URL does not fail only because the product pages
+or feed routes are absent. A trailing slash on a feed URL must not
+be a second document. Native-development feeds may join
+`loadProductFeedEligibility`; shipping and registry profiles consume only the
+installed public `feedChannels` projection and do not open storage.
 
 ## Authorized guest cart
 
@@ -159,4 +170,13 @@ For a separate Cloudflare Registry target, `DINKUS_WRANGLER_CONFIG` selects both
 
 Git builds use `pnpm run build:registry` with preprovisioned resource identities from private build variables. [Registry Git build settings](docs/implementation/registry-git-build.md) define the build/deploy commands and inputs. `tests/workflows/registry-build.test.mjs` checks missing-input refusal, pinned resource IDs, shipping selection, and closed bootstrap defaults.
 
-The current local candidate source pin is Commerce `cbc636eab20ee7759107f3a10ddff776cebe7dd8` (current main), with EmDash `1.2.0`. Existing Commerce49/Payments12 package verifiers are historical exact-artifact fixtures and intentionally refuse this new pairing. They are not proof of this candidate. The optional cart coupon passes only intent to canonical checkout; it stays subject to Commerce support. Checkout admission now consumes the exact owner-supplied TEST readiness response through the original installed public dispatcher; native-development catalogs, absent plugins, and missing/invalid configuration remain closed. Catalog or prepare success does not imply readiness. See [Registry merchant checkout](docs/implementation/registry-merchant-checkout.md).
+The current local source pin is Commerce `0.3.0` at
+`288199275f61aec084c0e1e72b370ec74ea35369`, with EmDash `1.2.0`. Existing
+Commerce49/Payments12 package verifiers are historical exact-artifact fixtures
+and intentionally refuse this new pairing. They are not proof of this source
+candidate. The optional cart coupon passes only intent to canonical checkout;
+it stays subject to Commerce support. Checkout admission now consumes the
+exact owner-supplied TEST readiness response through the original installed
+public dispatcher; native-development catalogs, absent plugins, and
+missing/invalid configuration remain closed. Catalog or prepare success does
+not imply Registry readiness. See [Registry merchant checkout](docs/implementation/registry-merchant-checkout.md).
