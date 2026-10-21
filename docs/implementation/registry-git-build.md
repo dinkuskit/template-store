@@ -14,7 +14,7 @@ target resources, build inputs and commands are configured.
 - Deploy command: `pnpm exec wrangler deploy --config dist/server/wrangler.json`.
 - Disable builds for other branches. Do not enable preview URLs or use a
   production store's Worker for this test branch.
-- Use Node 22.23.2 and pnpm 11.9.0, matching `.nvmrc` and `packageManager`.
+- Use Node 24.22.0 and pnpm 11.9.0, matching `.nvmrc` and `packageManager`.
 
 Do not assume a Git setup form selects the intended branch. In Workers Builds,
 `WORKERS_CI_BRANCH` must match `DINKUS_EXPECTED_BRANCH`, and

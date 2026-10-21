@@ -7,34 +7,19 @@ import {
   listCatalogProducts, resolveCatalogItemPrice, resolveStorefrontAvailability,
   type CatalogStorageRecord, type CatalogPriceRecord, type CatalogManualAvailabilityRecord,
   type CatalogBackorderPolicyRecord, type StoreInventoryConfigurationRecord,
-  type StorefrontAvailabilitySettingsRecord, type StorefrontAvailabilityResult,
+  type StorefrontAvailabilitySettingsRecord,
 } from "@dinkuskit/commerce";
-import { readInstalledCommerceCatalog, type InstalledCatalogContext } from "./installed.js";
-import type { PublicCommerceImage } from "./media.js";
+import { readInstalledCommerceCatalog, readInstalledCommerceProducts, type InstalledCatalogContext } from "./installed.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
+import type { PublicCommerceProduct } from "./types.js";
 
 export type { PublicCommerceImage } from "./media.js";
-
-export interface PublicCommerceProduct {
-  id: string;
-  name: string;
-  sku: string;
-  fulfillment?: "physical" | "digital";
-  price: PublicPriceView;
-  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
-  image: PublicCommerceImage | null;
-  gallery: readonly PublicCommerceImage[];
-  /** Server-projected variant members (e.g. sizes/colors); absent for simple items. */
-  variants?: readonly PublicCommerceVariant[];
-}
-
-export interface PublicCommerceVariant {
-  id: string;
-  /** Option label to value label, e.g. [["Size", "Small"]]. */
-  selections: readonly (readonly [string, string])[];
-  priceText: string;
-  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable">;
-}
+export {
+  PUBLIC_FEED_CHANNELS,
+  type PublicCommerceProduct,
+  type PublicCommerceVariant,
+  type PublicFeedChannel,
+} from "./types.js";
 
 export const availabilityLabels: Record<string, string> = {
   "in-stock": "In stock",
@@ -101,14 +86,21 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
   return visible;
 }
 
+/** Carts up to this many lines look items up one by one; larger carts read the catalog. */
+const SNAPSHOT_ITEM_LOOKUP_LIMIT = 8;
+
 export async function readCommerceCatalogSnapshots(
   ids: readonly string[],
   context?: InstalledCatalogContext,
 ): Promise<CommerceCatalogSnapshot[]> {
   if (process.env.DINKUS_CATALOG_PROFILE !== "native-development") {
     if (!context) throw new Error("Installed catalog context unavailable");
-    const products = await readInstalledCommerceCatalog(context);
-    const byId = new Map(products.map(product => [product.id, product]));
+    // A small cart reads just its own items; the whole catalog is several
+    // sandboxed pages with an image read per product, slow enough on a real
+    // store to run past the cart's time limit.
+    const byId = ids.length <= SNAPSHOT_ITEM_LOOKUP_LIMIT
+      ? await readInstalledCommerceProducts(ids, context)
+      : new Map((await readInstalledCommerceCatalog(context)).map(product => [product.id, product]));
     return ids.map(id => {
       const product = byId.get(id);
       return product

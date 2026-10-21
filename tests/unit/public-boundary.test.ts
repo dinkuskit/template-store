@@ -40,6 +40,7 @@ describe("public boundary access evaluation", () => {
   it("allows static assets and public media GET endpoints", () => {
     expect(evaluatePublicBoundary("GET", "/_astro/client.js").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/merch/hoodie.svg").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/images/products/hoodie.svg").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/_emdash/api/media/file/hero.png").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/favicon.ico").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/robots.txt").allowed).toBe(true);
@@ -50,7 +51,20 @@ describe("public boundary access evaluation", () => {
     expect(slashlessRedirectPath("/checkout/success/")).toBe("/checkout/success");
     expect(slashlessRedirectPath("/checkout/cancel/")).toBe("/checkout/cancel");
     expect(slashlessRedirectPath("/products/hoodie-black/")).toBe("/products/hoodie-black");
+    expect(slashlessRedirectPath("/shipping/")).toBe("/shipping");
+    expect(slashlessRedirectPath("/returns/")).toBe("/returns");
+    expect(slashlessRedirectPath("/feeds/google-merchant.xml/")).toBe("/feeds/google-merchant.xml");
+    expect(slashlessRedirectPath("/feeds/meta-catalog.csv/")).toBe("/feeds/meta-catalog.csv");
+    expect(slashlessRedirectPath("/feeds/")).toBeUndefined();
     expect(slashlessRedirectPath("/checkout/other/")).toBeUndefined();
+    expect(evaluatePublicBoundary("GET", "/shipping").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/returns").allowed).toBe(true);
+    expect(evaluatePublicBoundary("HEAD", "/feeds/google-merchant.xml").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/feeds/meta-catalog.csv").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/shipping/").allowed).toBe(false);
+    expect(evaluatePublicBoundary("GET", "/feeds/google-merchant.xml/").allowed).toBe(false);
+    expect(evaluatePublicBoundary("POST", "/feeds/google-merchant.xml").status).toBe(405);
+    expect(evaluatePublicBoundary("GET", "/feeds/other.xml").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(true);
   });

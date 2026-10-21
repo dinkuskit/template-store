@@ -25,6 +25,7 @@ describe("storefront checkout wording", () => {
     for (const path of STOREFRONT_PAGES) {
       const page = readFileSync(path, "utf8");
       expect(page, path).toContain("acquireGuestCheckoutAdmission");
+      expect(page, path).toContain("playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())");
       expect(page, path).toMatch(/data-store-demo-banner data-checkout-available=\{String\(/);
       expect(page, path).toContain("{storeBannerText(");
       expect(page, path).not.toContain("Synthetic demonstration. Purchases and checkout are unavailable.");
@@ -98,6 +99,7 @@ describe("neutral seed copy", () => {
   it("no longer tells shoppers checkout is unavailable", () => {
     const seed = readFileSync("seed/seed.json", "utf8");
     expect(seed).not.toContain("Checkout is not available yet");
+    expect(seed).not.toContain("Not available yet");
     expect(seed).toContain("Browse products published in Commerce.");
   });
 });

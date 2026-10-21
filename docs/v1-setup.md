@@ -26,7 +26,7 @@ Purchasing, orders, payment and shipping require the release gates in
 
 ## Current local developer pilot
 
-Use this exact candidate source checkout, Node 22 and the checked-in pnpm lockfile:
+Use this exact candidate source checkout, Node 24 and the checked-in pnpm lockfile:
 
 ```sh
 pnpm install --frozen-lockfile

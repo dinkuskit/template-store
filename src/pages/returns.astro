@@ -1,0 +1,56 @@
+---
+import { getEmDashEntry } from "emdash";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import { COMMERCE_NATIVE_PLUGIN_ID } from "../features/commerce-catalog/installed.js";
+import { COMMERCE_REGISTRY_RUNTIME_ID } from "../features/guest-cart/checkout-protocol.js";
+import { readInstalledCommercePolicies } from "../features/commerce-policies/index.js";
+import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { canonicalUrl } from "../features/store-shell/structured-data.js";
+import "../features/store-shell/global.css";
+
+const { entry } = await getEmDashEntry("pages", "returns");
+const profile = readStorefrontProfile();
+const policies = await readInstalledCommercePolicies(
+  { runtime: Astro.locals.emdash, request: Astro.request },
+  process.env.DINKUS_CATALOG_PROFILE === "native-development" ? COMMERCE_NATIVE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
+).catch(() => null);
+const returns = policies?.returns ?? null;
+const canonical = canonicalUrl("/returns", Astro.site, Astro.url);
+const returnCategoryLabels = {
+  MerchantReturnFiniteReturnWindow: "Limited return window",
+  MerchantReturnNotPermitted: "Returns not accepted",
+  MerchantReturnUnlimitedWindow: "Unlimited return window",
+} as const;
+const returnMethodLabels = {
+  ReturnByMail: "Return by mail",
+  ReturnInStore: "Return in store",
+  ReturnAtKiosk: "Return at a kiosk",
+} as const;
+const returnFeeLabels = {
+  FreeReturn: "Free returns",
+  ReturnFeesCustomerResponsibility: "Return fees are the customer's responsibility",
+  ReturnShippingFees: "Return shipping fees apply",
+} as const;
+---
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><link rel="canonical" href={canonical} /><title>{entry?.data?.title ?? "Returns"} | {STORE_TITLE}</title></head>
+  <body data-storefront-profile={profile}>
+    <StoreHeader profile={profile} />
+    <main class="policy-page">
+      <a href="/">← Back to store</a>
+      <h1>{entry?.data?.title ?? "Returns"}</h1>
+      <p>{(entry?.data as { intro?: string } | undefined)?.intro ?? "Return details are configured by the connected Commerce store."}</p>
+      {returns ? (
+        <dl data-return-policy data-policy-revision={returns.revision} data-return-days={returns.merchantReturnDays} data-return-category={returns.returnPolicyCategory} data-return-method={returns.returnMethod} data-return-fees={returns.returnFees} data-return-countries={returns.applicableCountry?.join(",")}>
+          {returns.returnPolicyCategory && <><dt>Return policy</dt><dd>{returnCategoryLabels[returns.returnPolicyCategory]}</dd></>}
+          {returns.merchantReturnDays !== undefined && <><dt>Return window</dt><dd>{returns.merchantReturnDays} days</dd></>}
+          {returns.returnMethod && <><dt>Return method</dt><dd>{returnMethodLabels[returns.returnMethod]}</dd></>}
+          {returns.returnFees && <><dt>Return fees</dt><dd>{returnFeeLabels[returns.returnFees]}</dd></>}
+          {returns.applicableCountry && <><dt>Applicable countries</dt><dd>{returns.applicableCountry.join(", ")}</dd></>}
+        </dl>
+      ) : <p role="status" data-return-policy-unset>Return policy is not configured.</p>}
+    </main>
+  </body>
+</html>
+<style>.policy-page{width:min(52rem,calc(100% - 2rem));margin:3rem auto;line-height:1.6}.policy-page a{color:inherit}.policy-page dl{display:grid;grid-template-columns:minmax(10rem,1fr) 2fr;gap:.5rem 1rem}.policy-page dt{font-weight:800}</style>

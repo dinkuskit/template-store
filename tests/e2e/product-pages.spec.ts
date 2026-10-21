@@ -26,7 +26,15 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   await expect(page.locator("[data-product-page] h1")).toHaveText("Dinkus Demo Heavyweight T-Shirt");
   await expect(page.locator("[data-product-price]")).toHaveText("$32.00");
   await expect(page.locator("[data-product-status]")).toHaveText("In stock");
+  await expect(page.locator("[data-product-sku]")).toHaveText("SKU DEMO-HOSTED-SHIRT");
   await expect(page.locator(".product-detail img[data-demo-placeholder]")).toBeVisible();
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
+  const shirtJsonLd = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "");
+  expect(shirtJsonLd["@type"]).toBe("Product");
+  expect(shirtJsonLd.sku).toBe("DEMO-HOSTED-SHIRT");
+  expect(shirtJsonLd.offers.price).toBe("32.00");
+  expect(shirtJsonLd.offers.priceCurrency).toBe("USD");
+  expect(shirtJsonLd.offers.availability).toBe("https://schema.org/InStock");
 
   // Sale price, sold-out state, and the size picker on their own pages.
   await page.goto("/products/demo-cap");
@@ -37,6 +45,22 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   await page.goto("/products/demo-hoodie");
   await expect(page.locator("[data-product-from-price]")).toHaveText("from $56.00");
   await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
+  const hoodieJsonLd = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "");
+  const hoodieCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
+  expect(hoodieJsonLd.offers).toMatchObject({ price: "56.00", availability: "https://schema.org/InStock" });
   await page.getByLabel("Medium").check();
   await expect(page.locator("[data-variant-price]")).toHaveText("$60.00");
+  const hoodieAfterChange = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "");
+  expect(hoodieAfterChange.offers).toMatchObject({ price: "60.00", availability: "https://schema.org/InStock", url: hoodieCanonical });
+  expect(hoodieAfterChange.sku).toBe(await page.locator("[data-product-sku]").getAttribute("data-product-sku"));
+  expect(hoodieAfterChange.url).toBe(hoodieCanonical);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", hoodieCanonical ?? "");
+  await page.getByLabel("Small").check();
+  await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
+  expect(JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "")).toEqual(hoodieJsonLd);
+  await page.getByLabel("Medium").check();
+  await page.reload();
+  await expect(page.getByLabel("Small")).toBeChecked();
+  expect(JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "")).toEqual(hoodieJsonLd);
 });
