@@ -78,6 +78,13 @@ do not establish released artifact, registry, checkout, or Cloudflare readiness.
 
 ## Gates
 
+An assigned source task, including implementation of locked or approved
+GrillTrack decisions, authorizes required checks/proof, commits, non-force
+pushes to its assigned branch, pull-request creation/updates, review requests,
+and bounded in-scope repairs without separate permission questions. Keep one
+writer in an isolated branch/worktree and bind review evidence to the exact
+head; a changed head requires current review evidence.
+
 Publishing packages, deployment, production mutation, secrets or permissions
 changes, and merges require separate authorization.
 
