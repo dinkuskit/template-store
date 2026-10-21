@@ -28,5 +28,6 @@ Validation:
 
 This is source-policy proof. No product code, decision ledger, dependency,
 runtime, deployment, credential, installed skill, or global configuration
-changed. `pnpm verify` and browser suites were not run for this
-documentation-only change; no product behavior claim is made.
+changed. Local validation was static only. Full `pnpm verify` is delegated to
+the exact-current-head CI run and remains pending at handoff, not waived.
+No product behavior claim is made from the local checks.
