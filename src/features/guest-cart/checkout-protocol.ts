@@ -1,4 +1,5 @@
 import { parseGuestCartIntent, type GuestCartIntent, type GuestCartLine } from "./intent.js";
+import { isSafeGuestCartThumbnailSrc } from "./present.js";
 
 export const GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY = "dinkus.guest-checkout.v1";
 export const GUEST_CHECKOUT_CAPABILITY_HEADER = "x-commerce-guest-capability";
@@ -168,15 +169,7 @@ function boundedText(value: unknown, max = 200): string | undefined {
 
 export function isSafeOrderLineImageUrl(value: unknown): value is string {
   if (typeof value !== "string") return false;
-  const trimmed = value.trim();
-  if (trimmed.length === 0 || trimmed.length > 2048 || /[\s\u0000-\u001f]/u.test(trimmed)) return false;
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return true;
-  try {
-    const parsed = new URL(trimmed);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
-  } catch {
-    return false;
-  }
+  return isSafeGuestCartThumbnailSrc(value.trim());
 }
 
 function parseSafeImageUrl(value: unknown): string | undefined {
