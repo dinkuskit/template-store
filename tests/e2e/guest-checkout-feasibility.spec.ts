@@ -84,7 +84,7 @@ test("Commerce checkout token renders the paid order and clears the cart", async
       lines: [{ id: "fixture-shirt", quantity: 1 }],
     }));
   });
-  await page.goto("/cart");
+  await page.goto("/checkout");
   await expect.poll(() => harness.counts().prepareCalls).toBe(1);
   const line = page.locator('[data-guest-cart-line="fixture-shirt"]');
   await expect(line).toBeVisible();
@@ -139,7 +139,7 @@ test("Commerce checkout token renders the paid order and clears the cart", async
   await page.evaluate(() => localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
     version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }],
   })));
-  await page.reload();
+  await page.goto("/checkout");
   await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
   await expect(page.locator("[data-guest-cart-qty]")).toBeEnabled();
   await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
@@ -204,7 +204,7 @@ test("the store's status route relays Commerce's paid answer to the thank-you pa
         lines: [{ id: "fixture-shirt", quantity: 1 }],
       }));
     });
-    await page.goto("/cart");
+    await page.goto("/checkout");
     await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
     await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
     await page.getByRole("button", { name: "Continue to secure checkout" }).click();
@@ -321,7 +321,7 @@ test.skip("legacy browser return status polling is superseded by the server rece
         lines: [{ id: "fixture-shirt", quantity: 1 }],
       }));
     });
-    await page.goto("/cart");
+    await page.goto("/checkout");
     await expect(page.getByRole("button", { name: "Continue to secure checkout" })).toBeEnabled();
     await page.getByLabel("Email", { exact: true }).fill("pending@example.test");
     await page.getByRole("button", { name: "Continue to secure checkout" }).click();
@@ -428,6 +428,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     await installOfflineCheckoutHarness(physical, {
       baseURL: testInfo.project.use.baseURL as string,
       refuseDelivery: true,
+      statusWithoutAttempt: true,
     });
     await physical.addInitScript(() => {
       localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({
@@ -436,6 +437,16 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
       }));
     });
     await physical.goto("/cart");
+    await expect(physical.locator("[data-guest-cart-contact]")).toHaveCount(0);
+    await expect(physical.locator("[data-guest-cart-coupon-box]")).toHaveCount(0);
+    await expect(physical.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$24.00");
+    const proceedButton = physical.getByRole("button", { name: "Proceed to Checkout" });
+    await expect(proceedButton).toBeEnabled();
+    await proceedButton.click();
+    await expect(physical).toHaveURL(/\/checkout$/);
+    await expect(physical.locator("[data-checkout-vault]")).toBeVisible();
+    await expect(physical.locator("[data-checkout-manifest]")).toBeVisible();
+    await expect(physical.locator("[data-checkout-breakdown]")).toBeVisible();
     await expect(physical.getByRole("heading", { name: "Delivery address" })).toBeVisible();
     await physical.screenshot({ path: resolve(root, "physical-empty.png"), fullPage: true, animations: "disabled" });
 
@@ -474,8 +485,9 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
         lines: [{ id: "fixture-shirt", quantity: 1 }],
       }));
     });
-    await digital.goto("/cart");
+    await digital.goto("/checkout");
     await expect(digital.getByRole("heading", { name: "Delivery address" })).toBeHidden();
+    await expect(digital.locator("[data-checkout-shipping-amount]")).toHaveText("Free");
     await digital.screenshot({ path: resolve(root, "digital-only-no-address.png"), fullPage: true, animations: "disabled" });
   } finally {
     await context.close();
@@ -519,7 +531,7 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     const page = await physicalContext.newPage();
     const harness = await installOfflineCheckoutHarness(page, { baseURL });
     await page.addInitScript(seedCart);
-    await page.goto("/cart");
+    await page.goto("/checkout");
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
     await expect(page.getByLabel("State or region (required for United States delivery)", { exact: true })).toBeVisible();
     await fillContact(page);
@@ -569,7 +581,7 @@ test("checkout start sends delivery only while the cart needs it, even after fie
         }),
       }),
     );
-    await page.goto("/cart");
+    await page.goto("/checkout");
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeVisible();
     await fillContact(page);
     await page.getByLabel("State or region (required for United States delivery)", { exact: true }).fill(address.region);
@@ -708,7 +720,7 @@ for (const scenario of ["prepared capability", "lost first-start response"] as c
         if (localStorage.getItem("dinkus.guest-cart.v1")) return;
         localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
       });
-      await page.goto("/cart");
+      await page.goto("/checkout");
       await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
       if (lostStart) {
         await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");

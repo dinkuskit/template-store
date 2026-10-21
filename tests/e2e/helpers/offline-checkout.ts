@@ -225,14 +225,14 @@ export async function installOfflineCheckoutHarness(
             found: true,
             name: "Synthetic fixture shirt",
             sku: "FIXTURE",
-            price: { listable: true, regularText: "$24.00", saleText: null },
+            price: { listable: true, regularText: "$24.00", saleText: null, unitMinor: "2400" },
             availability: { status: "in-stock", sellable: true, listable: true },
             ...(digitalState ? { fulfillment: "digital" } : {}),
           }],
         });
         return;
       }
-      if (synthetic && mutateCart && path === "/cart" && route.request().method() === "GET") {
+      if (synthetic && mutateCart && (path === "/cart" || path === "/checkout") && route.request().method() === "GET") {
         const response = await route.fetch({ maxRedirects: 0 });
         const html = (await response.text()).replace(
           'data-guest-checkout-admitted="false"',
@@ -242,7 +242,7 @@ export async function installOfflineCheckoutHarness(
         return;
       }
       const returnPage = route.request().method() === "GET" &&
-        (path === "/checkout/success" || path === "/checkout/cancel");
+        (path === "/checkout" || path === "/checkout/success" || path === "/checkout/cancel");
       const sensitivePath = /checkout|payment/i.test(decodeURIComponent(path));
       const apiOrNavigation = path.startsWith("/_emdash/api/") || path.startsWith("/api/") || route.request().isNavigationRequest();
       if (sensitivePath && apiOrNavigation && !returnPage) {

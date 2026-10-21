@@ -35,6 +35,7 @@ export type {
   GuestCartStoragePort,
 } from "./storage.js";
 export {
+  GUEST_CART_PROCEED_LABEL,
   GUEST_CHECKOUT_LABEL,
   GUEST_CHECKOUT_REASON,
   GUEST_CHECKOUT_READY_LABEL,
@@ -44,6 +45,7 @@ export {
   lineBlockReason,
   parseGuestCartSnapshotResponse,
   presentGuestCart,
+  presentGuestCheckoutBreakdown,
   projectGuestCartCatalogSnapshot,
   projectGuestCartCatalogSnapshots,
   snapshotErrorText,
@@ -58,6 +60,8 @@ export type {
   GuestCartPublicPrice,
   GuestCartPublicThumbnail,
   GuestCartView,
+  GuestCheckoutBreakdownView,
+  GuestCheckoutShippingPolicyInput,
 } from "./present.js";
 export { parseGuestCartSnapshotIds } from "./snapshot-ids.js";
 export { settleGuestCheckoutCart } from "./checkout-cart-settlement.js";

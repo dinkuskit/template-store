@@ -5,6 +5,7 @@ import {
   GUEST_CART_MAX_LINES,
   GUEST_CART_MAX_QUANTITY,
   GUEST_CART_MAX_RAW_LENGTH,
+  GUEST_CART_PROCEED_LABEL,
   GUEST_CART_STORAGE_KEY,
   GUEST_CHECKOUT_REASON,
   addGuestCartLine,
@@ -22,6 +23,7 @@ import {
   parseGuestCartSnapshotIds,
   parseGuestCartSnapshotResponse,
   presentGuestCart,
+  presentGuestCheckoutBreakdown,
   projectGuestCartCatalogSnapshots,
   removeGuestCartLine,
   saveGuestCartIntent,
@@ -559,6 +561,71 @@ describe("guest cart snapshot presentation", () => {
         availability: { status: "in-stock", sellable: true, listable: true },
       },
     ]);
+  });
+
+  it("computes live checkout subtotal, shipping, tax, and total breakdown", () => {
+    expect(GUEST_CART_PROCEED_LABEL).toBe("Proceed to Checkout");
+    const physicalIntent = addGuestCartLine(emptyGuestCartIntent(), "hat-1", 2).intent;
+    const physicalSnapshot = [
+      {
+        id: "hat-1",
+        found: true as const,
+        name: "Merchant hat",
+        sku: "HAT-1",
+        fulfillment: "physical" as const,
+        price: { listable: true, regularText: "$24.00", saleText: null, unitMinor: "2400" },
+        availability: { status: "in-stock", sellable: true, listable: true },
+      },
+    ];
+    expect(
+      presentGuestCheckoutBreakdown({
+        intent: physicalIntent,
+        snapshots: physicalSnapshot,
+        shippingPolicy: { mode: "flat", flatRateMinor: "500" },
+      }),
+    ).toEqual({
+      subtotalText: "$48.00",
+      shippingText: "$5.00",
+      taxText: "Calculated at checkout",
+      totalText: "$53.00",
+    });
+    expect(
+      presentGuestCheckoutBreakdown({
+        intent: physicalIntent,
+        snapshots: physicalSnapshot,
+        shippingPolicy: { mode: "free" },
+      }),
+    ).toEqual({
+      subtotalText: "$48.00",
+      shippingText: "Free",
+      taxText: "Calculated at checkout",
+      totalText: "$48.00",
+    });
+
+    const digitalIntent = addGuestCartLine(emptyGuestCartIntent(), "guide-1", 1).intent;
+    const digitalSnapshot = [
+      {
+        id: "guide-1",
+        found: true as const,
+        name: "Digital Guide",
+        sku: "GUIDE-1",
+        fulfillment: "digital" as const,
+        price: { listable: true, regularText: "$12.00", saleText: null, unitMinor: "1200" },
+        availability: { status: "in-stock", sellable: true, listable: true },
+      },
+    ];
+    expect(
+      presentGuestCheckoutBreakdown({
+        intent: digitalIntent,
+        snapshots: digitalSnapshot,
+        shippingPolicy: { mode: "flat", flatRateMinor: "500" },
+      }),
+    ).toEqual({
+      subtotalText: "$12.00",
+      shippingText: "Free",
+      taxText: "Calculated at checkout",
+      totalText: "$12.00",
+    });
   });
 });
 

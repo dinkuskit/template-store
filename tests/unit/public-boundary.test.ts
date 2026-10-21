@@ -28,6 +28,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/home").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/cart").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/sitemap.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/sitemap-commerce.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/shop/DEMO-HOSTED-SHIRT").allowed).toBe(false);
@@ -48,6 +49,7 @@ describe("public boundary access evaluation", () => {
 
   it("identifies only scoped slash variants for 301 redirects", () => {
     expect(slashlessRedirectPath("/cart/")).toBeUndefined();
+    expect(slashlessRedirectPath("/checkout/")).toBe("/checkout");
     expect(slashlessRedirectPath("/checkout/success/")).toBe("/checkout/success");
     expect(slashlessRedirectPath("/checkout/cancel/")).toBe("/checkout/cancel");
     expect(slashlessRedirectPath("/products/hoodie-black/")).toBe("/products/hoodie-black");
@@ -65,6 +67,8 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/feeds/google-merchant.xml/").allowed).toBe(false);
     expect(evaluatePublicBoundary("POST", "/feeds/google-merchant.xml").status).toBe(405);
     expect(evaluatePublicBoundary("GET", "/feeds/other.xml").allowed).toBe(false);
+    expect(evaluatePublicBoundary("GET", "/checkout").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/checkout/").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(true);
   });
@@ -80,6 +84,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("HEAD", "/").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/shop/DEMO-HOSTED-SHIRT").allowed).toBe(false);
     expect(evaluatePublicBoundary("HEAD", "/cart").allowed).toBe(true);
+    expect(evaluatePublicBoundary("HEAD", "/checkout").allowed).toBe(true);
   });
 
   it("allows only the exact installed guest POST protocol and safe callback reads", () => {
@@ -91,6 +96,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/checkout/cancel").allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", "/cart/").status).toBe(405);
+    expect(evaluatePublicBoundary("POST", "/checkout").status).toBe(405);
     expect(evaluatePublicBoundary("PUT", "/checkout/success/").status).toBe(405);
     expect(evaluatePublicBoundary("DELETE", "/checkout/cancel/").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/checkout/success").status).toBe(405);
@@ -410,6 +416,7 @@ describe("worker boundary handler", () => {
     const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
     const headers = { "cf-connecting-ip": "198.51.100.1" };
     for (const [from, to] of [
+      ["/checkout/", "/checkout"],
       ["/checkout/success/", "/checkout/success"],
       ["/products/hoodie-black/", "/products/hoodie-black"],
     ]) {

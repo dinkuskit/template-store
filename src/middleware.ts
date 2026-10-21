@@ -94,7 +94,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const slashlessPath = slashlessRedirectPath(context.url.pathname);
   if (
     slashlessPath &&
-    (slashlessPath === "/account" ||
+    (slashlessPath === "/checkout" ||
+      slashlessPath === "/account" ||
       slashlessPath === "/shipping" ||
       slashlessPath === "/returns" ||
       slashlessPath.startsWith("/feeds/")) &&
