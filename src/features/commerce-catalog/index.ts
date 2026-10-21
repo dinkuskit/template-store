@@ -9,7 +9,7 @@ import {
   type CatalogBackorderPolicyRecord, type StoreInventoryConfigurationRecord,
   type StorefrontAvailabilitySettingsRecord, type StorefrontAvailabilityResult,
 } from "@dinkuskit/commerce";
-import { readInstalledCommerceCatalog, type InstalledCatalogContext } from "./installed.js";
+import { readInstalledCommerceCatalog, readInstalledCommerceProducts, type InstalledCatalogContext } from "./installed.js";
 import type { PublicCommerceImage } from "./media.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
 
@@ -101,14 +101,21 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
   return visible;
 }
 
+/** Carts up to this many lines look items up one by one; larger carts read the catalog. */
+const SNAPSHOT_ITEM_LOOKUP_LIMIT = 8;
+
 export async function readCommerceCatalogSnapshots(
   ids: readonly string[],
   context?: InstalledCatalogContext,
 ): Promise<CommerceCatalogSnapshot[]> {
   if (process.env.DINKUS_CATALOG_PROFILE !== "native-development") {
     if (!context) throw new Error("Installed catalog context unavailable");
-    const products = await readInstalledCommerceCatalog(context);
-    const byId = new Map(products.map(product => [product.id, product]));
+    // A small cart reads just its own items; the whole catalog is several
+    // sandboxed pages with an image read per product, slow enough on a real
+    // store to run past the cart's time limit.
+    const byId = ids.length <= SNAPSHOT_ITEM_LOOKUP_LIMIT
+      ? await readInstalledCommerceProducts(ids, context)
+      : new Map((await readInstalledCommerceCatalog(context)).map(product => [product.id, product]));
     return ids.map(id => {
       const product = byId.get(id);
       return product
