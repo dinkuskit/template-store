@@ -32,7 +32,8 @@ import {
   type GuestCheckoutWireResult,
 } from "./index.js";
 
-const SNAPSHOT_TIMEOUT_MS = 5_000;
+// A live store's price check took up to 4.7 s on beta; leave room above that.
+const SNAPSHOT_TIMEOUT_MS = 15_000;
 
 type Session = {
   intent: GuestCartIntent;

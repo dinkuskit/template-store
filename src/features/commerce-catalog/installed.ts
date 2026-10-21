@@ -171,10 +171,10 @@ export async function readInstalledCommerceCatalog({ runtime, request }: Install
   return products;
 }
 
-export async function readInstalledCommerceProduct(
+async function lookupInstalledCommerceProduct(
   itemId: string,
   { runtime, request }: InstalledCatalogContext,
-): Promise<PublicCommerceProduct | null> {
+): Promise<ProductResult | null> {
   const pluginId = installedPluginId();
   if (!runtime || !publicGetRoute(runtime, pluginId, ITEM_ROUTE)) {
     throw new Error("Installed public product lookup unavailable");
@@ -192,7 +192,36 @@ export async function readInstalledCommerceProduct(
   }
   if (result.data === null) return null;
   if (!object(result.data)) throw new Error("Invalid installed product projection");
-  const parsed = product(result.data);
+  return product(result.data);
+}
+
+export async function readInstalledCommerceProduct(
+  itemId: string,
+  context: InstalledCatalogContext,
+): Promise<PublicCommerceProduct | null> {
+  const parsed = await lookupInstalledCommerceProduct(itemId, context);
+  if (parsed === null) return null;
   if (!("product" in parsed)) throw new Error("Invalid installed product projection");
   return parsed.product;
+}
+
+/**
+ * Reads only the requested items, one public item lookup each, instead of the
+ * whole catalog. Matches the catalog read: an item Commerce no longer lists,
+ * or one whose projection is invalid, comes back null; a variant member id
+ * resolves to its parent product, which the catalog lists under the parent id,
+ * so it is null too.
+ */
+export async function readInstalledCommerceProducts(
+  itemIds: readonly string[],
+  context: InstalledCatalogContext,
+): Promise<Map<string, PublicCommerceProduct | null>> {
+  const found = await Promise.all(itemIds.map(async (itemId): Promise<[string, PublicCommerceProduct | null]> => {
+    const parsed = await lookupInstalledCommerceProduct(itemId, context);
+    if (parsed !== null && !("product" in parsed)) {
+      console.warn("Skipping invalid installed catalog item", { id: parsed.id, reason: parsed.reason });
+    }
+    return [itemId, parsed !== null && "product" in parsed && parsed.product.id === itemId ? parsed.product : null];
+  }));
+  return new Map(found);
 }

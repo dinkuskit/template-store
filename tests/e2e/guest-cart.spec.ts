@@ -211,7 +211,8 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.unroute("**/api/guest-cart/snapshot**");
 
   await shopper.route("**/api/guest-cart/snapshot**", async (route) => {
-    await new Promise((resolveHold) => setTimeout(resolveHold, 20_000));
+    // Outlasts the cart's 15 s price-check limit.
+    await new Promise((resolveHold) => setTimeout(resolveHold, 30_000));
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -222,7 +223,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.getByRole("button", { name: "Try again", exact: true }).click();
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeDisabled();
-  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.", { timeout: 8_000 });
+  await expect(shopper.locator("[data-guest-cart-status]")).toContainText("We couldn't load the latest prices.", { timeout: 20_000 });
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeEnabled();
   await expect(qty).not.toBeDisabled();

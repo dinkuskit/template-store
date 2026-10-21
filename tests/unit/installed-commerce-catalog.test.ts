@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   readInstalledCommerceCatalog,
   readInstalledCommerceProduct,
+  readInstalledCommerceProducts,
 } from "../../src/features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../src/features/guest-cart/checkout-protocol.js";
 
@@ -163,5 +164,28 @@ describe("installed Commerce public catalog consumer", () => {
 
   it("still fails a single-product lookup when the item is malformed", async () => {
     await expect(readInstalledCommerceProduct("item", context([{ ...item(), price: undefined }]))).rejects.toThrow();
+  });
+
+  it("looks up only the requested items for a cart, one public item call each", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const ctx = context([item("hat"), null, { ...item("bad"), price: undefined }, hoodie([{ id: "hoodie-s", minor: "4000" }])]);
+    const products = await readInstalledCommerceProducts(["hat", "gone", "bad", "hoodie-s"], ctx);
+    expect(ctx.runtime.handlePublicPluginApiRoute).toHaveBeenCalledTimes(4);
+    const calls = ctx.runtime.handlePublicPluginApiRoute.mock.calls as unknown as [string, string, string, Request][];
+    expect(calls.map(([, , route]) => route)).toEqual(Array(4).fill("catalog/public/item"));
+    expect(calls.map(([, , , request]) => new URL(request.url).searchParams.get("itemId"))).toEqual(["hat", "gone", "bad", "hoodie-s"]);
+    expect(products.get("hat")?.price.regularText).toBe("$1.25");
+    // Missing, malformed and variant-member ids resolve as the whole-catalog read does: not found.
+    expect(products.get("gone")).toBeNull();
+    expect(products.get("bad")).toBeNull();
+    expect(products.get("hoodie-s")).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it("fails a cart lookup when Commerce cannot answer, so the cart keeps its lines", async () => {
+    const failed = context([]);
+    failed.runtime.handlePublicPluginApiRoute.mockResolvedValue({ success: false, data: undefined });
+    await expect(readInstalledCommerceProducts(["hat"], failed)).rejects.toThrow();
   });
 });
