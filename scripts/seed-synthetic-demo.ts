@@ -54,6 +54,7 @@ import {
   REMOTE_CONFIG_PATH,
   REMOTE_TARGET_MANIFEST_PATH,
   SeedRefusal,
+  demoAvailabilityForSku,
   demoRegularMinorForSku,
   type DemoProductSeed,
 } from "./demo-seed-policy.js";
@@ -369,7 +370,11 @@ async function ensureProduct(
     action = created.created ? "created" : "updated";
   }
 
-  if (variant) {
+  // An existing demo store keeps the variant choices it was seeded with; adding a
+  // later size (for example the sold-out Large hoodie) is a fresh-store change.
+  const seededParent = existing ? await storage.catalog.get(catalogItemId) : null;
+  const hasVariantChoices = Boolean(seededParent && "variantProduct" in seededParent && seededParent.variantProduct);
+  if (variant && !hasVariantChoices) {
     await addCatalogVariantOption(
       { catalog: storage.catalog },
       {
@@ -432,7 +437,7 @@ async function ensureProduct(
     }
     await setCatalogItemManualAvailability(storage, {
       catalogItemId: itemId,
-      status: product.availability,
+      status: "variant" in product ? demoAvailabilityForSku(product, memberSku) : product.availability,
     });
   }
   return action;
