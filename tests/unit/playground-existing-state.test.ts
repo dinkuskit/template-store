@@ -243,11 +243,20 @@ describe("playground visitor database state", () => {
       error: expect.objectContaining({ code: "SESSION_DENIED" }),
     });
 
-    // Mint a second session and verify sign-out revokes it immediately.
+    // Mint a second demo session and verify it replaces the fixed demo session slot and sign-out revokes it immediately.
     currentMs = baseMs + 10 * 60_000;
     const secondSession = await mintDemoShopperSession(db as never, trustedOrigin, {
       DINKUS_LOCAL_PROOF: "1",
       DINKUS_LOCAL_PROOF_NOW: String(currentMs),
+    });
+    expect(secondSession.capability.sessionId).toBe("csess_demo_shopper");
+    expect(secondSession.capability.session).not.toBe(issued.capability.session);
+    const priorTokenAfterRotation = await readShopperAccountProfile(reopenedRuntimeA, {
+      [CUSTOMER_SESSION_HEADER]: issued.capability.session,
+    });
+    expect(priorTokenAfterRotation).toEqual({
+      ok: false,
+      error: expect.objectContaining({ code: "SESSION_DENIED" }),
     });
     const signOutRes = await signOutShopperSession(
       reopenedRuntimeA,

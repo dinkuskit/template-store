@@ -33,6 +33,7 @@ export const PLAYGROUND_EMAIL_BINDING = "EMAIL";
 export const PLAYGROUND_DEFAULT_FROM_EMAIL = "accounts@dinkuskit.com";
 export const PLAYGROUND_ORIGIN = "https://playground.dinkuskit.com";
 export const PLAYGROUND_ACCOUNT_ORIGIN_ENV = "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN";
+export const DEMO_SHOPPER_SESSION_ID = "csess_demo_shopper";
 export const PRE_UPGRADE_SHOPPER_ORDER_ID = "ord_pre_upgrade_1000";
 export const PRE_UPGRADE_SHOPPER_ORDER_NUMBER = 1002;
 
@@ -596,9 +597,11 @@ export async function mintDemoShopperSession(
       [],
     ),
   };
-  // Clear a previous demo login code record so the instant demo sign-in button
-  // works repeatedly without waiting for the 30-second email resend cooldown.
+  // Clear any previous demo login code and fixed demo session record so the
+  // instant demo sign-in button works repeatedly and overwrites one bounded
+  // session slot instead of accumulating unbounded session rows per visitor.
   await storage[NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes].delete(DEMO_SHOPPER_EMAIL);
+  await storage[NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions].delete(DEMO_SHOPPER_SESSION_ID);
   let capturedCode: string | null = null;
   const runtime = bindShopperAccountRuntime(storage, NATIVE_SHOPPER_ACCOUNT_STORAGE, {
     runtimeSiteUrl: siteOrigin,
@@ -608,6 +611,7 @@ export async function mintDemoShopperSession(
       siteUrl: siteOrigin,
       storeName: "DinkusKit Playground",
       now: () => playgroundNow(activeEnv),
+      createSessionId: () => DEMO_SHOPPER_SESSION_ID,
       sendEmail: async (message: ShopperEmailMessage) => {
         capturedCode = extractSixDigitCode(message.text);
       },

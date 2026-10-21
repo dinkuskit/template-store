@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { checkoutLimited } from "../../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../../features/playground/demo-products.js";
 import {
   mintDemoShopperSession,
@@ -38,6 +39,21 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
       JSON.stringify({ ok: false, error: { code: "ORIGIN_DENIED", message: "Cross-origin requests are not allowed." } }),
       { status: 403, headers: NO_STORE_HEADERS },
     );
+  }
+  if (isPlayground) {
+    const limiter = (locals as { __playgroundCheckoutLimiter?: unknown }).__playgroundCheckoutLimiter;
+    if (limiter && (await checkoutLimited(request, limiter))) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: "RATE_LIMITED",
+            message: "Too many demo account requests from this connection. Please wait a few minutes and try again.",
+          },
+        }),
+        { status: 429, headers: { ...NO_STORE_HEADERS, "Retry-After": "60" } },
+      );
+    }
   }
   try {
     let db = (locals as { __playgroundDb?: Parameters<typeof mintDemoShopperSession>[0] }).__playgroundDb;
