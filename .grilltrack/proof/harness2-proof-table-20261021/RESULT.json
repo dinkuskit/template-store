@@ -1,0 +1,64 @@
+{
+  "status": "keep for repository source review",
+  "scope": "Planning behavior only; one full trial and one different-task fixed comparison; no measured product-delivery speed, reliability or owner-interruption improvement.",
+  "candidate_sha256": "d87db6228bc26c2565f6b05f4971ec6200bc9e93ba784985fc73d0a5e5e37d30",
+  "candidate_words": 173,
+  "training": {
+    "source": "dinkuskit/template-store@0040061283f748b00d23a33a17b421ec01ba7e6f",
+    "original": 92.5,
+    "candidate": 100,
+    "manual": "candidate-better",
+    "jev": "candidate-better",
+    "jev_confidence": 0.61
+  },
+  "holdout": {
+    "source": "dinkuskit/template-store@3a93df6ed3ad3dda94182ab0bdf795d360b5df7a",
+    "commerce_source": "cbc636eab20ee7759107f3a10ddff776cebe7dd8",
+    "original": 92,
+    "candidate": 100,
+    "manual": "candidate-better",
+    "jev": "candidate-better",
+    "jev_confidence": 0.45
+  },
+  "runtime": {
+    "runner_source": "saari-co/ai-shed@fec8db471cf593702407283d982a90c8b6bf3681",
+    "runner_sha256": "60b0a10aff6b2e1b00f69a1fe9e598a29147a79d8090407be456d2439cf19a7f",
+    "upstream_pin": "1cfe254e8d25b15f37048c3730134686abe60335",
+    "full_loop_calls": 8,
+    "solver_executions": 4,
+    "improvement_calls": 3,
+    "reflection_calls": 1,
+    "reflection": "NO_ENTRY",
+    "fixed_holdout_calls": 2,
+    "boundary_checks": "all passed"
+  },
+  "judge_attempts": {
+    "first_training": "Grok ACP timed out at300seconds; no judgment returned; task and cleanup terminal",
+    "training_fallback": "Cursor ACP, same fixed anonymous packet after prior cleanup",
+    "holdout": "Cursor ACP, separate anonymous packet",
+    "jev": "1.13.0, typesafe-hosted, one call per comparison"
+  },
+  "word_counts": {
+    "training_original": 725,
+    "training_candidate": 968,
+    "holdout_original": 755,
+    "holdout_candidate": 917
+  },
+  "source_application": {
+    "repository": "dinkuskit/template-store",
+    "base": "3d234463ba6150d4a2701ccc564fbce329995bad",
+    "change": "append exact tested generic instruction; preserve all pre-existing AGENTS bytes",
+    "global_or_installed_rollout": false
+  },
+  "validation": {
+    "independent_instruction_check": "PASS",
+    "repository_verify": "See source-bound PR checks/closeout; no pass asserted by experiment."
+  },
+  "limitations": [
+    "One sample per condition per task; scores are rubric points, not confidence percentages.",
+    "The holdout is another task in the same repository, not proof of transfer to other repositories.",
+    "Longer planning responses were observed; no net token/time saving is claimed.",
+    "No automatic learning-library entry was written.",
+    "Held-out from this refinement, but the task appeared in an earlier study; not a novel independent dataset."
+  ]
+}

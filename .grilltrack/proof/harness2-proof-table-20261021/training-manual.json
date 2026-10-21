@@ -1,0 +1,170 @@
+{
+  "schema": "private.planning-transfer-judge-result.v1",
+  "scope": "Plans only; no runtime success inferred.",
+  "hard_failures": {
+    "A": {
+      "eligible": true,
+      "findings": []
+    },
+    "B": {
+      "eligible": true,
+      "findings": []
+    }
+  },
+  "ratings": {
+    "A": [
+      {
+        "criterion": "invocation_readonly_and_reporting",
+        "rating": 2,
+        "weight": 15,
+        "evidence": "\"all requests remain within the permitted public boundary\" and \"readable report, nonzero failures\"; it also requires bin/verify-web full to run the verifier against the local built server.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "crawl_sitemap_canonical_identity",
+        "rating": 2,
+        "weight": 20,
+        "evidence": "\"Crawl `/` and `/sitemap.xml`\"; it requires byte-identical sitemap, canonical, and internal-link values, rejects encoded slashes and non-root trailing slashes, and checks sitemap status, self-canonicality, and noindex.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "product_and_legacy_url_contract",
+        "rating": 2,
+        "weight": 15,
+        "evidence": "It specifies homepage `/` versus `/home`, exactly one `/products/{slug}` 200 URL, `/shop/{id}` and digest collection redirects, and explicit 301/302 Location and cache-header checks.",
+        "omissions": "The exact long-max-age threshold remains a stated prerequisite, correctly not invented."
+      },
+      {
+        "criterion": "structured_data_and_builtin_routes",
+        "rating": 2,
+        "weight": 10,
+        "evidence": "It requires exactly one Product JSON-LD block matching visible values and the #35 feed, with an explicit scoped skip/expected failure before the prerequisite; it separately requires EmDash built-in provenance for robots.txt and sitemap.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "positive_and_adverse_proof_design",
+        "rating": 2,
+        "weight": 15,
+        "evidence": "\"Separately authored public-route fixture with home, collection, and products\" is a populated positive case; the independent manifest is not generated from the outputs under test. It lists broken links, loops, noncanonical variants, canonical conflicts, redirect/header errors, and structured-data mismatch, with expected failures and L/P/R evidence.",
+        "omissions": "The plans are prospective and therefore contain no executed observation; this is appropriate for the task."
+      },
+      {
+        "criterion": "execution_environment_and_claim_scope",
+        "rating": 2,
+        "weight": 10,
+        "evidence": "It names deterministic fixtures plus local built server, preview, and production (\"L/P/R\"), requires local-to-preview-to-production order, identifies origin/flag/result evidence, and says source proof cannot establish released or deployed readiness.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "dependency_aware_skips_and_source_fidelity",
+        "rating": 2,
+        "weight": 10,
+        "evidence": "It keeps #34/#35 checks as explicit scoped skips/expected failures, identifies route/feed/demo/cache prerequisites, requires activation after landing, updates FEATURE_MAP, and preserves the supplied `/collections/{slug}` vocabulary and ownership boundaries.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "commands_handoff_and_bounded_autonomy",
+        "rating": 2,
+        "weight": 5,
+        "evidence": "It names `pnpm verify`, existing desktop/mobile and profile regressions, proof locations, exact source anchoring, and separately gated PR/deployment/merge actions without needless permission requests.",
+        "omissions": "No material omission against this criterion."
+      }
+    ],
+    "B": [
+      {
+        "criterion": "invocation_readonly_and_reporting",
+        "rating": 2,
+        "weight": 15,
+        "evidence": "\"Permit only GET/HEAD against public routes\" and \"exclude admin and mutation routes, including redirect destinations\"; it requires origin, offending URL, chain, failure, and dependency-skip reporting plus nonzero failure status.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "crawl_sitemap_canonical_identity",
+        "rating": 2,
+        "weight": 20,
+        "evidence": "It crawls `/` and `/sitemap.xml`, follows public links and sitemap entries, rejects `%2F` and trailing-slash variants, preserves raw bytes, and requires 200/self-canonical/non-noindex sitemap pages.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "product_and_legacy_url_contract",
+        "rating": 2,
+        "weight": 15,
+        "evidence": "It requires `/` only, excludes `/home`, requires one `/products/{slug}` 200 URL, checks both legacy route families, and checks 301/302 status, Location, immutable, and long max-age behavior.",
+        "omissions": "The long-max-age threshold is correctly left to source/policy discovery rather than guessed."
+      },
+      {
+        "criterion": "structured_data_and_builtin_routes",
+        "rating": 2,
+        "weight": 10,
+        "evidence": "It requires exactly one Product JSON-LD block matching page and #35 feed data, names dependency-specific skips with activation conditions, and requires public EmDash built-in ownership evidence for robots.txt and sitemap.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "positive_and_adverse_proof_design",
+        "rating": 1,
+        "weight": 15,
+        "evidence": "It promises \"deterministic HTTP fixtures covering successful behavior and each failure class\" and a local integration test, but does not explicitly define independently sourced expected facts or a known-good populated page/product case with an expected observation.",
+        "omissions": "The plan never states that its success fixture is populated with actual pages/products, never identifies an independent oracle/manifest, and does not explicitly say what a capable populated integration surface must observe. A fixture generated from implementation output could therefore pass while sharing the same mistake."
+      },
+      {
+        "criterion": "execution_environment_and_claim_scope",
+        "rating": 2,
+        "weight": 10,
+        "evidence": "It distinguishes deterministic fixtures, local built-server integration, and later preview/production origins; requires exact source, target, outcomes, skips, and reports; and states that read-only production verification neither deploys nor grants authority.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "dependency_aware_skips_and_source_fidelity",
+        "rating": 2,
+        "weight": 10,
+        "evidence": "It names #34/#35 landing and contract discovery, dependency activation/removal of exemptions, FEATURE_MAP local-to-preview-to-production documentation, and preservation of product ownership and URL vocabulary.",
+        "omissions": "No material omission against this criterion."
+      },
+      {
+        "criterion": "commands_handoff_and_bounded_autonomy",
+        "rating": 2,
+        "weight": 5,
+        "evidence": "It names `pnpm verify`, browser/profile regressions, source/outcome/skip recording, proof locations, and separate authorization for PR, deployment, publication, mutation, secrets, and merge.",
+        "omissions": "No material omission against this criterion."
+      }
+    ]
+  },
+  "weighted_totals": {
+    "A": 100,
+    "B": 92.5
+  },
+  "target_properties": {
+    "A": {
+      "independent_expected_facts_oracle": {
+        "satisfied": true,
+        "basis": "\"independently specified fixture\" and \"independent product/collection identity-to-slug and legacy-path manifest\"; it explicitly forbids deriving the comparison manifest from tested output."
+      },
+      "known_good_populated_passing_case": {
+        "satisfied": true,
+        "basis": "The plan explicitly names a populated fixture with home, collection, and products and expects permitted requests, valid routes, and a passing result on deterministic fixtures and L/P/R. This is prospective, not claimed execution."
+      }
+    },
+    "B": {
+      "independent_expected_facts_oracle": {
+        "satisfied": false,
+        "basis": "It specifies checks and fixtures but does not say expected facts come from an independent source or prohibit deriving the oracle from the implementation/output."
+      },
+      "known_good_populated_passing_case": {
+        "satisfied": false,
+        "basis": "It mentions successful deterministic fixtures and local integration, but does not explicitly describe a known-good populated site with pages/products and an expected observation on that capable surface."
+      }
+    }
+  },
+  "comparison": {
+    "verdict": "A-better",
+    "confidence": "high",
+    "reason": "A is hard-eligible and materially stronger on positive proof validity: it independently specifies expected facts and a populated passing case, while B leaves both properties implicit. A also explicitly guards against an oracle derived from sitemap/canonical/redirect/JSON-LD output. B is otherwise substantially complete and has no hard failure or material authority/environment regression, so the difference is a focused evidence-design advantage rather than a broad contract failure.",
+    "material_regressions": [
+      {
+        "plan": "B",
+        "basis": "Against A and the fixed positive-proof criterion, B omits an independent oracle and an explicit known-good populated passing observation. Its \"successful behavior\" fixtures could be empty, output-derived, or otherwise fail to prove the positive contract."
+      }
+    ],
+    "adoption_note": "The verdict compares plans only and does not authorize implementation, promotion, deployment, publication, PR creation, or merge."
+  }
+}

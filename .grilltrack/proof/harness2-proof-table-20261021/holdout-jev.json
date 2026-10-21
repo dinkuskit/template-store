@@ -1,0 +1,28 @@
+{
+  "status": "ok",
+  "result": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "plan_preference": {
+        "type": "choice",
+        "choice": "A-better",
+        "confidence": 0.45,
+        "probabilities": {
+          "A-better": 0.59,
+          "B-better": 0.12,
+          "equivalent": 0.25,
+          "insufficient-evidence": 0.04
+        }
+      }
+    },
+    "usage": {
+      "inputTokens": 14354,
+      "outputTokens": 62
+    }
+  },
+  "provenance": {
+    "judge": "jev",
+    "route": "typesafe-hosted",
+    "model": "jev-1.13.0"
+  }
+}
