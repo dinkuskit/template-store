@@ -1,4 +1,5 @@
 ---
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import { ShopperAccount } from "../features/shopper-account/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
@@ -42,5 +43,6 @@ const previewUnavailable = isPlayground && isPlaygroundPreviewHost(Astro.url, pl
         previewUnavailableOrigin={previewUnavailable ? playgroundAccountOrigin : undefined}
       />
     </main>
+    <StoreFooter profile={profile} />
   </body>
 </html>

@@ -80,10 +80,16 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator("[data-inventory-sku]")).toHaveCount(0);
   await expect(page.locator("[data-merch-item=everyday-tee]")).toHaveCount(0);
   await expect(page.locator("[data-merch-item=canvas-cap]")).toHaveCount(0);
+  const footerPolicies = page.getByRole("navigation", { name: "Policies & Care" });
+  await expect(footerPolicies).toContainText("Policies & Care");
+  await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("href", "/shipping");
+  await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("href", "/returns");
   await page.screenshot({ path: resolve(root, "public-home.png"), fullPage: true, animations: "disabled" });
 
   await page.goto("/cart");
   await expect(page.locator("[data-guest-cart-checkout]")).toHaveText("Checkout unavailable");
+  await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("href", "/shipping");
+  await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("href", "/returns");
 
   const tees = collectionPath("Tees");
   const collectionResponse = await page.goto(tees);
@@ -121,10 +127,14 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   expect((await request.get("/returns")).status()).toBe(200);
   await page.goto("/shipping");
   await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
+  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/);
+  await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
   await page.goto("/returns");
   await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
+  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\d+ days/);
+  await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
   const googleFeed = await request.get("/feeds/google-merchant.xml");
   const metaFeed = await request.get("/feeds/meta-catalog.csv");
   expect(googleFeed.status()).toBe(503);

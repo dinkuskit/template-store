@@ -1,10 +1,13 @@
 ---
-import { getEmDashEntry } from "emdash";
+import { getEmDashEntry, type PortableTextBlock } from "emdash";
+import { PortableText } from "emdash/ui";
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import { COMMERCE_NATIVE_PLUGIN_ID } from "../features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../features/guest-cart/checkout-protocol.js";
 import { readInstalledCommercePolicies } from "../features/commerce-policies/index.js";
 import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
 import { canonicalUrl } from "../features/store-shell/structured-data.js";
 import "../features/store-shell/global.css";
 
@@ -15,6 +18,7 @@ const policies = await readInstalledCommercePolicies(
   process.env.DINKUS_CATALOG_PROFILE === "native-development" ? COMMERCE_NATIVE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
 ).catch(() => null);
 const returns = policies?.returns ?? null;
+const content = Array.isArray(entry?.data?.content) ? (entry.data.content as PortableTextBlock[]) : [];
 const canonical = canonicalUrl("/returns", Astro.site, Astro.url);
 const returnCategoryLabels = {
   MerchantReturnFiniteReturnWindow: "Limited return window",
@@ -42,15 +46,23 @@ const returnFeeLabels = {
       <h1>{entry?.data?.title ?? "Returns"}</h1>
       <p>{(entry?.data as { intro?: string } | undefined)?.intro ?? "Return details are configured by the connected Commerce store."}</p>
       {returns ? (
-        <dl data-return-policy data-policy-revision={returns.revision} data-return-days={returns.merchantReturnDays} data-return-category={returns.returnPolicyCategory} data-return-method={returns.returnMethod} data-return-fees={returns.returnFees} data-return-countries={returns.applicableCountry?.join(",")}>
-          {returns.returnPolicyCategory && <><dt>Return policy</dt><dd>{returnCategoryLabels[returns.returnPolicyCategory]}</dd></>}
-          {returns.merchantReturnDays !== undefined && <><dt>Return window</dt><dd>{returns.merchantReturnDays} days</dd></>}
-          {returns.returnMethod && <><dt>Return method</dt><dd>{returnMethodLabels[returns.returnMethod]}</dd></>}
-          {returns.returnFees && <><dt>Return fees</dt><dd>{returnFeeLabels[returns.returnFees]}</dd></>}
-          {returns.applicableCountry && <><dt>Applicable countries</dt><dd>{returns.applicableCountry.join(", ")}</dd></>}
-        </dl>
+        <>
+          <dl data-return-policy data-policy-revision={returns.revision} data-return-days={returns.merchantReturnDays} data-return-category={returns.returnPolicyCategory} data-return-method={returns.returnMethod} data-return-fees={returns.returnFees} data-return-countries={returns.applicableCountry?.join(",")}>
+            {returns.returnPolicyCategory && <><dt>Return policy</dt><dd>{returnCategoryLabels[returns.returnPolicyCategory]}</dd></>}
+            {returns.merchantReturnDays !== undefined && <><dt>Return window</dt><dd>{returns.merchantReturnDays} days</dd></>}
+            {returns.returnMethod && <><dt>Return method</dt><dd>{returnMethodLabels[returns.returnMethod]}</dd></>}
+            {returns.returnFees && <><dt>Return fees</dt><dd>{returnFeeLabels[returns.returnFees]}</dd></>}
+            {returns.applicableCountry && <><dt>Applicable countries</dt><dd>{returns.applicableCountry.join(", ")}</dd></>}
+          </dl>
+          {content.length > 0 && (
+            <div class="policy-page__body prose" data-policy-body data-return-policy-body>
+              <PortableText value={content} components={legacyPortableTextComponents} />
+            </div>
+          )}
+        </>
       ) : <p role="status" data-return-policy-unset>Return policy is not configured.</p>}
     </main>
+    <StoreFooter profile={profile} />
   </body>
 </html>
 <style>.policy-page{width:min(52rem,calc(100% - 2rem));margin:3rem auto;line-height:1.6}.policy-page a{color:inherit}.policy-page dl{display:grid;grid-template-columns:minmax(10rem,1fr) 2fr;gap:.5rem 1rem}.policy-page dt{font-weight:800}</style>

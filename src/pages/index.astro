@@ -1,4 +1,5 @@
 ---
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import { getEmDashEntry, getEmDashCollection, getMenu, getSiteSettings, type PortableTextBlock } from "emdash";
 import { Blocks, PortableText, type BlockValue } from "emdash/ui";
@@ -124,9 +125,6 @@ const unmanaged = demonstrations?.unmanaged;
         <aside data-product-url-errors hidden>{productLinks.errors.join(" | ")}</aside>
       )}
     </main>
-    <footer class="store-footer">
-      Transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}; EmDash owns the
-      surrounding composition.
-    </footer>
+    <StoreFooter profile={profile} />
   </body>
 </html>
