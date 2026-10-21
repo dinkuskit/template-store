@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   COMMERCE_PLUGIN_ID,
   PAID_ORDER_SCHEMA,
@@ -15,6 +16,8 @@ import {
 import { listOrdersForEmail, type OrdersCollection } from "@dinkuskit/commerce/features/orders";
 import { PluginStorageRepository } from "emdash";
 
+import { playgroundNow } from "../playground-checkout/binding-auth.js";
+import { readTrustedReturnOrigin } from "../playground-checkout/index.js";
 import {
   DEMO_SHOPPER_EMAIL,
   DEMO_SHOPPER_ORDER_ID,
@@ -25,9 +28,46 @@ type EnvLike = Record<string, unknown>;
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 
 export const PLAYGROUND_LEADS_DB_BINDING = "PLAYGROUND_LEADS_DB";
+export const PLAYGROUND_LEADS_DO_NAME = "dinkuskit:playground:verified-leads";
 export const PLAYGROUND_EMAIL_BINDING = "EMAIL";
 export const PLAYGROUND_DEFAULT_FROM_EMAIL = "accounts@dinkuskit.com";
 export const PLAYGROUND_ORIGIN = "https://playground.dinkuskit.com";
+export const PLAYGROUND_ACCOUNT_ORIGIN_ENV = "DINKUS_PLAYGROUND_ACCOUNT_ORIGIN";
+export const PLAYGROUND_PREVIEW_ORIGIN_WILDCARD = "https://pr-*.playground.dinkuskit.com";
+
+const PR_PREVIEW_ORIGIN_PATTERN = /^https:\/\/pr-[1-9][0-9]*\.playground\.dinkuskit\.com$/u;
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+type ShopperAccountRequestContext = Readonly<{
+  requestOrigin: string;
+  env: EnvLike;
+}>;
+
+const requestContext = new AsyncLocalStorage<ShopperAccountRequestContext>();
+
+export function withShopperAccountRequest<T>(
+  requestOrigin: string,
+  env: EnvLike,
+  run: () => T,
+): T {
+  return requestContext.run({ requestOrigin, env }, run);
+}
+
+function resolveActiveEnv(env: EnvLike = process.env): EnvLike {
+  return (
+    requestContext.getStore()?.env ??
+    (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ??
+    env
+  );
+}
+
+function resolveActiveRequestOrigin(explicitOrigin?: string): string | undefined {
+  return (
+    explicitOrigin ??
+    requestContext.getStore()?.requestOrigin ??
+    (globalThis as { __dinkusPlaygroundRequestOrigin?: string }).__dinkusPlaygroundRequestOrigin
+  );
+}
 
 export interface CloudflareEmailBinding {
   send(message: {
@@ -48,6 +88,18 @@ export interface D1PreparedStatementLike {
 
 export interface D1DatabaseLike {
   prepare(query: string): D1PreparedStatementLike;
+}
+
+export interface LeadsDurableObjectStubLike {
+  query(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ rows: Record<string, unknown>[]; changes?: number }>;
+}
+
+export interface LeadsDurableObjectNamespaceLike {
+  idFromName(name: string): unknown;
+  get(id: unknown): LeadsDurableObjectStubLike;
 }
 
 export type CapturedProofEmail = Readonly<{
@@ -75,10 +127,11 @@ function extractSixDigitCode(text: string): string | null {
 }
 
 export function isLocalProofOrDemoMode(env: EnvLike = process.env): boolean {
+  const activeEnv = resolveActiveEnv(env);
   return (
-    env.DINKUS_LOCAL_PROOF === "1" ||
-    env.DINKUS_PROOF_MODE === "1" ||
-    env.DINKUS_STOREFRONT_PROFILE === "proof"
+    activeEnv.DINKUS_LOCAL_PROOF === "1" ||
+    activeEnv.DINKUS_PROOF_MODE === "1" ||
+    activeEnv.DINKUS_STOREFRONT_PROFILE === "proof"
   );
 }
 
@@ -114,12 +167,31 @@ function isD1Database(candidate: unknown): candidate is D1DatabaseLike {
   );
 }
 
+function isLeadsDurableObjectNamespace(
+  candidate: unknown,
+): candidate is LeadsDurableObjectNamespaceLike {
+  return (
+    typeof candidate === "object" &&
+    candidate !== null &&
+    typeof (candidate as { idFromName?: unknown }).idFromName === "function" &&
+    typeof (candidate as { get?: unknown }).get === "function"
+  );
+}
+
+export function isPlaygroundLeadStorageConfigured(env: EnvLike = process.env): boolean {
+  const activeEnv = resolveActiveEnv(env);
+  const leadsDb = activeEnv[PLAYGROUND_LEADS_DB_BINDING];
+  if (isD1Database(leadsDb) || isLeadsDurableObjectNamespace(leadsDb)) {
+    return true;
+  }
+  return activeEnv.DINKUS_LOCAL_PROOF === "1";
+}
+
 export async function deliverPlaygroundShopperEmail(
   message: ShopperEmailMessage,
   env: EnvLike = process.env,
 ): Promise<void> {
-  const activeEnv =
-    (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ?? env;
+  const activeEnv = resolveActiveEnv(env);
   const recipient = message.to.trim().toLowerCase();
   const emailBinding = activeEnv[PLAYGROUND_EMAIL_BINDING];
   if (isLocalProofOrDemoMode(activeEnv)) {
@@ -128,7 +200,7 @@ export async function deliverPlaygroundShopperEmail(
       subject: message.subject,
       text: message.text,
       code: extractSixDigitCode(message.text),
-      sentAt: new Date().toISOString(),
+      sentAt: new Date(playgroundNow(activeEnv)).toISOString(),
     });
     if (isEmailBinding(emailBinding)) {
       await emailBinding.send({
@@ -151,20 +223,54 @@ export async function deliverPlaygroundShopperEmail(
   });
 }
 
-export function resolvePlaygroundAccountSiteOrigin(env: EnvLike = process.env): string {
-  const activeEnv =
-    (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ?? env;
-  if (typeof activeEnv.EMDASH_SITE_URL === "string" && activeEnv.EMDASH_SITE_URL.trim() !== "") {
-    return activeEnv.EMDASH_SITE_URL.trim();
+function parseBareOrigin(raw: unknown, allowLoopbackHttp: boolean): string | null {
+  if (typeof raw !== "string" || raw.trim() === "") return null;
+  try {
+    const url = new URL(raw.trim());
+    if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+      return null;
+    }
+    if (url.protocol === "https:") return url.origin;
+    if (url.protocol === "http:" && allowLoopbackHttp && LOOPBACK_HOSTS.has(url.hostname)) {
+      return url.origin;
+    }
+    return null;
+  } catch {
+    return null;
   }
-  if (
-    activeEnv.DINKUS_LOCAL_PROOF === "1" &&
-    typeof activeEnv.DINKUS_LOCAL_PROOF_SITE_URL === "string" &&
-    activeEnv.DINKUS_LOCAL_PROOF_SITE_URL.trim() !== ""
-  ) {
-    return activeEnv.DINKUS_LOCAL_PROOF_SITE_URL.trim();
+}
+
+export function resolvePlaygroundAccountSiteOrigin(
+  env: EnvLike = process.env,
+  explicitRequestOrigin?: string,
+): string | undefined {
+  const activeEnv = resolveActiveEnv(env);
+  const trustedSiteUrl = readTrustedReturnOrigin(activeEnv);
+  if (trustedSiteUrl) {
+    return trustedSiteUrl;
   }
-  return PLAYGROUND_ORIGIN;
+  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+    const localProofOrigin = parseBareOrigin(activeEnv.DINKUS_LOCAL_PROOF_SITE_URL, true);
+    if (localProofOrigin) {
+      return localProofOrigin;
+    }
+  }
+  const configuredAccountOrigin = activeEnv[PLAYGROUND_ACCOUNT_ORIGIN_ENV];
+  if (typeof configuredAccountOrigin === "string") {
+    const trimmed = configuredAccountOrigin.trim();
+    if (trimmed === PLAYGROUND_PREVIEW_ORIGIN_WILDCARD) {
+      const requestOrigin = resolveActiveRequestOrigin(explicitRequestOrigin);
+      if (typeof requestOrigin === "string" && PR_PREVIEW_ORIGIN_PATTERN.test(requestOrigin)) {
+        return requestOrigin;
+      }
+      return undefined;
+    }
+    const bareHttps = parseBareOrigin(trimmed, false);
+    if (bareHttps) {
+      return bareHttps;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -183,64 +289,171 @@ export function isPlaygroundPreviewHost(requestUrl: URL, trustedOrigin: string):
 
 export function playgroundShopperAccountHostOptions(
   env: EnvLike = process.env,
+  fallbackSiteUrl?: string,
 ): ShopperAccountHostOptions {
   return {
-    siteUrl: resolvePlaygroundAccountSiteOrigin(env),
+    get siteUrl() {
+      return resolvePlaygroundAccountSiteOrigin(env) ?? fallbackSiteUrl;
+    },
+    get topLevelSiteUrl() {
+      return resolvePlaygroundAccountSiteOrigin(env) ?? fallbackSiteUrl;
+    },
     storeName: "DinkusKit Store",
+    now: () => playgroundNow(resolveActiveEnv(env)),
     sendEmail: (message: ShopperEmailMessage) => deliverPlaygroundShopperEmail(message, env),
   };
 }
 
+const LEADS_TABLE_DDL = `CREATE TABLE IF NOT EXISTS playground_email_leads (
+  email TEXT PRIMARY KEY,
+  first_verified_at TEXT NOT NULL,
+  last_verified_at TEXT NOT NULL,
+  opt_in_source TEXT NOT NULL,
+  verification_count INTEGER NOT NULL DEFAULT 1
+)`;
+
 export async function recordVerifiedPlaygroundLead(
   email: string,
   env: EnvLike = process.env,
-  nowIso = new Date().toISOString(),
+  nowIso?: string,
 ): Promise<boolean> {
   const normalized = email.trim().toLowerCase();
   if (!normalized || !normalized.includes("@") || normalized === DEMO_SHOPPER_EMAIL) {
     return false;
   }
-  const activeEnv =
-    (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ?? env;
-  const existing = capturedProofLeads.get(normalized);
-  capturedProofLeads.set(normalized, {
-    email: normalized,
-    firstVerifiedAt: existing?.firstVerifiedAt ?? nowIso,
-    lastVerifiedAt: nowIso,
-    optInSource: "playground-account-otp",
-    verificationCount: (existing?.verificationCount ?? 0) + 1,
-  });
+  const activeEnv = resolveActiveEnv(env);
+  const timestamp = nowIso ?? new Date(playgroundNow(activeEnv)).toISOString();
   const leadsDb = activeEnv[PLAYGROUND_LEADS_DB_BINDING];
-  if (!isD1Database(leadsDb)) {
+
+  if (isD1Database(leadsDb)) {
+    await leadsDb.prepare(LEADS_TABLE_DDL).run();
+    await leadsDb
+      .prepare(
+        `INSERT INTO playground_email_leads (
+          email,
+          first_verified_at,
+          last_verified_at,
+          opt_in_source,
+          verification_count
+        ) VALUES (?1, ?2, ?3, ?4, 1)
+        ON CONFLICT(email) DO UPDATE SET
+          last_verified_at = excluded.last_verified_at,
+          verification_count = playground_email_leads.verification_count + 1`,
+      )
+      .bind(normalized, timestamp, timestamp, "playground-account-otp")
+      .run();
+    if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+      const existing = capturedProofLeads.get(normalized);
+      capturedProofLeads.set(normalized, {
+        email: normalized,
+        firstVerifiedAt: existing?.firstVerifiedAt ?? timestamp,
+        lastVerifiedAt: timestamp,
+        optInSource: "playground-account-otp",
+        verificationCount: (existing?.verificationCount ?? 0) + 1,
+      });
+    }
     return true;
   }
-  await leadsDb
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS playground_email_leads (
-        email TEXT PRIMARY KEY,
-        first_verified_at TEXT NOT NULL,
-        last_verified_at TEXT NOT NULL,
-        opt_in_source TEXT NOT NULL,
-        verification_count INTEGER NOT NULL DEFAULT 1
-      )`,
-    )
-    .run();
-  await leadsDb
-    .prepare(
+
+  if (isLeadsDurableObjectNamespace(leadsDb)) {
+    const stub = leadsDb.get(leadsDb.idFromName(PLAYGROUND_LEADS_DO_NAME));
+    await stub.query(LEADS_TABLE_DDL);
+    await stub.query(
       `INSERT INTO playground_email_leads (
         email,
         first_verified_at,
         last_verified_at,
         opt_in_source,
         verification_count
-      ) VALUES (?1, ?2, ?3, ?4, 1)
+      ) VALUES (?, ?, ?, ?, 1)
       ON CONFLICT(email) DO UPDATE SET
         last_verified_at = excluded.last_verified_at,
         verification_count = playground_email_leads.verification_count + 1`,
-    )
-    .bind(normalized, nowIso, nowIso, "playground-account-otp")
-    .run();
-  return true;
+      [normalized, timestamp, timestamp, "playground-account-otp"],
+    );
+    if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+      const existing = capturedProofLeads.get(normalized);
+      capturedProofLeads.set(normalized, {
+        email: normalized,
+        firstVerifiedAt: existing?.firstVerifiedAt ?? timestamp,
+        lastVerifiedAt: timestamp,
+        optInSource: "playground-account-otp",
+        verificationCount: (existing?.verificationCount ?? 0) + 1,
+      });
+    }
+    return true;
+  }
+
+  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+    const existing = capturedProofLeads.get(normalized);
+    capturedProofLeads.set(normalized, {
+      email: normalized,
+      firstVerifiedAt: existing?.firstVerifiedAt ?? timestamp,
+      lastVerifiedAt: timestamp,
+      optInSource: "playground-account-otp",
+      verificationCount: (existing?.verificationCount ?? 0) + 1,
+    });
+    return true;
+  }
+
+  throw new Error("Durable playground lead database (PLAYGROUND_LEADS_DB) is not configured.");
+}
+
+export async function readVerifiedPlaygroundLeads(
+  env: EnvLike = process.env,
+): Promise<PlaygroundLeadRecord[]> {
+  const activeEnv = resolveActiveEnv(env);
+  const leadsDb = activeEnv[PLAYGROUND_LEADS_DB_BINDING];
+  const selectSql = `SELECT
+    email,
+    first_verified_at AS firstVerifiedAt,
+    last_verified_at AS lastVerifiedAt,
+    opt_in_source AS optInSource,
+    verification_count AS verificationCount
+  FROM playground_email_leads
+  ORDER BY email ASC`;
+
+  if (isD1Database(leadsDb)) {
+    await leadsDb.prepare(LEADS_TABLE_DDL).run();
+    const res = await leadsDb.prepare(selectSql).all<Record<string, unknown>>();
+    return (res.results ?? []).map((row) => ({
+      email: String(row.email ?? ""),
+      firstVerifiedAt: String(row.firstVerifiedAt ?? row.first_verified_at ?? ""),
+      lastVerifiedAt: String(row.lastVerifiedAt ?? row.last_verified_at ?? ""),
+      optInSource: String(row.optInSource ?? row.opt_in_source ?? ""),
+      verificationCount: Number(row.verificationCount ?? row.verification_count ?? 0),
+    }));
+  }
+
+  if (isLeadsDurableObjectNamespace(leadsDb)) {
+    const stub = leadsDb.get(leadsDb.idFromName(PLAYGROUND_LEADS_DO_NAME));
+    await stub.query(LEADS_TABLE_DDL);
+    const res = await stub.query(selectSql);
+    return (res.rows ?? []).map((row) => ({
+      email: String(row.email ?? ""),
+      firstVerifiedAt: String(row.firstVerifiedAt ?? row.first_verified_at ?? ""),
+      lastVerifiedAt: String(row.lastVerifiedAt ?? row.last_verified_at ?? ""),
+      optInSource: String(row.optInSource ?? row.opt_in_source ?? ""),
+      verificationCount: Number(row.verificationCount ?? row.verification_count ?? 0),
+    }));
+  }
+
+  if (activeEnv.DINKUS_LOCAL_PROOF === "1") {
+    return readCapturedProofLeads();
+  }
+
+  return [];
+}
+
+export async function revokeShopperSessionById(db: Db, sessionId: string): Promise<void> {
+  if (!sessionId) return;
+  const sessions = new PluginStorageRepository(
+    db,
+    COMMERCE_PLUGIN_ID,
+    NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions,
+    [],
+  );
+  await sessions.delete(sessionId);
 }
 
 export async function ensureDemoShopperOrder(db: Db): Promise<void> {
@@ -298,6 +511,7 @@ export async function ensureDemoShopperOrder(db: Db): Promise<void> {
 export async function mintDemoShopperSession(
   db: Db,
   siteOrigin: string,
+  env: EnvLike = process.env,
 ): Promise<{
   ok: true;
   capability: {
@@ -314,6 +528,7 @@ export async function mintDemoShopperSession(
   };
 }> {
   await ensureDemoShopperOrder(db);
+  const activeEnv = resolveActiveEnv(env);
   const storage = {
     [NATIVE_SHOPPER_ACCOUNT_STORAGE.customers]: new PluginStorageRepository(
       db,
@@ -351,6 +566,7 @@ export async function mintDemoShopperSession(
     host: {
       siteUrl: siteOrigin,
       storeName: "DinkusKit Playground",
+      now: () => playgroundNow(activeEnv),
       sendEmail: async (message: ShopperEmailMessage) => {
         capturedCode = extractSixDigitCode(message.text);
       },

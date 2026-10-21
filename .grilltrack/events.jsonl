@@ -95,3 +95,6 @@
 {"action": "decision_locked", "at": "2026-10-21T02:54:32+00:00", "data": {"decision_id": "shopper-accounts-playground-20261020"}, "event_id": "3032cfee-c009-4c14-845e-7924769ee06e"}
 {"action": "decision_implemented", "at": "2026-10-21T03:48:46+00:00", "data": {"decision_id": "shopper-accounts-playground-20261020"}, "event_id": "b0538b39-149e-4bf6-97c9-ebe3fa544f8a"}
 {"action": "decision_verified", "at": "2026-10-21T03:48:46+00:00", "data": {"decision_id": "shopper-accounts-playground-20261020"}, "event_id": "b40b27e1-d5d2-49b1-98b7-87ab3b60def8"}
+{"action": "decision_reviewed", "at": "2026-10-21T12:53:21+00:00", "data": {"classifications": ["required_fix"], "decision_id": "shopper-accounts-playground-20261020", "ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md", "result": "findings", "reviewed_at": "2026-10-21T12:53:21+00:00", "source_identity": "git:900f90a5d5b760a30c78651573722ddfd8957c2b"}, "event_id": "bad85933-1dff-4458-9e3a-b06c798cccd5"}
+{"action": "decision_implemented", "at": "2026-10-21T12:53:21+00:00", "data": {"decision_id": "shopper-accounts-playground-20261020"}, "event_id": "68b97096-bc76-410b-924f-e14620eee5dd"}
+{"action": "decision_verified", "at": "2026-10-21T12:53:21+00:00", "data": {"decision_id": "shopper-accounts-playground-20261020"}, "event_id": "47f4a171-d0f6-4917-a1b5-2e7a2aa63a83"}

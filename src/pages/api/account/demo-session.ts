@@ -1,6 +1,9 @@
 import type { APIRoute } from "astro";
 import { isDemoCatalogProfile } from "../../../features/playground/demo-products.js";
-import { mintDemoShopperSession } from "../../../features/shopper-account/playground-runtime.js";
+import {
+  mintDemoShopperSession,
+  resolvePlaygroundAccountSiteOrigin,
+} from "../../../features/shopper-account/playground-runtime.js";
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store",
@@ -15,8 +18,22 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
       { status: 404, headers: NO_STORE_HEADERS },
     );
   }
+  const playgroundEnv =
+    (locals as { __playgroundEnv?: Record<string, unknown> }).__playgroundEnv ??
+    (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv ??
+    process.env;
+  const trustedOrigin = resolvePlaygroundAccountSiteOrigin(playgroundEnv, url.origin);
+  if (!trustedOrigin) {
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: { code: "UNAVAILABLE", message: "Could not start the demo shopper session." },
+      }),
+      { status: 503, headers: NO_STORE_HEADERS },
+    );
+  }
   const originHeader = request.headers.get("origin")?.trim() ?? "";
-  if (!originHeader || originHeader !== url.origin) {
+  if (!originHeader || originHeader !== trustedOrigin || url.origin !== trustedOrigin) {
     return new Response(
       JSON.stringify({ ok: false, error: { code: "ORIGIN_DENIED", message: "Cross-origin requests are not allowed." } }),
       { status: 403, headers: NO_STORE_HEADERS },
@@ -28,7 +45,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
       const { getDb } = await import("emdash/runtime");
       db = (await getDb()) as Parameters<typeof mintDemoShopperSession>[0];
     }
-    const minted = await mintDemoShopperSession(db, url.origin);
+    const minted = await mintDemoShopperSession(db, trustedOrigin, playgroundEnv);
     return new Response(JSON.stringify(minted), { status: 200, headers: NO_STORE_HEADERS });
   } catch {
     return new Response(

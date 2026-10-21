@@ -76,7 +76,7 @@ writeFileSync(missingOriginConfig, JSON.stringify({
   vars: missingOriginVars,
   previews: { ...wranglerConfig.previews, vars: missingOriginVars },
 }, null, 2));
-const serverEnv = { ...process.env, DINKUS_LOCAL_PROOF: "1",
+const serverEnv = { ...process.env, ASTRO_DEV_BACKGROUND: "0", DINKUS_LOCAL_PROOF: "1",
     DINKUS_CHECKOUT_ENABLED: "1",
     DINKUS_LOCAL_PROOF_SITE_URL: `http://127.0.0.1:${appPort}`,
     PAYMENTS_URL: "https://payments.local", PAYMENTS_LOCAL_HTTP_URL: paymentsUrl,
@@ -85,10 +85,32 @@ const serverEnv = { ...process.env, DINKUS_LOCAL_PROOF: "1",
     EMDASH_SITE_URL: `http://127.0.0.1:${appPort}`, DINKUS_TEMPLATE_DB_URL: `file:${join(artifact, "visitor.db")}`,
     DINKUS_TEMPLATE_UPLOADS_DIR: join(artifact, "uploads"),
     DINKUS_PLAYGROUND_WRANGLER_CONFIG: wranglerProofConfig };
-const app = spawn("pnpm", ["exec", "astro", "dev", "--config", "astro.playground.config.mjs",
-  "--host", "127.0.0.1", "--port", String(appPort), "--force"], {
-  cwd: root, stdio: ["ignore", "pipe", "pipe"], env: serverEnv,
+const activeChildren = new Set();
+process.on("exit", () => {
+  for (const child of activeChildren) {
+    try { process.kill(-child.pid, "SIGTERM"); } catch {}
+  }
 });
+function spawnServer(env) {
+  const child = spawn("pnpm", ["exec", "astro", "dev", "--config", "astro.playground.config.mjs",
+    "--host", "127.0.0.1", "--port", String(appPort), "--force"], {
+    cwd: root, detached: true, stdio: ["ignore", "pipe", "pipe"], env,
+  });
+  activeChildren.add(child);
+  child.once("exit", () => activeChildren.delete(child));
+  return child;
+}
+async function stopServer(child) {
+  try { process.kill(-child.pid, "SIGTERM"); } catch { child.kill("SIGTERM"); }
+  await Promise.race([
+    new Promise((resolveExit) => child.once("exit", resolveExit)),
+    new Promise((resolveTimeout) => setTimeout(resolveTimeout, 2000)),
+  ]);
+  try { process.kill(-child.pid, "SIGKILL"); } catch {}
+  child.stdout?.destroy();
+  child.stderr?.destroy();
+}
+const app = spawnServer(serverEnv);
 const output = [];
 app.stdout.on("data", (chunk) => output.push(String(chunk)));
 app.stderr.on("data", (chunk) => output.push(String(chunk)));
@@ -177,10 +199,8 @@ async function statusMatrix(label, at = origin) {
 }
 await statusMatrix("live");
 const settled = cases["live:proxy:authorized"];
-app.kill("SIGTERM");
-await new Promise((resolveExit) => app.once("exit", resolveExit));
-const restarted = spawn("pnpm", ["exec", "astro", "dev", "--config", "astro.playground.config.mjs",
-  "--host", "127.0.0.1", "--port", String(appPort), "--force"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: serverEnv });
+await stopServer(app);
+const restarted = spawnServer(serverEnv);
 const restartedOutput = [];
 restarted.stdout.on("data", (chunk) => restartedOutput.push(String(chunk)));
 restarted.stderr.on("data", (chunk) => restartedOutput.push(String(chunk)));
@@ -188,8 +208,7 @@ await waitForHttp(`${origin}/`);
 await waitForReady(restartedOutput);
 await warmSession(origin, cookie);
 await statusMatrix("restarted");
-restarted.kill("SIGTERM");
-await new Promise((resolveExit) => restarted.once("exit", resolveExit));
+await stopServer(restarted);
 const expiredEnv = {
   ...serverEnv,
   DINKUS_LOCAL_PROOF_NOW: String(Date.now() + 2_000_000),
@@ -197,8 +216,7 @@ const expiredEnv = {
   EMDASH_SITE_URL: `http://127.0.0.1:${appPort}`,
   DINKUS_PLAYGROUND_WRANGLER_CONFIG: expiredProofConfig,
 };
-const expired = spawn("pnpm", ["exec", "astro", "dev", "--config", "astro.playground.config.mjs",
-  "--host", "127.0.0.1", "--port", String(appPort), "--force"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: expiredEnv });
+const expired = spawnServer(expiredEnv);
 const expiredOutput = [];
 expired.stdout.on("data", (chunk) => expiredOutput.push(String(chunk)));
 expired.stderr.on("data", (chunk) => expiredOutput.push(String(chunk)));
@@ -214,8 +232,7 @@ writeFileSync(join(artifact, "payments-calls.json"), JSON.stringify(calls.map(({
 const summary = Object.fromEntries(Object.entries(cases).map(([key, entry]) => [key,
   { status: entry.status, state: checkoutOf(entry)?.state ?? null, paymentsCalls: entry.paymentsCalls }]));
 writeFileSync(join(artifact, "status-matrix.json"), JSON.stringify(summary, null, 2) + "\n");
-expired.kill("SIGTERM");
-await new Promise((resolveExit) => expired.once("exit", resolveExit));
+await stopServer(expired);
 
 // Missing trusted return origin: the flag and every Payments value are set,
 // but EMDASH_SITE_URL is not provisioned (neither in the Wrangler vars nor
@@ -223,8 +240,7 @@ await new Promise((resolveExit) => expired.once("exit", resolveExit));
 // unavailable, and neither checkout entry reaches Commerce or Payments.
 const { EMDASH_SITE_URL: _omittedOrigin, ...missingOriginProcessEnv } = serverEnv;
 const missingOriginEnv = { ...missingOriginProcessEnv, DINKUS_PLAYGROUND_WRANGLER_CONFIG: missingOriginConfig };
-const missingOrigin = spawn("pnpm", ["exec", "astro", "dev", "--config", "astro.playground.config.mjs",
-  "--host", "127.0.0.1", "--port", String(appPort), "--force"], { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: missingOriginEnv });
+const missingOrigin = spawnServer(missingOriginEnv);
 const missingOriginOutput = [];
 missingOrigin.stdout.on("data", (chunk) => missingOriginOutput.push(String(chunk)));
 missingOrigin.stderr.on("data", (chunk) => missingOriginOutput.push(String(chunk)));
@@ -237,8 +253,7 @@ const missingPrepare = await request("/_emdash/api/plugins/dinkus-commerce/check
 const missingStart = await request("/_emdash/api/plugins/dinkus-commerce/checkout/guest/start", missingCookie,
   { lines: [{ catalogItemId: productId, quantity: 1 }] }, "capability-proof");
 const missingOriginPaymentsCalls = calls.length - missingCallsBefore;
-missingOrigin.kill("SIGTERM");
-await new Promise((resolveExit) => missingOrigin.once("exit", resolveExit));
+await stopServer(missingOrigin);
 payments.close();
 const failures = [];
 if (provisionedCart !== "true") failures.push(`provisioned origin: cart data-checkout-available=${provisionedCart}, expected true`);
@@ -268,6 +283,7 @@ if (failures.length) {
   throw new Error(`real HTTP paid-order proof failed:\n${failures.join("\n")}\n${output.join("").slice(-4000)}`);
 }
 console.log("PASS_PLAYGROUND_HTTP_PAID_ORDER");
+process.exit(0);
 
 async function waitForHttp(url) {
   for (let i = 0; i < 120; i++) {
