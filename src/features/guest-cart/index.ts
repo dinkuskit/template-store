@@ -36,7 +36,10 @@ export {
   GUEST_CHECKOUT_REASON,
   GUEST_CHECKOUT_READY_LABEL,
   canAddCommerceProductToCart,
+  guestCartFallbackThumbnail,
+  guestCartGarmentIllustration,
   guestReturnQueryIsPresent,
+  isSafeGuestCartThumbnailSrc,
   lineBlockReason,
   parseGuestCartSnapshotResponse,
   presentGuestCart,
@@ -48,10 +51,12 @@ export {
 } from "./present.js";
 export type {
   GuestCartCatalogSnapshot,
+  GuestCartGarmentIllustration,
   GuestCartLineReason,
   GuestCartLineView,
   GuestCartPublicAvailability,
   GuestCartPublicPrice,
+  GuestCartPublicThumbnail,
   GuestCartView,
 } from "./present.js";
 export { parseGuestCartSnapshotIds } from "./snapshot-ids.js";

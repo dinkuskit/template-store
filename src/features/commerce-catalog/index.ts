@@ -1,4 +1,4 @@
-import { PluginStorageRepository } from "emdash";
+import { PluginStorageRepository, handleMediaGet } from "emdash";
 import { getDb } from "emdash/runtime";
 import {
   COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, CATALOG_PRICES_COLLECTION,
@@ -9,8 +9,10 @@ import {
   type CatalogBackorderPolicyRecord, type StoreInventoryConfigurationRecord,
   type StorefrontAvailabilitySettingsRecord,
 } from "@dinkuskit/commerce";
-import { readInstalledCommerceCatalog, readInstalledCommerceProducts, type InstalledCatalogContext } from "./installed.js";
+import { guestCartFallbackThumbnail, type GuestCartPublicThumbnail } from "../guest-cart/present.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
+import { readInstalledCommerceCatalog, readInstalledCommerceProducts, type InstalledCatalogContext } from "./installed.js";
+import { resolveCommerceImage, type PublicCommerceImage } from "./media.js";
 import type { PublicCommerceProduct } from "./types.js";
 
 export type { PublicCommerceImage } from "./media.js";
@@ -37,6 +39,7 @@ export type CommerceCatalogSnapshot =
       name: string;
       sku: string;
       fulfillment: "physical" | "digital";
+      thumbnail?: GuestCartPublicThumbnail;
       price: PublicPriceView;
       availability: Readonly<{ status: string; sellable: boolean; listable: boolean }>;
     }>;
@@ -89,6 +92,41 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
 /** Carts up to this many lines look items up one by one; larger carts read the catalog. */
 const SNAPSHOT_ITEM_LOOKUP_LIMIT = 8;
 
+async function resolveSnapshotThumbnail(
+  image: PublicCommerceImage | null,
+  name: string,
+  sku: string,
+  id: string,
+  listable: boolean,
+  context?: InstalledCatalogContext,
+): Promise<GuestCartPublicThumbnail> {
+  if (!listable) {
+    return guestCartFallbackThumbnail(id, "", id);
+  }
+  if (image && context) {
+    const resolved = await resolveCommerceImage(image, {
+      origin: new URL(context.request.url).origin,
+      getPublicMediaUrl: (
+        context.runtime as { getPublicMediaUrl?: (storageKey: string) => string } | null | undefined
+      )?.getPublicMediaUrl,
+      async getMedia(mediaId) {
+        try {
+          const result = await handleMediaGet(await getDb(), mediaId);
+          const item = result.success ? result.data?.item : null;
+          if (!item?.storageKey || !item.mimeType) return null;
+          return { mimeType: item.mimeType, storageKey: item.storageKey, status: item.status };
+        } catch {
+          return null;
+        }
+      },
+    });
+    if (resolved) {
+      return { src: resolved.src, alt: resolved.alt };
+    }
+  }
+  return guestCartFallbackThumbnail(name, sku, id);
+}
+
 export async function readCommerceCatalogSnapshots(
   ids: readonly string[],
   context?: InstalledCatalogContext,
@@ -101,12 +139,29 @@ export async function readCommerceCatalogSnapshots(
     const byId = ids.length <= SNAPSHOT_ITEM_LOOKUP_LIMIT
       ? await readInstalledCommerceProducts(ids, context)
       : new Map((await readInstalledCommerceCatalog(context)).map(product => [product.id, product]));
-    return ids.map(id => {
+    return Promise.all(ids.map(async (id): Promise<CommerceCatalogSnapshot> => {
       const product = byId.get(id);
-      return product
-        ? { ...product, fulfillment: product.fulfillment ?? "physical", found: true as const }
-        : { id, found: false as const };
-    });
+      if (!product) return { id, found: false as const };
+      const listable = product.price.listable || product.availability.listable;
+      const publicName = listable ? product.name : id;
+      const publicSku = listable ? product.sku : "";
+      const thumbnail = await resolveSnapshotThumbnail(
+        product.image,
+        publicName,
+        publicSku,
+        id,
+        listable,
+        context,
+      );
+      return {
+        ...product,
+        name: publicName,
+        sku: publicSku,
+        fulfillment: product.fulfillment ?? "physical",
+        thumbnail,
+        found: true as const,
+      };
+    }));
   }
   const storage = await openCommerceCatalogStorage();
   const { products } = await listCatalogProducts(storage);
@@ -126,14 +181,16 @@ export async function readCommerceCatalogSnapshots(
     // The cart totals use the amount the shopper pays for one unit.
     const unitMinor = shown.listable ? (resolved.sale ?? resolved.regular)?.minor : undefined;
     const price = unitMinor ? { ...shown, unitMinor } : shown;
-    const publicName = price.listable || availability.listable ? product.name : id;
-    const publicSku = price.listable || availability.listable ? product.sku : "";
+    const listable = price.listable || availability.listable;
+    const publicName = listable ? product.name : id;
+    const publicSku = listable ? product.sku : "";
     snapshots.push({
       id,
       found: true,
       name: publicName,
       sku: publicSku,
       fulfillment: (product as unknown as { fulfillment?: "physical" | "digital" }).fulfillment ?? "physical",
+      thumbnail: guestCartFallbackThumbnail(publicName, publicSku, id),
       price,
       availability: {
         status: availability.status,

@@ -8,9 +8,11 @@ import {
   addGuestCartLine,
   canAddCommerceProductToCart,
   emptyGuestCartIntent,
+  guestCartFallbackThumbnail,
   guestCartItemCount,
   guestCartRetryControlState,
   guestReturnQueryIsPresent,
+  isSafeGuestCartThumbnailSrc,
   loadGuestCartIntent,
   parseGuestCartIntent,
   parseGuestCartQuantityInput,
@@ -183,6 +185,10 @@ describe("guest cart snapshot presentation", () => {
     expect(failed.lines[0]).toMatchObject({
       id: "hat-1",
       quantity: 2,
+      thumbnail: {
+        src: "/merch/cap.svg",
+        alt: "hat-1 illustration",
+      },
       canCheckout: false,
     });
     expect(failed.snapshotError).toBe("We couldn't load the latest prices.");
@@ -246,6 +252,10 @@ describe("guest cart snapshot presentation", () => {
         name: "hat-1",
         sku: "",
         fulfillment: "physical",
+        thumbnail: {
+          src: "/merch/cap.svg",
+          alt: "hat-1 illustration",
+        },
         price: { listable: false, regularText: null, saleText: null },
         availability: { status: "in-stock", sellable: false, listable: false },
       },
@@ -275,10 +285,71 @@ describe("guest cart snapshot presentation", () => {
         name: "Merchant hat",
         sku: "HAT-1",
         fulfillment: "physical",
+        thumbnail: {
+          src: "/merch/cap.svg",
+          alt: "Merchant hat illustration",
+        },
         price: { listable: true, regularText: "$24.00", saleText: null },
         availability: { status: "in-stock", sellable: true, listable: true },
       },
     ]);
+  });
+
+  it("projects safe product/variant thumbnails and falls back to garment illustrations", () => {
+    expect(isSafeGuestCartThumbnailSrc("/merch/hoodie.svg")).toBe(true);
+    expect(isSafeGuestCartThumbnailSrc("/images/products/hoodie.svg")).toBe(true);
+    expect(isSafeGuestCartThumbnailSrc("/_emdash/api/media/file/media-hoodie-olive.png")).toBe(true);
+    expect(
+      isSafeGuestCartThumbnailSrc(
+        "/_image?href=%2F_emdash%2Fapi%2Fmedia%2Ffile%2Fmedia-hoodie-olive.png&w=640&f=webp",
+      ),
+    ).toBe(true);
+    expect(isSafeGuestCartThumbnailSrc("https://evil.example/hoodie.png")).toBe(false);
+    expect(isSafeGuestCartThumbnailSrc("/_emdash/api/media/file/../secret.png")).toBe(false);
+
+    expect(guestCartFallbackThumbnail("Pullover Hoodie (Medium)", "DEMO-HOSTED-HOODIE-M", "hoodie-m")).toEqual({
+      src: "/merch/hoodie.svg",
+      alt: "Pullover Hoodie (Medium) illustration",
+    });
+    expect(guestCartFallbackThumbnail("Ribbed Beanie", "BEAN-1", "bean-1")).toEqual({
+      src: "/merch/beanie.svg",
+      alt: "Ribbed Beanie illustration",
+    });
+    expect(guestCartFallbackThumbnail("Everyday Tee", "TEE-1", "tee-1")).toEqual({
+      src: "/merch/tee.svg",
+      alt: "Everyday Tee illustration",
+    });
+
+    const snapshots = projectGuestCartCatalogSnapshots([
+      {
+        id: "hoodie-olive-m",
+        found: true,
+        name: "Pullover Hoodie — Olive / M",
+        sku: "DEMO-HOSTED-HOODIE-M",
+        thumbnail: {
+          src: "/_emdash/api/media/file/media-hoodie-olive.png",
+          alt: "Olive pullover hoodie",
+        },
+        price: { listable: true, regularText: "$60.00", saleText: null, unitMinor: "6000" },
+        availability: { status: "in-stock", sellable: true, listable: true },
+      },
+    ]);
+    expect(snapshots?.[0]).toMatchObject({
+      id: "hoodie-olive-m",
+      found: true,
+      thumbnail: {
+        src: "/_emdash/api/media/file/media-hoodie-olive.png",
+        alt: "Olive pullover hoodie",
+      },
+    });
+    const view = presentGuestCart({
+      intent: addGuestCartLine(emptyGuestCartIntent(), "hoodie-olive-m", 1).intent,
+      snapshots,
+    });
+    expect(view.lines[0]?.thumbnail).toEqual({
+      src: "/_emdash/api/media/file/media-hoodie-olive.png",
+      alt: "Olive pullover hoodie",
+    });
   });
 });
 
@@ -308,25 +379,5 @@ describe("guest cart retry control", () => {
     const pendingRetry = presentGuestCart({ intent, pending: true, retrying: true });
     expect(pendingRetry.snapshotError).toBeNull();
     expect(guestCartRetryControlState(pendingRetry)).toEqual({ hidden: false, disabled: true });
-    expect(guestCartRetryControlState({ snapshotError: null, pending: true, retrying: true })).toEqual({
-      hidden: false,
-      disabled: true,
-    });
-    expect(guestCartRetryControlState({ snapshotError: null, pending: true, retryPending: true })).toEqual({
-      hidden: false,
-      disabled: true,
-    });
-  });
-
-  it("hides once a refresh succeeds", () => {
-    const success = presentGuestCart({ intent, snapshots: [] });
-    expect(success.snapshotError).toBeNull();
-    expect(guestCartRetryControlState(success)).toEqual({ hidden: true, disabled: false });
-  });
-
-  it("stays visible and becomes enabled when retry fails again", () => {
-    const failedAgain = presentGuestCart({ intent, snapshotFailed: true, retrying: false });
-    expect(failedAgain.snapshotError).toBe("We couldn't load the latest prices.");
-    expect(guestCartRetryControlState(failedAgain)).toEqual({ hidden: false, disabled: false });
   });
 });

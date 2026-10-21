@@ -33,6 +33,9 @@ describe("demo EmDash product entries", () => {
       const src = demoPlaceholderImage(product.sku, `demo-${demoProductKind(product)}`);
       expect(src).toMatch(/^\/images\/products\/[a-z]+\.svg$/);
       expect(existsSync(`public${src}`)).toBe(true);
+      for (const variantValue of product.variant?.values ?? []) {
+        expect(demoPlaceholderImage(variantValue.sku, `demo-${demoProductKind(product)}`)).toBe(src);
+      }
     }
     expect(demoPlaceholderImage("MERCHANT-HAT", "demo-shirt")).toBeNull();
   });

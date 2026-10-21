@@ -243,6 +243,10 @@ export function readCheckoutContact(
   return { contact: { email, delivery }, error: null };
 }
 
+function lineThumbnailMarkup(line: GuestCartView["lines"][number]): string {
+  return `<img data-guest-cart-thumbnail-img src="${escapeText(line.thumbnail.src)}" alt="${escapeText(line.thumbnail.alt)}" width="160" height="120" loading="lazy" />`;
+}
+
 function lineCopyMarkup(line: GuestCartView["lines"][number]): string {
   return `<h2>${escapeText(line.name)}</h2>
   ${line.sku ? `<p data-guest-cart-sku>SKU: ${escapeText(line.sku)}</p>` : ""}
@@ -255,6 +259,7 @@ function lineCopyMarkup(line: GuestCartView["lines"][number]): string {
 function lineMarkup(line: GuestCartView["lines"][number], current: GuestCartView): string {
   const pendingAttr = current.pending ? " aria-busy=\"true\"" : "";
   return `<article data-guest-cart-line="${escapeText(line.id)}"${pendingAttr}>
+  <div class="guest-cart-line-media" data-guest-cart-line-thumbnail data-guest-cart-line-media>${lineThumbnailMarkup(line)}</div>
   <div data-guest-cart-line-copy>${lineCopyMarkup(line)}</div>
   <div class="guest-cart-qty">
     <label for="guest-cart-qty-${escapeText(line.id)}">Quantity</label>
@@ -271,6 +276,17 @@ function lineSelector(id: string): string {
 function patchLine(article: HTMLElement, line: GuestCartView["lines"][number], current: GuestCartView): void {
   if (current.pending) article.setAttribute("aria-busy", "true");
   else article.removeAttribute("aria-busy");
+  const thumbnail = article.querySelector("[data-guest-cart-line-thumbnail]");
+  if (thumbnail instanceof HTMLElement) {
+    const img = thumbnail.querySelector("img");
+    if (
+      !(img instanceof HTMLImageElement) ||
+      img.getAttribute("src") !== line.thumbnail.src ||
+      img.getAttribute("alt") !== line.thumbnail.alt
+    ) {
+      thumbnail.innerHTML = lineThumbnailMarkup(line);
+    }
+  }
   const copy = article.querySelector("[data-guest-cart-line-copy]");
   if (copy instanceof HTMLElement) copy.innerHTML = lineCopyMarkup(line);
   const input = article.querySelector("[data-guest-cart-qty]");
@@ -779,7 +795,7 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     items.replaceChildren(...order.lines.map((line) => {
       const row = document.createElement("li");
       const label = document.createElement("span");
-      label.textContent = `${line.name ?? line.id} × ${line.quantity}`;
+      label.textContent = `${line.name ?? line.id} \u00d7 ${line.quantity}`;
       if (line.variant) {
         const variant = document.createElement("small");
         variant.textContent = line.variant;
