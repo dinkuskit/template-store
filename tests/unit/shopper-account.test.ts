@@ -24,13 +24,22 @@ import {
   type ShopperSessionStorage,
 } from "../../src/features/shopper-account/index.js";
 import {
+  PLAYGROUND_LEADS_DO_NAME,
+  PLAYGROUND_ORIGIN,
+  PLAYGROUND_PREVIEW_ORIGIN_WILDCARD,
   clearCapturedProofEmails,
   clearCapturedProofLeads,
   deliverPlaygroundShopperEmail,
+  isPlaygroundLeadStorageConfigured,
+  playgroundShopperAccountHostOptions,
   readCapturedProofEmail,
   readCapturedProofLeads,
+  readVerifiedPlaygroundLeads,
   recordVerifiedPlaygroundLead,
+  resolvePlaygroundAccountSiteOrigin,
+  withShopperAccountRequest,
   type D1DatabaseLike,
+  type LeadsDurableObjectNamespaceLike,
 } from "../../src/features/shopper-account/playground-runtime.js";
 
 function createMemoryStorage(): ShopperSessionStorage {
@@ -52,6 +61,9 @@ describe("shopper-account browser session and public routes", () => {
   beforeEach(() => {
     clearCapturedProofEmails();
     clearCapturedProofLeads();
+    delete (globalThis as { __dinkusPlaygroundEnv?: unknown }).__dinkusPlaygroundEnv;
+    delete (globalThis as { __dinkusPlaygroundRequestOrigin?: unknown })
+      .__dinkusPlaygroundRequestOrigin;
   });
 
   it("exposes exact Commerce public account routes and demo session route", () => {
@@ -152,6 +164,41 @@ describe("shopper-account browser session and public routes", () => {
     expect(evaluatePublicBoundary("GET", "/api/proof/shopper-account").allowed).toBe(false);
   });
 
+  it("resolves trusted production, PR preview, and local proof origins and fails closed when unconfigured", () => {
+    expect(resolvePlaygroundAccountSiteOrigin({})).toBeUndefined();
+    expect(
+      resolvePlaygroundAccountSiteOrigin({
+        DINKUS_PLAYGROUND_ACCOUNT_ORIGIN: PLAYGROUND_ORIGIN,
+      }),
+    ).toBe(PLAYGROUND_ORIGIN);
+
+    const previewEnv = {
+      DINKUS_PLAYGROUND_ACCOUNT_ORIGIN: PLAYGROUND_PREVIEW_ORIGIN_WILDCARD,
+    };
+    expect(
+      resolvePlaygroundAccountSiteOrigin(previewEnv, "https://pr-117.playground.dinkuskit.com"),
+    ).toBe("https://pr-117.playground.dinkuskit.com");
+    expect(
+      resolvePlaygroundAccountSiteOrigin(previewEnv, "https://pr-0.playground.dinkuskit.com"),
+    ).toBeUndefined();
+    expect(
+      resolvePlaygroundAccountSiteOrigin(previewEnv, "https://evil.playground.dinkuskit.com"),
+    ).toBeUndefined();
+    expect(
+      resolvePlaygroundAccountSiteOrigin(previewEnv, "http://pr-117.playground.dinkuskit.com"),
+    ).toBeUndefined();
+
+    // Dynamic per-request resolution via withShopperAccountRequest on host options created at build time.
+    const hostOptions = playgroundShopperAccountHostOptions({});
+    expect(hostOptions.siteUrl).toBeUndefined();
+    const resolvedInPreview = withShopperAccountRequest(
+      "https://pr-117.playground.dinkuskit.com",
+      previewEnv,
+      () => hostOptions.siteUrl,
+    );
+    expect(resolvedInPreview).toBe("https://pr-117.playground.dinkuskit.com");
+  });
+
   it("captures OTP email in local proof mode and sends through Cloudflare EMAIL binding when configured", async () => {
     const sent: unknown[] = [];
     await deliverPlaygroundShopperEmail(
@@ -176,7 +223,13 @@ describe("shopper-account browser session and public routes", () => {
     expect(sent).toHaveLength(1);
   });
 
-  it("records verified opt-in leads to PLAYGROUND_LEADS_DB while excluding the demo shopper identity", async () => {
+  it("requires durable PLAYGROUND_LEADS_DB outside local proof mode and persists leads across D1 and Durable Object SQLite", async () => {
+    expect(isPlaygroundLeadStorageConfigured({})).toBe(false);
+    expect(isPlaygroundLeadStorageConfigured({ DINKUS_LOCAL_PROOF: "1" })).toBe(true);
+    await expect(
+      recordVerifiedPlaygroundLead("taylor@example.com", {}, "2026-10-20T12:00:00.000Z"),
+    ).rejects.toThrow(/PLAYGROUND_LEADS_DB/);
+
     const queries: Array<{ sql: string; bound: unknown[] }> = [];
     const mockD1: D1DatabaseLike = {
       prepare(sql: string) {
@@ -208,7 +261,7 @@ describe("shopper-account browser session and public routes", () => {
 
     const recorded = await recordVerifiedPlaygroundLead(
       "Taylor@Example.com",
-      { PLAYGROUND_LEADS_DB: mockD1 },
+      { PLAYGROUND_LEADS_DB: mockD1, DINKUS_LOCAL_PROOF: "1" },
       "2026-10-20T12:05:00.000Z",
     );
     expect(recorded).toBe(true);
@@ -226,6 +279,74 @@ describe("shopper-account browser session and public routes", () => {
         lastVerifiedAt: "2026-10-20T12:05:00.000Z",
         optInSource: "playground-account-otp",
         verificationCount: 1,
+      },
+    ]);
+
+    // Durable Object SQLite binding (PLAYGROUND_LEADS_DB -> EmDashPreviewDB)
+    const doQueries: Array<{ name: string; sql: string; params?: unknown[] }> = [];
+    const doRows = new Map<string, {
+      email: string;
+      first_verified_at: string;
+      last_verified_at: string;
+      opt_in_source: string;
+      verification_count: number;
+    }>();
+    const mockDoNamespace: LeadsDurableObjectNamespaceLike = {
+      idFromName(name: string) {
+        return name;
+      },
+      get(id: unknown) {
+        return {
+          async query(sql: string, params?: unknown[]) {
+            doQueries.push({ name: String(id), sql, params });
+            if (sql.includes("INSERT INTO playground_email_leads") && params) {
+              const [email, firstAt, lastAt, source] = params as [string, string, string, string];
+              const prev = doRows.get(email);
+              doRows.set(email, {
+                email,
+                first_verified_at: prev ? prev.first_verified_at : firstAt,
+                last_verified_at: lastAt,
+                opt_in_source: source,
+                verification_count: (prev?.verification_count ?? 0) + 1,
+              });
+            }
+            if (sql.includes("SELECT")) {
+              return {
+                rows: [...doRows.values()].map((r) => ({
+                  email: r.email,
+                  firstVerifiedAt: r.first_verified_at,
+                  lastVerifiedAt: r.last_verified_at,
+                  optInSource: r.opt_in_source,
+                  verificationCount: r.verification_count,
+                })),
+              };
+            }
+            return { rows: [], changes: 1 };
+          },
+        };
+      },
+    };
+
+    expect(isPlaygroundLeadStorageConfigured({ PLAYGROUND_LEADS_DB: mockDoNamespace })).toBe(true);
+    await recordVerifiedPlaygroundLead(
+      "Jordan@Example.com",
+      { PLAYGROUND_LEADS_DB: mockDoNamespace },
+      "2026-10-20T13:00:00.000Z",
+    );
+    await recordVerifiedPlaygroundLead(
+      "jordan@example.com",
+      { PLAYGROUND_LEADS_DB: mockDoNamespace },
+      "2026-10-20T14:30:00.000Z",
+    );
+    expect(doQueries[0]?.name).toBe(PLAYGROUND_LEADS_DO_NAME);
+    const persisted = await readVerifiedPlaygroundLeads({ PLAYGROUND_LEADS_DB: mockDoNamespace });
+    expect(persisted).toEqual([
+      {
+        email: "jordan@example.com",
+        firstVerifiedAt: "2026-10-20T13:00:00.000Z",
+        lastVerifiedAt: "2026-10-20T14:30:00.000Z",
+        optInSource: "playground-account-otp",
+        verificationCount: 2,
       },
     ]);
     expect(DEMO_SHOPPER_ORDER_ID).toBe("ord_demo_shopper_1001");

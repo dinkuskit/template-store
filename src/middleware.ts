@@ -14,7 +14,10 @@ import {
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import {
   ensureDemoShopperOrder,
+  isPlaygroundLeadStorageConfigured,
   recordVerifiedPlaygroundLead,
+  revokeShopperSessionById,
+  withShopperAccountRequest,
 } from "./features/shopper-account/playground-runtime.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "./features/guest-cart/checkout-protocol.js";
 import {
@@ -551,7 +554,7 @@ async function dispatchNativeShopperAccount(
       }
       optedIn = parsed.optInUpdates === true;
       delete parsed.optInUpdates;
-      if (kind === "sign-in/start" && !optedIn) {
+      if ((kind === "sign-in/start" || kind === "sign-in/verify") && !optedIn) {
         return Response.json(
           {
             success: false,
@@ -562,6 +565,18 @@ async function dispatchNativeShopperAccount(
             },
           },
           { status: 400, headers },
+        );
+      }
+      if ((kind === "sign-in/start" || kind === "sign-in/verify") && isPlayground && !isPlaygroundLeadStorageConfigured(env)) {
+        return Response.json(
+          {
+            success: false,
+            error: {
+              code: "UNAVAILABLE",
+              message: "Durable playground opt-in storage is not configured right now.",
+            },
+          },
+          { status: 503, headers },
         );
       }
       if (kind === "sign-in/start" && isPlayground) {
@@ -591,19 +606,37 @@ async function dispatchNativeShopperAccount(
     headers: request.headers,
     ...(forwardedBody !== undefined ? { body: forwardedBody } : {}),
   });
-  const result = await dispatch(NATIVE_COMMERCE_PLUGIN_ID, method, `account/${kind}`, forwarded);
+  const result = await withShopperAccountRequest(url.origin, env, () =>
+    dispatch(NATIVE_COMMERCE_PLUGIN_ID, method, `account/${kind}`, forwarded),
+  );
   if (!result?.success) {
     const code = result?.error?.code ?? "PLUGIN_ERROR";
     const message = code === "INTERNAL_ERROR" ? "Plugin route error" : result?.error?.message ?? "Plugin route error";
     const status = result?.status ?? (code === "NOT_FOUND" ? 404 : 400);
     return Response.json({ success: false, error: { code, message } }, { status, headers });
   }
-  if (kind === "sign-in/verify" && optedIn && result.data && typeof result.data === "object") {
+  if (kind === "sign-in/verify" && result.data && typeof result.data === "object") {
     const profile = (result.data as { profile?: { email?: unknown } }).profile;
-    if (typeof profile?.email === "string") {
-      await recordVerifiedPlaygroundLead(profile.email, env).catch((err: unknown) => {
-        console.error("[playground-leads] failed to record verified lead", err);
-      });
+    const capability = (result.data as { capability?: { sessionId?: unknown } }).capability;
+    if (typeof profile?.email !== "string") {
+      return Response.json(
+        { success: false, error: { code: "UNAVAILABLE", message: "Could not record verified email opt-in." } },
+        { status: 503, headers },
+      );
+    }
+    try {
+      const recorded = await recordVerifiedPlaygroundLead(profile.email, env);
+      if (!recorded) {
+        throw new Error("Lead was not recorded.");
+      }
+    } catch {
+      if (db && typeof capability?.sessionId === "string") {
+        await revokeShopperSessionById(db, capability.sessionId).catch(() => {});
+      }
+      return Response.json(
+        { success: false, error: { code: "UNAVAILABLE", message: "Could not record verified email opt-in." } },
+        { status: 503, headers },
+      );
     }
   }
   return Response.json({ success: true, data: result.data }, { status: 200, headers });

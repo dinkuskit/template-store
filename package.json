@@ -37,6 +37,7 @@
     "verify:playground-config": "node scripts/verify-playground-config.mjs",
     "verify:playground-authority": "pnpm prepare:sources && node scripts/verify-playground-checkout-authority.mjs",
     "verify:playground-http": "pnpm prepare:sources && node scripts/verify-playground-checkout-http.mjs",
+    "verify:playground-account-http": "pnpm prepare:sources && node scripts/verify-playground-account-http.mjs",
     "seed:bundle": "node scripts/build-seed-bundle.mjs",
     "seed:demo": "node --import ./scripts/cloudflare-workers-hook.mjs .artifacts/seed/seed-synthetic-demo.mjs",
     "verify:quick": "bin/verify-web quick",
