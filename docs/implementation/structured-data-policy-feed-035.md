@@ -25,6 +25,10 @@ invalid public payload still fails. With no policy records, both pages say the
 policy is not configured and JSON-LD omits `shippingDetails` and
 `hasMerchantReturnPolicy`. Seeds stay neutral.
 
+Return categories display as `Limited return window`, `Returns not accepted`,
+or `Unlimited return window`. The original Commerce enum remains in the
+`data-return-category` attribute for policy and JSON-LD verification.
+
 JSON-LD embedded with `set:html` escapes `<` so a merchant description cannot
 close the script tag.
 
@@ -40,7 +44,7 @@ Commerce item id. A catalog item with no published CMS page is omitted. Price
 is included only when the public item has top-level `unitMinor`.
 
 The exact Commerce `0.3.0` source pin is
-`c61d63647b3eb7f990d935f170dd93eb6d1c56dd`. Its `catalog/public` and
+`288199275f61aec084c0e1e72b370ec74ea35369`. Its `catalog/public` and
 `catalog/public/item` projections carry `feedChannels`; the existing parser
 passes a non-empty projection to the feed builders and excludes missing or
 empty eligibility. Native-development may still use its explicitly isolated

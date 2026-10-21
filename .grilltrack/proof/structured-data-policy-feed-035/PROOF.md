@@ -1,9 +1,9 @@
 # Issue 35 proof
 
 Commerce source is prepared from the public repository at exact commit
-`c61d63647b3eb7f990d935f170dd93eb6d1c56dd` (`@dinkuskit/commerce` `0.3.0`).
+`288199275f61aec084c0e1e72b370ec74ea35369` (`@dinkuskit/commerce` `0.3.0`).
 The source-preparation log is retained in
-`runs/issue35-runs/finish-prepare-sources.log`.
+`runs/structured-data-policy-feed-035-runs/pin-label-prepare-sources.log`.
 
 ## Verified contract
 
@@ -18,10 +18,18 @@ The source-preparation log is retained in
   channel arrays remain excluded. Native-development storage eligibility stays
   explicitly isolated.
 - Shipping and returns retain revision metadata for proof while hiding the
-  technical revision row. Known return methods and fee enums render as shopper
-  language without inventing policy facts.
+  technical revision row. All three known return categories, return methods, and fee enums render as
+  shopper language without inventing policy facts. Category data attributes
+  retain the original Commerce enums.
 
-## Commands and logs
+## Earlier full-suite baseline
+
+These results belong to Template Store source
+`db5601dce3456ee228153264a4acad1a74fe199b`, using Commerce
+`c61d63647b3eb7f990d935f170dd93eb6d1c56dd`. They are retained as historical
+verification, not reported as a full-suite run of the current follow-up.
+
+### Commands and logs
 
 - `corepack pnpm typecheck` — pass, log:
   `runs/issue35-runs/finish-typecheck.log`
@@ -36,13 +44,53 @@ The source-preparation log is retained in
   passed, log: `runs/issue35-runs/finish-playwright-shipping-rerun.log`.
   Initial failure is retained at
   `runs/issue35-runs/finish-playwright-shipping.log`.
-- Final `pnpm verify` (`bin/verify-web full`) — 356 unit tests, 72 workflow
+- Baseline `pnpm verify` (`bin/verify-web full`) — 356 unit tests, 72 workflow
   tests, 63 browser tests, 9 explicit skips; `verify-site` passed with 2
   intentional sitemap skips. Log:
   `runs/issue35-runs/finish-pnpm-verify-final.log`.
 - The first final-gate attempt is retained at
   `runs/issue35-runs/finish-pnpm-verify.log`; it failed only on the stale
   expected source pin, which was updated before the passing final run.
+
+## Current targeted follow-up
+
+The current follow-up updates the active Commerce pin/provenance, explicitly
+labels all three return categories, and gates Product JSON-LD on a successful
+HTTP response. It preserves the native eligibility fallback and response-status
+assignments. [COMMERCE-EQUIVALENCE.md](COMMERCE-EQUIVALENCE.md) records the empty
+runtime/package source diff between the old and new Commerce pins.
+[STATUS-GATE-REPAIR.md](STATUS-GATE-REPAIR.md) records the accepted 404 metadata
+finding and bounded fix. `source-manifest.sha256` identifies the current changed
+source content.
+
+- Source preparation checked out Commerce
+  `288199275f61aec084c0e1e72b370ec74ea35369` exactly.
+- `pnpm typecheck` passed: 0 errors, 0 warnings, 2 existing deprecation hints.
+  Log: `runs/structured-data-policy-feed-035-runs/final-typecheck.log`.
+- `pnpm exec vitest run tests/unit/structured-data-policy.test.ts tests/unit/commerce-policies.test.ts tests/unit/commerce-feeds.test.ts tests/unit/managed-product-availability.test.ts tests/unit/unmanaged-product-sellability.test.ts`
+  passed 16 tests in 5 files. Includes the 200/redirect/404/410/500/503 metadata
+  status policy. Log: `runs/structured-data-policy-feed-035-runs/final-units.log`.
+- `node scripts/check-features.mjs`, `node scripts/check-worktree-text.mjs`, and
+  `git diff --check` passed. Log:
+  `runs/structured-data-policy-feed-035-runs/final-source-checks.log`.
+- `pnpm exec playwright test tests/e2e/structured-data-policy-feed.spec.ts tests/e2e/shipping-storefront-profile.spec.ts --project=chromium-desktop --project=chromium-mobile --project=shipping-chromium-desktop --project=shipping-chromium-mobile`
+  passed all 4 tests. The checks exercise the three category labels and their
+  unchanged data attributes, successful editorial previews, and missing/error
+  routes with no Product metadata. Log:
+  `runs/structured-data-policy-feed-035-runs/final-browser.log`.
+- Visually inspected all three category screenshots on desktop and mobile.
+  Text remains legible and within the page. Images stay ignored at
+  `runs/structured-data-policy-feed-035-runs/final-browser/`; shipping captures
+  stay at `runs/structured-data-policy-feed-035-runs/final-shipping-browser/`.
+
+The initial status-gate typecheck found that Astro's unset response status is
+optional; the gate now treats it as the default HTTP 200. That failed log is
+retained at `runs/structured-data-policy-feed-035-runs/status-gate-initial-typecheck.log`.
+The earlier label-only browser run also passed both viewport tests before the
+metadata finding; it is superseded by the four-test run above.
+
+The full suite was not rerun for this follow-up. Fresh PR CI must cover the final
+head; the historical full-suite result above is not substituted for that gate.
 
 This is exact source/local proof. It does not establish a Registry install,
 deployment, publication, checkout, or Google/Meta channel-account connection.

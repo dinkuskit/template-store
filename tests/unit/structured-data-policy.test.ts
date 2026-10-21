@@ -3,9 +3,16 @@ import {
   buildProductJsonLd,
   buildProductPreviewJsonLd,
 } from "@dinkuskit/commerce/features/structured-data";
-import { jsonLdScript } from "../../src/features/store-shell/structured-data.js";
+import { allowsProductJsonLd, jsonLdScript } from "../../src/features/store-shell/structured-data.js";
 
 describe("#35 Commerce structured data contract", () => {
+  it("permits product metadata only on successful responses, including editorial previews", () => {
+    expect(allowsProductJsonLd(200)).toBe(true);
+    for (const status of [301, 302, 404, 410, 500, 503]) {
+      expect(allowsProductJsonLd(status), `HTTP ${status}`).toBe(false);
+    }
+  });
+
   it("emits only page facts for an editorial preview", () => {
     expect(buildProductPreviewJsonLd({
       url: "https://shop.example.test/products/preview",

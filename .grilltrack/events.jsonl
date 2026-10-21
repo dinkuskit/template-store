@@ -74,3 +74,6 @@
 {"action": "decision_locked", "at": "2026-10-20T23:40:15+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "3599e751-f9ec-44a6-b7b1-99eb1ac40e45"}
 {"action": "decision_implemented", "at": "2026-10-20T23:40:15+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "07289448-4cba-4882-bc06-1902c2d6d5d3"}
 {"action": "decision_verified", "at": "2026-10-20T23:54:38+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "90f6c8a2-c2d1-446d-9b7d-e02132cb8e23"}
+{"action": "decision_reviewed", "at": "2026-10-20T23:58:02+00:00", "data": {"classifications": ["required_fix"], "decision_id": "structured-data-policy-feed-035", "ref": "file:.grilltrack/proof/structured-data-policy-feed-035/STATUS-GATE-REPAIR.md", "result": "findings", "reviewed_at": "2026-10-20T23:58:02+00:00", "source_identity": "git:db5601dce3456ee228153264a4acad1a74fe199b"}, "event_id": "881e380d-dc43-4a1b-9ac5-6b98c4b6e052"}
+{"action": "decision_implemented", "at": "2026-10-20T23:58:02+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "49069f2a-59dc-43bd-99f6-75cb1a42de25"}
+{"action": "decision_verified", "at": "2026-10-21T00:00:21+00:00", "data": {"decision_id": "structured-data-policy-feed-035"}, "event_id": "4c95ea98-b958-4d55-9ee2-697f44e7bd47"}

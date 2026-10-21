@@ -18,7 +18,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   request,
 }, testInfo) => {
   test.setTimeout(240_000);
-  const root = resolve("runs/v1-release/browser", testInfo.project.name);
+  const root = resolve(process.env.DINKUS_SHIPPING_PROOF_ROOT ?? "runs/v1-release/browser", testInfo.project.name);
   await mkdir(root, { recursive: true });
   const inventoryRequests: string[] = [];
   const watch = (target: { on(event: "request", handler: (req: { url(): string }) => void): void }) => {
@@ -114,6 +114,8 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   expect(previewJsonLd.offers).toBeUndefined();
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
   expect((await page.goto("/products/everyday-tee"))?.status()).toBe(503);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+  expect((await page.goto("/products/does-not-exist"))?.status()).toBe(404);
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   expect((await request.get("/shipping")).status()).toBe(200);
   expect((await request.get("/returns")).status()).toBe(200);

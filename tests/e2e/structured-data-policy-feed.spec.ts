@@ -113,7 +113,7 @@ async function policyInput(page: Page): Promise<StructuredPoliciesInput> {
 
 test("published Commerce products, policies, and feeds share one public revision", async ({ page, request, browser }, testInfo) => {
   test.setTimeout(240_000);
-  const root = resolve("runs/issue35-runs/browser", testInfo.project.name);
+  const root = resolve(process.env.DINKUS_ISSUE35_PROOF_ROOT ?? "runs/issue35-runs/browser", testInfo.project.name);
   await mkdir(root, { recursive: true });
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
   const adminContext = await browser.newContext({ viewport: testInfo.project.use.viewport });
@@ -362,6 +362,27 @@ test("published Commerce products, policies, and feeds share one public revision
       }));
       expect(JSON.stringify(script)).not.toContain("inventoryLevel");
     }
+    for (const [category, label] of [
+      ["MerchantReturnFiniteReturnWindow", "Limited return window"],
+      ["MerchantReturnNotPermitted", "Returns not accepted"],
+      ["MerchantReturnUnlimitedWindow", "Unlimited return window"],
+    ] as const) {
+      const changed = await adminPost(admin, RETURN_ROUTE, {
+        applicableCountry: ["CA"],
+        returnPolicyCategory: category,
+        ...(category === "MerchantReturnFiniteReturnWindow" ? { merchantReturnDays: 14 } : {}),
+      });
+      expect(changed.ok(), await changed.text()).toBe(true);
+      await page.goto("/returns");
+      const policy = page.locator("[data-return-policy]");
+      await expect(policy).toHaveAttribute("data-return-category", category);
+      await expect(policy.locator("dd").first()).toHaveText(label);
+      await expect(policy).not.toContainText(category.replace("MerchantReturn", ""));
+      await page.screenshot({ path: resolve(root, `returns-${category}.png`), fullPage: true, animations: "disabled" });
+    }
+    const restoredReturns = await adminPost(admin, RETURN_ROUTE, { ...revisions[revisions.length - 1].returns });
+    expect(restoredReturns.ok(), await restoredReturns.text()).toBe(true);
+    await page.goto("/products/demo-shirt");
     await page.screenshot({ path: resolve(root, "demo-shirt-jsonld.png"), fullPage: true, animations: "disabled" });
     await page.goto("/shipping");
     await page.screenshot({ path: resolve(root, "shipping-policy.png"), fullPage: true, animations: "disabled" });

@@ -14,7 +14,7 @@ import {
   buildProductJsonLd,
   buildProductPreviewJsonLd,
 } from "@dinkuskit/commerce/features/structured-data";
-import { canonicalUrl, jsonLdScript } from "../../features/store-shell/structured-data.js";
+import { allowsProductJsonLd, canonicalUrl, jsonLdScript } from "../../features/store-shell/structured-data.js";
 import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
@@ -120,7 +120,7 @@ const productCanonical = item
 // Linked products use Commerce's authoritative identity and offer facts.
 // Editorial pages use the preview builder, which emits only visible page facts.
 // Unavailable routes never receive structured product data.
-const productJsonLd = item && productName &&
+const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item && productName &&
   (item.availabilitySource === "preview" || !lookupUnavailable) &&
   !noLongerAvailable
   ? linkedProduct
