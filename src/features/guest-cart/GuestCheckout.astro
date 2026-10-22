@@ -70,7 +70,8 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
         <input id="guest-cart-coupon" data-guest-cart-coupon type="text" placeholder="Coupons coming soon" aria-describedby="guest-cart-coupon-note" autocomplete="off" disabled />
         <p id="guest-cart-coupon-note">Discount codes can't be used yet.</p>
       </div>
-      <div class="guest-checkout-actions">
+      <div class="guest-checkout-actions" data-checkout-payment-handoff>
+        <p class="guest-checkout-handoff-note" data-checkout-payment-note>Payment is processed securely through the store's configured payment provider.</p>
         <button type="button" data-guest-cart-checkout disabled>{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
         <p data-guest-cart-checkout-reason>{checkoutAdmission ? "" : GUEST_CHECKOUT_REASON}</p>
         <button type="button" data-guest-cart-retry hidden>Try again</button>
@@ -98,7 +99,7 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
           <dd data-checkout-tax-amount>Calculated at checkout</dd>
         </div>
         <div class="guest-checkout-breakdown__row guest-checkout-breakdown__total" data-checkout-total>
-          <dt>Total</dt>
+          <dt>Estimated total <span class="guest-checkout-breakdown__note">before tax</span></dt>
           <dd><strong data-checkout-total-amount>Calculated at checkout</strong></dd>
         </div>
       </dl>
@@ -132,6 +133,7 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   .guest-cart-coupon input{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid #2d3a54;border-radius:.35rem;background:#0b111e;color:#94a3b8;font:inherit;cursor:not-allowed}
   .guest-cart-coupon p{margin:0;font-size:.9em}
   .guest-cart-coupon input::placeholder{color:#94a3b8;opacity:1}
+  .guest-checkout-handoff-note{margin:0 0 .65rem;color:#c2cad8;font-size:.9rem;line-height:1.45}
   .guest-checkout-actions button{margin:.4rem .6rem .4rem 0;padding:.75rem 1.15rem;border:1px solid #3c4c6b;border-radius:.4rem;background:#1e293b;color:#fffefb;font:inherit;font-weight:800;cursor:pointer}
   .guest-checkout-actions [data-guest-cart-checkout]:not(:disabled){background:#c83e2b;border-color:#c83e2b;color:#fffefb}
   .guest-checkout-actions [data-guest-cart-checkout]:disabled{background:#1e293b;border-color:#2d3a54;color:#94a3b8;cursor:not-allowed}
@@ -144,15 +146,19 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   .guest-checkout-manifest__header h2{margin:0;font-size:1.25rem}
   .guest-checkout-manifest__header a{color:inherit;font-size:.9rem;font-weight:700;text-underline-offset:.2em}
   .guest-checkout-manifest__lines{display:grid;gap:.85rem;margin:0 0 1rem}
-  .guest-checkout :global([data-guest-cart-line]){padding:1rem;border:1px solid var(--store-line);border-radius:.6rem;background:#f9f8f4;min-width:0;overflow-wrap:anywhere}
+  .guest-checkout :global([data-guest-cart-line]){display:grid;grid-template-columns:auto minmax(0,1fr);gap:.5rem .85rem;align-items:start;padding:1rem;border:1px solid var(--store-line);border-radius:.6rem;background:#f9f8f4;min-width:0;overflow-wrap:anywhere}
+  .guest-checkout :global(.guest-cart-line-media){width:4.5rem;aspect-ratio:4/3;box-sizing:border-box;padding:.25rem;border:1px solid var(--store-line);border-radius:.5rem;background:#f7f4ec;overflow:hidden}
+  .guest-checkout :global(.guest-cart-line-media img){display:block;width:100%;height:100%;object-fit:cover;border-radius:.3rem;background:#e9e8df}
+  .guest-checkout :global([data-guest-cart-thumbnail-placeholder]){display:grid;place-items:center;height:100%;margin:0;border-radius:.3rem;background:#e9e8df;color:var(--store-muted);font-size:.7rem;font-weight:700;text-align:center}
+  .guest-checkout :global([data-guest-cart-line-copy]){min-width:0}
   .guest-checkout :global([data-guest-cart-line] h2){font-size:1.1rem;margin:0 0 .4rem}
   .guest-checkout :global([data-guest-cart-line] p){margin:.25rem 0;font-size:.92rem}
   .guest-checkout :global(.price){display:flex;gap:.5rem;flex-wrap:wrap;font-size:1.05rem}
   .guest-checkout :global(s){color:var(--store-muted)}
   .guest-checkout :global([data-guest-cart-line-reason]){color:var(--store-muted);line-height:1.45}
-  .guest-checkout :global(.guest-cart-qty){display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.65rem 0;min-width:0}
+  .guest-checkout :global(.guest-cart-qty){grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.65rem 0;min-width:0}
   .guest-checkout :global([data-guest-cart-qty]){width:4rem;max-width:100%;padding:.35rem .5rem;border:1px solid var(--store-line);border-radius:.35rem;font:inherit;background:var(--store-surface)}
-  .guest-checkout :global([data-guest-cart-remove]){padding:.45rem .75rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
+  .guest-checkout :global([data-guest-cart-remove]){grid-column:1/-1;justify-self:start;padding:.45rem .75rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
   .guest-checkout-breakdown{margin:0;padding-top:.85rem;border-top:1px solid var(--store-line);display:grid;gap:.45rem}
   .guest-checkout-breakdown[hidden]{display:none}
   .guest-checkout-breakdown__row{display:flex;justify-content:space-between;gap:1rem;align-items:baseline}
@@ -160,7 +166,8 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   .guest-checkout-breakdown dt{color:var(--store-muted)}
   .guest-checkout-breakdown dd{margin:0;white-space:nowrap}
   .guest-checkout-breakdown__total{margin-top:.35rem;padding-top:.65rem;border-top:2px solid var(--store-line);font-size:1.15rem}
-  .guest-checkout-breakdown__total dt{color: inherit;font-weight:800}
+  .guest-checkout-breakdown__total dt{color:inherit;font-weight:800}
+  .guest-checkout-breakdown__note{display:block;color:var(--store-muted);font-size:.8rem;font-weight:500}
   @media(max-width:54rem){
     .guest-checkout-grid{grid-template-columns:1fr}
   }

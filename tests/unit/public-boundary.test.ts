@@ -51,7 +51,7 @@ describe("public boundary access evaluation", () => {
     expect(slashlessRedirectPath("/cart/")).toBeUndefined();
     expect(slashlessRedirectPath("/checkout/")).toBe("/checkout");
     expect(slashlessRedirectPath("/checkout/success/")).toBe("/checkout/success");
-    expect(slashlessRedirectPath("/checkout/cancel/")).toBe("/checkout/cancel");
+    expect(slashlessRedirectPath("/checkout/cancel/")).toBeUndefined();
     expect(slashlessRedirectPath("/products/hoodie-black/")).toBe("/products/hoodie-black");
     expect(slashlessRedirectPath("/shipping/")).toBe("/shipping");
     expect(slashlessRedirectPath("/returns/")).toBe("/returns");
@@ -70,7 +70,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/checkout/").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
-    expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(false);
   });
 
   it("allows only strict lowercase child sitemap names", () => {
@@ -94,11 +94,11 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("POST", `${base}/status`).allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", `${base}/start`).status).toBe(405);
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
-    expect(evaluatePublicBoundary("HEAD", "/checkout/cancel").allowed).toBe(true);
+    expect(evaluatePublicBoundary("HEAD", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", "/cart/").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/checkout").status).toBe(405);
     expect(evaluatePublicBoundary("PUT", "/checkout/success/").status).toBe(405);
-    expect(evaluatePublicBoundary("DELETE", "/checkout/cancel/").status).toBe(405);
+    expect(evaluatePublicBoundary("DELETE", "/checkout/").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/checkout/success").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/_emdash/api/plugins/r_other/checkout/guest/start").status).toBe(405);
     expect(evaluatePublicBoundary("POST", `${base.replace("r_", "%72_")}/start`).allowed).toBe(true);

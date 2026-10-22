@@ -242,7 +242,7 @@ export async function installOfflineCheckoutHarness(
         return;
       }
       const returnPage = route.request().method() === "GET" &&
-        (path === "/checkout" || path === "/checkout/success" || path === "/checkout/cancel");
+        (path === "/checkout" || path === "/checkout/success");
       const sensitivePath = /checkout|payment/i.test(decodeURIComponent(path));
       const apiOrNavigation = path.startsWith("/_emdash/api/") || path.startsWith("/api/") || route.request().isNavigationRequest();
       if (sensitivePath && apiOrNavigation && !returnPage) {

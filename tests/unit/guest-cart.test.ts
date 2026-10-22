@@ -601,6 +601,18 @@ describe("guest cart snapshot presentation", () => {
       taxText: "Calculated at checkout",
       totalText: "$48.00",
     });
+    expect(
+      presentGuestCheckoutBreakdown({
+        intent: physicalIntent,
+        snapshots: physicalSnapshot,
+        shippingPolicy: null,
+      }),
+    ).toEqual({
+      subtotalText: "$48.00",
+      shippingText: "Calculated at checkout",
+      taxText: "Calculated at checkout",
+      totalText: "Calculated at checkout",
+    });
 
     const digitalIntent = addGuestCartLine(emptyGuestCartIntent(), "guide-1", 1).intent;
     const digitalSnapshot = [

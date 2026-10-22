@@ -13,7 +13,6 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/checkout",
   "/account",
   "/checkout/success",
-  "/checkout/cancel",
   "/favicon.ico",
   "/robots.txt",
   "/sitemap.xml",
@@ -48,8 +47,7 @@ function slashlessCollectionPath(pathname: string): string | undefined {
   if (!pathname.endsWith("/") || pathname === "/") return undefined;
   if (
     pathname === "/checkout/" ||
-    pathname === "/checkout/success/" ||
-    pathname === "/checkout/cancel/"
+    pathname === "/checkout/success/"
   ) {
     return pathname.slice(0, -1);
   }

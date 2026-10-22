@@ -48,8 +48,9 @@ test("guest checkout stays closed and return pages never trust browser claims", 
     fullPage: true,
     animations: "disabled",
   });
-  await page.goto("/checkout/cancel?session_id=forged");
-  await expect(page).toHaveURL(/\/cart\/?$/);
+  await page.goto("/checkout?session_id=forged");
+  await expect(page).toHaveURL(/\/checkout\?session_id=forged$/);
+  await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();
 
   const runDir = resolve("runs/offline-harness-tests-runs/20261008", testInfo.project.name);
   await mkdir(runDir, { recursive: true });
@@ -415,7 +416,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
   browser,
 }, testInfo) => {
   test.setTimeout(60_000);
-  test.skip(testInfo.project.name !== "shipping-chromium-desktop", "Proof screenshots are captured once on desktop.");
+  expect(testInfo.project.name.startsWith("shipping-")).toBe(true);
   const root = resolve("runs/checkout-contact-proof", testInfo.project.name);
   await mkdir(root, { recursive: true });
   const context = await freshOfflineContext(
@@ -442,9 +443,11 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     await expect(physical.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$24.00");
     const proceedButton = physical.getByRole("button", { name: "Proceed to Checkout" });
     await expect(proceedButton).toBeEnabled();
+    await physical.screenshot({ path: resolve(root, "cart-proceed.png"), fullPage: true, animations: "disabled" });
     await proceedButton.click();
     await expect(physical).toHaveURL(/\/checkout$/);
     await expect(physical.locator("[data-checkout-vault]")).toBeVisible();
+    await expect(physical.locator("[data-checkout-payment-handoff]")).toBeVisible();
     await expect(physical.locator("[data-checkout-manifest]")).toBeVisible();
     await expect(physical.locator("[data-checkout-breakdown]")).toBeVisible();
     await expect(physical.getByRole("heading", { name: "Delivery address" })).toBeVisible();

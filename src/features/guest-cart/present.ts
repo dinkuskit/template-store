@@ -417,7 +417,7 @@ export function presentGuestCheckoutBreakdown(options: {
   }
 
   const taxText = "Calculated at checkout";
-  const totalMinor = subtotalMinor === null
+  const totalMinor = subtotalMinor === null || (needsDelivery && shippingMinor === null)
     ? null
     : subtotalMinor + (shippingMinor ?? 0n);
   const totalText = minorText(totalMinor) ?? "Calculated at checkout";
