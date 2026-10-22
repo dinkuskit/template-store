@@ -1,5 +1,6 @@
 import astroHandler from "@astrojs/cloudflare/entrypoints/server";
 import { EmDashPreviewDB } from "@emdash-cms/cloudflare/db/playground";
+import { PluginBridge } from "@emdash-cms/cloudflare/worker";
 import {
   CLEAR_PLAYGROUND_COOKIE,
   PLAYGROUND_COOKIE_NAME,
@@ -10,11 +11,13 @@ import {
   isUsablePlaygroundSession,
   readPlaygroundSession,
   recoverFromPlaygroundInitFailure,
+  retargetPlaygroundDeployLink,
   withoutPlaygroundSession,
 } from "./features/playground/contract.js";
 import { withShopperAccountRequest } from "./features/shopper-account/playground-runtime.js";
 
-export { EmDashPreviewDB };
+// Payments and Ship run in the sandbox, which reaches EmDash through PluginBridge.
+export { EmDashPreviewDB, PluginBridge };
 
 interface WorkerExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
@@ -64,7 +67,7 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     }
 
-    const html = injectPlaygroundNoIndex(await response.text());
+    const html = retargetPlaygroundDeployLink(injectPlaygroundNoIndex(await response.text()));
     dropRewrittenBodyHeaders(headers);
     return new Response(html, {
       status: response.status,

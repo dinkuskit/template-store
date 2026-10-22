@@ -4048,6 +4048,190 @@
       "superseded_by": null,
       "updated_at": "2026-10-21T22:55:23+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1763bd68cac7051636732052945b89fb0478754c",
+      "candidate_refs": [],
+      "choice": "The playground installs Commerce, Payments and Ship, with Payments and Ship running as the released Registry builds in the sandbox, as on a real store. A playground-only full-width dashboard widget from the template's own helper plugin welcomes the prospect with five steps that tick themselves off: edit a product, place a test order with card 4242, buy a practice label, look at Payments, and Ready for real?. Sample orders are seeded (one paid and waiting to ship, one shipped) beside the prospect's own test orders. EmDash's own playground toolbar is the Playground tag on every page; no second tag. No Commerce bytes; nothing reaches dinkuskit.com except the existing Stripe test checkout path.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk",
+      "created_at": "2026-10-22T14:25:14+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-22T14:25:14+00:00",
+          "choice": "The playground installs Commerce, Payments and Ship, with Payments and Ship running as the released Registry builds in the sandbox, as on a real store. A playground-only full-width dashboard widget from the template's own helper plugin welcomes the prospect with five steps that tick themselves off: edit a product, place a test order with card 4242, buy a practice label, look at Payments, and Ready for real?. Sample orders are seeded (one paid and waiting to ship, one shipped) beside the prospect's own test orders. EmDash's own playground toolbar is the Playground tag on every page; no second tag. No Commerce bytes; nothing reaches dinkuskit.com except the existing Stripe test checkout path.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-22T14:45:02+00:00",
+          "choice": "The playground installs Commerce, Payments and Ship, with Payments and Ship running as the released Registry builds in the sandbox, as on a real store. A playground-only full-width dashboard widget from the template's own helper plugin welcomes the prospect with five steps that tick themselves off: edit a product, place a test order with card 4242, buy a practice label, look at Payments, and Ready for real?. Sample orders are seeded (one paid and waiting to ship, one shipped) beside the prospect's own test orders. EmDash's own playground toolbar is the Playground tag on every page; no second tag. No Commerce bytes; nothing reaches dinkuskit.com except the existing Stripe test checkout path.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-prospect-demo-20261022",
+      "implementation_ref": "pr:dinkuskit/template-store#137",
+      "question": "How should playground.dinkuskit.com show prospects what owning a DinkusKit store feels like?",
+      "rationale": "Ronald agreed in thread thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk at 14:24 UTC 22 Oct 2026.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "implemented",
+      "superseded_by": null,
+      "updated_at": "2026-10-22T14:45:02+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1763bd68cac7051636732052945b89fb0478754c",
+      "candidate_refs": [],
+      "choice": "Pretend-connected: the playground answers the plugins' DinkusKit calls inside the playground Worker (the sandbox runner's host fetch), so Payments shows Stripe test mode ready and Ship lists the sample orders and makes practice labels, without reaching dinkuskit.com. Pressing Connect opens a friendly playground page: in your real store this connects to DinkusKit.com; here it is pretend and resets when you leave, with one Start your real store button to dinkuskit.com as the only link out. Built after the Connect to DinkusKit betas land, against the Connect contract, so it is built once. No demo mode inside the plugins.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk",
+      "created_at": "2026-10-22T14:25:14+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-prospect-demo-20261022"
+      ],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-22T14:25:14+00:00",
+          "choice": "Pretend-connected: the playground answers the plugins' DinkusKit calls inside the playground Worker (the sandbox runner's host fetch), so Payments shows Stripe test mode ready and Ship lists the sample orders and makes practice labels, without reaching dinkuskit.com. Pressing Connect opens a friendly playground page: in your real store this connects to DinkusKit.com; here it is pretend and resets when you leave, with one Start your real store button to dinkuskit.com as the only link out. Built after the Connect to DinkusKit betas land, against the Connect contract, so it is built once. No demo mode inside the plugins.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-pretend-connected-20261022",
+      "implementation_ref": null,
+      "question": "How should Payments and Ship look on the playground when a real store would be connected to DinkusKit.com?",
+      "rationale": "Ronald agreed in thread thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk at 14:24 UTC 22 Oct 2026.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-22T14:25:14+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1763bd68cac7051636732052945b89fb0478754c",
+      "candidate_refs": [],
+      "choice": "Keep the development Commerce copy (with the playground's working 4242 test checkout) until part 2. Part 2 (playground-pretend-connected-20261022) switches the playground to the released Registry Commerce, so the admin matches a real store, and seeds the sample orders (one paid and waiting to ship, one shipped) then, because the development copy has no Orders page. Part 1 ships Payments, Ship and the welcome card without sample orders.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk",
+      "created_at": "2026-10-22T15:11:33+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-prospect-demo-20261022"
+      ],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-22T15:11:33+00:00",
+          "choice": "Keep the development Commerce copy (with the playground's working 4242 test checkout) until part 2. Part 2 (playground-pretend-connected-20261022) switches the playground to the released Registry Commerce, so the admin matches a real store, and seeds the sample orders (one paid and waiting to ship, one shipped) then, because the development copy has no Orders page. Part 1 ships Payments, Ship and the welcome card without sample orders.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-commerce-until-part-2-20261022",
+      "implementation_ref": null,
+      "question": "Which Commerce should the playground run until the Connect betas land?",
+      "rationale": "Ronald's card answer, 15:11 UTC 22 Oct 2026.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-22T15:11:33+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1763bd68cac7051636732052945b89fb0478754c",
+      "candidate_refs": [],
+      "choice": "Each plugin's latest stable release by exact tag and commit (never a beta, never whatever is newest at build time). An Update playground plugins button in template-store's Actions moves the pins to the newest stable releases and opens a PR, so each bump gets its own pr-N preview proof and review, and merging puts it live; reverting that PR rolls it back.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk",
+      "created_at": "2026-10-22T15:16:13+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-prospect-demo-20261022"
+      ],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-22T15:16:13+00:00",
+          "choice": "Each plugin's latest stable release by exact tag and commit (never a beta, never whatever is newest at build time). An Update playground plugins button in template-store's Actions moves the pins to the newest stable releases and opens a PR, so each bump gets its own pr-N preview proof and review, and merging puts it live; reverting that PR rolls it back.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-plugin-pins-20261022",
+      "implementation_ref": null,
+      "question": "What should the playground pin its plugins to?",
+      "rationale": "Ronald: Add it (15:14 UTC 22 Oct 2026).",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-22T15:16:13+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4070,5 +4254,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-21T22:55:23+00:00"
+  "updated_at": "2026-10-22T15:16:13+00:00"
 }

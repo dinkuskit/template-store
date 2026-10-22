@@ -9,6 +9,8 @@ import {
 } from "./features/playground/contract.js";
 import { PLAYGROUND_CHECKOUT_LIMITER_BINDING } from "./features/playground-checkout/index.js";
 
+const PLAYGROUND_USER_CREATED_AT = "2026-10-22T00:00:00.000Z";
+
 /**
  * Thin project-owned hook around EmDash's playground middleware.
  *
@@ -49,6 +51,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  const response = await emdashPlayground(context, next);
+  // EmDash 1.2.0's playground user has no createdAt, which every plugin route
+  // reads for ctx.user; without it Payments' and Ship's pages fail with a 500.
+  const response = await emdashPlayground(context, ((...args: Parameters<typeof next>) => {
+    const locals = context.locals as { user?: { createdAt?: unknown } };
+    if (locals.user && locals.user.createdAt === undefined) {
+      locals.user = { ...locals.user, createdAt: PLAYGROUND_USER_CREATED_AT };
+    }
+    return next(...args);
+  }) as typeof next);
   return response ?? new Response(null, { status: 204 });
 });

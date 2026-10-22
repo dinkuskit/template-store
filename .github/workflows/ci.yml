@@ -326,10 +326,34 @@ jobs:
             --retry-delay 5 --cookie-jar "$cookie_jar" --cookie "$cookie_jar" \
             "$PREVIEW_URL/" --output "$home_body"
           grep -Fq 'data-catalog-guidance-state="ready"' "$home_body"
+          # EmDash's toolbar button leads to a real DinkusKit store, not the EmDash repository.
+          grep -Fq 'Start your real store' "$home_body"
+          if grep -Fq 'Deploy your own' "$home_body"; then
+            echo "::error::Playground toolbar still shows EmDash's Deploy your own button."
+            exit 1
+          fi
           if grep -Fqi "catalog is unavailable" "$home_body"; then
             echo "::error::Playground preview shows 'The catalog is unavailable right now.'"
             exit 1
           fi
+          # Payments, Ship (sandboxed Registry bundles) and the welcome card
+          # answer from the visitor's own admin.
+          curl --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
+            --cookie-jar "$cookie_jar" --cookie "$cookie_jar" \
+            --request POST "$PREVIEW_URL/_playground/init" --output /dev/null
+          for check in "dinkus-ship|/shipping|Shipping" \
+            "dinkus-payments|/status|Payment setup" \
+            "dinkus-playground-welcome|widget:welcome|Start your real store"; do
+            IFS='|' read -r plugin page expected <<< "$check"
+            plugin_body="$(mktemp)"
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
+              --cookie-jar "$cookie_jar" --cookie "$cookie_jar" \
+              --header 'content-type: application/json' --header 'X-EmDash-Request: 1' \
+              --data "{\"type\":\"page_load\",\"page\":\"${page}\"}" \
+              "$PREVIEW_URL/_emdash/api/plugins/${plugin}/admin" --output "$plugin_body"
+            grep -Fq "$expected" "$plugin_body"
+            echo "| ${plugin} ${page} | answers \"${expected}\" |" >> "$GITHUB_STEP_SUMMARY"
+          done
       - name: Post playground preview comment
         if: github.event_name == 'pull_request' && github.event.action != 'closed'
         shell: bash
@@ -353,6 +377,7 @@ jobs:
           - [x] \`/\` redirects to \`/playground\` with HTTP 200
           - [x] \`X-Robots-Tag: noindex, nofollow\` and robots meta noindex
           - [x] Cart shows checkout as unavailable
+          - [x] Payments, Ship and the welcome card answer from the admin
 
           **Built from:** \`${SOURCE_SHA}\`
 

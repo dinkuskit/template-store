@@ -84,6 +84,20 @@ export function injectPlaygroundNoIndex(html: string): string {
   );
 }
 
+/** Where a prospect goes to start a real DinkusKit store. */
+export const START_REAL_STORE_URL = "https://dinkuskit.com/";
+const EMDASH_DEPLOY_LINK =
+  /(<a class="ec-pg-btn ec-pg-btn--deploy" href=")https:\/\/github\.com\/emdash-cms\/emdash("[^>]*>\s*)Deploy your own/;
+
+/**
+ * EmDash's playground toolbar ends with "Deploy your own", which opens the
+ * plain EmDash repository. On our playground that button is the next step to
+ * a real DinkusKit store (GrillTrack playground-prospect-demo-20261022).
+ */
+export function retargetPlaygroundDeployLink(html: string): string {
+  return html.replace(EMDASH_DEPLOY_LINK, `$1${START_REAL_STORE_URL}$2Start your real store`);
+}
+
 const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/i;
 const ULID_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 /** Tolerated clock skew between isolates for a just-minted session token. */
