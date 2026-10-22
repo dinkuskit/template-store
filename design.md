@@ -52,13 +52,42 @@ Coming soon stock management; preserve existing managed data/fail-closed reads.
 - Keep proof controls out of the customer page; automated mutation uses a
   proof-only HTTP endpoint.
 
-## Unresolved visual language
+## Locked Stitch visual language & upstream EmDash architecture (2026-10-21)
 
-The first slice uses a restrained warm-neutral catalog scaffold, text-only
-merchandise visual placeholders, and a responsive three-to-one-column grid.
-Photography, final typography, and the selected design system remain unresolved;
-a later GrillTrack visual cycle will present five materially distinct candidates
-on the verified real page.
+The earlier unresolved visual language is now locked through the GrillTrack +
+Google Stitch design cycle (`projects/986073655661399908`; see `.stitch/DESIGN.md`):
+
+- **Tactile Stamp & Architectural Grid**: Storefront cards, policy panels, and
+  commerce surfaces use a Warm Minimalist Editorial + Tactile Industrial
+  Blueprint system with `1.5px` crisp structural borders, `10px` radius, and
+  offset stamp shadows over a 12-column `70rem` container.
+- **Upstream EmDash Theming (`src/styles/tokens.css` + `src/styles/theme.css`)**:
+  All design tokens live inside `@layer base` in `src/styles/tokens.css` using
+  CSS `light-dark(<light>, <dark>)`. `src/styles/theme.css` ships as a blank
+  unlayered `:root {}` stylesheet where template adopters place brand overrides.
+  `src/styles/tokens.css` ships 3 curated Stitch presets inside `@layer base`:
+  `aizome` (default Japanese Indigo `#101827`, Warm Washi `#F4F1EA`, Crisp Chalk
+  `#FCFBF8`, Hanko Vermilion `#D1492F`), `forest` (Alpine Forest `#0F1F18` &
+  Terracotta Clay `#C85A32`), and `cobalt` (Carbon Graphite `#111318` & Bauhaus
+  Cobalt `#2554D9`). Cookie-persisted Light / Dark / System (`dinkus_theme`) and
+  proof-mode preset (`dinkus_preset`) switchers restore inline before first
+  paint.
+- **Shared `StoreFooter.astro` & `<WidgetArea name="footer" />`**: Every public
+  route mounts `src/features/store-shell/StoreFooter.astro`, combining
+  `getSiteSettingsWithCacheHint()` brand identity, the Commerce/Inventory
+  authority statement, the `footer_shop` menu, `<WidgetArea name="footer" />`
+  exercising all 3 EmDash widget types (`content` Portable Text note, `menu`
+  bound to `footer_policies`, and `component` `core:search`), and the theme/preset
+  switcher dock.
+- **Full-Text Search (`/search`) & All 3 EmDash Composition Primitives**:
+  `products`, `categories`, and `pages` enable `"search"` support in
+  `seed/seed.json` and power `/search` (`src/pages/search.astro`) via
+  `<LiveSearch>` from `"emdash/ui/search"` and SSR `search()`. Together with
+  `pages.layout` (`blocks`), `<WidgetArea name="footer" />` (`widgetAreas`), and
+  the seeded `policy-support-note` Portable Text section rendered via
+  `getSection("policy-support-note")` + `<PortableText />` on `/shipping` and
+  `/returns` (`sections`), the starter exercises every core EmDash composition
+  primitive.
 
 ## Component contract
 
@@ -155,3 +184,35 @@ the full menu expanded. The link for the current page carries
 `aria-current="page"`. The look stays within the existing warm-neutral tokens;
 this adds navigation, not a new visual round. The older `store-primary` menu
 remains the category row inside the seeded integration demonstrations.
+
+## Stitch tactile stamp system & upstream EmDash theming (2026-10-21)
+
+- **Upstream EmDash Tokens (`src/styles/tokens.css` + `src/styles/theme.css`)**:
+  All design tokens live inside `@layer base` in `src/styles/tokens.css` using CSS
+  `light-dark(<light>, <dark>)`, paired with an unlayered `src/styles/theme.css`
+  (`:root {}`) imported after `tokens.css` for brand overrides. Three curated
+  Stitch presets ship in `@layer base`: `aizome` (default: Japanese Indigo
+  `#101827`, Warm Washi `#F4F1EA`, Crisp Chalk `#FCFBF8`, Hanko Vermilion
+  `#D1492F`), `forest` (`#0F1F18`, `#F4EFE6`, `#C85A32`), and `cobalt`
+  (`#111318`, `#F3F4F6`, `#2554D9`).
+- **Shared `StoreFooter.astro` & `<WidgetArea name="footer" />`**:
+  Mounted across all public routes (`/`, `/categories/[slug]`, `/products/[id]`,
+  `/cart`, `/checkout/success`, `/account`, `/shipping`, `/returns`, `/search`).
+  Uses `getSiteSettingsWithCacheHint()` for brand identity with fallback to
+  `STORE_TITLE`, renders `footer_shop` and `footer_policies` menus, and mounts
+  `<WidgetArea name="footer" />` exercising all three EmDash widget types
+  (`content` store note, `menu` bound to `footer_policies`, and `component`
+  `core:search`). The bottom colophon band houses the cookie-persisted
+  `Light` / `Dark` / `System` switcher and (on `proof`) color-coded
+  `Aizome` / `Forest` / `Cobalt` preset pills with dual-tone palette swatches.
+- **Header Search Pill & `/search` (`Search 3 + 2 Hybrid`)**:
+  `StoreHeader.astro` includes the rounded `[ Search products... (GO) ]` search
+  pill (`[data-store-search-nav]`), and `src/pages/search.astro` uses a 5/7
+  Inverted Split with the left Dark Aizome Search Command Vault (`<LiveSearch>`
+  from `"emdash/ui/search"`, pill search bar, and collection scopes) and right
+  Crisp Chalk FTS5 results card.
+- **All 3 EmDash Composition Primitives (`blocks`, `sections`, `widgetAreas`)**:
+  `pages.layout` exercises `blocks` on `/`; `seed.sections` retains
+  `home-opener` and adds `policy-support-note` rendered via
+  `getSection("policy-support-note")` + `<PortableText />` on `/shipping` and
+  `/returns`; and `seed.widgetAreas` seeds the `footer` widget area.

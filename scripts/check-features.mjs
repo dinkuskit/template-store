@@ -82,8 +82,12 @@ if (
   );
 }
 for (const path of [
+  "src/styles/tokens.css",
+  "src/styles/theme.css",
   "src/features/store-shell/index.ts",
+  "src/features/store-shell/StoreFooter.astro",
   "src/features/store-shell/price.ts",
+  "src/pages/search.astro",
   "docs/implementation/unpriced-public-home.md",
   "src/features/managed-product-availability/index.ts",
   "src/features/unmanaged-product-sellability/index.ts",
@@ -140,6 +144,7 @@ for (const path of sourceFiles(resolve(root, "src"))) {
 
 for (const relative of [
   "src/pages/index.astro",
+  "src/pages/search.astro",
   "src/pages/categories/[slug].astro",
   "src/pages/products/[id].astro",
   "src/pages/cart.astro",

@@ -75,6 +75,81 @@ test("the seeded main menu leads from every store page to the shop and its categ
     await page.goto(path);
     await expect(page.locator("[data-store-main-nav] a")).toHaveCount(6);
     await expect(page.locator("[data-store-header] [data-guest-cart-nav]")).toBeVisible();
+    await expect(page.locator("[data-store-footer]")).toBeVisible();
+  }
+
+  // Shared StoreFooter renders <WidgetArea name="footer" /> with all 3 widget types,
+  // footer_shop menu, and the cookie-persisted theme switcher.
+  await page.goto("/");
+  const footer = page.locator("[data-store-footer]");
+  await expect(footer.locator("[data-footer-shop-nav]")).toHaveAttribute("data-nav-source", "cms");
+  const widgetArea = footer.locator('[data-widget-area="footer"]');
+  await expect(widgetArea).toBeVisible();
+  await expect(widgetArea.locator('[data-widget-type="content"]')).toHaveCount(1);
+  await expect(widgetArea.locator('[data-widget-type="menu"]')).toHaveCount(1);
+  await expect(widgetArea.locator('[data-widget-type="component"] form.widget-search')).toHaveCount(1);
+
+  const darkBtn = footer.locator('[data-theme-choice="dark"]');
+  const lightBtn = footer.locator('[data-theme-choice="light"]');
+  await darkBtn.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(darkBtn).toHaveAttribute("aria-pressed", "true");
+  await lightBtn.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  // Reusable Portable Text section renders on /shipping and /returns.
+  await page.goto("/shipping");
+  await expect(page.locator('[data-policy-support-section="policy-support-note"]')).toHaveAttribute(
+    "data-section-source",
+    "cms",
+  );
+  await expect(
+    page.locator('[data-policy-support-section="policy-support-note"] h3'),
+  ).toHaveText("Garment care & policy provenance");
+
+  // /search route renders <LiveSearch> and SSR FTS5 results, while excluding draft content.
+  await page.goto("/search?q=Everyday");
+  await expect(page.locator("emdash-live-search")).toBeVisible();
+  await expect(page.locator('[data-search-result="everyday-tee"]')).toBeVisible();
+
+  const csrfHeaders = { "X-EmDash-Request": "1" };
+  const draftSlug = `draft-prototype-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
+  const createdDraft = await request.post("/_emdash/api/content/products", {
+    headers: csrfHeaders,
+    data: {
+      slug: draftSlug,
+      status: "draft",
+      data: {
+        title: "Secret Prototype Parka",
+        description: "Unpublished prototype garment",
+        visual_label: "hoodie",
+      },
+    },
+  });
+  expect(createdDraft.status()).toBe(201);
+  const draftId = ((await createdDraft.json()) as { data: { item: { id: string } } }).data.item.id;
+  try {
+    await page.goto("/search?q=Prototype");
+    await expect(page.locator(`[data-search-result="${draftSlug}"]`)).toHaveCount(0);
+
+    const searchApiResp = await request.get(
+      "/_emdash/api/search?q=Prototype&collections=products,categories,pages",
+    );
+    expect(searchApiResp.ok()).toBe(true);
+    const searchApiBody = (await searchApiResp.json()) as { data?: { items?: Array<{ slug?: string }> } };
+    expect(searchApiBody.data?.items?.some((item) => item.slug === draftSlug) ?? false).toBe(false);
+
+    const forbiddenDraftStatus = await request.get("/_emdash/api/search?q=Prototype&status=draft");
+    expect(forbiddenDraftStatus.status()).toBe(403);
+
+    const suggestResp = await request.get(
+      "/_emdash/api/search/suggest?q=Secret&collections=products,categories,pages",
+    );
+    expect(suggestResp.ok()).toBe(true);
+    const suggestBody = (await suggestResp.json()) as { data?: { items?: Array<{ slug?: string }> } };
+    expect(suggestBody.data?.items?.some((item) => item.slug === draftSlug) ?? false).toBe(false);
+  } finally {
+    await request.delete(`/_emdash/api/content/products/${draftId}`, { headers: csrfHeaders });
   }
 
   if (phone) {

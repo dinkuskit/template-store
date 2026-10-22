@@ -1,0 +1,403 @@
+---
+import { search } from "emdash";
+import LiveSearch from "emdash/ui/search";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
+import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
+import { storeBannerText } from "../features/store-shell/checkout-copy.js";
+import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { canonicalUrl } from "../features/store-shell/structured-data.js";
+import "../features/store-shell/global.css";
+
+const profile = readStorefrontProfile();
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const checkoutAvailable =
+  Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+  Boolean(
+    await acquireGuestCheckoutAdmission({
+      runtime: Astro.locals.emdash,
+      request: Astro.request,
+    }).catch(() => null),
+  );
+
+const rawQuery = Astro.url.searchParams.get("q")?.trim() ?? "";
+const query = rawQuery.slice(0, 120);
+const searchableCollections = ["products", "categories", "pages"];
+const routeMap: Record<string, string> = {
+  products: "/products/:slug",
+  categories: "/categories/:slug",
+  pages: "/:slug",
+};
+
+interface SsrSearchHit {
+  collection: string;
+  id: string;
+  slug: string | null;
+  title?: string;
+  snippet?: string;
+  score: number;
+}
+
+const ssrResults: SsrSearchHit[] =
+  query.length >= 2
+    ? await search(query, {
+        collections: searchableCollections,
+        status: "published",
+        limit: 20,
+      })
+        .then((res) => (res.items ?? []) as SsrSearchHit[])
+        .catch(() => [])
+    : [];
+
+function resultHref(hit: SsrSearchHit): string {
+  const slug = hit.slug ?? hit.id;
+  if (hit.collection === "products") return `/products/${slug}`;
+  if (hit.collection === "categories") return `/categories/${slug}`;
+  if (slug === "home") return "/";
+  return `/${slug}`;
+}
+
+const canonical = canonicalUrl("/search", Astro.site, Astro.url);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="canonical" href={canonical} />
+    <title>{query ? `Search: ${query} | ${STORE_TITLE}` : `Search | ${STORE_TITLE}`}</title>
+  </head>
+  <body data-storefront-profile={profile}>
+    <div
+      class="store-demo-banner"
+      data-store-demo-banner
+      data-checkout-available={String(checkoutAvailable)}
+      role="status"
+    >
+      {storeBannerText(checkoutAvailable)}
+    </div>
+    <StoreHeader profile={profile} />
+    <main class="search-page" data-search-page>
+      <div class="search-vault">
+        <aside class="search-rail" aria-label="Search scope and shortcuts">
+          <p class="search-rail__eyebrow">EmDash FTS5 Discovery</p>
+          <h1>Search the store</h1>
+          <p class="search-rail__deck">
+            Instant live search and server-rendered FTS5 results across published products, product categories, and storefront pages.
+          </p>
+
+          <form method="get" action="/search" class="search-pill-bar" role="search" data-search-form>
+            <input
+              id="store-search-query"
+              type="search"
+              name="q"
+              value={query}
+              placeholder="Search products..."
+              aria-label="Search query"
+            />
+            <button type="submit">GO</button>
+          </form>
+
+          <div class="search-rail__live" data-live-search-stage>
+            <span class="search-rail__live-label">Instant dropdown (&lt;LiveSearch /&gt;)</span>
+            <LiveSearch
+              placeholder="Search products, categories, and pages..."
+              collections={searchableCollections}
+              routeMap={routeMap}
+              searchPage="/search"
+              class="store-live-search"
+            />
+          </div>
+
+          <div class="search-rail__scopes" aria-label="Indexed collections">
+            <span class="search-scope-pill">products</span>
+            <span class="search-scope-pill">categories</span>
+            <span class="search-scope-pill">pages</span>
+          </div>
+          <nav class="search-rail__links" aria-label="Quick browse">
+            <a href="/#commerce-catalog">Browse shop catalog</a>
+            <a href="/categories/tees">Tees</a>
+            <a href="/categories/hoodies">Hoodies</a>
+            <a href="/categories/hats">Hats</a>
+            <a href="/shipping">Shipping policy</a>
+            <a href="/returns">Returns policy</a>
+          </nav>
+        </aside>
+
+        <section class="search-stage" aria-label="Search results stage">
+          {query.length >= 2 ? (
+            <div class="search-results" aria-label="Search results" data-search-results>
+              <header class="search-results__header">
+                <h2>
+                  Results for <q>{query}</q>
+                </h2>
+                <span class="search-results__count" data-search-results-count>
+                  {ssrResults.length} {ssrResults.length === 1 ? "match" : "matches"}
+                </span>
+              </header>
+              {ssrResults.length === 0 ? (
+                <p class="search-results__empty" role="status" data-search-empty>
+                  No published products, categories, or pages matched <q>{query}</q>.
+                </p>
+              ) : (
+                <ul class="search-results__list">
+                  {ssrResults.map((hit) => (
+                    <li class="search-results__item" data-search-result={hit.slug ?? hit.id} data-search-collection={hit.collection}>
+                      <a href={resultHref(hit)} class="search-results__link">
+                        <div class="search-results__top">
+                          <strong>{hit.title ?? hit.slug ?? hit.id}</strong>
+                          <span class="search-results__badge">{hit.collection}</span>
+                        </div>
+                        {hit.snippet && (
+                          <p class="search-results__snippet" set:html={hit.snippet} />
+                        )}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div class="search-results" data-search-prompt>
+              <header class="search-results__header">
+                <h2>Query the catalog</h2>
+                <span class="search-results__count">FTS5 READY</span>
+              </header>
+              <p class="search-results__empty">
+                Enter two or more characters in the search bar on the left to filter published products, categories, and storefront pages.
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+    </main>
+    <StoreFooter profile={profile} />
+  </body>
+</html>
+<style>
+  .search-page {
+    width: min(70rem, calc(100% - 2rem));
+    margin: 2.5rem auto 4rem;
+    min-height: 60vh;
+  }
+  .search-vault {
+    display: grid;
+    grid-template-columns: minmax(20rem, 5fr) minmax(0, 7fr);
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .search-rail {
+    padding: 1.75rem;
+    border: 2px solid var(--store-ink-border);
+    border-radius: var(--store-radius-card);
+    background: var(--store-vault-bg);
+    color: var(--store-vault-ink);
+    box-shadow: 7px 7px 0 var(--store-accent);
+  }
+  .search-rail__eyebrow {
+    margin: 0 0 0.5rem;
+    color: var(--store-accent);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .search-rail h1 {
+    margin: 0 0 0.65rem;
+    font-size: clamp(1.85rem, 3.5vw, 2.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+  }
+  .search-rail__deck {
+    margin: 0 0 1.15rem;
+    color: var(--store-vault-muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+  .search-pill-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.15rem;
+    padding: 0.35rem 0.45rem 0.35rem 1rem;
+    border: 1.5px solid var(--store-accent);
+    border-radius: 999px;
+    background: #0b111d;
+    box-shadow: 3px 3px 0 var(--store-accent);
+  }
+  .search-pill-bar input {
+    flex: 1 1 10rem;
+    min-width: 0;
+    padding: 0.35rem 0;
+    border: 0;
+    background: transparent;
+    color: var(--store-vault-ink);
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 600;
+    outline: none;
+  }
+  .search-pill-bar input::placeholder {
+    color: var(--store-vault-muted);
+    font-weight: 400;
+  }
+  .search-pill-bar button {
+    padding: 0.42rem 0.95rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--store-accent);
+    color: var(--store-accent-ink);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+  .search-rail__live {
+    margin-bottom: 1.15rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--store-vault-line);
+    border-radius: var(--store-radius-card);
+    background: var(--store-vault-surface);
+  }
+  .search-rail__live-label {
+    display: block;
+    margin: 0 0 0.45rem;
+    color: var(--store-vault-muted);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .search-rail :global(.store-live-search) {
+    display: block;
+    width: 100%;
+  }
+  .search-rail :global(.emdash-live-search-input) {
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--store-vault-line);
+    border-radius: 999px;
+    background: #0b111d;
+    color: var(--store-vault-ink);
+    font: inherit;
+    font-size: 0.86rem;
+  }
+  .search-rail__scopes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+  }
+  .search-scope-pill {
+    padding: 0.25rem 0.65rem;
+    border: 1px solid var(--store-vault-line);
+    border-radius: 999px;
+    background: var(--store-vault-surface);
+    color: var(--store-vault-ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .search-rail__links {
+    display: grid;
+    gap: 0.45rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--store-vault-line);
+  }
+  .search-rail__links a {
+    color: var(--store-vault-ink);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .search-rail__links a:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--store-accent);
+  }
+  .search-stage {
+    display: grid;
+    gap: 1.25rem;
+  }
+  .search-results {
+    padding: 1.65rem;
+    border: 2px solid var(--store-ink-border);
+    border-radius: var(--store-radius-card);
+    background: var(--store-surface);
+    box-shadow: 5px 5px 0 var(--store-shadow);
+  }
+  .search-results__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--store-ink-border);
+  }
+  .search-results__header h2 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+  .search-results__count {
+    color: var(--store-accent);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .search-results__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0;
+  }
+  .search-results__item {
+    border-bottom: 1px solid var(--store-line);
+  }
+  .search-results__item:last-child {
+    border-bottom: 0;
+  }
+  .search-results__link {
+    display: block;
+    padding: 0.95rem 0.25rem;
+    color: inherit;
+    text-decoration: none;
+  }
+  .search-results__link:hover strong {
+    text-decoration: underline;
+    text-decoration-color: var(--store-accent);
+  }
+  .search-results__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .search-results__badge {
+    padding: 0.2rem 0.6rem;
+    border: 1.5px solid var(--store-ink-border);
+    border-radius: 999px;
+    background: var(--store-bg);
+    color: var(--store-ink);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .search-results__snippet {
+    margin: 0.35rem 0 0;
+    color: var(--store-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  @media (max-width: 52rem) {
+    .search-vault {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -31,6 +31,7 @@ import { applySeed, type SeedFile } from "emdash/seed";
 import { sql } from "kysely";
 
 import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
+import { ensureStorefrontSearchSupport } from "../store-shell/index.js";
 import { buildDemoProductEntries } from "./demo-products.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
@@ -173,6 +174,7 @@ export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: st
       includeContent: true, onConflict: "skip", skipMediaDownload: true,
     });
   }
+  await ensureStorefrontSearchSupport(db as never);
   return { created };
 }
 

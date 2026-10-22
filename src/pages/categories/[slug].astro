@@ -77,7 +77,7 @@ const unmanaged = demonstrations?.unmanaged;
         </>
       ) : <><h1>Category not found</h1><p>This category is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
-    <StoreFooter profile={profile} note={`Product copy is editable in EmDash; transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}.`} />
+    <StoreFooter profile={profile} />
   </body>
 </html>
 <style>

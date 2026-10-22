@@ -11,6 +11,7 @@ import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-p
 import {
    ensurePlaygroundDemoCatalog,
 } from "./features/playground/demo-commerce-seed.js";
+import { ensureStorefrontSearchSupport } from "./features/store-shell/index.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import {
   ensureDemoShopperOrder,
@@ -43,6 +44,7 @@ import {
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
 let demoProfileSeeded = false;
+let storefrontSearchSupportEnsured = false;
 
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
@@ -98,6 +100,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       slashlessPath === "/account" ||
       slashlessPath === "/shipping" ||
       slashlessPath === "/returns" ||
+      slashlessPath === "/search" ||
       slashlessPath.startsWith("/feeds/")) &&
     (context.request.method === "GET" || context.request.method === "HEAD")
   ) {
@@ -161,6 +164,29 @@ export const onRequest = defineMiddleware(async (context, next) => {
         applySecurityHeaders(refused.headers);
         return refused;
       }
+    }
+  }
+
+  if (
+    context.url.pathname === "/search" ||
+    context.url.pathname === "/_emdash/api/search" ||
+    context.url.pathname === "/_emdash/api/search/suggest"
+  ) {
+    const requestedStatus = context.url.searchParams.get("status");
+    if (requestedStatus !== null && requestedStatus !== "published") {
+      const refused = Response.json(
+        { error: "Public search only serves published storefront content." },
+        { status: 403 },
+      );
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
+    if (!isPlayground && !storefrontSearchSupportEnsured) {
+      storefrontSearchSupportEnsured = true;
+      const { getDb } = await import("emdash/runtime");
+      await ensureStorefrontSearchSupport((await getDb()) as never).catch(() => {
+        storefrontSearchSupportEnsured = false;
+      });
     }
   }
 
