@@ -42,25 +42,13 @@ const child = spawn(
     "--ignore-lock",
   ],
   {
-    detached: process.platform !== "win32",
     stdio: "inherit",
     env: buildOfflineE2EEnvironment(process.env, options),
   },
 );
 
-function stopChild(signal) {
-  if (!child.pid) return;
-  try {
-    if (process.platform !== "win32") {
-      process.kill(-child.pid, signal);
-    } else {
-      child.kill(signal);
-    }
-  } catch {}
-}
-
 for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, () => stopChild(signal));
+  process.on(signal, () => child.kill(signal));
 }
 
 child.on("exit", (code, signal) => {
