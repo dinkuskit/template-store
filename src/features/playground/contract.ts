@@ -84,8 +84,8 @@ export function injectPlaygroundNoIndex(html: string): string {
   );
 }
 
-/** Where a prospect goes to start a real DinkusKit store. */
-export const START_REAL_STORE_URL = "https://dinkuskit.com/";
+/** Where a prospect goes to start a real DinkusKit store: the onboarding page on DinkusKit.com. */
+export const START_REAL_STORE_URL = "https://dinkuskit.com/start";
 const EMDASH_DEPLOY_LINK =
   /(<a class="ec-pg-btn ec-pg-btn--deploy" href=")https:\/\/github\.com\/emdash-cms\/emdash("[^>]*>\s*)Deploy your own/;
 
