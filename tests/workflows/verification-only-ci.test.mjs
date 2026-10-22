@@ -54,10 +54,31 @@ test("verification-only guard preserves ordinary deployment and fork boundaries"
   }
 });
 
+function jobBody(job) {
+  const body = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n  [a-z][a-z-]+:\n/u)[0];
+  assert.ok(body, `missing job ${job}`);
+  return body;
+}
+
 test("verification and build jobs remain available to labeled PRs", () => {
-  for (const job of ["workflows", "verify", "build-playground"]) {
-    const body = workflow.split(`\n  ${job}:\n`)[1]?.split(/\n  [a-z][a-z-]+:\n/u)[0];
-    assert.ok(body);
-    assert.match(body, /^    if: github.event.action != 'closed'$/mu);
+  for (const job of ["workflows", "verify-desktop", "verify-phone", "build-playground"]) {
+    assert.match(jobBody(job), /^    if: github.event.action != 'closed'$/mu);
   }
+  assert.match(jobBody("verify"), /^    if: \$\{\{ !cancelled\(\) && github.event.action != 'closed' \}\}$/mu);
+});
+
+test("Store verification requires both desktop and phone halves", () => {
+  const body = jobBody("verify");
+  assert.match(body, /^    name: Store verification$/mu);
+  assert.match(body, /^    needs: \[verify-desktop, verify-phone\]$/mu);
+  assert.match(body, /test "\$DESKTOP" = success/u);
+  assert.match(body, /test "\$PHONE" = success/u);
+  assert.match(jobBody("verify-desktop"), /VERIFY_E2E_PROJECTS: chromium-desktop,shipping-chromium-desktop$/mu);
+  assert.match(jobBody("verify-phone"), /VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile$/mu);
+});
+
+test("playground builds beside verification but deploys only after it", () => {
+  assert.doesNotMatch(jobBody("build-playground"), /^    needs:/mu);
+  assert.match(jobBody("deploy-playground"), /^    needs: \[verify, build-playground\]$/mu);
+  assert.doesNotMatch(jobBody("deploy-playground"), /always\(\)|!cancelled\(\)|failure\(\)/u);
 });

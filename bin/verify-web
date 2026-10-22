@@ -5,12 +5,33 @@ MODE="${1:-quick}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ "$MODE" != "quick" && "$MODE" != "full" ]]; then
-  echo "usage: bin/verify-web [quick|full]" >&2
+if [[ "$MODE" != "quick" && "$MODE" != "full" && "$MODE" != "browser" ]]; then
+  echo "usage: bin/verify-web [quick|full|browser]" >&2
   exit 2
 fi
 
+# VERIFY_E2E_PROJECTS (comma-separated Playwright project names) narrows the
+# browser tests; unset runs every project. CI splits desktop and phone into
+# parallel jobs this way, each on its own runner with its own disposable store.
+PLAYWRIGHT_PROJECT_ARGS=()
+if [[ -n "${VERIFY_E2E_PROJECTS:-}" ]]; then
+  IFS=',' read -r -a verify_e2e_projects <<<"$VERIFY_E2E_PROJECTS"
+  for project in "${verify_e2e_projects[@]}"; do
+    PLAYWRIGHT_PROJECT_ARGS+=("--project=$project")
+  done
+fi
+
 pnpm prepare:sources
+
+# browser runs only the build and the browser tests; the phone CI job uses it
+# beside a full run that owns every other check.
+if [[ "$MODE" == "browser" ]]; then
+  pnpm exec astro build
+  pnpm exec playwright test ${PLAYWRIGHT_PROJECT_ARGS[@]+"${PLAYWRIGHT_PROJECT_ARGS[@]}"}
+  echo "verify-web: ${MODE} passed"
+  exit 0
+fi
+
 pnpm exec astro check
 pnpm exec vitest run
 node --test tests/workflows/*.test.mjs
@@ -20,7 +41,7 @@ git diff --check
 
 if [[ "$MODE" == "full" ]]; then
   pnpm exec astro build
-  pnpm exec playwright test
+  pnpm exec playwright test ${PLAYWRIGHT_PROJECT_ARGS[@]+"${PLAYWRIGHT_PROJECT_ARGS[@]}"}
   export NO_PROXY="${NO_PROXY:+$NO_PROXY,}127.0.0.1,localhost,::1"
   export no_proxy="${no_proxy:+$no_proxy,}127.0.0.1,localhost,::1"
   VERIFY_SITE_PORT="${VERIFY_SITE_PORT:-4640}"
