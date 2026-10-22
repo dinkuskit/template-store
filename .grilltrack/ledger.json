@@ -4232,6 +4232,49 @@
       "superseded_by": null,
       "updated_at": "2026-10-22T15:16:13+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Give the DinkusKit-owned playground store (site playground) one Payments key in the per-plugin key table (dinkuskit_plugin_key, plugin payments), made by an operator one-paste on Ronald's Mac: the key is generated in memory, only its SHA-256 is inserted with wrangler d1 execute (never migrations apply), and it is piped into the playground Worker secret PAYMENTS_STORE_KEY without being printed. It is an operator exception for this one demo store, not a merchant paste path: merchants still get keys only from Connect. The key trades only payments:checkout passes for site playground, shows as Payments connected for that store on Your Stores, and Disconnect there stops it. The cleanup that stops old keys does not touch it. No template-store code change.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk",
+      "created_at": "2026-10-22T22:54:48+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-pretend-connected-20261022"
+      ],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-22T22:54:48+00:00",
+          "choice": "Give the DinkusKit-owned playground store (site playground) one Payments key in the per-plugin key table (dinkuskit_plugin_key, plugin payments), made by an operator one-paste on Ronald's Mac: the key is generated in memory, only its SHA-256 is inserted with wrangler d1 execute (never migrations apply), and it is piped into the playground Worker secret PAYMENTS_STORE_KEY without being printed. It is an operator exception for this one demo store, not a merchant paste path: merchants still get keys only from Connect. The key trades only payments:checkout passes for site playground, shows as Payments connected for that store on Your Stores, and Disconnect there stops it. The cleanup that stops old keys does not touch it. No template-store code change.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-checkout-payments-key-20261022",
+      "implementation_ref": null,
+      "question": "How does the playground's test checkout keep working once DinkusKit.com stops every old pasted store key (dinkuskit ledger store-connect-no-paste-082)?",
+      "rationale": "Owner choice on the decision card, 22:53 UTC 22 Oct 2026.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-22T22:54:48+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4254,5 +4297,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-22T15:16:13+00:00"
+  "updated_at": "2026-10-22T22:54:48+00:00"
 }
