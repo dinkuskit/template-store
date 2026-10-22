@@ -131,10 +131,16 @@ test("published Commerce products, policies, and feeds share one public revision
   let mediumHoodieId = "";
   let originalDescription: string | undefined;
   let productEntryId = "";
+  let shippingPageEntryId = "";
+  let originalShippingPageData: Record<string, unknown> | undefined;
+  const footerPolicies = page.getByRole("navigation", { name: "Policies & Care" });
   try {
     await page.goto("/");
     const shirtCard = page.locator('a[data-product-link][href="/products/demo-shirt"]');
     await expect.poll(async () => { await page.reload(); return shirtCard.count(); }, { timeout: 60_000 }).toBe(1);
+    await expect(footerPolicies).toContainText("Policies & Care");
+    await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("href", "/shipping");
+    await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("href", "/returns");
     shirtId = await catalogId(admin, "DEMO-HOSTED-SHIRT");
     const capId = await catalogId(admin, "DEMO-HOSTED-CAP");
     const mugId = await catalogId(admin, "DEMO-HOSTED-MUG");
@@ -144,11 +150,13 @@ test("published Commerce products, policies, and feeds share one public revision
     const shippingAlreadySet = await page.locator("[data-shipping-policy]").count();
     if (shippingAlreadySet === 0) {
       await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
+      await expect(page.locator("[data-policy-body]")).toHaveCount(0);
       await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/u);
     }
     await page.goto("/returns");
     if (await page.locator("[data-return-policy]").count() === 0) {
       await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
+      await expect(page.locator("[data-policy-body]")).toHaveCount(0);
     }
 
     await page.goto("/products/demo-shirt");
@@ -349,6 +357,9 @@ test("published Commerce products, policies, and feeds share one public revision
         "data-shipping-countries",
         revision.shipping.shippingDestinationCountries.join(","),
       );
+      await expect(page.locator("[data-shipping-policy-body]")).toContainText("Order processing & cut-off times");
+      await expect(page.locator("[data-shipping-policy-body]")).toContainText("Carrier tracking & delivery");
+      await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
       await page.goto("/returns");
       await expect.poll(async () => {
         await page.reload();
@@ -365,6 +376,9 @@ test("published Commerce products, policies, and feeds share one public revision
       await expect(page.locator("[data-return-policy]")).not.toContainText("ReturnByMail");
       await expect(page.locator("[data-return-policy]")).not.toContainText("ReturnShippingFees");
       await expect(page.locator("[data-return-policy]")).not.toContainText("Revision");
+      await expect(page.locator("[data-return-policy-body]")).toContainText("Item condition & eligibility");
+      await expect(page.locator("[data-return-policy-body]")).toContainText("How to initiate a return");
+      await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
       const policies = await policyInput(page);
       await page.goto("/products/demo-shirt");
       const shirtCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
@@ -387,6 +401,63 @@ test("published Commerce products, policies, and feeds share one public revision
       }));
       expect(JSON.stringify(script)).not.toContain("inventoryLevel");
     }
+
+    const shippingEntryResp = await admin.request.get("/_emdash/api/content/pages/shipping");
+    expect(shippingEntryResp.ok(), await shippingEntryResp.text()).toBe(true);
+    const shippingEntry = unwrap(await shippingEntryResp.json()).item as { id: string; data: Record<string, unknown> };
+    shippingPageEntryId = shippingEntry.id;
+    originalShippingPageData = shippingEntry.data;
+    const customShippingHeading = `Dispatch schedule (${projectKey})`;
+    const customShippingBody = "Orders placed before the daily cut-off leave the warehouse the next business day.";
+    const savedShippingPage = await admin.request.put(`/_emdash/api/content/pages/${shippingEntry.id}?locale=en`, {
+      headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
+      data: {
+        data: {
+          ...shippingEntry.data,
+          content: [
+            {
+              _type: "block",
+              _key: "custom-shipping-heading",
+              style: "h2",
+              children: [{ _type: "span", _key: "custom-shipping-heading-span", text: customShippingHeading }],
+            },
+            {
+              _type: "block",
+              _key: "custom-shipping-body",
+              style: "normal",
+              children: [{ _type: "span", _key: "custom-shipping-body-span", text: customShippingBody }],
+            },
+          ],
+        },
+      },
+    });
+    expect(savedShippingPage.ok(), await savedShippingPage.text()).toBe(true);
+    const publishedShippingPage = await admin.request.post(`/_emdash/api/content/pages/${shippingEntry.id}/publish?locale=en`, {
+      headers: { "X-EmDash-Request": "1" },
+    });
+    expect(publishedShippingPage.ok(), await publishedShippingPage.text()).toBe(true);
+    await page.goto("/shipping");
+    await expect.poll(async () => {
+      await page.reload();
+      return page.locator("[data-shipping-policy-body]").innerText();
+    }, { timeout: 20_000 }).toContain(customShippingHeading);
+    await expect(page.locator("[data-shipping-policy-body]")).toContainText(customShippingBody);
+    await expect(page.locator("[data-shipping-policy]")).toHaveAttribute("data-policy-revision", String(previousShipping));
+    const restoredShippingPage = await admin.request.put(`/_emdash/api/content/pages/${shippingEntry.id}?locale=en`, {
+      headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
+      data: { data: originalShippingPageData },
+    });
+    expect(restoredShippingPage.ok(), await restoredShippingPage.text()).toBe(true);
+    const republishedShippingPage = await admin.request.post(`/_emdash/api/content/pages/${shippingEntry.id}/publish?locale=en`, {
+      headers: { "X-EmDash-Request": "1" },
+    });
+    expect(republishedShippingPage.ok(), await republishedShippingPage.text()).toBe(true);
+    await expect.poll(async () => {
+      await page.reload();
+      return page.locator("[data-shipping-policy-body]").innerText();
+    }, { timeout: 20_000 }).toContain("Order processing & cut-off times");
+    originalShippingPageData = undefined;
+
     for (const [category, label] of [
       ["MerchantReturnFiniteReturnWindow", "Limited return window"],
       ["MerchantReturnNotPermitted", "Returns not accepted"],
@@ -468,6 +539,15 @@ test("published Commerce products, policies, and feeds share one public revision
           headers: { "X-EmDash-Request": "1" },
         });
       }
+    }
+    if (originalShippingPageData !== undefined && shippingPageEntryId) {
+      await admin.request.put(`/_emdash/api/content/pages/${shippingPageEntryId}?locale=en`, {
+        headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
+        data: { data: originalShippingPageData },
+      });
+      await admin.request.post(`/_emdash/api/content/pages/${shippingPageEntryId}/publish?locale=en`, {
+        headers: { "X-EmDash-Request": "1" },
+      });
     }
     await adminContext.close();
   }

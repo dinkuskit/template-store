@@ -314,7 +314,57 @@
         "slug": "shipping",
         "status": "published",
         "data": {
-          "title": "Shipping"
+          "title": "Shipping",
+          "content": [
+            {
+              "_type": "block",
+              "_key": "shipping-cutoff-heading",
+              "style": "h2",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "shipping-cutoff-heading-span",
+                  "text": "Order processing & cut-off times"
+                }
+              ]
+            },
+            {
+              "_type": "block",
+              "_key": "shipping-cutoff-body",
+              "style": "normal",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "shipping-cutoff-body-span",
+                  "text": "Authoritative shipping charges, destination regions, handling windows, and transit estimates come from the connected Commerce shipping policy summary above. Edit this page in EmDash to publish your store's dispatch schedule or fulfillment guidance."
+                }
+              ]
+            },
+            {
+              "_type": "block",
+              "_key": "shipping-tracking-heading",
+              "style": "h2",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "shipping-tracking-heading-span",
+                  "text": "Carrier tracking & delivery"
+                }
+              ]
+            },
+            {
+              "_type": "block",
+              "_key": "shipping-tracking-body",
+              "style": "normal",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "shipping-tracking-body-span",
+                  "text": "Use this section in EmDash to describe how your store shares shipment updates, carrier notifications, or delivery instructions once an order is fulfilled."
+                }
+              ]
+            }
+          ]
         }
       },
       {
@@ -322,7 +372,57 @@
         "slug": "returns",
         "status": "published",
         "data": {
-          "title": "Returns"
+          "title": "Returns",
+          "content": [
+            {
+              "_type": "block",
+              "_key": "returns-eligibility-heading",
+              "style": "h2",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "returns-eligibility-heading-span",
+                  "text": "Item condition & eligibility"
+                }
+              ]
+            },
+            {
+              "_type": "block",
+              "_key": "returns-eligibility-body",
+              "style": "normal",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "returns-eligibility-body-span",
+                  "text": "Authoritative return eligibility, return window length, return method, and fee terms come from the connected Commerce return policy summary above. Edit this page in EmDash to publish your store's item-condition requirements or category notes."
+                }
+              ]
+            },
+            {
+              "_type": "block",
+              "_key": "returns-initiate-heading",
+              "style": "h2",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "returns-initiate-heading-span",
+                  "text": "How to initiate a return"
+                }
+              ]
+            },
+            {
+              "_type": "block",
+              "_key": "returns-initiate-body",
+              "style": "normal",
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "returns-initiate-body-span",
+                  "text": "Use this section in EmDash to outline how shoppers should request a return and where to direct questions about an existing order."
+                }
+              ]
+            }
+          ]
         }
       }
     ],

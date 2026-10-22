@@ -1,0 +1,30 @@
+---
+import type { StorefrontProfile } from "./index.js";
+
+interface Props {
+  profile: StorefrontProfile;
+  currentPath?: string;
+  note?: string;
+}
+
+const { profile, currentPath, note } = Astro.props;
+const pathname = (currentPath ?? Astro.url.pathname).replace(/\/+$/u, "") || "/";
+const defaultNote = `Transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
+---
+
+<footer class="store-footer" data-store-footer>
+  <div class="store-footer__inner">
+    <p class="store-footer__note">{note ?? defaultNote}</p>
+    <nav class="store-footer__policies" aria-label="Policies & Care" data-store-footer-policies>
+      <p class="store-footer__heading">Policies &amp; Care</p>
+      <ul class="store-footer__links">
+        <li>
+          <a href="/shipping" aria-current={pathname === "/shipping" ? "page" : undefined}>Shipping</a>
+        </li>
+        <li>
+          <a href="/returns" aria-current={pathname === "/returns" ? "page" : undefined}>Returns</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</footer>

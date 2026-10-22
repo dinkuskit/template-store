@@ -1,4 +1,5 @@
 ---
+import StoreFooter from "../../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { getEmDashCollection } from "emdash";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
@@ -211,7 +212,7 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
         </article>
       ) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
-    <footer class="store-footer">Merchandise copy is editable in EmDash; transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}.</footer>
+    <StoreFooter profile={profile} note={`Merchandise copy is editable in EmDash; transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}.`} />
   </body>
 </html>
 <script>
