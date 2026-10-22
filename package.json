@@ -40,6 +40,7 @@
     "verify:playground-account-http": "pnpm prepare:sources && node scripts/verify-playground-account-http.mjs",
     "seed:bundle": "node scripts/build-seed-bundle.mjs",
     "seed:demo": "node --import ./scripts/cloudflare-workers-hook.mjs .artifacts/seed/seed-synthetic-demo.mjs",
+    "search:upgrade": "node scripts/upgrade-storefront-search.ts",
     "verify:quick": "bin/verify-web quick",
     "verify:full": "bin/verify-web full",
     "verify": "bin/verify-web full",

@@ -88,6 +88,7 @@ for (const path of [
   "src/features/store-shell/StoreFooter.astro",
   "src/features/store-shell/price.ts",
   "src/pages/search.astro",
+  "scripts/upgrade-storefront-search.ts",
   "docs/implementation/unpriced-public-home.md",
   "src/features/managed-product-availability/index.ts",
   "src/features/unmanaged-product-sellability/index.ts",

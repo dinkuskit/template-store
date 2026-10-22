@@ -107,7 +107,11 @@ const activeChildren = new Set();
 process.on("exit", () => {
   for (const child of activeChildren) {
     try {
-      child.kill("SIGTERM");
+      if (process.platform !== "win32" && child.pid) {
+        process.kill(-child.pid, "SIGTERM");
+      } else {
+        child.kill("SIGTERM");
+      }
     } catch {}
   }
 });

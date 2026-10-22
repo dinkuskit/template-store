@@ -12,6 +12,7 @@ import {
    ensurePlaygroundDemoCatalog,
 } from "./features/playground/demo-commerce-seed.js";
 import {
+  ensureStorefrontSearchSupport,
   filterStorefrontSearchHits,
   loadVisibleStorefrontProductSlugs,
 } from "./features/store-shell/index.js";
@@ -47,6 +48,7 @@ import {
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
 let demoProfileSeeded = false;
+let nonDemoSearchUpgraded = false;
 
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
@@ -201,6 +203,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const { getDb } = await import("emdash/runtime");
     await ensurePlaygroundDemoCatalog(await getDb() as Parameters<typeof ensurePlaygroundDemoCatalog>[0])
       .catch((error: unknown) => { demoProfileSeeded = false; console.error("[demo-seed] failed", error); });
+  } else if ((context.url.pathname === "/search" || isPublicSearchApi) && !nonDemoSearchUpgraded) {
+    nonDemoSearchUpgraded = true;
+    try {
+      const { getDb } = await import("emdash/runtime");
+      await ensureStorefrontSearchSupport(await getDb());
+    } catch {
+      nonDemoSearchUpgraded = false;
+    }
   }
 
   // Sandbox checkout opens ONLY for a playground session with the flag on and

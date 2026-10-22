@@ -1,5 +1,7 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { getSuggestions, searchWithDb } from "emdash";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
@@ -88,6 +90,7 @@ describe("Shared StoreFooter.astro & public route mounting", () => {
   it("wires getSiteSettingsWithCacheHint, footer menus, WidgetArea, and theme/preset switchers in StoreFooter.astro", () => {
     const footer = readFileSync(resolve("src/features/store-shell/StoreFooter.astro"), "utf8");
     expect(footer).toContain("getSiteSettingsWithCacheHint");
+    expect(footer).toContain("Astro.cache.set(footerAreaResult.cacheHint)");
     expect(footer).toContain('<WidgetArea name="footer" />');
     expect(footer).toContain("data-footer-shop-nav");
     expect(footer).toContain("data-footer-policies-nav");
@@ -283,6 +286,99 @@ describe("EmDash composition primitives & seed contract", () => {
       expect(descriptionSearchable).toBe(0);
     } finally {
       await db.destroy();
+    }
+  });
+
+  it("upgrades an on-disk non-demo SQLite store through scripts/upgrade-storefront-search.ts and preserves merchant field exclusions across repeated runs", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "dinkus-search-upgrade-"));
+    const dbPath = join(tempDir, "content.db");
+    const setupDb = new Kysely<never>({ dialect: createDialect({ url: dbPath }) });
+    try {
+      await runMigrations(setupDb as never);
+      const legacySeed = JSON.parse(
+        readFileSync(resolve("tests/fixtures/seed-before-product-categories.json"), "utf8"),
+      );
+      await applySeed(setupDb as never, legacySeed, {
+        includeContent: true,
+        onConflict: "skip",
+        skipMediaDownload: true,
+      });
+      await sql`update ec_categories set title = 'Caps & Hats' where slug = 'hats'`.execute(
+        setupDb,
+      );
+      const currentSeed = JSON.parse(readFileSync(resolve("seed/seed.json"), "utf8"));
+      await applySeed(setupDb as never, currentSeed, {
+        includeContent: true,
+        onConflict: "skip",
+        skipMediaDownload: true,
+      });
+    } finally {
+      await setupDb.destroy();
+    }
+
+    try {
+      const firstRunOutput = execFileSync(
+        process.execPath,
+        [resolve("scripts/upgrade-storefront-search.ts"), `--database=${dbPath}`],
+        { encoding: "utf8" },
+      ).trim();
+      const firstReceipt = JSON.parse(firstRunOutput) as {
+        action: string;
+        database: string;
+        collections: string[];
+      };
+      expect(firstReceipt.action).toBe("search-upgrade");
+      expect(firstReceipt.collections).toEqual(["pages", "products", "categories"]);
+
+      const verifyDb = new Kysely<never>({ dialect: createDialect({ url: dbPath }) });
+      try {
+        const capsHit = await searchWithDb(verifyDb as never, "Caps", {
+          collections: ["products", "categories", "pages"],
+        });
+        expect(
+          capsHit.items.some((hit) => hit.collection === "categories" && hit.slug === "hats"),
+        ).toBe(true);
+
+        // Disable search on `products.description` (`searchable = 0`) and rebuild FTS.
+        await sql`
+          update _emdash_fields
+          set searchable = 0
+          where slug = 'description'
+            and collection_id = (select id from _emdash_collections where slug = 'products')
+        `.execute(verifyDb);
+        const { FTSManager } = await import("emdash");
+        const fts = new FTSManager(verifyDb as never);
+        await fts.enableSearch("products");
+      } finally {
+        await verifyDb.destroy();
+      }
+
+      // Re-run the non-demo CLI entrypoint; merchant `searchable = 0` exclusion must survive.
+      const secondRunOutput = execFileSync(
+        process.execPath,
+        [resolve("scripts/upgrade-storefront-search.ts"), `--database=${dbPath}`],
+        { encoding: "utf8" },
+      ).trim();
+      expect(JSON.parse(secondRunOutput).action).toBe("search-upgrade");
+
+      const postDb = new Kysely<never>({ dialect: createDialect({ url: dbPath }) });
+      try {
+        const descriptionSearchable = Number(
+          (
+            await sql<{ searchable: number }>`
+              select coalesce(searchable, 0) as searchable
+              from _emdash_fields
+              where slug = 'description'
+                and collection_id = (select id from _emdash_collections where slug = 'products')
+            `.execute(postDb)
+          ).rows[0]?.searchable ?? -1,
+        );
+        expect(descriptionSearchable).toBe(0);
+      } finally {
+        await postDb.destroy();
+      }
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
     }
   });
 

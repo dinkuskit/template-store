@@ -25,13 +25,14 @@ function parseSupportsList(raw: string | null | undefined): string[] {
  * preserving merchant-configured field search exclusions (`searchable = 0`)
  * once search support has been initialized on a collection.
  */
-export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<void> {
-  const ftsManager = new FTSManager(db as never);
+export async function ensureStorefrontSearchSupport(db: unknown): Promise<void> {
+  const kyselyDb = db as Kysely<never>;
+  const ftsManager = new FTSManager(kyselyDb as never);
   for (const [slug, fieldSlugs] of Object.entries(STOREFRONT_SEARCHABLE_COLLECTIONS)) {
     const collectionRow = (
       await sql<{ id: string; supports: string | null }>`
         select id, supports from _emdash_collections where slug = ${slug}
-      `.execute(db)
+      `.execute(kyselyDb)
     ).rows[0];
     if (!collectionRow) continue;
 
@@ -45,7 +46,7 @@ export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<
         update _emdash_collections
         set supports = ${nextSupports}
         where id = ${collectionRow.id}
-      `.execute(db);
+      `.execute(kyselyDb);
       schemaChanged = true;
 
       // Only seed default searchable fields when upgrading a legacy collection
@@ -58,7 +59,7 @@ export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<
             from _emdash_fields
             where collection_id = ${collectionRow.id}
               and coalesce(searchable, 0) = 1
-          `.execute(db)
+          `.execute(kyselyDb)
         ).rows[0]?.n ?? 0,
       );
 
@@ -69,7 +70,7 @@ export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<
             set searchable = 1
             where collection_id = ${collectionRow.id}
               and slug = ${fieldSlug}
-          `.execute(db);
+          `.execute(kyselyDb);
         }
       }
     }
@@ -78,7 +79,7 @@ export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<
     const existingFts = (
       await sql<{ name: string }>`
         select name from sqlite_master where type = 'table' and name = ${ftsTableName}
-      `.execute(db)
+      `.execute(kyselyDb)
     ).rows[0];
 
     if (schemaChanged || !existingFts) {

@@ -62,6 +62,9 @@ const policiesMenuItems: readonly Pick<StoreMenuItem, "label" | "url">[] = polic
 const policiesNavSource = hasCmsPoliciesMenu ? "cms" : "fallback";
 
 const footerAreaResult = await getWidgetAreaWithCacheHint("footer").catch(() => null);
+if (footerAreaResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(footerAreaResult.cacheHint);
+}
 const hasSeededFooterWidgets = Boolean(footerAreaResult?.data?.widgets?.length);
 
 const cookieTheme = Astro.cookies.get(THEME_COOKIE_NAME)?.value;
