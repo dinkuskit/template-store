@@ -9,6 +9,13 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR cancels that PR's older run, which no one waits on any more.
+# Pushes to main each get their own group, so a main run (and its playground
+# deploy) is never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   workflows:
     name: Workflow validation
@@ -56,7 +63,9 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # The runner image already has Chromium's system libraries; --with-deps only
+      # added fonts from an Ubuntu mirror that is sometimes very slow (9 min on 22 Oct).
+      - run: pnpm exec playwright install chromium
       # Every non-browser check, desktop browser tests and the built-site crawl.
       - run: pnpm verify
         env:
@@ -91,7 +100,9 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+      # The runner image already has Chromium's system libraries; --with-deps only
+      # added fonts from an Ubuntu mirror that is sometimes very slow (9 min on 22 Oct).
+      - run: pnpm exec playwright install chromium
       - run: bin/verify-web browser
         env:
           VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile
