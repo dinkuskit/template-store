@@ -17,8 +17,11 @@ import {
   STORE_PRESETS,
   STORE_THEMES,
   ensureStorefrontSearchSupport,
+  filterStorefrontSearchHits,
+  isSearchProductVisibleOnStorefront,
   isStorePresetName,
   isStoreThemeMode,
+  renderHighlightedSnippetParts,
 } from "../../src/features/store-shell/index.js";
 
 const PUBLIC_STOREFRONT_PAGES = [
@@ -97,6 +100,10 @@ describe("Shared StoreFooter.astro & public route mounting", () => {
     expect(footer).toContain("const hasCmsPoliciesMenu = policiesMenuData !== null;");
     expect(footer).not.toContain("shopMenuResult?.data?.items?.length");
     expect(footer).not.toContain("policiesMenuResult?.data?.items?.length");
+
+    // Never hide merchant-configured footer menu widgets via CSS:
+    const globalCss = readFileSync(resolve("src/features/store-shell/global.css"), "utf8");
+    expect(globalCss).not.toMatch(/data-widget-type=["']menu["']\)\s*\{\s*display:\s*none/u);
   });
 });
 
@@ -247,9 +254,122 @@ describe("EmDash composition primitives & seed contract", () => {
       expect(
         capsHit.items.some((hit) => hit.collection === "categories" && hit.slug === "hats"),
       ).toBe(true);
+
+      // If a merchant disables search on `products.description` (`searchable = 0`)
+      // and rebuilds the FTS index, re-running `ensureStorefrontSearchSupport`
+      // must preserve `searchable = 0` rather than re-enabling it.
+      await sql`
+        update _emdash_fields
+        set searchable = 0
+        where slug = 'description'
+          and collection_id = (select id from _emdash_collections where slug = 'products')
+      `.execute(db);
+      const { FTSManager } = await import("emdash");
+      const fts = new FTSManager(db as never);
+      await fts.enableSearch("products");
+
+      await ensureStorefrontSearchSupport(db);
+
+      const descriptionSearchable = Number(
+        (
+          await sql<{ searchable: number }>`
+            select coalesce(searchable, 0) as searchable
+            from _emdash_fields
+            where slug = 'description'
+              and collection_id = (select id from _emdash_collections where slug = 'products')
+          `.execute(db)
+        ).rows[0]?.searchable ?? -1,
+      );
+      expect(descriptionSearchable).toBe(0);
     } finally {
       await db.destroy();
     }
+  });
+
+  it("escapes FTS5 snippet HTML and strips untrusted tags instead of using set:html on /search", () => {
+    const searchPage = readFileSync(resolve("src/pages/search.astro"), "utf8");
+    expect(searchPage).not.toContain("set:html");
+
+    const parts = renderHighlightedSnippetParts(
+      'Soft <mark>cotton</mark> <img src=x onerror=alert(1)> &amp; heavyweight <script>evil()</script><mark>fleece</mark>',
+    );
+    expect(parts).toEqual([
+      { text: "Soft ", highlighted: false },
+      { text: "cotton", highlighted: true },
+      { text: "  & heavyweight evil()", highlighted: false },
+      { text: "fleece", highlighted: true },
+    ]);
+  });
+
+  it("filters product search hits through storefront visibility rules (archived Commerce items and suppressed demos)", () => {
+    const activeIds = new Set(["cat_live_tee"]);
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "live-tee", slug: "live-tee", commerceItemId: "cat_live_tee" },
+        {
+          profile: "shipping",
+          catalogAvailable: true,
+          activeCommerceIds: activeIds,
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(true);
+
+    // Archived Commerce product (`cat_archived_hoodie` not in activeIds) is excluded:
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "archived-hoodie", slug: "archived-hoodie", commerceItemId: "cat_archived_hoodie" },
+        {
+          profile: "shipping",
+          catalogAvailable: true,
+          activeCommerceIds: activeIds,
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(false);
+
+    // Editorial preview (`dinkus-template-preview-*`) remains visible:
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "boxy-tee-preview", slug: "boxy-tee-preview", commerceItemId: "dinkus-template-preview-boxy-tee" },
+        {
+          profile: "shipping",
+          catalogAvailable: true,
+          activeCommerceIds: activeIds,
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(true);
+
+    // Proof demonstration products are hidden on shipping profile when not in Commerce catalog:
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "everyday-tee", slug: "everyday-tee", commerceItemId: "dinkus-template-managed-product" },
+        {
+          profile: "shipping",
+          catalogAvailable: true,
+          activeCommerceIds: activeIds,
+          managedListable: true,
+          unmanagedListable: true,
+        },
+      ),
+    ).toBe(false);
+
+    const visibleSlugs = new Set(["live-tee", "boxy-tee-preview"]);
+    const rawHits = [
+      { collection: "products", id: "live-tee", slug: "live-tee" },
+      { collection: "products", id: "archived-hoodie", slug: "archived-hoodie" },
+      { collection: "pages", id: "shipping", slug: "shipping" },
+      { collection: "categories", id: "tees", slug: "tees" },
+    ];
+    expect(filterStorefrontSearchHits(rawHits, visibleSlugs)).toEqual([
+      { collection: "products", id: "live-tee", slug: "live-tee" },
+      { collection: "pages", id: "shipping", slug: "shipping" },
+      { collection: "categories", id: "tees", slug: "tees" },
+    ]);
   });
 
   it("allows /search and EmDash public search API endpoints through the public boundary", () => {

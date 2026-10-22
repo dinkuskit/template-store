@@ -6,7 +6,13 @@ import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
 import { storeBannerText } from "../features/store-shell/checkout-copy.js";
-import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import {
+  STORE_TITLE,
+  filterStorefrontSearchHits,
+  loadVisibleStorefrontProductSlugs,
+  readStorefrontProfile,
+  renderHighlightedSnippetParts,
+} from "../features/store-shell/index.js";
 import { canonicalUrl } from "../features/store-shell/structured-data.js";
 import "../features/store-shell/global.css";
 
@@ -39,7 +45,7 @@ interface SsrSearchHit {
   score: number;
 }
 
-const ssrResults: SsrSearchHit[] =
+const rawResults: SsrSearchHit[] =
   query.length >= 2
     ? await search(query, {
         collections: searchableCollections,
@@ -49,6 +55,16 @@ const ssrResults: SsrSearchHit[] =
         .then((res) => (res.items ?? []) as SsrSearchHit[])
         .catch(() => [])
     : [];
+
+const visibleProductSlugs =
+  rawResults.some((hit) => hit.collection === "products")
+    ? await loadVisibleStorefrontProductSlugs({
+        runtime: Astro.locals.emdash,
+        request: Astro.request,
+      })
+    : new Set<string>();
+
+const ssrResults = filterStorefrontSearchHits(rawResults, visibleProductSlugs);
 
 function resultHref(hit: SsrSearchHit): string {
   const slug = hit.slug ?? hit.id;
@@ -150,7 +166,11 @@ const canonical = canonicalUrl("/search", Astro.site, Astro.url);
                           <span class="search-results__badge">{hit.collection}</span>
                         </div>
                         {hit.snippet && (
-                          <p class="search-results__snippet" set:html={hit.snippet} />
+                          <p class="search-results__snippet">
+                            {renderHighlightedSnippetParts(hit.snippet).map((part) =>
+                              part.highlighted ? <mark>{part.text}</mark> : part.text,
+                            )}
+                          </p>
                         )}
                       </a>
                     </li>

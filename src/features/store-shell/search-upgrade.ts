@@ -20,10 +20,10 @@ function parseSupportsList(raw: string | null | undefined): string[] {
 }
 
 /**
- * Idempotently upgrades existing `pages`, `products`, and `categories`
- * collection definitions and searchable fields so stores initialized from an
- * older seed gain FTS5 search support without overwriting merchant-edited
- * collection labels, field definitions, or content.
+ * Upgrades legacy `pages`, `products`, and `categories` collection definitions
+ * that predated storefront FTS5 search (`!supports.includes("search")`), while
+ * preserving merchant-configured field search exclusions (`searchable = 0`)
+ * once search support has been initialized on a collection.
  */
 export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<void> {
   const ftsManager = new FTSManager(db as never);
@@ -35,9 +35,11 @@ export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<
     ).rows[0];
     if (!collectionRow) continue;
 
-    let schemaChanged = false;
     const supports = parseSupportsList(collectionRow.supports);
-    if (!supports.includes("search")) {
+    const alreadySupportsSearch = supports.includes("search");
+    let schemaChanged = false;
+
+    if (!alreadySupportsSearch) {
       const nextSupports = JSON.stringify([...supports, "search"]);
       await sql`
         update _emdash_collections
@@ -45,18 +47,30 @@ export async function ensureStorefrontSearchSupport(db: Kysely<never>): Promise<
         where id = ${collectionRow.id}
       `.execute(db);
       schemaChanged = true;
-    }
 
-    for (const fieldSlug of fieldSlugs) {
-      const updated = await sql`
-        update _emdash_fields
-        set searchable = 1
-        where collection_id = ${collectionRow.id}
-          and slug = ${fieldSlug}
-          and coalesce(searchable, 0) = 0
-      `.execute(db);
-      if (Number(updated.numAffectedRows ?? 0) > 0) {
-        schemaChanged = true;
+      // Only seed default searchable fields when upgrading a legacy collection
+      // that did not yet declare `"search"` in `_emdash_collections.supports`.
+      // Subsequent runs preserve merchant field exclusions (`searchable = 0`).
+      const existingSearchableCount = Number(
+        (
+          await sql<{ n: number }>`
+            select count(*) as n
+            from _emdash_fields
+            where collection_id = ${collectionRow.id}
+              and coalesce(searchable, 0) = 1
+          `.execute(db)
+        ).rows[0]?.n ?? 0,
+      );
+
+      if (existingSearchableCount === 0) {
+        for (const fieldSlug of fieldSlugs) {
+          await sql`
+            update _emdash_fields
+            set searchable = 1
+            where collection_id = ${collectionRow.id}
+              and slug = ${fieldSlug}
+          `.execute(db);
+        }
       }
     }
 

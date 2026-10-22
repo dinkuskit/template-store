@@ -54,3 +54,11 @@ export {
   STOREFRONT_SEARCHABLE_COLLECTIONS,
   ensureStorefrontSearchSupport,
 } from "./search-upgrade.js";
+export {
+  renderHighlightedSnippetParts,
+  isSearchProductVisibleOnStorefront,
+  filterStorefrontSearchHits,
+  loadVisibleStorefrontProductSlugs,
+  type HighlightedSnippetPart,
+  type SearchProductVisibilityOptions,
+} from "./search-visibility.js";

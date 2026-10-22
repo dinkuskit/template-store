@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
@@ -85,9 +85,9 @@ test("the seeded main menu leads from every store page to the shop and its categ
   await expect(footer.locator("[data-footer-shop-nav]")).toHaveAttribute("data-nav-source", "cms");
   const widgetArea = footer.locator('[data-widget-area="footer"]');
   await expect(widgetArea).toBeVisible();
-  await expect(widgetArea.locator('[data-widget-type="content"]')).toHaveCount(1);
-  await expect(widgetArea.locator('[data-widget-type="menu"]')).toHaveCount(1);
-  await expect(widgetArea.locator('[data-widget-type="component"] form.widget-search')).toHaveCount(1);
+  await expect(widgetArea.locator('[data-widget-type="content"]')).toBeVisible();
+  await expect(widgetArea.locator('[data-widget-type="menu"]')).toBeVisible();
+  await expect(widgetArea.locator('[data-widget-type="component"] form.widget-search')).toBeVisible();
 
   const darkBtn = footer.locator('[data-theme-choice="dark"]');
   const lightBtn = footer.locator('[data-theme-choice="light"]');
@@ -151,6 +151,138 @@ test("the seeded main menu leads from every store page to the shop and its categ
   } finally {
     await request.delete(`/_emdash/api/content/products/${draftId}`, { headers: csrfHeaders });
   }
+
+  // Publish -> search visible -> unpublish -> excluded across /search, /_emdash/api/search, and /_emdash/api/search/suggest:
+  const lifecycleSlug = `lifecycle-coat-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
+  const createdPublished = await request.post("/_emdash/api/content/products", {
+    headers: csrfHeaders,
+    data: {
+      slug: lifecycleSlug,
+      status: "draft",
+      data: {
+        title: "Lifecycle Waxed Coat",
+        description: "Published then unpublished search verification item",
+        visual_label: "hoodie",
+        commerce_item_id: "dinkus-template-preview-lifecycle-coat",
+      },
+    },
+  });
+  expect(createdPublished.status(), await createdPublished.text()).toBe(201);
+  const lifecycleId = ((await createdPublished.json()) as { data: { item: { id: string } } }).data.item.id;
+  let publishedApiBody: { data?: { items?: Array<{ slug?: string; collection?: string; title?: string; snippet?: string }>; total?: number } } = {};
+  let publishedSuggestBody: { data?: { items?: Array<{ slug?: string; collection?: string; title?: string }> } } = {};
+  let afterUnpublishApiBody: { data?: { items?: Array<{ slug?: string }>; total?: number } } = {};
+  let afterUnpublishSuggestBody: { data?: { items?: Array<{ slug?: string }> } } = {};
+  try {
+    const publishedLifecycle = await request.post(`/_emdash/api/content/products/${lifecycleId}/publish`, {
+      headers: csrfHeaders,
+    });
+    expect(publishedLifecycle.ok(), await publishedLifecycle.text()).toBe(true);
+
+    await page.goto("/search?q=Lifecycle");
+    await expect(page.locator(`[data-search-result="${lifecycleSlug}"]`)).toBeVisible();
+
+    const publishedApiResp = await request.get(
+      "/_emdash/api/search?q=Lifecycle&collections=products,categories,pages",
+    );
+    expect(publishedApiResp.ok()).toBe(true);
+    publishedApiBody = (await publishedApiResp.json()) as typeof publishedApiBody;
+    expect(publishedApiBody.data?.items?.some((item) => item.slug === lifecycleSlug) ?? false).toBe(true);
+
+    const publishedSuggestResp = await request.get(
+      "/_emdash/api/search/suggest?q=Lifecycle&collections=products,categories,pages",
+    );
+    expect(publishedSuggestResp.ok()).toBe(true);
+    publishedSuggestBody = (await publishedSuggestResp.json()) as typeof publishedSuggestBody;
+    expect(
+      publishedSuggestBody.data?.items?.some((item) => item.slug === lifecycleSlug) ?? false,
+    ).toBe(true);
+
+    // Unpublish the previously indexed item:
+    const unpublishedResp = await request.post(`/_emdash/api/content/products/${lifecycleId}/unpublish`, {
+      headers: csrfHeaders,
+    });
+    expect(unpublishedResp.ok(), await unpublishedResp.text()).toBe(true);
+
+    await page.goto("/search?q=Lifecycle");
+    await expect(page.locator(`[data-search-result="${lifecycleSlug}"]`)).toHaveCount(0);
+
+    const afterUnpublishApi = await request.get(
+      "/_emdash/api/search?q=Lifecycle&collections=products,categories,pages",
+    );
+    expect(afterUnpublishApi.ok()).toBe(true);
+    afterUnpublishApiBody = (await afterUnpublishApi.json()) as typeof afterUnpublishApiBody;
+    expect(
+      afterUnpublishApiBody.data?.items?.some((item) => item.slug === lifecycleSlug) ?? false,
+    ).toBe(false);
+
+    const afterUnpublishSuggest = await request.get(
+      "/_emdash/api/search/suggest?q=Lifecycle&collections=products,categories,pages",
+    );
+    expect(afterUnpublishSuggest.ok()).toBe(true);
+    afterUnpublishSuggestBody = (await afterUnpublishSuggest.json()) as typeof afterUnpublishSuggestBody;
+    expect(
+      afterUnpublishSuggestBody.data?.items?.some((item) => item.slug === lifecycleSlug) ?? false,
+    ).toBe(false);
+  } finally {
+    await request.delete(`/_emdash/api/content/products/${lifecycleId}`, { headers: csrfHeaders });
+  }
+
+  // Published product entry whose linked Commerce catalog item was archived/removed is excluded from search:
+  const invalidProductSlug = `archived-link-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
+  const createdInvalid = await request.post("/_emdash/api/content/products", {
+    headers: csrfHeaders,
+    data: {
+      slug: invalidProductSlug,
+      status: "draft",
+      data: {
+        title: "Orphaned Catalog Jacket",
+        description: "Published CMS entry whose linked Commerce product left the catalog",
+        visual_label: "hoodie",
+        commerce_item_id: "cat_archived_ghost_item",
+      },
+    },
+  });
+  expect(createdInvalid.status(), await createdInvalid.text()).toBe(201);
+  const invalidId = ((await createdInvalid.json()) as { data: { item: { id: string } } }).data.item.id;
+  let orphanSearchBody: { data?: { items?: Array<{ slug?: string }>; total?: number } } = {};
+  try {
+    const publishedInvalid = await request.post(`/_emdash/api/content/products/${invalidId}/publish`, {
+      headers: csrfHeaders,
+    });
+    expect(publishedInvalid.ok(), await publishedInvalid.text()).toBe(true);
+
+    await page.goto("/search?q=Orphaned");
+    await expect(page.locator(`[data-search-result="${invalidProductSlug}"]`)).toHaveCount(0);
+
+    const orphanSearchResp = await request.get(
+      "/_emdash/api/search?q=Orphaned&collections=products,categories,pages",
+    );
+    expect(orphanSearchResp.ok()).toBe(true);
+    orphanSearchBody = (await orphanSearchResp.json()) as typeof orphanSearchBody;
+    expect(
+      orphanSearchBody.data?.items?.some((item) => item.slug === invalidProductSlug) ?? false,
+    ).toBe(false);
+  } finally {
+    await request.delete(`/_emdash/api/content/products/${invalidId}`, { headers: csrfHeaders });
+  }
+
+  await writeFile(
+    resolve(root, "search-evidence.json"),
+    `${JSON.stringify(
+      {
+        project: testInfo.project.name,
+        publishedSearch: publishedApiBody,
+        publishedSuggest: publishedSuggestBody,
+        forbiddenDraftStatus: 403,
+        afterUnpublishSearch: afterUnpublishApiBody,
+        afterUnpublishSuggest: afterUnpublishSuggestBody,
+        orphanedProductSearch: orphanSearchBody,
+      },
+      null,
+      2,
+    )}\n`,
+  );
 
   if (phone) {
     // The narrowest supported phone keeps brand, cart and Menu on screen.

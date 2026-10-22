@@ -11,7 +11,10 @@ import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-p
 import {
    ensurePlaygroundDemoCatalog,
 } from "./features/playground/demo-commerce-seed.js";
-import { ensureStorefrontSearchSupport } from "./features/store-shell/index.js";
+import {
+  filterStorefrontSearchHits,
+  loadVisibleStorefrontProductSlugs,
+} from "./features/store-shell/index.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import {
   ensureDemoShopperOrder,
@@ -44,7 +47,6 @@ import {
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
 let demoProfileSeeded = false;
-let storefrontSearchSupportEnsured = false;
 
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
@@ -167,11 +169,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  if (
-    context.url.pathname === "/search" ||
+  const isPublicSearchApi =
     context.url.pathname === "/_emdash/api/search" ||
-    context.url.pathname === "/_emdash/api/search/suggest"
-  ) {
+    context.url.pathname === "/_emdash/api/search/suggest";
+
+  if (context.url.pathname === "/search" || isPublicSearchApi) {
     const requestedStatus = context.url.searchParams.get("status");
     if (requestedStatus !== null && requestedStatus !== "published") {
       const refused = Response.json(
@@ -180,13 +182,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       );
       applySecurityHeaders(refused.headers);
       return refused;
-    }
-    if (!isPlayground && !storefrontSearchSupportEnsured) {
-      storefrontSearchSupportEnsured = true;
-      const { getDb } = await import("emdash/runtime");
-      await ensureStorefrontSearchSupport((await getDb()) as never).catch(() => {
-        storefrontSearchSupportEnsured = false;
-      });
     }
   }
 
@@ -305,7 +300,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
 
-    const response = await next();
+    const rawResponse = await next();
+    const response = isPublicSearchApi
+      ? await filterPublicSearchApiResponse(rawResponse, {
+          runtime: context.locals.emdash,
+          request: context.request,
+        })
+      : rawResponse;
     applySecurityHeaders(response.headers);
     return response;
   }
@@ -337,10 +338,66 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
-  const response = await next();
+  const rawResponse = await next();
+  const response = isPublicSearchApi
+    ? await filterPublicSearchApiResponse(rawResponse, {
+        runtime: context.locals.emdash,
+        request: context.request,
+      })
+    : rawResponse;
   applySecurityHeaders(response.headers);
   return response;
 });
+
+async function filterPublicSearchApiResponse(
+  response: Response,
+  context: Parameters<typeof loadVisibleStorefrontProductSlugs>[0],
+): Promise<Response> {
+  if (!response.ok) return response;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return response;
+  try {
+    const body = (await response.clone().json()) as {
+      success?: unknown;
+      data?: {
+        items?: Array<{ collection?: unknown; id?: unknown; slug?: unknown }>;
+        total?: unknown;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    const items = body?.data?.items;
+    if (!Array.isArray(items) || !items.some((item) => item?.collection === "products")) {
+      return response;
+    }
+    const visibleSlugs = await loadVisibleStorefrontProductSlugs(context);
+    const filteredItems = filterStorefrontSearchHits(items, visibleSlugs);
+    if (filteredItems.length === items.length) return response;
+
+    const removedCount = items.length - filteredItems.length;
+    const nextData: Record<string, unknown> = {
+      ...body.data,
+      items: filteredItems,
+    };
+    if (typeof body.data?.total === "number") {
+      nextData.total = Math.max(0, body.data.total - removedCount);
+    }
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    return Response.json(
+      {
+        ...body,
+        data: nextData,
+      },
+      {
+        status: response.status,
+        headers,
+      },
+    );
+  } catch {
+    return response;
+  }
+}
 
 async function guardSandboxCheckout(
   request: Request,

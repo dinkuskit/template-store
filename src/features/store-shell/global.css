@@ -568,10 +568,6 @@
     align-items: start;
   }
 
-  .store-footer__widgets :where(.widget[data-widget-type="menu"]) {
-    display: none;
-  }
-
   .store-footer__widgets :where(.widget__content p) {
     margin: 0 0 0.5rem;
     color: var(--store-vault-muted);
