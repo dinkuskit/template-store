@@ -111,10 +111,15 @@ export function isSearchProductVisibleOnStorefront(
   return true;
 }
 
+const STOREFRONT_COLLECTION_SLUGS = new Set(["products", "categories", "pages"]);
+
 export function filterStorefrontSearchHits<
   T extends { collection?: unknown; id?: unknown; slug?: unknown },
 >(hits: readonly T[], visibleProductSlugs: ReadonlySet<string>): T[] {
   return hits.filter((hit) => {
+    if (typeof hit.collection === "string" && !STOREFRONT_COLLECTION_SLUGS.has(hit.collection)) {
+      return false;
+    }
     if (hit.collection !== "products") return true;
     const candidate =
       typeof hit.slug === "string" && hit.slug.length > 0

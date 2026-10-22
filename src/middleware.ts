@@ -1,10 +1,12 @@
 import { defineMiddleware } from "astro:middleware";
 import {
+  PUBLIC_STOREFRONT_SEARCH_COLLECTIONS,
   applySecurityHeaders,
   decodedForms,
   evaluatePublicBoundary,
   isExactGuestCheckoutPath,
   slashlessRedirectPath,
+  validatePublicSearchQuery,
 } from "./features/security/public-boundary.js";
 import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
 import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-protocol.js";
@@ -12,7 +14,6 @@ import {
    ensurePlaygroundDemoCatalog,
 } from "./features/playground/demo-commerce-seed.js";
 import {
-  ensureStorefrontSearchSupport,
   filterStorefrontSearchHits,
   loadVisibleStorefrontProductSlugs,
 } from "./features/store-shell/index.js";
@@ -48,7 +49,6 @@ import {
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
 let demoProfileSeeded = false;
-let nonDemoSearchUpgraded = false;
 
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
@@ -176,14 +176,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
     context.url.pathname === "/_emdash/api/search/suggest";
 
   if (context.url.pathname === "/search" || isPublicSearchApi) {
-    const requestedStatus = context.url.searchParams.get("status");
-    if (requestedStatus !== null && requestedStatus !== "published") {
+    const searchCheck = validatePublicSearchQuery(context.url.search);
+    if (!searchCheck.allowed) {
       const refused = Response.json(
-        { error: "Public search only serves published storefront content." },
-        { status: 403 },
+        { error: searchCheck.reason ?? "Forbidden" },
+        { status: searchCheck.status },
       );
       applySecurityHeaders(refused.headers);
       return refused;
+    }
+    if (isPublicSearchApi && !context.url.searchParams.has("collections")) {
+      context.url.searchParams.set(
+        "collections",
+        PUBLIC_STOREFRONT_SEARCH_COLLECTIONS.join(","),
+      );
     }
   }
 
@@ -203,14 +209,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const { getDb } = await import("emdash/runtime");
     await ensurePlaygroundDemoCatalog(await getDb() as Parameters<typeof ensurePlaygroundDemoCatalog>[0])
       .catch((error: unknown) => { demoProfileSeeded = false; console.error("[demo-seed] failed", error); });
-  } else if ((context.url.pathname === "/search" || isPublicSearchApi) && !nonDemoSearchUpgraded) {
-    nonDemoSearchUpgraded = true;
-    try {
-      const { getDb } = await import("emdash/runtime");
-      await ensureStorefrontSearchSupport(await getDb());
-    } catch {
-      nonDemoSearchUpgraded = false;
-    }
   }
 
   // Sandbox checkout opens ONLY for a playground session with the flag on and
@@ -377,10 +375,11 @@ async function filterPublicSearchApiResponse(
       [key: string]: unknown;
     };
     const items = body?.data?.items;
-    if (!Array.isArray(items) || !items.some((item) => item?.collection === "products")) {
+    if (!Array.isArray(items) || items.length === 0) {
       return response;
     }
-    const visibleSlugs = await loadVisibleStorefrontProductSlugs(context);
+    const hasProducts = items.some((item) => item?.collection === "products");
+    const visibleSlugs = hasProducts ? await loadVisibleStorefrontProductSlugs(context) : new Set<string>();
     const filteredItems = filterStorefrontSearchHits(items, visibleSlugs);
     if (filteredItems.length === items.length) return response;
 

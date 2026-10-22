@@ -460,6 +460,7 @@ describe("EmDash composition primitives & seed contract", () => {
       { collection: "products", id: "archived-hoodie", slug: "archived-hoodie" },
       { collection: "pages", id: "shipping", slug: "shipping" },
       { collection: "categories", id: "tees", slug: "tees" },
+      { collection: "merchandise", id: "legacy-item", slug: "legacy-item" },
     ];
     expect(filterStorefrontSearchHits(rawHits, visibleSlugs)).toEqual([
       { collection: "products", id: "live-tee", slug: "live-tee" },
@@ -468,7 +469,10 @@ describe("EmDash composition primitives & seed contract", () => {
     ]);
   });
 
-  it("allows /search and EmDash public search API endpoints through the public boundary", () => {
+  it("allows /search and EmDash public search API endpoints through the public boundary while rejecting non-storefront collections or draft status", () => {
+    const middlewareSource = readFileSync(resolve("src/middleware.ts"), "utf8");
+    expect(middlewareSource).not.toContain("ensureStorefrontSearchSupport");
+
     expect(evaluatePublicBoundary("GET", "/search", "?q=tee")).toEqual({
       allowed: true,
       status: 200,
@@ -480,6 +484,16 @@ describe("EmDash composition primitives & seed contract", () => {
     expect(evaluatePublicBoundary("GET", "/_emdash/api/search/suggest", "?q=te")).toEqual({
       allowed: true,
       status: 200,
+    });
+    expect(evaluatePublicBoundary("GET", "/_emdash/api/search", "?q=tee&collections=merchandise")).toEqual({
+      allowed: false,
+      status: 403,
+      reason: "Public search only serves storefront collections (products, categories, pages).",
+    });
+    expect(evaluatePublicBoundary("GET", "/_emdash/api/search", "?q=tee&status=draft")).toEqual({
+      allowed: false,
+      status: 403,
+      reason: "Public search only serves published storefront content.",
     });
     expect(slashlessRedirectPath("/search/")).toBe("/search");
   });
