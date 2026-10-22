@@ -540,6 +540,24 @@ describe("order confirmation receipt enrichment (garment thumbnails, variants, a
             imageUrl: "javascript:alert(1)",
             variant: "One Size",
           },
+          {
+            catalogItemId: "backslash-thumb",
+            quantity: 1,
+            name: "Backslash path item",
+            imageUrl: "/images\\secret.png",
+          },
+          {
+            catalogItemId: "credential-thumb",
+            quantity: 1,
+            name: "Credential URL item",
+            imageUrl: "https://user:pass@example.com/a.png",
+          },
+          {
+            catalogItemId: "encoded-traversal-thumb",
+            quantity: 1,
+            name: "Encoded traversal item",
+            imageUrl: "/images/%2e%2e/secret.png",
+          },
         ],
         total: { currency: "USD", minor: "2400" },
       },
@@ -562,6 +580,21 @@ describe("order confirmation receipt enrichment (garment thumbnails, variants, a
         quantity: 1,
         name: "Unsafe image item",
         variant: "One Size",
+      },
+      {
+        id: "backslash-thumb",
+        quantity: 1,
+        name: "Backslash path item",
+      },
+      {
+        id: "credential-thumb",
+        quantity: 1,
+        name: "Credential URL item",
+      },
+      {
+        id: "encoded-traversal-thumb",
+        quantity: 1,
+        name: "Encoded traversal item",
       },
     ]);
   });
