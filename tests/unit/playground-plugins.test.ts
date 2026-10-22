@@ -35,12 +35,14 @@ describe("Playground Payments, Ship and welcome card", () => {
   });
 
   it("ticks off the steps a prospect has done and keeps one link out to DinkusKit.com", () => {
-    const fresh = JSON.stringify(welcomeBlocks("https://playground.dinkuskit.com", { productEdited: false, orders: 0 }));
+    const fresh = JSON.stringify(welcomeBlocks("https://playground.dinkuskit.com", { productEdited: false, orders: 0, checkoutOpen: true }));
     expect(fresh).toContain("0 of 2 things to do so far");
     expect(fresh).toContain("○ Edit a product");
+    expect(fresh).toContain("https://playground.dinkuskit.com/_emdash/admin/plugins/dinkus-commerce/products");
+    expect(fresh).not.toContain("/_emdash/admin/content/");
     expect(fresh).toContain("https://playground.dinkuskit.com/_emdash/admin/plugins/dinkus-ship/shipping");
 
-    const done = welcomeBlocks("https://playground.dinkuskit.com", { productEdited: true, orders: 1 });
+    const done = welcomeBlocks("https://playground.dinkuskit.com", { productEdited: true, orders: 1, checkoutOpen: true });
     const text = JSON.stringify(done);
     expect(text).toContain("2 of 2 things to do so far");
     expect(text).toContain("✓ Edit a product (done)");
@@ -49,6 +51,14 @@ describe("Playground Payments, Ship and welcome card", () => {
       .map(([, url]) => new URL(url).origin)
       .filter((origin) => origin !== "https://playground.dinkuskit.com");
     expect(outside).toEqual(["https://dinkuskit.com"]);
+  });
+
+  it("only invites a test order when the playground's checkout is open", () => {
+    const closed = JSON.stringify(welcomeBlocks("https://pr-137.playground.dinkuskit.com", { productEdited: false, orders: 0, checkoutOpen: false }));
+    expect(closed).not.toContain("4242");
+    expect(closed).not.toContain("Place a test order");
+    expect(closed).toContain("Test checkout is switched off in this playground");
+    expect(closed).toContain("0 of 1 thing to do so far");
   });
 
   it("turns EmDash's toolbar Deploy your own button into Start your real store", () => {
