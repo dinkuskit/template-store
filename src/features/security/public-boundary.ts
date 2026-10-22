@@ -20,6 +20,9 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/api/checkout/status",
   "/shipping",
   "/returns",
+  "/search",
+  "/_emdash/api/search",
+  "/_emdash/api/search/suggest",
   "/feeds/google-merchant.xml",
   "/feeds/meta-catalog.csv",
 ]);
@@ -43,6 +46,39 @@ const SHOPPER_ACCOUNT_GET_PATH =
 const LOCAL_CHECKOUT_STATUS_POST_PATH = /^\/api\/checkout\/status$/;
 const LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH = /^\/api\/account\/demo-session$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
+
+export const PUBLIC_STOREFRONT_SEARCH_COLLECTIONS = ["products", "categories", "pages"] as const;
+const ALLOWED_SEARCH_COLLECTION_SET = new Set<string>(PUBLIC_STOREFRONT_SEARCH_COLLECTIONS);
+
+export function validatePublicSearchQuery(search: string): SecurityPolicyCheck {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  for (const statusValue of params.getAll("status")) {
+    if (statusValue !== "published") {
+      return {
+        allowed: false,
+        status: 403,
+        reason: "Public search only serves published storefront content.",
+      };
+    }
+  }
+  for (const rawCollections of params.getAll("collections")) {
+    const requested = rawCollections
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+    if (
+      requested.length === 0 ||
+      requested.some((slug) => !ALLOWED_SEARCH_COLLECTION_SET.has(slug))
+    ) {
+      return {
+        allowed: false,
+        status: 403,
+        reason: "Public search only serves storefront collections (products, categories, pages).",
+      };
+    }
+  }
+  return { allowed: true, status: 200 };
+}
 function slashlessCollectionPath(pathname: string): string | undefined {
   if (!pathname.endsWith("/") || pathname === "/") return undefined;
   if (
@@ -58,6 +94,7 @@ function slashlessCollectionPath(pathname: string): string | undefined {
     pathname === "/account/" ||
     pathname === "/shipping/" ||
     pathname === "/returns/" ||
+    pathname === "/search/" ||
     pathname === "/feeds/google-merchant.xml/" ||
     pathname === "/feeds/meta-catalog.csv/"
   ) {
@@ -290,6 +327,19 @@ export function evaluatePublicBoundary(
   }
 
   // 3. Validate the canonical decoded path against the strict route allowlist
+  if (
+    decodedPath === "/search" ||
+    decodedPath === "/_emdash/api/search" ||
+    decodedPath === "/_emdash/api/search/suggest"
+  ) {
+    for (const searchForm of searchForms) {
+      const searchCheck = validatePublicSearchQuery(searchForm);
+      if (!searchCheck.allowed) {
+        return searchCheck;
+      }
+    }
+  }
+
   if (EXACT_ALLOWED_PATHS.has(decodedPath)) {
     return { allowed: true, status: 200 };
   }

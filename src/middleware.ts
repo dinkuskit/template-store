@@ -1,16 +1,22 @@
 import { defineMiddleware } from "astro:middleware";
 import {
+  PUBLIC_STOREFRONT_SEARCH_COLLECTIONS,
   applySecurityHeaders,
   decodedForms,
   evaluatePublicBoundary,
   isExactGuestCheckoutPath,
   slashlessRedirectPath,
+  validatePublicSearchQuery,
 } from "./features/security/public-boundary.js";
 import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
 import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-protocol.js";
 import {
    ensurePlaygroundDemoCatalog,
 } from "./features/playground/demo-commerce-seed.js";
+import {
+  filterStorefrontSearchHits,
+  loadVisibleStorefrontProductSlugs,
+} from "./features/store-shell/index.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import {
   ensureDemoShopperOrder,
@@ -98,6 +104,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       slashlessPath === "/account" ||
       slashlessPath === "/shipping" ||
       slashlessPath === "/returns" ||
+      slashlessPath === "/search" ||
       slashlessPath.startsWith("/feeds/")) &&
     (context.request.method === "GET" || context.request.method === "HEAD")
   ) {
@@ -161,6 +168,28 @@ export const onRequest = defineMiddleware(async (context, next) => {
         applySecurityHeaders(refused.headers);
         return refused;
       }
+    }
+  }
+
+  const isPublicSearchApi =
+    context.url.pathname === "/_emdash/api/search" ||
+    context.url.pathname === "/_emdash/api/search/suggest";
+
+  if (context.url.pathname === "/search" || isPublicSearchApi) {
+    const searchCheck = validatePublicSearchQuery(context.url.search);
+    if (!searchCheck.allowed) {
+      const refused = Response.json(
+        { error: searchCheck.reason ?? "Forbidden" },
+        { status: searchCheck.status },
+      );
+      applySecurityHeaders(refused.headers);
+      return refused;
+    }
+    if (isPublicSearchApi && !context.url.searchParams.has("collections")) {
+      context.url.searchParams.set(
+        "collections",
+        PUBLIC_STOREFRONT_SEARCH_COLLECTIONS.join(","),
+      );
     }
   }
 
@@ -279,7 +308,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
 
-    const response = await next();
+    const rawResponse = await next();
+    const response = isPublicSearchApi
+      ? await filterPublicSearchApiResponse(rawResponse, {
+          runtime: context.locals.emdash,
+          request: context.request,
+        })
+      : rawResponse;
     applySecurityHeaders(response.headers);
     return response;
   }
@@ -311,10 +346,67 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
-  const response = await next();
+  const rawResponse = await next();
+  const response = isPublicSearchApi
+    ? await filterPublicSearchApiResponse(rawResponse, {
+        runtime: context.locals.emdash,
+        request: context.request,
+      })
+    : rawResponse;
   applySecurityHeaders(response.headers);
   return response;
 });
+
+async function filterPublicSearchApiResponse(
+  response: Response,
+  context: Parameters<typeof loadVisibleStorefrontProductSlugs>[0],
+): Promise<Response> {
+  if (!response.ok) return response;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return response;
+  try {
+    const body = (await response.clone().json()) as {
+      success?: unknown;
+      data?: {
+        items?: Array<{ collection?: unknown; id?: unknown; slug?: unknown }>;
+        total?: unknown;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    const items = body?.data?.items;
+    if (!Array.isArray(items) || items.length === 0) {
+      return response;
+    }
+    const hasProducts = items.some((item) => item?.collection === "products");
+    const visibleSlugs = hasProducts ? await loadVisibleStorefrontProductSlugs(context) : new Set<string>();
+    const filteredItems = filterStorefrontSearchHits(items, visibleSlugs);
+    if (filteredItems.length === items.length) return response;
+
+    const removedCount = items.length - filteredItems.length;
+    const nextData: Record<string, unknown> = {
+      ...body.data,
+      items: filteredItems,
+    };
+    if (typeof body.data?.total === "number") {
+      nextData.total = Math.max(0, body.data.total - removedCount);
+    }
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    return Response.json(
+      {
+        ...body,
+        data: nextData,
+      },
+      {
+        status: response.status,
+        headers,
+      },
+    );
+  } catch {
+    return response;
+  }
+}
 
 async function guardSandboxCheckout(
   request: Request,

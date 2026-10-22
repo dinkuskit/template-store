@@ -96,9 +96,10 @@ page edits stay and the missing section is created:
 ```bash
 sqlite3 .artifacts/dev/content.db ".backup .artifacts/dev/pre-home-opener-backup.db"
 pnpm exec emdash seed --database=.artifacts/dev/content.db --uploads-dir=.artifacts/dev/uploads --on-conflict=skip seed/seed.json
+pnpm search:upgrade --database=.artifacts/dev/content.db
 ```
 
-Restart and confirm Sections shows Home opener. Do not use `update`.
+Restart and confirm Sections shows Home opener. `pnpm search:upgrade` enables FTS5 search on legacy `pages`, `products`, and `categories` collections without seeding synthetic demo products or overwriting merchant content and field search exclusions (`searchable = 0`). Do not use `update`.
 
 ## Editorial query cards
 

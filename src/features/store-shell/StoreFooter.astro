@@ -1,30 +1,241 @@
 ---
-import type { StorefrontProfile } from "./index.js";
+import {
+  getMenuWithCacheHint,
+  getSiteSettingsWithCacheHint,
+  getWidgetAreaWithCacheHint,
+  sanitizeHref,
+} from "emdash";
+import { WidgetArea } from "emdash/ui";
+import { STORE_DESCRIPTION, STORE_TITLE } from "./index.js";
+import {
+  FALLBACK_FOOTER_POLICIES_LINKS,
+  FALLBACK_FOOTER_SHOP_LINKS,
+  FOOTER_POLICIES_MENU_NAME,
+  FOOTER_SHOP_MENU_NAME,
+  PRESET_COOKIE_NAME,
+  THEME_COOKIE_NAME,
+  isCurrentMenuItem,
+  isStorePresetName,
+  isStoreThemeMode,
+  type StoreMenuItem,
+  type StorePresetName,
+  type StoreThemeMode,
+} from "./store-menu.js";
 
 interface Props {
-  profile: StorefrontProfile;
+  profile: string;
   currentPath?: string;
   note?: string;
 }
 
 const { profile, currentPath, note } = Astro.props;
-const pathname = (currentPath ?? Astro.url.pathname).replace(/\/+$/u, "") || "/";
-const defaultNote = `Transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
----
+const path = currentPath ?? Astro.url.pathname;
 
+const settingsResult = await getSiteSettingsWithCacheHint().catch(() => null);
+if (settingsResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(settingsResult.cacheHint);
+}
+const siteSettings = settingsResult?.data ?? null;
+const brandTitle = siteSettings?.title?.trim() || STORE_TITLE;
+const brandTagline = siteSettings?.tagline?.trim() || STORE_DESCRIPTION;
+
+const shopMenuResult = await getMenuWithCacheHint(FOOTER_SHOP_MENU_NAME).catch(() => null);
+if (shopMenuResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(shopMenuResult.cacheHint);
+}
+const shopMenuData = shopMenuResult?.data ?? null;
+const hasCmsShopMenu = shopMenuData !== null;
+const shopMenuItems: readonly Pick<StoreMenuItem, "label" | "url">[] = shopMenuData
+  ? shopMenuData.items
+  : FALLBACK_FOOTER_SHOP_LINKS;
+const shopNavSource = hasCmsShopMenu ? "cms" : "fallback";
+
+const policiesMenuResult = await getMenuWithCacheHint(FOOTER_POLICIES_MENU_NAME).catch(() => null);
+if (policiesMenuResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(policiesMenuResult.cacheHint);
+}
+const policiesMenuData = policiesMenuResult?.data ?? null;
+const hasCmsPoliciesMenu = policiesMenuData !== null;
+const policiesMenuItems: readonly Pick<StoreMenuItem, "label" | "url">[] = policiesMenuData
+  ? policiesMenuData.items
+  : FALLBACK_FOOTER_POLICIES_LINKS;
+const policiesNavSource = hasCmsPoliciesMenu ? "cms" : "fallback";
+
+const footerAreaResult = await getWidgetAreaWithCacheHint("footer").catch(() => null);
+if (footerAreaResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(footerAreaResult.cacheHint);
+}
+const hasSeededFooterWidgets = Boolean(footerAreaResult?.data?.widgets?.length);
+
+const cookieTheme = Astro.cookies.get(THEME_COOKIE_NAME)?.value;
+const activeTheme: StoreThemeMode = isStoreThemeMode(cookieTheme) ? cookieTheme : "light";
+
+const cookiePreset = Astro.cookies.get(PRESET_COOKIE_NAME)?.value;
+const activePreset: StorePresetName = isStorePresetName(cookiePreset) ? cookiePreset : "aizome";
+const defaultProvenance = `Transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
+---
 <footer class="store-footer" data-store-footer>
-  <div class="store-footer__inner">
-    <p class="store-footer__note">{note ?? defaultNote}</p>
-    <nav class="store-footer__policies" aria-label="Policies & Care" data-store-footer-policies>
-      <p class="store-footer__heading">Policies &amp; Care</p>
-      <ul class="store-footer__links">
-        <li>
-          <a href="/shipping" aria-current={pathname === "/shipping" ? "page" : undefined}>Shipping</a>
-        </li>
-        <li>
-          <a href="/returns" aria-current={pathname === "/returns" ? "page" : undefined}>Returns</a>
-        </li>
-      </ul>
-    </nav>
+  <div class="store-footer__top">
+    <div class="store-footer__inner">
+      <div class="store-footer__grid">
+        <div class="store-footer__brand store-footer__stamp-card" data-footer-brand>
+          <span class="store-footer__eyebrow">Brand &amp; Provenance</span>
+          <a class="store-footer__brand-mark" href="/">{brandTitle}</a>
+          <p class="store-footer__tagline">{brandTagline}</p>
+          <p class="store-footer__provenance" data-footer-provenance>
+            {note ?? defaultProvenance}
+          </p>
+        </div>
+
+        <nav
+          class="store-footer__nav"
+          aria-label="Footer shop"
+          data-footer-shop-nav
+          data-nav-source={shopNavSource}
+        >
+          <h2 class="store-footer__heading">Shop</h2>
+          <ul class="store-footer__nav-list">
+            {shopMenuItems.map((item) => (
+              <li>
+                <a
+                  href={sanitizeHref(item.url)}
+                  aria-current={isCurrentMenuItem(item, path) ? "page" : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav
+          class="store-footer__nav"
+          aria-label="Policies & Care"
+          data-store-footer-policies
+          data-footer-policies-nav
+          data-nav-source={policiesNavSource}
+        >
+          <h2 class="store-footer__heading">Policies &amp; Care</h2>
+          <ul class="store-footer__nav-list">
+            {policiesMenuItems.map((item) => (
+              <li>
+                <a
+                  href={sanitizeHref(item.url)}
+                  aria-current={isCurrentMenuItem(item, path) ? "page" : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          {/* Default fallback routes: href="/shipping" and href="/returns" */}
+        </nav>
+
+        <div
+          class="store-footer__widgets"
+          data-footer-widget-column
+        >
+          {hasSeededFooterWidgets ? (
+            <WidgetArea name="footer" />
+          ) : (
+            <div class="store-footer__fallback-widgets">
+              <div class="store-footer__stamp-card">
+                <h2 class="store-footer__heading">Search catalog</h2>
+                <form class="widget-search" method="get" action="/search" role="search">
+                  <input
+                    class="widget-search__input"
+                    type="search"
+                    name="q"
+                    placeholder="Search products..."
+                    aria-label="Search"
+                  />
+                  <button class="widget-search__button" type="submit">GO</button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="store-footer__colophon">
+    <div class="store-footer__inner store-footer__meta">
+      <div class="store-footer__copyright">
+        <p>&copy; {new Date().getUTCFullYear()} {brandTitle}. Powered by EmDash &amp; DinkusKit Commerce.</p>
+        <p>Theme tokens via <code>src/styles/tokens.css</code> &middot; Brand overrides in <code>src/styles/theme.css</code></p>
+      </div>
+
+      <div class="store-theme-dock" data-footer-theme-dock>
+        <div class="store-switcher-group" role="group" aria-label="Color theme" data-theme-switcher>
+          <span class="store-switcher-group__label">Theme</span>
+          <div class="store-switcher-pills">
+            <button
+              type="button"
+              class="store-switcher-pill"
+              data-theme-choice="light"
+              aria-pressed={activeTheme === "light" ? "true" : "false"}
+            >
+              Light
+            </button>
+            <button
+              type="button"
+              class="store-switcher-pill"
+              data-theme-choice="dark"
+              aria-pressed={activeTheme === "dark" ? "true" : "false"}
+            >
+              Dark
+            </button>
+            <button
+              type="button"
+              class="store-switcher-pill"
+              data-theme-choice="system"
+              aria-pressed={activeTheme === "system" ? "true" : "false"}
+            >
+              System
+            </button>
+          </div>
+        </div>
+
+        {profile === "proof" && (
+          <div class="store-switcher-group" role="group" aria-label="Stitch palette preset" data-preset-switcher>
+            <span class="store-switcher-group__label">Preset</span>
+            <div class="store-switcher-pills">
+              <button
+                type="button"
+                class="store-switcher-pill store-preset-pill store-preset-pill--aizome"
+                data-preset-choice="aizome"
+                aria-pressed={activePreset === "aizome" ? "true" : "false"}
+              >
+                <span class="store-preset-swatch" aria-hidden="true"></span>
+                Aizome
+              </button>
+              <button
+                type="button"
+                class="store-switcher-pill store-preset-pill store-preset-pill--forest"
+                data-preset-choice="forest"
+                aria-pressed={activePreset === "forest" ? "true" : "false"}
+              >
+                <span class="store-preset-swatch" aria-hidden="true"></span>
+                Forest
+              </button>
+              <button
+                type="button"
+                class="store-switcher-pill store-preset-pill store-preset-pill--cobalt"
+                data-preset-choice="cobalt"
+                aria-pressed={activePreset === "cobalt" ? "true" : "false"}
+              >
+                <span class="store-preset-swatch" aria-hidden="true"></span>
+                Cobalt
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   </div>
 </footer>
+<script>
+  import { hydrateStoreTheme } from "./theme-client.ts";
+  hydrateStoreTheme();
+</script>

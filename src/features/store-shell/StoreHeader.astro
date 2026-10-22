@@ -20,6 +20,22 @@ const linkProps = (item: StoreMenuItem) => ({
   "aria-current": isCurrentMenuItem(item, path) ? ("page" as const) : undefined,
 });
 ---
+<script is:inline data-theme-init>
+  (() => {
+    const read = (name) => {
+      const match = document.cookie.match(new RegExp("(?:^|;\\s*)" + name + "=([^;]*)"));
+      return match && match[1] ? decodeURIComponent(match[1]) : null;
+    };
+    const theme = read("dinkus_theme");
+    if (theme === "light" || theme === "dark" || theme === "system") {
+      document.documentElement.dataset.theme = theme;
+    }
+    const preset = read("dinkus_preset");
+    if (preset === "aizome" || preset === "forest" || preset === "cobalt") {
+      document.documentElement.dataset.preset = preset;
+    }
+  })();
+</script>
 <header class="store-header" data-store-header>
   <a class="store-header__mark" href="/">DinkusKit / Store</a>
   {items.length > 0 && (
@@ -55,6 +71,16 @@ const linkProps = (item: StoreMenuItem) => ({
   )}
   <nav class="store-header__nav" aria-label="Store">
     <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
+    <form class="store-header__search-pill" method="get" action="/search" role="search" data-store-search-nav>
+      <input
+        class="store-header__search-input"
+        type="search"
+        name="q"
+        placeholder="Search products..."
+        aria-label="Search products"
+      />
+      <button class="store-header__search-go" type="submit">GO</button>
+    </form>
     <a class="store-header__account" href="/account" data-shopper-account-nav aria-current={path === "/account" ? "page" : undefined}>Account</a>
     <GuestCartNav />
   </nav>
