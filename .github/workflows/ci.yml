@@ -17,6 +17,36 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Pull requests that only touch records and docs (.github/scripts/browser-plan.mjs)
+  # skip the browser tests: desktop runs the quick checks, phone reports success.
+  # Pushes to main always run everything.
+  plan:
+    name: Test plan
+    # Closed PR events only run preview cleanup (cleanup-playground-preview).
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      browser: ${{ steps.plan.outputs.browser }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" | node .github/scripts/browser-plan.mjs >> "$GITHUB_OUTPUT"
+          else
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
   workflows:
     name: Workflow validation
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
@@ -46,6 +76,7 @@ jobs:
   # job tests stay serial (playwright.config.ts workers: 1).
   verify-desktop:
     name: Store verification (desktop)
+    needs: plan
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
     runs-on: ubuntu-24.04
@@ -63,13 +94,16 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # The runner image already has Chromium's system libraries; --with-deps only
-      # added fonts from an Ubuntu mirror that is sometimes very slow (9 min on 22 Oct).
-      - run: pnpm exec playwright install chromium
+      - if: needs.plan.outputs.browser == 'true'
+        uses: ./.github/actions/setup-chromium
       # Every non-browser check, desktop browser tests and the built-site crawl.
-      - run: pnpm verify
+      - if: needs.plan.outputs.browser == 'true'
+        run: pnpm verify
         env:
           VERIFY_E2E_PROJECTS: chromium-desktop,shipping-chromium-desktop
+      # Records and docs only: every non-browser check, no browser.
+      - if: needs.plan.outputs.browser != 'true'
+        run: bin/verify-web quick
       - name: Capture browser failure context
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -83,27 +117,34 @@ jobs:
 
   verify-phone:
     name: Store verification (phone)
+    needs: plan
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - if: needs.plan.outputs.browser != 'true'
+        run: echo "Only records and docs changed; the browser tests are skipped."
+      - if: needs.plan.outputs.browser == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - if: needs.plan.outputs.browser == 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
         with:
           run_install: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - if: needs.plan.outputs.browser == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version-file: '.nvmrc'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # The runner image already has Chromium's system libraries; --with-deps only
-      # added fonts from an Ubuntu mirror that is sometimes very slow (9 min on 22 Oct).
-      - run: pnpm exec playwright install chromium
-      - run: bin/verify-web browser
+      - if: needs.plan.outputs.browser == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: needs.plan.outputs.browser == 'true'
+        uses: ./.github/actions/setup-chromium
+      - if: needs.plan.outputs.browser == 'true'
+        run: bin/verify-web browser
         env:
           VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile
       - name: Capture browser failure context
