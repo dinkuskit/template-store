@@ -113,3 +113,4 @@
 {"action": "decision_proposed", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-pretend-connected-20261022"}, "event_id": "77438410-dd44-40a2-88ce-c88d9d58a484"}
 {"action": "decision_locked", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-prospect-demo-20261022"}, "event_id": "504cdcd1-83e1-491f-8d45-d6a1d2524ea3"}
 {"action": "decision_locked", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-pretend-connected-20261022"}, "event_id": "c9db2722-f56f-4e24-852b-066a9dbcad47"}
+{"action": "decision_implemented", "at": "2026-10-22T14:45:02+00:00", "data": {"decision_id": "playground-prospect-demo-20261022"}, "event_id": "20fd278a-23bf-49ba-b4a1-6be75ce22738"}
