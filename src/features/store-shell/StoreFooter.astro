@@ -1,5 +1,5 @@
 ---
-import type { StorefrontProfile } from "./index.js";
+import { PROOF_DEMONSTRATIONS_PATH, type StorefrontProfile } from "./index.js";
 
 interface Props {
   profile: StorefrontProfile;
@@ -9,7 +9,8 @@ interface Props {
 
 const { profile, currentPath, note } = Astro.props;
 const pathname = (currentPath ?? Astro.url.pathname).replace(/\/+$/u, "") || "/";
-const defaultNote = `Transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
+const isProofRoute = profile === "proof" && pathname === PROOF_DEMONSTRATIONS_PATH;
+const defaultNote = `Transactional facts remain in Commerce${isProofRoute ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
 ---
 
 <footer class="store-footer" data-store-footer>

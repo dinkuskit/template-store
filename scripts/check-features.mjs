@@ -84,6 +84,7 @@ if (
 for (const path of [
   "src/features/store-shell/index.ts",
   "src/features/store-shell/price.ts",
+  "src/pages/proof.astro",
   "docs/implementation/unpriced-public-home.md",
   "src/features/managed-product-availability/index.ts",
   "src/features/unmanaged-product-sellability/index.ts",
@@ -140,6 +141,7 @@ for (const path of sourceFiles(resolve(root, "src"))) {
 
 for (const relative of [
   "src/pages/index.astro",
+  "src/pages/proof.astro",
   "src/pages/categories/[slug].astro",
   "src/pages/products/[id].astro",
   "src/pages/cart.astro",

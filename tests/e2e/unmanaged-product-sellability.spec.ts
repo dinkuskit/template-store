@@ -14,17 +14,14 @@ async function openHomeEditor(page: Page): Promise<void> {
     "/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/pages/home",
   );
   await expect(page).toHaveURL(/\/_emdash\/admin\/content\/pages\/home/);
-  const welcome = page.getByRole("dialog", { name: /Welcome to EmDash/ });
-  try {
-    await expect(welcome).toBeVisible({ timeout: 5_000 });
-    await page.getByRole("button", { name: "Get Started" }).click();
-    await expect(welcome).toHaveCount(0);
-  } catch {
-    await expect(welcome).toHaveCount(0);
-  }
   await expect(
     page.locator('input[value="DinkusKit Store Starter"]'),
   ).toBeVisible({ timeout: 30_000 });
+  const welcome = page.getByRole("dialog", { name: /Welcome to EmDash/ });
+  if (await welcome.isVisible()) {
+    await page.getByRole("button", { name: "Get Started" }).click();
+    await expect(welcome).toHaveCount(0);
+  }
 }
 
 test("admin composition and public unmanaged availability stay operable", async ({
@@ -48,7 +45,7 @@ test("admin composition and public unmanaged availability stay operable", async 
     fullPage: true,
   });
 
-  await page.goto("/");
+  await page.goto("/proof");
   await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");
   await expect(page.locator(".home-opener__actions a").nth(1)).toHaveText("View products");
   await expect(page.locator("[data-unmanaged-sku]")).toHaveText(

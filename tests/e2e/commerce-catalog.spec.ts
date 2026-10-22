@@ -31,6 +31,7 @@ test("merchant product prices drive public listing and survive an admin reload",
   const card = page.locator(`[data-commerce-product="${id}"]`);
   await expect(admin.getByLabel("Regular", { exact: true })).toBeVisible();
   await page.goto("/");
+  await expect(page.locator("[data-integration-demos]")).toHaveCount(0);
   await expect(card).toHaveCount(0);
   expect((await request.get(`/shop/${id}`)).status()).toBe(404);
   async function save(regular: string, sale: string) {

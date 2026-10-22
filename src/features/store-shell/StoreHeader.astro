@@ -1,6 +1,7 @@
 ---
 import { getMenu } from "emdash";
 import { GuestCartNav } from "../guest-cart/ui.ts";
+import { PROOF_DEMONSTRATIONS_PATH } from "./profile.js";
 import { MAIN_MENU_NAME, isCurrentMenuItem, type StoreMenuItem } from "./store-menu.js";
 
 interface Props {
@@ -12,6 +13,8 @@ const { profile } = Astro.props;
 const menu = await getMenu(MAIN_MENU_NAME).catch(() => null);
 const items: readonly StoreMenuItem[] = menu?.items ?? [];
 const path = Astro.url.pathname;
+const pathname = path.replace(/\/+$/u, "") || "/";
+const isProofRoute = profile === "proof" && pathname === PROOF_DEMONSTRATIONS_PATH;
 const linkProps = (item: StoreMenuItem) => ({
   href: item.url,
   target: item.target,
@@ -54,7 +57,7 @@ const linkProps = (item: StoreMenuItem) => ({
     </nav>
   )}
   <nav class="store-header__nav" aria-label="Store">
-    <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
+    <span class="store-header__status">{isProofRoute ? "Demo store" : "Store"}</span>
     <a class="store-header__account" href="/account" data-shopper-account-nav aria-current={path === "/account" ? "page" : undefined}>Account</a>
     <GuestCartNav />
   </nav>

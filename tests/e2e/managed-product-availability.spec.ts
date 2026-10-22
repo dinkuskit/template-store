@@ -24,6 +24,15 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   expect(canonicalProduct.headers().location).toBeUndefined();
 
   await page.goto("/");
+  await expect(page.locator("[data-integration-demos]")).toHaveCount(0);
+  await expect(page.locator("[data-managed-product]")).toHaveCount(0);
+  await expect(page.locator("[data-unmanaged-product]")).toHaveCount(0);
+  await expect(page.locator(".store-header__status")).toHaveText("Store");
+  await expect(page.locator(".store-footer__note")).toHaveText(
+    "Transactional facts remain in Commerce; EmDash owns the surrounding composition.",
+  );
+
+  await page.goto("/proof");
   await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");
   const heroAction = page.locator(".home-opener__primary");
   await expect(heroAction).toHaveText("Shop the collection");
@@ -69,7 +78,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   await page.getByRole("link", { name: "View Everyday Tee details" }).click();
   await expect(page.locator("[data-product-status]")).toHaveText("5 available");
   await page.screenshot({ path: resolve(screenshotRoot, "product-changed.png"), fullPage: true });
-  await page.goto("/");
+  await page.goto("/proof");
   const changedVersion = await page
     .locator("[data-managed-product]")
     .getAttribute("data-stock-version");

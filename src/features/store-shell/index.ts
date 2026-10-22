@@ -1,5 +1,7 @@
 export const STORE_TITLE = "DinkusKit Store Starter";
 export const STORE_DESCRIPTION =
+  "A neutral storefront for EmDash and Commerce.";
+export const PROOF_STORE_DESCRIPTION =
   "A neutral proof storefront for EmDash, Commerce, and Inventory.";
 export {
   formatUsdMinor,
@@ -7,6 +9,7 @@ export {
   type PublicPriceView,
 } from "./price.js";
 export {
+  PROOF_DEMONSTRATIONS_PATH,
   STOREFRONT_PROFILE_PROOF,
   STOREFRONT_PROFILE_SHIPPING,
   isProofMutationEnabled,
