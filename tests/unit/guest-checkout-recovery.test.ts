@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,6 +17,11 @@ import {
   updateGuestCheckoutAttempt,
   type GuestCheckoutRetentionStorage,
 } from "../../src/features/guest-cart/index.js";
+import {
+  formatConfirmedDeliveryAddress,
+  resolveConfirmedOrderDestination,
+  resolveOrderLineThumbnail,
+} from "../../src/features/guest-cart/guest-cart-client.js";
 
 function storage(): GuestCheckoutRetentionStorage {
   const values = new Map<string, string>();
@@ -430,7 +436,6 @@ describe("guest checkout protocol and recovery", () => {
   });
 });
 
-
 describe("retained checkout with unavailable advisory readiness", () => {
   it("requires authoritative status before resuming and never prepares a new capability", async () => {
     const saved = storage();
@@ -451,5 +456,219 @@ describe("retained checkout with unavailable advisory readiness", () => {
     expect(calls).toHaveLength(2);
     expect(readGuestCheckoutRetention(saved)).toEqual({ ...retention, attemptId: "attempt-1" });
     expect(controller.canStart()).toBe(false);
+  });
+});
+
+describe("order confirmation receipt enrichment (garment thumbnails, variants, and shipping destination)", () => {
+  it("resolves line thumbnails from explicit safe URLs or catalog snapshots and returns null when media is missing", () => {
+    expect(resolveOrderLineThumbnail({
+      id: "item-1",
+      name: "Studio Hoodie",
+      imageUrl: "/images/products/hoodie.svg",
+      imageAlt: "Studio Hoodie front",
+    })).toEqual({
+      src: "/images/products/hoodie.svg",
+      alt: "Studio Hoodie front",
+    });
+    expect(resolveOrderLineThumbnail({
+      id: "demo-hoodie",
+      name: "Heavyweight Hoodie",
+    })).toBeNull();
+    expect(resolveOrderLineThumbnail({
+      id: "demo-cap",
+      name: "Canvas Cap",
+    })).toBeNull();
+    expect(resolveOrderLineThumbnail({
+      id: "fixture-shirt",
+      name: "Synthetic fixture shirt",
+    })).toBeNull();
+    const snapshotMap = new Map([
+      [
+        "fixture-shirt",
+        {
+          id: "fixture-shirt",
+          found: true as const,
+          name: "Synthetic fixture shirt",
+          sku: "FIXTURE",
+          thumbnail: { src: "/images/products/shirt.svg", alt: "Synthetic fixture shirt photo" },
+          price: { listable: true, regularText: "$24.00", saleText: null, unitMinor: "2400" },
+          availability: { status: "in-stock", sellable: true, listable: true },
+        },
+      ],
+    ]);
+    expect(resolveOrderLineThumbnail({
+      id: "fixture-shirt",
+      name: "Synthetic fixture shirt",
+    }, snapshotMap)).toEqual({
+      src: "/images/products/shirt.svg",
+      alt: "Synthetic fixture shirt photo",
+    });
+  });
+
+  it("extracts Commerce variantSelections and safe thumbnails onto confirmed order lines", () => {
+    const parsed = parseGuestCheckoutWireResult(wire({
+      state: "paid",
+      attemptId: "attempt-paid",
+      variantSelections: [
+        {
+          catalogItemId: "fixture-shirt",
+          productId: "prod-1",
+          selections: [
+            { optionId: "size", optionLabel: "Size", valueId: "l", valueLabel: "Large" },
+            { optionId: "color", optionLabel: "Color", valueId: "oat", valueLabel: "Oatmeal" },
+          ],
+          fulfillment: "physical",
+        },
+      ],
+      order: {
+        orderId: "order:paid-1",
+        receiptId: "receipt:paid-1",
+        lines: [
+          {
+            catalogItemId: "fixture-shirt",
+            quantity: 1,
+            name: "Synthetic fixture shirt",
+            imageUrl: "/images/products/shirt.svg",
+            imageAlt: "Synthetic fixture shirt front view",
+            sku: "FIXTURE-SHIRT-L",
+            unitPrice: { currency: "USD", minor: "2400" },
+          },
+          {
+            catalogItemId: "unsafe-thumb",
+            quantity: 1,
+            name: "Unsafe image item",
+            imageUrl: "javascript:alert(1)",
+            variant: "One Size",
+          },
+        ],
+        total: { currency: "USD", minor: "2400" },
+      },
+    }));
+    expect(parsed?.ok).toBe(true);
+    if (!parsed?.ok) return;
+    expect(parsed.checkout.order?.lines).toEqual([
+      {
+        id: "fixture-shirt",
+        quantity: 1,
+        name: "Synthetic fixture shirt",
+        variant: "Size: Large / Color: Oatmeal",
+        imageUrl: "/images/products/shirt.svg",
+        imageAlt: "Synthetic fixture shirt front view",
+        sku: "FIXTURE-SHIRT-L",
+        unitPrice: { currency: "USD", minor: "2400" },
+      },
+      {
+        id: "unsafe-thumb",
+        quantity: 1,
+        name: "Unsafe image item",
+        variant: "One Size",
+      },
+    ]);
+  });
+
+  it("retains checkout contact across start and status and resolves the confirmed shipping destination", async () => {
+    const saved = storage();
+    const contact = {
+      email: "shopper@example.test",
+      delivery: {
+        name: "Ada Lovelace",
+        line1: "12 Analytical Way",
+        line2: "Suite 4",
+        city: "Portland",
+        region: "OR",
+        postalCode: "97201",
+        country: "US",
+      },
+    };
+    const controller = createGuestCheckoutController({
+      admitted: true,
+      storage: saved,
+      transport: {
+        fetch: async (endpoint) => {
+          if (endpoint.endsWith("/prepare")) {
+            return Response.json({
+              ok: true,
+              capabilityId: "cap-1",
+              capability: {
+                capabilityId: "cap-1",
+                capability: "cap-1.secret",
+                retention: "json-body",
+                header: "x-commerce-guest-capability",
+              },
+              checkout: projection,
+            });
+          }
+          if (endpoint.endsWith("/start")) {
+            return Response.json(wire({
+              state: "pending",
+              attemptId: "attempt-1",
+              redirectUrl: "https://checkout.stripe.com/c/pay/cs_test_1",
+            }));
+          }
+          return Response.json(wire({
+            state: "paid",
+            attemptId: "attempt-1",
+            pricing: {
+              merchandiseSubtotal: { currency: "USD", minor: "2400" },
+              shipping: { mode: "flat", charge: { currency: "USD", minor: "500" } },
+              finalTotal: { currency: "USD", minor: "2900" },
+            },
+            order: {
+              orderId: "order:paid-1",
+              receiptId: "receipt:paid-1",
+              lines: [{ catalogItemId: "fixture-shirt", quantity: 1, name: "Synthetic fixture shirt" }],
+              total: { currency: "USD", minor: "2900" },
+            },
+          }));
+        },
+      },
+    });
+    await controller.prepare();
+    await controller.start({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }, undefined, contact);
+    const retainedAfterStart = readGuestCheckoutRetention(saved);
+    expect(retainedAfterStart?.contact).toEqual(contact);
+
+    const statusResponse = await controller.status();
+    expect(statusResponse.result?.ok).toBe(true);
+    const retainedAfterStatus = readGuestCheckoutRetention(saved);
+    expect(retainedAfterStatus?.contact).toEqual(contact);
+
+    const destination = resolveConfirmedOrderDestination(statusResponse.result!, retainedAfterStatus);
+    expect(destination).toEqual({
+      email: "shopper@example.test",
+      recipient: "Ada Lovelace",
+      address: "12 Analytical Way, Suite 4, Portland OR 97201, US",
+      delivery: contact.delivery,
+      shippingMethod: "Flat rate ($5.00)",
+    });
+    expect(formatConfirmedDeliveryAddress(contact.delivery)).toBe(
+      "12 Analytical Way, Suite 4, Portland OR 97201, US",
+    );
+  });
+
+  it("preserves all FEATURE_MAP selectors, destination summary, and shopper account link in GuestCheckoutReturn.astro", () => {
+    const markup = readFileSync("src/features/guest-cart/GuestCheckoutReturn.astro", "utf8");
+    for (const token of [
+      "data-guest-checkout-return",
+      'id="guest-checkout-return-title"',
+      "data-guest-checkout-return-status",
+      "data-guest-checkout-order",
+      "data-guest-checkout-order-number",
+      "data-guest-checkout-test",
+      "data-guest-checkout-order-items",
+      "data-guest-checkout-order-totals",
+      "data-guest-checkout-destination",
+      "data-guest-checkout-email",
+      "data-guest-checkout-recipient",
+      "data-guest-checkout-address",
+      "data-guest-checkout-shipping-method",
+      "data-guest-checkout-contact",
+      "data-guest-checkout-retry",
+      "data-guest-checkout-status-retry",
+      'class="guest-checkout-continue"',
+      'data-guest-checkout-account href="/account"',
+    ]) {
+      expect(markup).toContain(token);
+    }
   });
 });

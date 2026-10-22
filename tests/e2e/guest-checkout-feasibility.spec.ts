@@ -107,6 +107,12 @@ test("Commerce checkout token renders the paid order and clears the cart", async
   await expect(page.locator("[data-guest-cart-coupon]")).toHaveAttribute("placeholder", "Coupons coming soon");
   expect(harness.counts()).toMatchObject({ prepareCalls: 1, startCalls: 0 });
   await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
+  await page.getByLabel("Recipient", { exact: true }).fill("Ada Lovelace");
+  await page.getByLabel("Address line 1", { exact: true }).fill("12 Analytical Way");
+  await page.getByLabel("City", { exact: true }).fill("Portland");
+  await page.getByLabel("State or region (required for United States delivery)", { exact: true }).fill("OR");
+  await page.getByLabel("Postal code", { exact: true }).fill("97201");
+  await page.getByLabel("Country", { exact: true }).selectOption("US");
   await page.getByRole("button", { name: "Continue to secure checkout" }).click();
   await expect(page.locator("[data-guest-cart-recover]")).toBeVisible();
   await expect(page.locator("[data-guest-cart-status]")).toContainText(/pending|Contacting Commerce/i);
@@ -121,6 +127,13 @@ test("Commerce checkout token renders the paid order and clears the cart", async
   await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
   await expect(page.locator("[data-guest-checkout-order-number]")).toContainText("fixture");
   await expect(page.locator("[data-guest-checkout-order-items]")).toContainText("Synthetic fixture shirt");
+  await expect(page.locator("[data-guest-checkout-item-thumbnail]")).toHaveAttribute("src", "/images/products/shirt.svg");
+  await expect(page.locator("[data-guest-checkout-destination]")).toBeVisible();
+  await expect(page.locator("[data-guest-checkout-email]")).toHaveText("synthetic@example.test");
+  await expect(page.locator("[data-guest-checkout-recipient]")).toHaveText("Ada Lovelace");
+  await expect(page.locator("[data-guest-checkout-address]")).toHaveText("12 Analytical Way, Portland OR 97201, US");
+  await expect(page.locator("[data-guest-checkout-shipping-method]")).toHaveText("Free shipping");
+  await expect(page.locator("[data-guest-checkout-account]")).toHaveAttribute("href", "/account");
   await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
   expect(harness.counts().statusCalls).toBe(2);
   await page.screenshot({
@@ -214,9 +227,16 @@ test("the store's status route relays Commerce's paid answer to the thank-you pa
     await expect(page.locator("[data-guest-checkout-order]")).toBeVisible();
     await expect(page.locator("[data-guest-checkout-return-status]")).toContainText("confirmed");
     await expect(page.locator("[data-guest-checkout-order-number]")).toHaveText("Order fixture");
-    await expect(page.locator("[data-guest-checkout-order-items] li")).toHaveText(["Synthetic fixture shirt × 1$24.00"]);
+    await expect(page.locator("[data-guest-checkout-order-items] li")).toContainText(["Synthetic fixture shirt \u00d7 1$24.00"]);
+    await expect(page.locator("[data-guest-checkout-item-thumb-placeholder]")).toHaveText("No image");
+    await expect(page.locator("[data-guest-checkout-item-thumbnail]")).toHaveCount(0);
     await expect(page.locator("[data-guest-checkout-order-totals] dt")).toHaveText(["Subtotal", "Shipping", "Total"]);
     await expect(page.locator("[data-guest-checkout-order-totals] dd")).toHaveText(["$24.00", "$5.00", "$29.00"]);
+    await expect(page.locator("[data-guest-checkout-destination]")).toBeVisible();
+    await expect(page.locator("[data-guest-checkout-email]")).toHaveText("synthetic@example.test");
+    await expect(page.locator("[data-guest-checkout-shipping-method]")).toHaveText("Flat rate ($5.00)");
+    await expect(page.locator("[data-guest-checkout-account]")).toHaveAttribute("href", "/account");
+    await expect(page.locator(".guest-checkout-continue")).toHaveAttribute("href", "/");
     await expect(page.locator("[data-guest-cart-count]")).toBeHidden();
     expect(dispatched).toEqual(["r_gshdrqaldna3r7sn POST checkout/guest/status"]);
     expect(harness.counts().statusCalls).toBe(1);

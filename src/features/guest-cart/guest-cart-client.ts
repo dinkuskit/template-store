@@ -7,6 +7,7 @@ import {
   guestCartItemCount,
   guestReturnQueryIsPresent,
   isSafeGuestCartProductId,
+  isSafeOrderLineImageUrl,
   loadGuestCartIntent,
   parseGuestCartBatchSelections,
   parseGuestCartQuantityInput,
@@ -33,6 +34,9 @@ import {
   type GuestCartReadNotice,
   type GuestCartView,
   type GuestCheckoutContact,
+  type GuestCheckoutDelivery,
+  type GuestCheckoutOrderLine,
+  type GuestCheckoutRetention,
   type GuestCheckoutShippingPolicyInput,
   type GuestCheckoutTransport,
   type GuestCheckoutWireResult,
@@ -926,14 +930,114 @@ function checkoutStorage() {
   }
 }
 
-function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult): void {
-  if (!result.ok || !checkoutCanConfirm(result)) return;
-  const order = result.checkout.order! as {
-    orderId: string;
-    lines: readonly { id: string; quantity: number; name?: string; variant?: string; unitPrice?: { currency: string; minor: string } }[];
-    total?: unknown;
-    test?: boolean;
+export function resolveOrderLineThumbnail(
+  line: Pick<GuestCheckoutOrderLine, "id" | "name" | "sku" | "imageUrl" | "imageAlt">,
+  snapshotById?: ReadonlyMap<string, GuestCartCatalogSnapshot>,
+): { src: string; alt: string } | null {
+  const defaultAlt = `${line.name ?? line.id} thumbnail`;
+  if (isSafeOrderLineImageUrl(line.imageUrl)) {
+    return {
+      src: line.imageUrl.trim(),
+      alt: line.imageAlt ?? defaultAlt,
+    };
+  }
+  const snapshot = snapshotById?.get(line.id);
+  const snapThumb = snapshot?.found ? snapshot.thumbnail : null;
+  if (snapThumb && isSafeOrderLineImageUrl(snapThumb.src)) {
+    return {
+      src: snapThumb.src.trim(),
+      alt: line.imageAlt ?? snapThumb.alt ?? defaultAlt,
+    };
+  }
+  return null;
+}
+
+export function formatConfirmedDeliveryAddress(delivery: GuestCheckoutDelivery): string {
+  const locality = [delivery.city, delivery.region, delivery.postalCode].filter(Boolean).join(" ");
+  return [delivery.line1, delivery.line2, locality, delivery.country].filter(Boolean).join(", ");
+}
+
+function formatCheckoutMoneyValue(value: { currency: string; minor: string }): string | null {
+  const minor = Number(value.minor);
+  if (!Number.isSafeInteger(minor)) return null;
+  const amount = minor / 100;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: value.currency,
+    }).format(amount);
+  } catch {
+    return `${value.currency} ${amount.toFixed(2)}`;
+  }
+}
+
+export type ConfirmedOrderDestination = Readonly<{
+  email: string | null;
+  recipient: string | null;
+  address: string | null;
+  delivery: GuestCheckoutDelivery | null;
+  shippingMethod: string | null;
+}>;
+
+export function resolveConfirmedOrderDestination(
+  result: GuestCheckoutWireResult,
+  retention?: GuestCheckoutRetention | null,
+): ConfirmedOrderDestination | null {
+  if (!result.ok || !checkoutCanConfirm(result) || !result.checkout.order) return null;
+  const order = result.checkout.order;
+  const email = order.contact?.email ?? result.checkout.contact?.email ?? retention?.contact?.email ?? null;
+  const delivery = order.delivery ??
+    order.contact?.delivery ??
+    result.checkout.delivery ??
+    result.checkout.contact?.delivery ??
+    retention?.contact?.delivery ??
+    null;
+  const recipient = delivery?.name ?? null;
+  const address = delivery ? formatConfirmedDeliveryAddress(delivery) : null;
+  const checkoutRecord = result.checkout as unknown as Record<string, unknown>;
+  const pricing = checkoutRecord.pricing && typeof checkoutRecord.pricing === "object"
+    ? checkoutRecord.pricing as Record<string, unknown>
+    : null;
+  const shippingObj = pricing?.shipping && typeof pricing.shipping === "object"
+    ? pricing.shipping as Record<string, unknown>
+    : null;
+  const chargeObj = shippingObj?.charge && typeof shippingObj.charge === "object"
+    ? shippingObj.charge as Record<string, unknown>
+    : null;
+  const shippingChargeText = chargeObj &&
+    typeof chargeObj.currency === "string" &&
+    typeof chargeObj.minor === "string" &&
+    /^-?\d+$/u.test(chargeObj.minor)
+    ? formatCheckoutMoneyValue({ currency: chargeObj.currency, minor: chargeObj.minor })
+    : null;
+  const shippingMode = typeof shippingObj?.mode === "string" ? shippingObj.mode : null;
+  const explicitShippingMethod = order.shippingMethod ?? result.checkout.shippingMethod ?? null;
+  const derivedShippingMethod = explicitShippingMethod ??
+    (shippingMode === "free"
+      ? "Free shipping"
+      : shippingMode === "flat"
+        ? (shippingChargeText ? `Flat rate (${shippingChargeText})` : "Flat rate shipping")
+        : (delivery && shippingChargeText
+          ? (chargeObj?.minor === "0" ? "Free shipping" : `Standard shipping (${shippingChargeText})`)
+          : null));
+  if (!email && !recipient && !address && !derivedShippingMethod) return null;
+  return {
+    email,
+    recipient,
+    address,
+    delivery,
+    shippingMethod: derivedShippingMethod,
   };
+}
+
+export function confirmedOrderMarkup(
+  root: HTMLElement,
+  result: GuestCheckoutWireResult,
+  retention?: GuestCheckoutRetention | null,
+  snapshotById?: ReadonlyMap<string, GuestCartCatalogSnapshot>,
+): void {
+  if (!result.ok || !checkoutCanConfirm(result)) return;
+  const order = result.checkout.order!;
   const orderNumber = root.querySelector("[data-guest-checkout-order-number]");
   if (orderNumber instanceof HTMLElement) {
     orderNumber.textContent = `Order ${order.orderId.replace(/^order:/u, "")}`;
@@ -946,15 +1050,44 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
   if (items instanceof HTMLElement) {
     items.replaceChildren(...order.lines.map((line) => {
       const row = document.createElement("li");
+      row.className = "guest-checkout-item";
+      row.dataset.guestCheckoutItem = line.id;
+      if (line.sku) row.dataset.guestCheckoutItemSku = line.sku;
+      const resolvedThumb = resolveOrderLineThumbnail(line, snapshotById);
+      if (resolvedThumb) {
+        const thumb = document.createElement("img");
+        thumb.className = "guest-checkout-item-thumb";
+        thumb.setAttribute("data-guest-checkout-item-thumb", "");
+        thumb.setAttribute("data-guest-checkout-item-thumbnail", "");
+        thumb.src = resolvedThumb.src;
+        thumb.alt = resolvedThumb.alt;
+        thumb.width = 56;
+        thumb.height = 56;
+        thumb.loading = "lazy";
+        thumb.decoding = "async";
+        row.append(thumb);
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.className = "guest-checkout-item-thumb guest-checkout-item-thumb--placeholder";
+        placeholder.setAttribute("data-guest-checkout-item-thumb-placeholder", "");
+        placeholder.textContent = "No image";
+        row.append(placeholder);
+      }
       const label = document.createElement("span");
+      label.className = "guest-checkout-item-details";
+      label.setAttribute("data-guest-checkout-item-details", "");
       label.textContent = `${line.name ?? line.id} \u00d7 ${line.quantity}`;
       if (line.variant) {
         const variant = document.createElement("small");
+        variant.className = "guest-checkout-item-variant";
+        variant.setAttribute("data-guest-checkout-item-variant", "");
         variant.textContent = line.variant;
         label.append(variant);
       }
       row.append(label);
       const amount = document.createElement("span");
+      amount.className = "guest-checkout-item-amount";
+      amount.setAttribute("data-guest-checkout-item-amount", "");
       const unitMinor = line.unitPrice && /^-?\d+$/u.test(line.unitPrice.minor)
         ? Number(line.unitPrice.minor)
         : NaN;
@@ -963,10 +1096,29 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
         : null;
       amount.textContent = minor === null || !line.unitPrice
         ? ""
-        : formatMoney({ currency: line.unitPrice.currency, minor: String(minor) }) ?? "";
+        : formatCheckoutMoneyValue({ currency: line.unitPrice.currency, minor: String(minor) }) ?? "";
       row.append(amount);
       return row;
     }));
+  }
+  const destinationSection = root.querySelector("[data-guest-checkout-destination]");
+  if (destinationSection instanceof HTMLElement) {
+    const destination = resolveConfirmedOrderDestination(result, retention);
+    destinationSection.hidden = !destination;
+    const bindField = (rowSelector: string, valueSelector: string, text: string | null) => {
+      const rowEl = destinationSection.querySelector(rowSelector);
+      const valEl = destinationSection.querySelector(valueSelector);
+      if (rowEl instanceof HTMLElement) rowEl.hidden = !text;
+      if (valEl instanceof HTMLElement) valEl.textContent = text ?? "";
+    };
+    bindField("[data-guest-checkout-email-row]", "[data-guest-checkout-email]", destination?.email ?? null);
+    bindField("[data-guest-checkout-recipient-row]", "[data-guest-checkout-recipient]", destination?.recipient ?? null);
+    bindField("[data-guest-checkout-address-row]", "[data-guest-checkout-address]", destination?.address ?? null);
+    bindField(
+      "[data-guest-checkout-shipping-method-row]",
+      "[data-guest-checkout-shipping-method]",
+      destination?.shippingMethod ?? null,
+    );
   }
   const totals = root.querySelector("[data-guest-checkout-order-totals]");
   if (!(totals instanceof HTMLElement)) return;
@@ -975,26 +1127,13 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     ? checkout.pricing as Record<string, unknown>
     : null;
   const total = order.total ?? checkout.total;
-  function formatMoney(value: { currency: string; minor: string }): string | null {
-    const minor = Number(value.minor);
-    if (!Number.isSafeInteger(minor)) return null;
-    const amount = minor / 100;
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: value.currency,
-      }).format(amount);
-    } catch {
-      return `${value.currency} ${amount.toFixed(2)}`;
-    }
-  }
   const money = (value: unknown, freeShipping = false): string | null => {
     if (!value || typeof value !== "object") return null;
     const minor = (value as Record<string, unknown>).minor;
     const currency = (value as Record<string, unknown>).currency;
     if (typeof minor !== "string" || !/^-?\d+$/u.test(minor) || typeof currency !== "string") return null;
     if (freeShipping && minor === "0") return "Free";
-    return formatMoney({ currency, minor });
+    return formatCheckoutMoneyValue({ currency, minor });
   };
   const rows: Array<[string, unknown]> = [
     ["Subtotal", pricing?.merchandiseSubtotal],
@@ -1104,7 +1243,32 @@ export function hydrateGuestCheckoutReturn(): void {
     if (result.ok && checkoutCanConfirm(result)) {
       if (order instanceof HTMLElement) {
         order.hidden = false;
-        confirmedOrderMarkup(root, result);
+        const currentRetention = readGuestCheckoutRetention(checkoutStorage()) ?? retention;
+        confirmedOrderMarkup(root, result, currentRetention);
+        const missingMediaIds = result.checkout.order
+          ? [...new Set(
+              result.checkout.order.lines
+                .filter((line) => !isSafeOrderLineImageUrl(line.imageUrl) && isSafeGuestCartProductId(line.id))
+                .map((line) => line.id),
+            )]
+          : [];
+        if (missingMediaIds.length > 0) {
+          void (async () => {
+            try {
+              const snapshotResponse = await fetch(
+                `/api/guest-cart/snapshot?ids=${encodeURIComponent(missingMediaIds.join(","))}`,
+                { headers: { accept: "application/json" }, signal: AbortSignal.timeout(SNAPSHOT_TIMEOUT_MS) },
+              );
+              if (!snapshotResponse.ok) return;
+              const parsedSnapshots = parseGuestCartSnapshotResponse(await snapshotResponse.json());
+              if (!parsedSnapshots) return;
+              const byId = new Map(parsedSnapshots.map((entry) => [entry.id, entry]));
+              confirmedOrderMarkup(root, result, currentRetention, byId);
+            } catch {
+              // Keep the neutral "No image" placeholder when catalog lookup fails.
+            }
+          })();
+        }
       }
       if (initialContact instanceof HTMLElement) initialContact.hidden = true;
       if (retry instanceof HTMLAnchorElement) retry.hidden = true;
@@ -1136,6 +1300,11 @@ export function hydrateGuestCheckoutReturn(): void {
     }
     if (exhausted && result.ok && result.checkout.state === "pending") {
       setFailureState();
+      setMessage(
+        "Status checks are temporarily limited. Check your confirmation email or refresh later.",
+        true,
+      );
+      if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = false;
     }
     finishCheck();
   };
