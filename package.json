@@ -17,10 +17,22 @@
         "repository": "https://github.com/dinkuskit/commerce.git",
         "commit": "c42597bddd35d949f4e69f8ca97cc26206200da0"
       }
+    },
+    "playgroundPlugins": {
+      "payments": {
+        "repository": "https://github.com/dinkuskit/payments.git",
+        "tag": "v0.3.0",
+        "commit": "5a5619e3c310ee69ac6418bfaa88f4e51c1b22f1"
+      },
+      "ship": {
+        "repository": "https://github.com/dinkuskit/ship.git",
+        "tag": "v0.2.1",
+        "commit": "42cffda4d1baf3aa0774ec6055b9d7c607cb81dd"
+      }
     }
   },
   "scripts": {
-    "prepare:sources": "node scripts/prepare-source-deps.mjs",
+    "prepare:sources": "node scripts/prepare-source-deps.mjs && node scripts/prepare-playground-plugins.mjs",
     "predev": "pnpm prepare:sources",
     "dev": "astro dev",
     "dev:fresh": "bash scripts/dev-fresh.sh",
@@ -65,6 +77,7 @@
     "@astrojs/check": "0.9.9",
     "@emdash-cms/auth": "1.2.0",
     "@emdash-cms/blocks": "1.2.0",
+    "@emdash-cms/plugin-cli": "0.13.3",
     "@emdash-cms/sandbox-workerd": "0.9.1",
     "@playwright/test": "1.61.1",
     "@types/node": "26.1.1",

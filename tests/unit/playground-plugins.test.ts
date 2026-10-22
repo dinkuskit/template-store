@@ -1,0 +1,52 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
+import { playgroundRegistryPlugins } from "../../src/features/playground-plugins/registry-plugins.mjs";
+import { playgroundPluginFetch } from "../../src/features/playground-plugins/runner.js";
+import { welcomeBlocks } from "../../src/features/playground-plugins/welcome-plugin.js";
+
+describe("Playground Payments, Ship and welcome card", () => {
+  it("installs the released Payments and Ship Registry bundles as sandboxed plugins", () => {
+    const pins = JSON.parse(readFileSync("package.json", "utf8")).dinkuskit.playgroundPlugins;
+    const plugins = playgroundRegistryPlugins();
+    expect(plugins.map((plugin) => [plugin.id, plugin.version])).toEqual([
+      ["dinkus-payments", pins.payments.tag.slice(1)],
+      ["dinkus-ship", pins.ship.tag.slice(1)],
+    ]);
+    for (const plugin of plugins) {
+      expect(plugin.format).toBe("standard");
+      expect(plugin.entrypoint).toMatch(/\.artifacts\/playground-plugins\/(payments|ship)\/package\/backend\.js$/);
+      expect(plugin.adminPages.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("gives the sandbox the Worker Loader binding in production and previews", () => {
+    const config = readFileSync("wrangler.playground.jsonc", "utf8");
+    expect(config.match(/"worker_loaders": \[\s*\{\s*"binding": "LOADER"\s*\}\s*\]/g)).toHaveLength(2);
+  });
+
+  it("answers every Payments and Ship call inside the playground, never on the network", async () => {
+    const network = vi.spyOn(globalThis, "fetch");
+    const answer = await playgroundPluginFetch()("https://dinkuskit.com/account/connect", { method: "POST" });
+    expect(network).not.toHaveBeenCalled();
+    expect(answer.status).toBe(503);
+    expect(await answer.json()).toMatchObject({ error: "playground" });
+    network.mockRestore();
+  });
+
+  it("ticks off the steps a prospect has done and keeps one link out to DinkusKit.com", () => {
+    const fresh = JSON.stringify(welcomeBlocks("https://playground.dinkuskit.com", { productEdited: false, orders: 0 }));
+    expect(fresh).toContain("0 of 2 things to do so far");
+    expect(fresh).toContain("○ Edit a product");
+    expect(fresh).toContain("https://playground.dinkuskit.com/_emdash/admin/plugins/dinkus-ship/shipping");
+
+    const done = welcomeBlocks("https://playground.dinkuskit.com", { productEdited: true, orders: 1 });
+    const text = JSON.stringify(done);
+    expect(text).toContain("2 of 2 things to do so far");
+    expect(text).toContain("✓ Edit a product (done)");
+    expect(text).toContain("✓ Place a test order (done)");
+    const outside = [...text.matchAll(/"url":"(https:\/\/[^"]+)"/g)]
+      .map(([, url]) => new URL(url).origin)
+      .filter((origin) => origin !== "https://playground.dinkuskit.com");
+    expect(outside).toEqual(["https://dinkuskit.com"]);
+  });
+});

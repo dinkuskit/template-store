@@ -109,3 +109,7 @@
 {"action": "decision_proposed", "at": "2026-10-21T22:55:23+00:00", "data": {"decision_id": "storefront-missing-media-001"}, "event_id": "f72725fb-5642-413d-8b88-41a706722c0b"}
 {"action": "decision_locked", "at": "2026-10-21T22:55:23+00:00", "data": {"decision_id": "storefront-missing-media-001"}, "event_id": "d3e7d244-8903-459f-b05e-3872700cc295"}
 {"action": "shared_understanding_confirmed", "at": "2026-10-21T22:55:23+00:00", "data": {"summary": "Owner confirmed the neutral placeholder rule for missing product media; implement on PR 133 first, then 130/131."}, "event_id": "ebeed8b1-d828-43de-8ce7-6ad0e283db35"}
+{"action": "decision_proposed", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-prospect-demo-20261022"}, "event_id": "159441f2-b7b6-4dd0-a829-85f45dc8fbc0"}
+{"action": "decision_proposed", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-pretend-connected-20261022"}, "event_id": "77438410-dd44-40a2-88ce-c88d9d58a484"}
+{"action": "decision_locked", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-prospect-demo-20261022"}, "event_id": "504cdcd1-83e1-491f-8d45-d6a1d2524ea3"}
+{"action": "decision_locked", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-pretend-connected-20261022"}, "event_id": "c9db2722-f56f-4e24-852b-066a9dbcad47"}

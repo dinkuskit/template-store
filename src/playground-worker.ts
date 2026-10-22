@@ -1,5 +1,6 @@
 import astroHandler from "@astrojs/cloudflare/entrypoints/server";
 import { EmDashPreviewDB } from "@emdash-cms/cloudflare/db/playground";
+import { PluginBridge } from "@emdash-cms/cloudflare/worker";
 import {
   CLEAR_PLAYGROUND_COOKIE,
   PLAYGROUND_COOKIE_NAME,
@@ -14,7 +15,8 @@ import {
 } from "./features/playground/contract.js";
 import { withShopperAccountRequest } from "./features/shopper-account/playground-runtime.js";
 
-export { EmDashPreviewDB };
+// Payments and Ship run in the sandbox, which reaches EmDash through PluginBridge.
+export { EmDashPreviewDB, PluginBridge };
 
 interface WorkerExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
