@@ -172,6 +172,7 @@ describe("demo seed resource identity", () => {
       "DEMO-HOSTED-BOTTLE",
     ]);
     expect(DEMO_SKUS.has("DEMO-HOSTED-HOODIE-M")).toBe(true);
+    expect(DEMO_SKUS.has("DEMO-HOSTED-HOODIE-L")).toBe(true);
     expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-HOODIE-S")?.variant).toEqual(
       expect.objectContaining({
         optionId: "size",

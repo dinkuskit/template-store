@@ -6,14 +6,17 @@ export {
   GUEST_CART_STORAGE_KEY,
   GUEST_CART_VERSION,
   addGuestCartLine,
+  addGuestCartLines,
   emptyGuestCartIntent,
   guestCartItemCount,
   isSafeGuestCartProductId,
   isSafeGuestCartQuantity,
+  parseGuestCartBatchSelections,
   parseGuestCartIntent,
   parseGuestCartQuantityInput,
   removeGuestCartLine,
   setGuestCartLineQuantity,
+  stepGuestCartQuantityInput,
 } from "./intent.js";
 export type {
   GuestCartIntent,

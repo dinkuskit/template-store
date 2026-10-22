@@ -51,6 +51,8 @@ export interface DemoProductSeed {
       sku: string;
       /** Member regular price; defaults to the product's regularMinor. */
       regularMinor?: string;
+      /** Member availability; defaults to the product's availability. */
+      availability?: "in-stock" | "out-of-stock";
     }[];
   };
 }
@@ -109,6 +111,16 @@ export const DEMO_PRODUCTS: readonly DemoProductSeed[] = Object.freeze([
           name: "Dinkus Demo Everyday Hoodie",
           sku: "DEMO-HOSTED-HOODIE-M",
           regularMinor: "6000",
+        },
+        {
+          // Sold out by default so every demo store has an unavailable size to show.
+          valueId: "large",
+          label: "Large",
+          commandId: "seed-demo-hoodie-large",
+          name: "Dinkus Demo Everyday Hoodie",
+          sku: "DEMO-HOSTED-HOODIE-L",
+          regularMinor: "6000",
+          availability: "out-of-stock",
         },
       ],
     },
@@ -594,6 +606,11 @@ export function assertCommerceSkuIndexPresent(indexNames: readonly string[]): vo
 export function demoRegularMinorForSku(product: DemoProductSeed, sku: string): string {
   return product.variant?.values.find((value) => value.sku === sku.toUpperCase())?.regularMinor
     ?? product.regularMinor;
+}
+
+export function demoAvailabilityForSku(product: DemoProductSeed, sku: string): "in-stock" | "out-of-stock" {
+  return product.variant?.values.find((value) => value.sku === sku.toUpperCase())?.availability
+    ?? product.availability;
 }
 
 export function isDemoSku(sku: string): boolean {

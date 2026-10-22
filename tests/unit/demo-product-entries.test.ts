@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { DEMO_PRODUCTS, demoRegularMinorForSku } from "../../scripts/demo-seed-policy.js";
+import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku } from "../../scripts/demo-seed-policy.js";
 import {
   buildDemoProductEntries,
   demoPlaceholderImage,
@@ -47,6 +47,15 @@ describe("demo EmDash product entries", () => {
     const hoodie = DEMO_PRODUCTS.find((product) => product.variant)!;
     expect(demoRegularMinorForSku(hoodie, "DEMO-HOSTED-HOODIE-S")).toBe("5600");
     expect(demoRegularMinorForSku(hoodie, "DEMO-HOSTED-HOODIE-M")).toBe("6000");
+  });
+
+  it("seeds the Large hoodie sold out so every demo store has an unavailable size", () => {
+    const hoodie = DEMO_PRODUCTS.find((product) => product.variant)!;
+    expect(hoodie.variant!.values.map((value) => value.label)).toEqual(["Small", "Medium", "Large"]);
+    expect(demoAvailabilityForSku(hoodie, "DEMO-HOSTED-HOODIE-S")).toBe("in-stock");
+    expect(demoAvailabilityForSku(hoodie, "DEMO-HOSTED-HOODIE-M")).toBe("in-stock");
+    expect(demoAvailabilityForSku(hoodie, "demo-hosted-hoodie-l")).toBe("out-of-stock");
+    expect(demoRegularMinorForSku(hoodie, "DEMO-HOSTED-HOODIE-L")).toBe("6000");
   });
 
   it("runs only for the playground and demo profile, never a shipping store", () => {

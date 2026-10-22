@@ -30,7 +30,7 @@ import { createSettingsAccess, OptionsRepository, PluginStorageRepository } from
 import { applySeed, type SeedFile } from "emdash/seed";
 import { sql } from "kysely";
 
-import { DEMO_PRODUCTS, demoRegularMinorForSku, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
+import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
 import { buildDemoProductEntries } from "./demo-products.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
@@ -131,7 +131,7 @@ async function createProduct(storage: Storage, product: DemoProductSeed): Promis
     if (product.saleMinor !== null) {
       await setCatalogItemSalePrice(storage, { catalogItemId, amount: { currency: "USD", minor: product.saleMinor } });
     }
-    await setCatalogItemManualAvailability(storage, { catalogItemId, status: product.availability });
+    await setCatalogItemManualAvailability(storage, { catalogItemId, status: demoAvailabilityForSku(product, sku) });
   }
 }
 

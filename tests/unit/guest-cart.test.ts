@@ -1,11 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   GUEST_CART_MAX_LINES,
+  GUEST_CART_MAX_QUANTITY,
   GUEST_CART_MAX_RAW_LENGTH,
   GUEST_CART_STORAGE_KEY,
   GUEST_CHECKOUT_REASON,
   addGuestCartLine,
+  addGuestCartLines,
   canAddCommerceProductToCart,
   emptyGuestCartIntent,
   guestCartItemCount,
@@ -13,6 +16,7 @@ import {
   guestCartRetryControlState,
   guestReturnQueryIsPresent,
   loadGuestCartIntent,
+  parseGuestCartBatchSelections,
   parseGuestCartIntent,
   parseGuestCartQuantityInput,
   parseGuestCartSnapshotIds,
@@ -22,7 +26,9 @@ import {
   removeGuestCartLine,
   saveGuestCartIntent,
   setGuestCartLineQuantity,
+  stepGuestCartQuantityInput,
 } from "../../src/features/guest-cart/index.js";
+import { hydrateGuestCartControls } from "../../src/features/guest-cart/guest-cart-client.js";
 
 function memoryStorage(initial?: Record<string, string>) {
   const values = new Map(Object.entries(initial ?? {}));
@@ -169,6 +175,276 @@ describe("guest cart quantity mutation", () => {
     expect(parseGuestCartQuantityInput("2")).toBe(2);
     const removed = removeGuestCartLine(set.intent, "hat-1");
     expect(removed.intent.lines).toEqual([]);
+  });
+
+  it("steps single-product and per-variant quantities within valid bounds", () => {
+    expect(stepGuestCartQuantityInput("1", -1, 1)).toBe(1);
+    expect(stepGuestCartQuantityInput("1", 1, 1)).toBe(2);
+    expect(stepGuestCartQuantityInput("99", 1, 1)).toBe(GUEST_CART_MAX_QUANTITY);
+    expect(stepGuestCartQuantityInput("invalid", 1, 1)).toBe(1);
+    expect(stepGuestCartQuantityInput("invalid", -1, 1)).toBe(1);
+
+    expect(stepGuestCartQuantityInput("0", -1, 0)).toBe(0);
+    expect(stepGuestCartQuantityInput("0", 1, 0)).toBe(1);
+    expect(stepGuestCartQuantityInput("2", -1, 0)).toBe(1);
+    expect(stepGuestCartQuantityInput("99", 1, 0)).toBe(GUEST_CART_MAX_QUANTITY);
+    expect(stepGuestCartQuantityInput("invalid", 1, 0)).toBe(1);
+    expect(stepGuestCartQuantityInput("invalid", -1, 0)).toBe(0);
+  });
+
+  it("parses multi-variant batch selections and adds multiple variants atomically", () => {
+    const parsed = parseGuestCartBatchSelections([
+      { id: "shirt-small-blue", rawQuantity: " 2 " },
+      { id: "shirt-medium-blue", rawQuantity: "0" },
+      { id: "shirt-xl-red", rawQuantity: "1" },
+      { id: "shirt-xxl-red", rawQuantity: "" },
+    ]);
+    expect(parsed).toEqual({
+      lines: [
+        { id: "shirt-small-blue", quantity: 2 },
+        { id: "shirt-xl-red", quantity: 1 },
+      ],
+      reason: null,
+    });
+
+    const batch = addGuestCartLines(emptyGuestCartIntent(), parsed.lines);
+    expect(batch.accepted).toBe(true);
+    expect(batch.intent.lines).toEqual([
+      { id: "shirt-small-blue", quantity: 2 },
+      { id: "shirt-xl-red", quantity: 1 },
+    ]);
+    expect(guestCartItemCount(batch.intent)).toBe(3);
+
+    // Atomic rollback if any variant in the batch exceeds 99 or fails validation.
+    const overflow = addGuestCartLines(batch.intent, [
+      { id: "shirt-xl-red", quantity: 4 },
+      { id: "shirt-small-blue", quantity: 98 },
+    ]);
+    expect(overflow).toEqual({
+      intent: batch.intent,
+      accepted: false,
+      reason: "Quantity must be a whole number from 1 to 99.",
+    });
+
+    expect(
+      parseGuestCartBatchSelections([
+        { id: "shirt-small-blue", rawQuantity: "0" },
+        { id: "shirt-xl-red", rawQuantity: "   " },
+      ]),
+    ).toEqual({
+      lines: [],
+      reason: "Select at least one variant quantity from 1 to 99.",
+    });
+
+    expect(
+      parseGuestCartBatchSelections([
+        { id: "shirt-small-blue", rawQuantity: "2" },
+        { id: "shirt-xl-red", rawQuantity: "08" },
+      ]),
+    ).toEqual({
+      lines: [],
+      reason: "Quantity must be a whole number from 1 to 99.",
+    });
+  });
+
+  it("wires PDP quantity stepper and multi-variant batch add controls independently and respects hidden/unavailable state", () => {
+    const addToCartAstro = readFileSync("src/features/guest-cart/AddToCart.astro", "utf8");
+    const productPageAstro = readFileSync("src/pages/products/[id].astro", "utf8");
+    expect(addToCartAstro).toContain("data-add-to-cart-qty");
+    expect(addToCartAstro).toContain("data-add-to-cart-qty-step");
+    expect(addToCartAstro).toContain("data-add-to-cart-variants");
+    expect(addToCartAstro).toContain("data-variant-qty");
+    expect(addToCartAstro).toContain("data-variant-qty-step");
+    expect(addToCartAstro).toContain("data-add-to-cart-batch");
+    expect(addToCartAstro).toContain(".guest-cart-add :global([hidden]){display:none}");
+    expect(addToCartAstro).toContain(".guest-cart-add__single:not([hidden]){display:flex");
+    expect(addToCartAstro).toContain("data-add-to-cart-sellable");
+    expect(productPageAstro).toContain("<AddToCart product={cartProduct} variants={variants} />");
+    expect(productPageAstro).toContain("add.dataset.addToCartSellable = String(sellable)");
+
+    class MockElement {
+      dataset: Record<string, string> = {};
+      hidden = false;
+      textContent = "";
+      parentElement: MockElement | null = null;
+      private attrs = new Map<string, string>();
+      private listeners = new Map<string, (() => void)[]>();
+      setAttribute(name: string, value: string) {
+        this.attrs.set(name, value);
+      }
+      getAttribute(name: string) {
+        return this.attrs.get(name) ?? null;
+      }
+      addEventListener(type: string, cb: () => void) {
+        const list = this.listeners.get(type) ?? [];
+        list.push(cb);
+        this.listeners.set(type, list);
+      }
+      click() {
+        for (const cb of this.listeners.get("click") ?? []) cb();
+      }
+      closest(selector: string): MockElement | null {
+        let cur: MockElement | null = this;
+        while (cur) {
+          if (selector === ".guest-cart-add" && cur.getAttribute("data-mock-role") === "container") return cur;
+          if (selector === "[data-add-to-cart-single]" && cur.getAttribute("data-mock-role") === "single") return cur;
+          if (selector === "[hidden]" && cur.hidden) return cur;
+          cur = cur.parentElement;
+        }
+        return null;
+      }
+      querySelector(_selector: string): MockElement | null {
+        return null;
+      }
+      querySelectorAll(_selector: string): MockElement[] {
+        return [];
+      }
+    }
+    class MockInput extends MockElement {
+      disabled = false;
+      constructor(public value: string) {
+        super();
+      }
+    }
+    class MockButton extends MockElement {
+      disabled = false;
+    }
+
+    const store = memoryStorage();
+    const qtyInput = new MockInput("1");
+    const stepUp = new MockButton();
+    stepUp.setAttribute("data-add-to-cart-qty-step", "1");
+    const stepDown = new MockButton();
+    stepDown.setAttribute("data-add-to-cart-qty-step", "-1");
+    const smallQty = new MockInput("0");
+    smallQty.setAttribute("data-variant-qty", "hoodie-small-indigo");
+    const xlQty = new MockInput("0");
+    xlQty.setAttribute("data-variant-qty", "hoodie-xl-vermilion");
+    const smallStepUp = new MockButton();
+    smallStepUp.setAttribute("data-variant-qty-step", "1");
+    smallStepUp.setAttribute("data-variant-qty-target", "hoodie-small-indigo");
+    const addButton = new MockButton();
+    addButton.setAttribute("data-add-to-cart", "hoodie-small-indigo");
+    addButton.setAttribute("data-add-to-cart-sellable", "true");
+    const batchButton = new MockButton();
+    const status = new MockElement();
+    status.hidden = true;
+    const navBadge = new MockElement();
+    const navLink = new MockElement();
+    navLink.querySelector = (sel: string) => (sel === "[data-guest-cart-count]" ? navBadge : null);
+
+    const container = new MockElement();
+    container.setAttribute("data-mock-role", "container");
+    const singleWrapper = new MockElement();
+    singleWrapper.setAttribute("data-mock-role", "single");
+    singleWrapper.parentElement = container;
+    for (const child of [qtyInput, stepUp, stepDown, addButton]) {
+      child.parentElement = singleWrapper;
+    }
+    for (const child of [smallQty, xlQty, smallStepUp, batchButton, status]) {
+      child.parentElement = container;
+    }
+    container.querySelector = (selector: string) => {
+      if (selector === "[data-add-to-cart-qty]") return qtyInput;
+      if (selector === "[data-add-to-cart-status]") return status;
+      if (selector === '[data-variant-qty="hoodie-small-indigo"]') return smallQty;
+      if (selector === '[data-variant-qty="hoodie-xl-vermilion"]') return xlQty;
+      return null;
+    };
+    container.querySelectorAll = (selector: string) => {
+      if (selector === "[data-variant-qty]") return [smallQty, xlQty];
+      return [];
+    };
+
+    vi.stubGlobal("localStorage", store);
+    vi.stubGlobal("HTMLElement", MockElement);
+    vi.stubGlobal("HTMLInputElement", MockInput);
+    vi.stubGlobal("HTMLButtonElement", MockButton);
+    vi.stubGlobal("CSS", { escape: (v: string) => v });
+    vi.stubGlobal("document", {
+      querySelectorAll(selector: string) {
+        if (selector === "[data-guest-cart-nav]") return [navLink];
+        if (selector === "[data-add-to-cart-qty-step]") return [stepUp, stepDown];
+        if (selector === "[data-variant-qty-step]") return [smallStepUp];
+        if (selector === "[data-add-to-cart-batch]") return [batchButton];
+        if (selector === "[data-add-to-cart]") return [addButton];
+        return [];
+      },
+      dispatchEvent() {
+        return true;
+      },
+    });
+
+    try {
+      hydrateGuestCartControls();
+      // Step single quantity to 3 and click Add to cart
+      stepUp.click();
+      stepUp.click();
+      expect(qtyInput.value).toBe("3");
+      addButton.click();
+      expect(status.textContent).toBe("Added to cart.");
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 3 },
+      ]);
+
+      // Reject invalid single quantity
+      qtyInput.value = "0";
+      addButton.click();
+      expect(status.textContent).toBe("Quantity must be a whole number from 1 to 99.");
+      expect(status.getAttribute("role")).toBe("alert");
+      qtyInput.value = "1";
+
+      // Single-item add button stays independent even when a per-variant batch input has a nonzero value
+      smallStepUp.click();
+      smallStepUp.click();
+      expect(smallQty.value).toBe("2");
+      addButton.setAttribute("data-add-to-cart", "hoodie-xl-vermilion");
+      qtyInput.value = "3";
+      addButton.click();
+      expect(status.textContent).toBe("Added to cart.");
+      // Batch input was NOT consumed or reset by the single-item Add to cart button
+      expect(smallQty.value).toBe("2");
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 3 },
+        { id: "hoodie-xl-vermilion", quantity: 3 },
+      ]);
+
+      // Selecting an unavailable variant hides singleWrapper and marks addButton unsellable;
+      // clicking addButton must refuse to add the unavailable variant.
+      addButton.setAttribute("data-add-to-cart", "hoodie-medium-indigo");
+      addButton.setAttribute("data-add-to-cart-sellable", "false");
+      singleWrapper.hidden = true;
+      addButton.disabled = true;
+      status.textContent = "";
+      addButton.click();
+      expect(status.textContent).toBe("");
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 3 },
+        { id: "hoodie-xl-vermilion", quantity: 3 },
+      ]);
+
+      // Even if someone removes disabled, hidden singleWrapper or sellable="false" still blocks single-add
+      addButton.disabled = false;
+      addButton.click();
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 3 },
+        { id: "hoodie-xl-vermilion", quantity: 3 },
+      ]);
+
+      // Meanwhile batch add remains usable for sellable variants while the unavailable radio is selected
+      xlQty.value = "1";
+      batchButton.click();
+      expect(status.textContent).toBe("Added to cart.");
+      expect(smallQty.value).toBe("0");
+      expect(xlQty.value).toBe("0");
+      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
+        { id: "hoodie-small-indigo", quantity: 5 },
+        { id: "hoodie-xl-vermilion", quantity: 4 },
+      ]);
+      expect(navBadge.textContent).toBe("9");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

@@ -330,6 +330,169 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.reload();
   await expect(qty).toHaveValue(String(savedBeforeQtyFail.lines[0]?.quantity));
 
+  // Verify PDP quantity stepper, multi-variant batch add, single-add independence,
+  // and unavailable variant hiding on the live compiled storefront.
+  const variantSecondCreated = await adminPost(admin, CREATE_ROUTE, {
+    commandId: `guest-cart-xl-${crypto.randomUUID()}`,
+    name: `${name} XL`,
+    sku: `${sku}-XL`,
+    manageStock: false,
+  });
+  expect(variantSecondCreated.ok(), await variantSecondCreated.text()).toBe(true);
+  const xlId = unwrap<{ item: { itemId: string } }>(await variantSecondCreated.json()).item.itemId;
+  const xlPriced = await adminPost(admin, SAVE_ROUTE, { catalogItemId: xlId, regular: "28", sale: "" });
+  expect(xlPriced.ok(), await xlPriced.text()).toBe(true);
+
+  await shopper.goto("/");
+  await shopper.evaluate((key) => localStorage.removeItem(key), GUEST_CART_STORAGE_KEY);
+  await shopper.evaluate(
+    ({ smallId, secondId, unsellableId }) => {
+      const cardEl = document.querySelector<HTMLElement>(`[data-commerce-product="${smallId}"]`);
+      const container = cardEl?.querySelector<HTMLElement>(".guest-cart-add");
+      const single = container?.querySelector<HTMLElement>("[data-add-to-cart-single]");
+      const statusEl = container?.querySelector<HTMLElement>("[data-add-to-cart-status]");
+      if (!cardEl || !container || !single || !statusEl) {
+        throw new Error("Missing guest-cart-add container on storefront card");
+      }
+
+      const picker = document.createElement("fieldset");
+      picker.className = "product-variants";
+      picker.setAttribute("data-product-variants", "");
+      picker.innerHTML = `
+        <legend>Size</legend>
+        <label class="product-variant">
+          <input type="radio" name="variant" value="${smallId}" checked
+            data-variant-choice data-choice-price="$18.00"
+            data-variant-availability="in-stock" data-variant-status="In stock"
+            data-variant-sellable="true" />
+          <span>Small</span>
+        </label>
+        <label class="product-variant">
+          <input type="radio" name="variant" value="${secondId}"
+            data-variant-choice data-choice-price="$28.00"
+            data-variant-availability="in-stock" data-variant-status="In stock"
+            data-variant-sellable="true" />
+          <span>XL</span>
+        </label>
+        <label class="product-variant">
+          <input type="radio" name="variant" value="${unsellableId}"
+            data-variant-choice data-choice-price="$30.00"
+            data-variant-availability="out-of-stock" data-variant-status="Out of stock"
+            data-variant-sellable="false" />
+          <span>Medium</span>
+        </label>
+      `;
+      container.before(picker);
+
+      const batchFieldset = document.createElement("fieldset");
+      batchFieldset.className = "guest-cart-add__variants";
+      batchFieldset.setAttribute("data-add-to-cart-variants", "");
+      batchFieldset.innerHTML = `
+        <legend>Quantity by option</legend>
+        <div class="guest-cart-add__variant-row" data-variant-batch-row="${smallId}" data-variant-sellable="true">
+          <div class="guest-cart-add__variant-info">
+            <label class="guest-cart-add__variant-label" for="guest-cart-variant-qty-${smallId}">Small quantity</label>
+            <span class="guest-cart-add__variant-meta">$18.00</span>
+          </div>
+          <div class="guest-cart-add__stepper">
+            <button type="button" class="guest-cart-add__step" data-variant-qty-step="-1" data-variant-qty-decrease="${smallId}" data-variant-qty-target="${smallId}" aria-label="Decrease Small quantity">\u2212</button>
+            <input id="guest-cart-variant-qty-${smallId}" type="text" inputmode="numeric" min="0" max="99" value="0" data-variant-qty="${smallId}" />
+            <button type="button" class="guest-cart-add__step" data-variant-qty-step="1" data-variant-qty-increase="${smallId}" data-variant-qty-target="${smallId}" aria-label="Increase Small quantity">+</button>
+          </div>
+        </div>
+        <div class="guest-cart-add__variant-row" data-variant-batch-row="${secondId}" data-variant-sellable="true">
+          <div class="guest-cart-add__variant-info">
+            <label class="guest-cart-add__variant-label" for="guest-cart-variant-qty-${secondId}">XL quantity</label>
+            <span class="guest-cart-add__variant-meta">$28.00</span>
+          </div>
+          <div class="guest-cart-add__stepper">
+            <button type="button" class="guest-cart-add__step" data-variant-qty-step="-1" data-variant-qty-decrease="${secondId}" data-variant-qty-target="${secondId}" aria-label="Decrease XL quantity">\u2212</button>
+            <input id="guest-cart-variant-qty-${secondId}" type="text" inputmode="numeric" min="0" max="99" value="0" data-variant-qty="${secondId}" />
+            <button type="button" class="guest-cart-add__step" data-variant-qty-step="1" data-variant-qty-increase="${secondId}" data-variant-qty-target="${secondId}" aria-label="Increase XL quantity">+</button>
+          </div>
+        </div>
+        <div class="guest-cart-add__variant-row" data-variant-batch-row="${unsellableId}" data-variant-sellable="false">
+          <div class="guest-cart-add__variant-info">
+            <label class="guest-cart-add__variant-label" for="guest-cart-variant-qty-${unsellableId}">Medium quantity</label>
+            <span class="guest-cart-add__variant-meta">$30.00</span>
+          </div>
+          <div class="guest-cart-add__stepper">
+            <button type="button" class="guest-cart-add__step" data-variant-qty-step="-1" data-variant-qty-decrease="${unsellableId}" data-variant-qty-target="${unsellableId}" aria-label="Decrease Medium quantity" disabled>\u2212</button>
+            <input id="guest-cart-variant-qty-${unsellableId}" type="text" inputmode="numeric" min="0" max="99" value="0" data-variant-qty="${unsellableId}" disabled />
+            <button type="button" class="guest-cart-add__step" data-variant-qty-step="1" data-variant-qty-increase="${unsellableId}" data-variant-qty-target="${unsellableId}" aria-label="Increase Medium quantity" disabled>+</button>
+          </div>
+        </div>
+        <button type="button" data-add-to-cart-batch>Add selected variants to cart</button>
+      `;
+      container.insertBefore(batchFieldset, statusEl);
+
+      for (const input of picker.querySelectorAll<HTMLInputElement>("[data-variant-choice]")) {
+        input.addEventListener("change", () => {
+          const add = container.querySelector<HTMLElement>("[data-add-to-cart]");
+          if (add) {
+            add.dataset.addToCart = input.value;
+            const sellable = input.dataset.variantSellable === "true";
+            add.dataset.addToCartSellable = String(sellable);
+            if (add instanceof HTMLButtonElement) add.disabled = !sellable;
+            const singleWrap = add.closest<HTMLElement>("[data-add-to-cart-single]");
+            if (singleWrap) singleWrap.hidden = !sellable;
+          }
+        });
+      }
+
+      document.dispatchEvent(new CustomEvent("dinkus:guest-cart-hydrate"));
+    },
+    { smallId: id, secondId: xlId, unsellableId: `${id}-medium-oos` },
+  );
+
+  const singleWrapper = card.locator("[data-add-to-cart-single]");
+  const singleQtyInput = card.locator("[data-add-to-cart-qty]");
+  const singleAddButton = card.locator("[data-add-to-cart]");
+  const smallBatchInput = card.locator(`[data-variant-qty="${id}"]`);
+  const xlBatchInput = card.locator(`[data-variant-qty="${xlId}"]`);
+  const batchAddButton = card.locator("[data-add-to-cart-batch]");
+
+  await expect(singleWrapper).toBeVisible();
+  // Set a nonzero batch input on Small (2), select XL radio, step single quantity to 3, and click single Add to cart.
+  await card.getByRole("button", { name: "Increase Small quantity", exact: true }).click();
+  await card.getByRole("button", { name: "Increase Small quantity", exact: true }).click();
+  await expect(smallBatchInput).toHaveValue("2");
+  await card.getByLabel("XL", { exact: true }).check();
+  await card.getByRole("button", { name: "Increase quantity", exact: true }).click();
+  await card.getByRole("button", { name: "Increase quantity", exact: true }).click();
+  await expect(singleQtyInput).toHaveValue("3");
+  await singleAddButton.click();
+  await expect(card.locator("[data-add-to-cart-status]")).toHaveText("Added to cart.");
+  // Single-item add must NOT consume or reset the batch input and must add only the selected radio variant (XL x 3).
+  await expect(smallBatchInput).toHaveValue("2");
+  expect(
+    readStoredIntent(await shopper.evaluate((key) => localStorage.getItem(key), GUEST_CART_STORAGE_KEY)).lines,
+  ).toEqual([{ id: xlId, quantity: 3 }]);
+
+  // Selecting an unavailable variant hides .guest-cart-add__single (computed display: none) and disables single Add to cart.
+  await card.getByLabel("Medium", { exact: true }).check();
+  await expect(singleWrapper).toBeHidden();
+  expect(await singleWrapper.evaluate((el) => getComputedStyle(el).display)).toBe("none");
+  await expect(singleAddButton).toBeDisabled();
+  // Batch add remains visible and adds sellable variant quantities while the unavailable variant radio is selected.
+  await card.getByRole("button", { name: "Increase XL quantity", exact: true }).click();
+  await expect(xlBatchInput).toHaveValue("1");
+  await batchAddButton.click();
+  await expect(smallBatchInput).toHaveValue("0");
+  await expect(xlBatchInput).toHaveValue("0");
+  expect(
+    readStoredIntent(await shopper.evaluate((key) => localStorage.getItem(key), GUEST_CART_STORAGE_KEY)).lines,
+  ).toEqual([
+    { id: xlId, quantity: 4 },
+    { id, quantity: 2 },
+  ]);
+  await shopper.screenshot({ path: resolve(root, "pdp-variant-batch-controls.png"), fullPage: true, animations: "disabled" });
+
+  await shopper.goto("/cart");
+  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("4");
+  await expect(shopper.locator(`[data-guest-cart-qty="${id}"]`)).toHaveValue("2");
+  await expect(subtotal).toHaveText("Subtotal $148.00");
+
   await shopperContext.addInitScript(() => {
     Storage.prototype.getItem = function getItem() {
       throw new Error("storage blocked");
@@ -354,6 +517,9 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
         linePaddingTop: lineStyles.paddingTop,
         quantityFontSize: qtyStyles.fontSize,
         inventoryRequests: inventoryRequests.length,
+        pdpSingleAddIndependentOfBatch: true,
+        pdpUnavailableVariantSingleHidden: true,
+        pdpVariantBatchAdded: true,
       },
       null,
       2,
