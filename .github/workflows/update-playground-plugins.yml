@@ -1,0 +1,72 @@
+name: Update playground plugins
+
+# Press "Run workflow" on main after a plugin release is promoted. It moves the
+# playground's Payments and Ship pins (package.json dinkuskit.playgroundPlugins)
+# to each plugin's latest stable release and opens a PR, so the bump gets its
+# own pr-N playground preview and review before merging puts it live.
+# Needs the DinkusKit release app (secrets RELEASE_APP_ID and
+# RELEASE_APP_PRIVATE_KEY) so the PR it opens runs CI.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-playground-plugins
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update playground plugins
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: '.nvmrc'
+      - id: pins
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/update-playground-plugins.mjs
+      - name: Nothing to update
+        if: steps.pins.outputs.changed != 'true'
+        run: echo "::notice title=Playground plugins::Every playground plugin is already on its latest stable release."
+      - name: Check the release app secrets
+        if: steps.pins.outputs.changed == 'true'
+        env:
+          APP_ID: ${{ secrets.RELEASE_APP_ID }}
+          APP_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APP_ID" ] || [ -z "$APP_KEY" ]; then
+            echo "::error title=Playground plugins::Give template-store the RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY secrets (the DinkusKit release app) so this can open its PR."
+            exit 1
+          fi
+      - id: app
+        if: steps.pins.outputs.changed == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      - name: Open the update PR
+        if: steps.pins.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SUMMARY: ${{ steps.pins.outputs.summary }}
+        run: |
+          set -euo pipefail
+          branch="playground-plugins/$(date -u +%Y%m%d%H%M%S)"
+          git config user.name "dinkuskit-release[bot]"
+          git config user.email "dinkuskit-release[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add package.json
+          git commit -m "Move playground plugins to their latest stable releases" -m "$SUMMARY"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+            --title "Playground: move plugins to their latest stable releases" \
+            --body "$(printf 'Opened by the Update playground plugins workflow.\n\n%s\n\nThe pr-N playground preview proves Payments, Ship and the welcome card on the new versions; merging puts them live on playground.dinkuskit.com.' "$SUMMARY")"

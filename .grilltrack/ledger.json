@@ -4189,6 +4189,49 @@
       "superseded_by": null,
       "updated_at": "2026-10-22T15:11:33+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1763bd68cac7051636732052945b89fb0478754c",
+      "candidate_refs": [],
+      "choice": "Each plugin's latest stable release by exact tag and commit (never a beta, never whatever is newest at build time). An Update playground plugins button in template-store's Actions moves the pins to the newest stable releases and opens a PR, so each bump gets its own pr-N preview proof and review, and merging puts it live; reverting that PR rolls it back.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk",
+      "created_at": "2026-10-22T15:16:13+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-prospect-demo-20261022"
+      ],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-22T15:16:13+00:00",
+          "choice": "Each plugin's latest stable release by exact tag and commit (never a beta, never whatever is newest at build time). An Update playground plugins button in template-store's Actions moves the pins to the newest stable releases and opens a PR, so each bump gets its own pr-N preview proof and review, and merging puts it live; reverting that PR rolls it back.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-plugin-pins-20261022",
+      "implementation_ref": null,
+      "question": "What should the playground pin its plugins to?",
+      "rationale": "Ronald: Add it (15:14 UTC 22 Oct 2026).",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-22T15:16:13+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4211,5 +4254,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-22T15:11:33+00:00"
+  "updated_at": "2026-10-22T15:16:13+00:00"
 }
