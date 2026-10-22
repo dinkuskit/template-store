@@ -10,6 +10,7 @@ import {
   injectPlaygroundStoreTag,
   isPlaygroundInitFailure,
   isUsablePlaygroundSession,
+  playgroundSessionCreatedAt,
   playgroundStoreTag,
   readPlaygroundSession,
   recoverFromPlaygroundInitFailure,
@@ -72,7 +73,8 @@ export default {
 
     let html = retargetPlaygroundDeployLink(injectPlaygroundNoIndex(await response.text()));
     const store = startedPlaygroundSession(headers) ?? (staleSession ? undefined : session);
-    if (store) html = injectPlaygroundStoreTag(html, await playgroundStoreTag(store));
+    const started = store === undefined ? undefined : playgroundSessionCreatedAt(store);
+    if (store && started !== undefined) html = injectPlaygroundStoreTag(html, await playgroundStoreTag(store), started);
     dropRewrittenBodyHeaders(headers);
     return new Response(html, {
       status: response.status,

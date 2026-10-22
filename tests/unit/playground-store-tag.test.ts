@@ -6,7 +6,7 @@ import {
   PLAYGROUND_STORE_META,
   addGuestCartLine,
   emptyGuestCartIntent,
-  forgetEndedPlaygroundStore,
+  admitPlaygroundStoreStorage,
   presentGuestCart,
 } from "../../src/features/guest-cart/index.js";
 import {
@@ -28,11 +28,11 @@ function memoryStorage(entries: Record<string, string> = {}): Storage {
   };
 }
 
-function pageNamingStore(tag: string | null): void {
+function pageNamingStore(tag: string | null, started = 0): void {
   vi.stubGlobal("document", {
     querySelector: (selector: string) =>
       tag !== null && selector === `meta[name="${PLAYGROUND_STORE_META}"]`
-        ? { getAttribute: (name: string) => (name === "content" ? tag : null) }
+        ? { getAttribute: (name: string) => (name === "content" ? tag : name === "data-started" ? String(started) : null) }
         : null,
   });
 }
@@ -56,10 +56,10 @@ describe("playground store tag", () => {
     expect(startedPlaygroundSession(new Headers())).toBeUndefined();
   });
 
-  it("puts the tag in the page head under the name the cart reads", () => {
+  it("puts the tag and session start in the page head under the name the cart reads", () => {
     expect(WORKER_STORE_META).toBe(PLAYGROUND_STORE_META);
-    expect(injectPlaygroundStoreTag('<html><head lang="en"><title>x</title></head></html>', "abc"))
-      .toBe('<html><head lang="en"><meta name="dinkus-playground-store" content="abc" /><title>x</title></head></html>');
+    expect(injectPlaygroundStoreTag('<html><head lang="en"><title>x</title></head></html>', "abc", 1792712082000))
+      .toBe('<html><head lang="en"><meta name="dinkus-playground-store" content="abc" data-started="1792712082000" /><title>x</title></head></html>');
   });
 });
 
@@ -69,22 +69,40 @@ describe("a new playground store starts with an empty cart", () => {
     "dinkus.guest-checkout.v1": "{}",
     "dinkus.shopper-session.v1": "{}",
   };
+  const saved = (tag: string, started: number) => JSON.stringify({ tag, started });
+  const kept = (storage: Storage) => Object.keys(leftovers).every((key) => storage.getItem(key) !== null);
 
-  it("clears the cart, checkout attempt and sign-in from an ended store", () => {
-    const storage = memoryStorage({ ...leftovers, "dinkus.playground-store": "old" });
-    pageNamingStore("new");
-    forgetEndedPlaygroundStore(storage);
+  it("clears the cart, checkout attempt and sign-in when a newer store's page loads", () => {
+    const storage = memoryStorage({ ...leftovers, "dinkus.playground-store": saved("old", 1000) });
+    pageNamingStore("new", 2000);
+    expect(admitPlaygroundStoreStorage(storage)).toBe(true);
     for (const key of Object.keys(leftovers)) expect(storage.getItem(key)).toBeNull();
-    expect(storage.getItem("dinkus.playground-store")).toBe("new");
+    expect(JSON.parse(storage.getItem("dinkus.playground-store") ?? "null")).toEqual({ tag: "new", started: 2000 });
+  });
+
+  it("keeps state it cannot prove stale the first time a tagged page loads", () => {
+    const storage = memoryStorage({ ...leftovers });
+    pageNamingStore("current", 2000);
+    expect(admitPlaygroundStoreStorage(storage)).toBe(true);
+    expect(kept(storage)).toBe(true);
+    expect(JSON.parse(storage.getItem("dinkus.playground-store") ?? "null")).toEqual({ tag: "current", started: 2000 });
+  });
+
+  it("gives a tab left open on an older store no storage, so it cannot clear the newer store", () => {
+    const storage = memoryStorage({ ...leftovers, "dinkus.playground-store": saved("newer", 2000) });
+    pageNamingStore("older", 1000);
+    expect(admitPlaygroundStoreStorage(storage)).toBe(false);
+    expect(kept(storage)).toBe(true);
+    expect(JSON.parse(storage.getItem("dinkus.playground-store") ?? "null")).toEqual({ tag: "newer", started: 2000 });
   });
 
   it("keeps everything within the same store and on pages with no tag", () => {
-    const storage = memoryStorage({ ...leftovers, "dinkus.playground-store": "same" });
-    pageNamingStore("same");
-    forgetEndedPlaygroundStore(storage);
+    const storage = memoryStorage({ ...leftovers, "dinkus.playground-store": saved("same", 1000) });
+    pageNamingStore("same", 1000);
+    expect(admitPlaygroundStoreStorage(storage)).toBe(true);
     pageNamingStore(null);
-    forgetEndedPlaygroundStore(storage);
-    for (const [key, value] of Object.entries(leftovers)) expect(storage.getItem(key)).toBe(value);
+    expect(admitPlaygroundStoreStorage(storage)).toBe(true);
+    expect(kept(storage)).toBe(true);
   });
 });
 

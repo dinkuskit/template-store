@@ -26,10 +26,10 @@ export type {
 } from "./intent.js";
 export {
   PLAYGROUND_STORE_META,
-  forgetEndedPlaygroundStore,
   loadGuestCartIntent,
   readBrowserGuestCartStorage,
   saveGuestCartIntent,
+  admitPlaygroundStoreStorage,
 } from "./storage.js";
 export type {
   GuestCartLoadResult,

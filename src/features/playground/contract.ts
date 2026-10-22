@@ -162,10 +162,11 @@ export async function playgroundStoreTag(sessionToken: string): Promise<string> 
   return [...new Uint8Array(digest).slice(0, 16)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export function injectPlaygroundStoreTag(html: string, tag: string): string {
+/** Tags the page with its store and when that store's session started, so the cart can tell newer from older. */
+export function injectPlaygroundStoreTag(html: string, tag: string, started: number): string {
   return html.replace(
     /<head(\s[^>]*)?>/i,
-    (head) => `${head}<meta name="${PLAYGROUND_STORE_META}" content="${tag}" />`,
+    (head) => `${head}<meta name="${PLAYGROUND_STORE_META}" content="${tag}" data-started="${started}" />`,
   );
 }
 
