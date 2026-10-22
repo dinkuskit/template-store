@@ -11,6 +11,7 @@ import {
 const STOREFRONT_PAGES = [
   "src/pages/index.astro",
   "src/pages/cart.astro",
+  "src/pages/checkout/index.astro",
   "src/pages/products/[id].astro",
   "src/pages/categories/[slug].astro",
 ] as const;
@@ -140,5 +141,16 @@ describe("empty cart on a store that takes checkouts", () => {
     expect(closed.checkoutReason).toBe(GUEST_CHECKOUT_REASON);
     const cart = readFileSync("src/features/guest-cart/GuestCart.astro", "utf8");
     expect(cart).toContain("{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}");
+    expect(cart).not.toContain("data-guest-cart-contact");
+    expect(cart).not.toContain("data-guest-cart-delivery");
+    expect(cart).not.toContain("data-guest-cart-coupon-box");
+    const checkout = readFileSync("src/features/guest-cart/GuestCheckout.astro", "utf8");
+    expect(checkout).toContain("{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}");
+    expect(checkout).toContain("data-checkout-vault");
+    expect(checkout).toContain("data-guest-cart-contact");
+    expect(checkout).toContain("data-guest-cart-delivery");
+    expect(checkout).toContain("data-guest-cart-coupon-box");
+    expect(checkout).toContain("data-checkout-manifest");
+    expect(checkout).toContain("data-checkout-breakdown");
   });
 });

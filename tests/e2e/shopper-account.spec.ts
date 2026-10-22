@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 
 const proofRoot = resolve("runs/shopper-account-20261020/browser");
 
-test("storefront /account supports both instant demo opt-out and verified email OTP opt-in, plus /cart prefill", async ({
+test("storefront /account supports both instant demo opt-out and verified email OTP opt-in, plus /checkout prefill", async ({
   page,
   request,
 }, testInfo) => {
@@ -42,8 +42,10 @@ test("storefront /account supports both instant demo opt-out and verified email 
   };
   expect(leadsAfterDemo.leads.some((lead) => lead.email === "shopper@example.com")).toBe(false);
 
-  // Verify /cart prefill from signed-in shopper profile
+  // Verify /cart has no contact form and /checkout prefill populates from signed-in shopper profile
   await page.goto("/cart");
+  await expect(page.locator("[data-guest-cart-contact]")).toHaveCount(0);
+  await page.goto("/checkout");
   await expect(page.locator("[data-guest-cart-email]")).toHaveValue("shopper@example.com");
   await expect(page.locator("[data-guest-cart-delivery-name]")).toHaveValue("Alex Rivera");
   await expect(page.locator("[data-guest-cart-delivery-line1]")).toHaveValue("742 Evergreen Terrace");

@@ -46,6 +46,20 @@ export const GUEST_CHECKOUT_REASON = "Checkout is not available yet.";
 /** Shown when checkout is admitted but there is nothing to buy yet. */
 export const GUEST_CHECKOUT_READY_LABEL = "Checkout";
 export const GUEST_CHECKOUT_EMPTY_REASON = "Add products to your cart to check out.";
+/** Shown on /cart when checkout is ready to proceed to /checkout. */
+export const GUEST_CART_PROCEED_LABEL = "Proceed to Checkout";
+
+export type GuestCheckoutShippingPolicyInput = Readonly<{
+  mode: "free" | "flat";
+  flatRateMinor?: string | null;
+}>;
+
+export type GuestCheckoutBreakdownView = Readonly<{
+  subtotalText: string;
+  shippingText: string;
+  taxText: string;
+  totalText: string;
+}>;
 
 export type GuestCartLineReason =
   | "missing"
@@ -345,11 +359,10 @@ function minorText(minor: bigint | null): string | null {
   return minor === null ? null : formatUsdMinor(minor.toString());
 }
 
-/** Display subtotal; null unless every line has a known amount. */
-function cartSubtotalText(
+function cartSubtotalMinor(
   lines: GuestCartIntent["lines"],
   snapshots: readonly GuestCartCatalogSnapshot[] | null,
-): string | null {
+): bigint | null {
   if (lines.length === 0 || !snapshots) return null;
   let total = 0n;
   for (const line of lines) {
@@ -357,7 +370,64 @@ function cartSubtotalText(
     if (minor === null) return null;
     total += minor;
   }
-  return minorText(total);
+  return total;
+}
+
+/** Display subtotal; null unless every line has a known amount. */
+function cartSubtotalText(
+  lines: GuestCartIntent["lines"],
+  snapshots: readonly GuestCartCatalogSnapshot[] | null,
+): string | null {
+  return minorText(cartSubtotalMinor(lines, snapshots));
+}
+
+export function presentGuestCheckoutBreakdown(options: {
+  intent: GuestCartIntent;
+  snapshots?: readonly GuestCartCatalogSnapshot[] | null;
+  snapshotFailed?: boolean;
+  retrying?: boolean;
+  shippingPolicy?: GuestCheckoutShippingPolicyInput | null;
+}): GuestCheckoutBreakdownView {
+  const totalsUnconfirmed = options.snapshotFailed === true || options.retrying === true;
+  const subtotalMinor = totalsUnconfirmed
+    ? null
+    : cartSubtotalMinor(options.intent.lines, options.snapshots ?? null);
+  const subtotalText = minorText(subtotalMinor) ?? "Calculated at checkout";
+  const byId = new Map((options.snapshots ?? []).map((snapshot) => [snapshot.id, snapshot]));
+  const needsDelivery = options.intent.lines.some((line) => {
+    const snapshot = options.snapshots ? byId.get(line.id) : undefined;
+    const fulfillment = snapshot?.found ? snapshot.fulfillment ?? "physical" : "physical";
+    return fulfillment === "physical";
+  });
+
+  let shippingMinor: bigint | null = null;
+  let shippingText = "Calculated at checkout";
+  if (options.intent.lines.length > 0 && !totalsUnconfirmed && options.snapshots) {
+    if (!needsDelivery || options.shippingPolicy?.mode === "free") {
+      shippingMinor = 0n;
+      shippingText = "Free";
+    } else if (
+      options.shippingPolicy?.mode === "flat" &&
+      typeof options.shippingPolicy.flatRateMinor === "string" &&
+      UNIT_MINOR.test(options.shippingPolicy.flatRateMinor)
+    ) {
+      shippingMinor = BigInt(options.shippingPolicy.flatRateMinor);
+      shippingText = shippingMinor === 0n ? "Free" : (minorText(shippingMinor) ?? "Calculated at checkout");
+    }
+  }
+
+  const taxText = "Calculated at checkout";
+  const totalMinor = subtotalMinor === null || (needsDelivery && shippingMinor === null)
+    ? null
+    : subtotalMinor + (shippingMinor ?? 0n);
+  const totalText = minorText(totalMinor) ?? "Calculated at checkout";
+
+  return {
+    subtotalText,
+    shippingText,
+    taxText,
+    totalText,
+  };
 }
 
 function projectPublicPrice(value: unknown): GuestCartPublicPrice | null {

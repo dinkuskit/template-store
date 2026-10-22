@@ -1,4 +1,5 @@
 import {
+  GUEST_CART_PROCEED_LABEL,
   GUEST_CART_STORAGE_KEY,
   addGuestCartLine,
   addGuestCartLines,
@@ -11,6 +12,7 @@ import {
   parseGuestCartQuantityInput,
   parseGuestCartSnapshotResponse,
   presentGuestCart,
+  presentGuestCheckoutBreakdown,
   readBrowserGuestCartStorage,
   removeGuestCartLine,
   saveGuestCartIntent,
@@ -31,6 +33,7 @@ import {
   type GuestCartReadNotice,
   type GuestCartView,
   type GuestCheckoutContact,
+  type GuestCheckoutShippingPolicyInput,
   type GuestCheckoutTransport,
   type GuestCheckoutWireResult,
 } from "./index.js";
@@ -336,6 +339,7 @@ function focusAfterRemove(root: Element, removedId: string): void {
 
 function renderCart(root: Element): void {
   const current = view();
+  const isCheckoutPage = root.hasAttribute("data-guest-checkout-page");
   const empty = root.querySelector("[data-guest-cart-empty]");
   const lines = root.querySelector("[data-guest-cart-lines]");
   const checkout = root.querySelector("[data-guest-cart-checkout]");
@@ -345,6 +349,8 @@ function renderCart(root: Element): void {
   const retry = root.querySelector("[data-guest-cart-retry]");
   const checkoutRecoveryButton = root.querySelector("[data-guest-cart-recover]");
   const checkoutResume = root.querySelector("[data-guest-cart-resume]");
+  const manifest = root.querySelector("[data-checkout-manifest]");
+  const breakdown = root.querySelector("[data-checkout-breakdown]");
   if (empty instanceof HTMLElement) {
     empty.hidden = !current.empty || Boolean(current.snapshotError);
   }
@@ -358,9 +364,42 @@ function renderCart(root: Element): void {
     const amount = subtotal.querySelector("[data-guest-cart-subtotal-amount]");
     if (amount instanceof HTMLElement) amount.textContent = current.subtotalText ?? "";
   }
+  if (manifest instanceof HTMLElement) {
+    manifest.hidden = current.empty;
+  }
+  if (breakdown instanceof HTMLElement) {
+    breakdown.hidden = current.empty;
+    const shippingMode = root.getAttribute("data-checkout-shipping-mode");
+    const shippingMinor = root.getAttribute("data-checkout-shipping-minor");
+    const shippingPolicy: GuestCheckoutShippingPolicyInput | null =
+      shippingMode === "free" || shippingMode === "flat"
+        ? { mode: shippingMode, flatRateMinor: shippingMinor }
+        : null;
+    const breakdownView = presentGuestCheckoutBreakdown({
+      intent: session.intent,
+      snapshots,
+      snapshotFailed,
+      retrying,
+      shippingPolicy,
+    });
+    const shippingAmount = breakdown.querySelector("[data-checkout-shipping-amount]");
+    if (shippingAmount instanceof HTMLElement) {
+      shippingAmount.textContent = breakdownView.shippingText;
+    }
+    const taxAmount = breakdown.querySelector("[data-checkout-tax-amount]");
+    if (taxAmount instanceof HTMLElement) {
+      taxAmount.textContent = breakdownView.taxText;
+    }
+    const totalAmount = breakdown.querySelector("[data-checkout-total-amount]");
+    if (totalAmount instanceof HTMLElement) {
+      totalAmount.textContent = breakdownView.totalText;
+    }
+  }
   if (checkout instanceof HTMLButtonElement) {
     checkout.disabled = !current.checkoutEnabled || checkoutLocked();
-    checkout.textContent = current.checkoutLabel;
+    checkout.textContent = !isCheckoutPage && current.checkoutEnabled
+      ? GUEST_CART_PROCEED_LABEL
+      : current.checkoutLabel;
   }
   if (contact instanceof HTMLFieldSetElement) {
     contact.disabled = !(checkoutAdmitted || checkoutController?.canStart()) || checkoutLocked();
@@ -765,6 +804,10 @@ export function hydrateGuestCartPage(): void {
     if (!(target instanceof HTMLElement)) return;
     if (target.closest("[data-guest-cart-checkout]")) {
       if (!checkoutController || checkoutLocked() || !view().checkoutEnabled) return;
+      if (!root.hasAttribute("data-guest-checkout-page")) {
+        window.location.assign("/checkout");
+        return;
+      }
       const originalIntent = structuredClone(session.intent);
       const contactInput = readCheckoutContact(root, view().needsDelivery);
       if (contactInput.error || !contactInput.contact) {
@@ -860,7 +903,9 @@ export function hydrateGuestCartPage(): void {
   }
   renderCart(root);
   void refreshSnapshot(root);
-  void prefillShopperContact(root);
+  if (root.querySelector("[data-guest-cart-email]")) {
+    void prefillShopperContact(root);
+  }
   void (async () => {
     if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) {
       await recoverGuestCheckout(root);

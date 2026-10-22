@@ -26,7 +26,7 @@ for (const awaitingStart of [false, true]) {
           }));
         }
       }, awaitingStart);
-      await page.goto("/cart");
+      await page.goto(awaitingStart ? "/cart" : "/checkout");
       await expect(page.locator("[data-guest-cart]")).toHaveAttribute("data-guest-checkout-admitted", "false");
       if (awaitingStart) {
         await expect(page.locator("[data-guest-cart-checkout]")).toBeDisabled();

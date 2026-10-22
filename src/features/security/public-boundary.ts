@@ -10,9 +10,9 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/",
   "/home",
   "/cart",
+  "/checkout",
   "/account",
   "/checkout/success",
-  "/checkout/cancel",
   "/favicon.ico",
   "/robots.txt",
   "/sitemap.xml",
@@ -45,7 +45,10 @@ const LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH = /^\/api\/account\/demo-session$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 function slashlessCollectionPath(pathname: string): string | undefined {
   if (!pathname.endsWith("/") || pathname === "/") return undefined;
-  if (pathname === "/checkout/success/" || pathname === "/checkout/cancel/") {
+  if (
+    pathname === "/checkout/" ||
+    pathname === "/checkout/success/"
+  ) {
     return pathname.slice(0, -1);
   }
   if (/^\/(?:products|categories)\/[^/]+\/$/.test(pathname)) {
