@@ -71,11 +71,36 @@ export function saveGuestCartIntent(
   }
 }
 
+/** Names the playground store a page came from; set only by the playground Worker. */
+export const PLAYGROUND_STORE_META = "dinkus-playground-store";
+const PLAYGROUND_STORE_STORAGE_KEY = "dinkus.playground-store";
+/** Browser state that belongs to one playground store: its cart, checkout attempt and shopper sign-in. */
+const PLAYGROUND_STORE_KEYS = ["dinkus.guest-cart.v1", "dinkus.guest-checkout.v1", "dinkus.shopper-session.v1"];
+
+/**
+ * Each playground session is a fresh store with new product ids, but the cart
+ * lives in the browser. When the page names a different playground store than
+ * the one this browser last saw, its cart, checkout attempt and sign-in belong
+ * to a store that is gone, so they are cleared.
+ */
+export function forgetEndedPlaygroundStore(storage: Storage): void {
+  try {
+    if (typeof document === "undefined") return;
+    const store = document.querySelector(`meta[name="${PLAYGROUND_STORE_META}"]`)?.getAttribute("content");
+    if (!store || storage.getItem(PLAYGROUND_STORE_STORAGE_KEY) === store) return;
+    for (const key of PLAYGROUND_STORE_KEYS) storage.removeItem(key);
+    storage.setItem(PLAYGROUND_STORE_STORAGE_KEY, store);
+  } catch {
+    // Outside the playground nothing is tagged; a storage error here must not hide the cart.
+  }
+}
+
 export function readBrowserGuestCartStorage(): GuestCartStoragePort | null {
   try {
     if (typeof globalThis.localStorage === "undefined") return null;
     const storage = globalThis.localStorage;
     storage.getItem("dinkus.guest-cart.probe");
+    forgetEndedPlaygroundStore(storage);
     return storage;
   } catch {
     return null;

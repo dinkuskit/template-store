@@ -14,6 +14,7 @@ import {
   parseGuestCartSnapshotResponse,
   presentGuestCart,
   presentGuestCheckoutBreakdown,
+  forgetEndedPlaygroundStore,
   readBrowserGuestCartStorage,
   removeGuestCartLine,
   saveGuestCartIntent,
@@ -924,6 +925,7 @@ function checkoutStorage() {
   try {
     if (typeof globalThis.localStorage === "undefined") return null;
     globalThis.localStorage.getItem("dinkus.guest-checkout.probe");
+    forgetEndedPlaygroundStore(globalThis.localStorage);
     return globalThis.localStorage;
   } catch {
     return null;

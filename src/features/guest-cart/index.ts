@@ -25,6 +25,8 @@ export type {
   GuestCartReadNotice,
 } from "./intent.js";
 export {
+  PLAYGROUND_STORE_META,
+  forgetEndedPlaygroundStore,
   loadGuestCartIntent,
   readBrowserGuestCartStorage,
   saveGuestCartIntent,
@@ -38,6 +40,7 @@ export {
   GUEST_CART_PROCEED_LABEL,
   GUEST_CHECKOUT_LABEL,
   GUEST_CHECKOUT_REASON,
+  GUEST_CHECKOUT_BLOCKED_REASON,
   GUEST_CHECKOUT_READY_LABEL,
   canAddCommerceProductToCart,
   guestReturnQueryIsPresent,
