@@ -11,6 +11,7 @@ import {
   isUsablePlaygroundSession,
   readPlaygroundSession,
   recoverFromPlaygroundInitFailure,
+  retargetPlaygroundDeployLink,
   withoutPlaygroundSession,
 } from "./features/playground/contract.js";
 import { withShopperAccountRequest } from "./features/shopper-account/playground-runtime.js";
@@ -66,7 +67,7 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     }
 
-    const html = injectPlaygroundNoIndex(await response.text());
+    const html = retargetPlaygroundDeployLink(injectPlaygroundNoIndex(await response.text()));
     dropRewrittenBodyHeaders(headers);
     return new Response(html, {
       status: response.status,

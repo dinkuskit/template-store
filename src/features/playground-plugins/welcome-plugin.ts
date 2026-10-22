@@ -6,13 +6,13 @@
  */
 import { definePlugin, PluginStorageRepository } from "emdash";
 import { getRequestContext } from "emdash/request-context";
+import { START_REAL_STORE_URL } from "../playground/contract.js";
 
 export const WELCOME_PLUGIN_ID = "dinkus-playground-welcome";
 export const WELCOME_WIDGET = { id: "welcome", size: "full", title: "Welcome to your DinkusKit store" } as const;
 
 const PRODUCTS = "products";
 const PRODUCT_EDITED = "product-edited";
-const START_REAL_STORE = "https://dinkuskit.com/";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 type Kv = { get<T>(key: string): Promise<T | null>; set(key: string, value: unknown): Promise<void> };
@@ -63,7 +63,7 @@ export function welcomeBlocks(origin: string, state: { productEdited: boolean; o
       type: "section",
       text: "A real DinkusKit store runs these same plugins on your own EmDash site. You connect it to DinkusKit.com for card payments and postage, and your orders and customers stay yours.",
     },
-    { type: "actions", elements: [{ type: "link", label: "Start your real store", target: { kind: "external", url: START_REAL_STORE }, appearance: "primary" }] },
+    { type: "actions", elements: [{ type: "link", label: "Start your real store", target: { kind: "external", url: START_REAL_STORE_URL }, appearance: "primary" }] },
   ];
 }
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { playgroundRegistryPlugins } from "../../src/features/playground-plugins/registry-plugins.mjs";
 import { playgroundPluginFetch } from "../../src/features/playground-plugins/runner.js";
 import { welcomeBlocks } from "../../src/features/playground-plugins/welcome-plugin.js";
+import { retargetPlaygroundDeployLink, START_REAL_STORE_URL } from "../../src/features/playground/contract.js";
 
 describe("Playground Payments, Ship and welcome card", () => {
   it("installs the released Payments and Ship Registry bundles as sandboxed plugins", () => {
@@ -48,5 +49,16 @@ describe("Playground Payments, Ship and welcome card", () => {
       .map(([, url]) => new URL(url).origin)
       .filter((origin) => origin !== "https://playground.dinkuskit.com");
     expect(outside).toEqual(["https://dinkuskit.com"]);
+  });
+
+  it("turns EmDash's toolbar Deploy your own button into Start your real store", () => {
+    // The toolbar EmDash 1.2.0 really injects, so an upstream markup change fails here.
+    const toolbar = readFileSync("node_modules/@emdash-cms/cloudflare/dist/db/playground-middleware.mjs", "utf8");
+    const page = `<body>${toolbar}</body>`;
+    const retargeted = retargetPlaygroundDeployLink(page);
+    expect(retargeted).not.toContain("https://github.com/emdash-cms/emdash");
+    expect(retargeted).not.toContain("Deploy your own");
+    expect(retargeted).toContain(`href="${START_REAL_STORE_URL}" target="_blank" rel="noopener">\n      Start your real store`);
+    expect(retargetPlaygroundDeployLink("<p>no toolbar</p>")).toBe("<p>no toolbar</p>");
   });
 });
