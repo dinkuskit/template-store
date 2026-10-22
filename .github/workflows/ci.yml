@@ -33,8 +33,12 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color -shellcheck='' -pyflakes=''
 
-  verify:
-    name: Store verification
+  # Desktop and phone browser tests run side by side on separate runners. Each
+  # runner starts its own disposable test stores (scripts/start-e2e-server.mjs
+  # wipes .artifacts on start), so the two jobs never share a store. Inside a
+  # job tests stay serial (playwright.config.ts workers: 1).
+  verify-desktop:
+    name: Store verification (desktop)
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
     runs-on: ubuntu-24.04
@@ -53,21 +57,78 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      # Every non-browser check, desktop browser tests and the built-site crawl.
       - run: pnpm verify
+        env:
+          VERIFY_E2E_PROJECTS: chromium-desktop,shipping-chromium-desktop
       - name: Capture browser failure context
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: store-browser-error-context-${{ github.run_id }}
+          name: store-browser-error-context-desktop-${{ github.run_id }}
           path: |
             test-results/playwright/**/error-context.md
             test-results/playwright/**/home-editor-fixture-state.json
           if-no-files-found: ignore
           retention-days: 3
 
+  verify-phone:
+    name: Store verification (phone)
+    # Closed PR events only run preview cleanup (cleanup-playground-preview).
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          run_install: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: bin/verify-web browser
+        env:
+          VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile
+      - name: Capture browser failure context
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: store-browser-error-context-phone-${{ github.run_id }}
+          path: |
+            test-results/playwright/**/error-context.md
+            test-results/playwright/**/home-editor-fixture-state.json
+          if-no-files-found: ignore
+          retention-days: 3
+
+  # Keeps the single "Store verification" check that reviewers, ClawSweeper
+  # and playground deployment wait on. It runs even when a side fails, so a
+  # failed half shows as a failed check instead of a skipped (passing) one.
+  verify:
+    name: Store verification
+    needs: [verify-desktop, verify-phone]
+    if: ${{ !cancelled() && github.event.action != 'closed' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require desktop and phone verification
+        env:
+          DESKTOP: ${{ needs.verify-desktop.result }}
+          PHONE: ${{ needs.verify-phone.result }}
+        run: |
+          echo "desktop=${DESKTOP} phone=${PHONE}"
+          test "$DESKTOP" = success
+          test "$PHONE" = success
+
+  # A build check that starts beside verification. Playground deployment below
+  # still waits for Store verification to pass.
   build-playground:
     name: Playground build
-    needs: verify
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
     runs-on: ubuntu-24.04
@@ -125,7 +186,8 @@ jobs:
   # Cloudflare Worker Previews on pr-N.playground.dinkuskit.com.
   deploy-playground:
     name: Playground deployment
-    needs: build-playground
+    # Never deploy or preview code that has not passed Store verification.
+    needs: [verify, build-playground]
     if: >-
       vars.PLAYGROUND_DEPLOY_ENABLED == 'true' &&
       (github.event_name == 'push' ||
