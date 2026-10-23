@@ -109,3 +109,20 @@
 {"action": "decision_proposed", "at": "2026-10-21T22:55:23+00:00", "data": {"decision_id": "storefront-missing-media-001"}, "event_id": "f72725fb-5642-413d-8b88-41a706722c0b"}
 {"action": "decision_locked", "at": "2026-10-21T22:55:23+00:00", "data": {"decision_id": "storefront-missing-media-001"}, "event_id": "d3e7d244-8903-459f-b05e-3872700cc295"}
 {"action": "shared_understanding_confirmed", "at": "2026-10-21T22:55:23+00:00", "data": {"summary": "Owner confirmed the neutral placeholder rule for missing product media; implement on PR 133 first, then 130/131."}, "event_id": "ebeed8b1-d828-43de-8ce7-6ad0e283db35"}
+{"action": "decision_proposed", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-prospect-demo-20261022"}, "event_id": "159441f2-b7b6-4dd0-a829-85f45dc8fbc0"}
+{"action": "decision_proposed", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-pretend-connected-20261022"}, "event_id": "77438410-dd44-40a2-88ce-c88d9d58a484"}
+{"action": "decision_locked", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-prospect-demo-20261022"}, "event_id": "504cdcd1-83e1-491f-8d45-d6a1d2524ea3"}
+{"action": "decision_locked", "at": "2026-10-22T14:25:14+00:00", "data": {"decision_id": "playground-pretend-connected-20261022"}, "event_id": "c9db2722-f56f-4e24-852b-066a9dbcad47"}
+{"action": "decision_implemented", "at": "2026-10-22T14:45:02+00:00", "data": {"decision_id": "playground-prospect-demo-20261022"}, "event_id": "20fd278a-23bf-49ba-b4a1-6be75ce22738"}
+{"action": "decision_proposed", "at": "2026-10-22T15:11:33+00:00", "data": {"decision_id": "playground-commerce-until-part-2-20261022"}, "event_id": "7f244d91-c3cb-4529-ab59-46abf18fa54b"}
+{"action": "decision_locked", "at": "2026-10-22T15:11:33+00:00", "data": {"decision_id": "playground-commerce-until-part-2-20261022"}, "event_id": "e898ceb4-5739-415f-bf5b-8a2bf6aa8701"}
+{"action": "decision_proposed", "at": "2026-10-22T15:16:13+00:00", "data": {"decision_id": "playground-plugin-pins-20261022"}, "event_id": "abddff26-6753-4bb6-b5ae-aef9d1c5be69"}
+{"action": "decision_locked", "at": "2026-10-22T15:16:13+00:00", "data": {"decision_id": "playground-plugin-pins-20261022"}, "event_id": "a264abeb-855d-4cf9-b6c3-b7c8e0d4c9ab"}
+{"action": "decision_proposed", "at": "2026-10-22T22:54:48+00:00", "data": {"decision_id": "playground-checkout-payments-key-20261022"}, "event_id": "0afff0c8-c85c-48cb-8b95-b50f341fa0c4"}
+{"action": "decision_locked", "at": "2026-10-22T22:54:48+00:00", "data": {"decision_id": "playground-checkout-payments-key-20261022"}, "event_id": "c0cbfb96-1f00-43fe-ab9b-25392e371cc2"}
+{"action": "decision_proposed", "at": "2026-10-23T00:47:00+00:00", "data": {"decision_id": "pdp-one-picker-per-option-20261023"}, "event_id": "94b136be-c985-40b7-b9c3-10a95a9cea6e"}
+{"action": "decision_locked", "at": "2026-10-23T01:19:41+00:00", "data": {"decision_id": "pdp-one-picker-per-option-20261023"}, "event_id": "c0e8218f-87e6-4a9f-b0c1-e841e20817fa"}
+{"action": "decision_proposed", "at": "2026-10-23T01:58:49+00:00", "data": {"decision_id": "playground-plugins-in-store-20261023"}, "event_id": "20bd2770-8f5b-4ec4-a3e5-127c9b4fa755"}
+{"action": "decision_locked", "at": "2026-10-23T02:19:08+00:00", "data": {"decision_id": "playground-plugins-in-store-20261023"}, "event_id": "f868b33f-fef4-48a1-8241-5143b21a07ac"}
+{"action": "decision_proposed", "at": "2026-10-23T03:10:41+00:00", "data": {"decision_id": "playground-commerce-050-source-first-20261023"}, "event_id": "85893d10-c2d6-4a03-9347-b912b12c03b2"}
+{"action": "decision_locked", "at": "2026-10-23T03:10:41+00:00", "data": {"decision_id": "playground-commerce-050-source-first-20261023"}, "event_id": "04e8103e-3546-4506-86cc-d5142e649fbc"}

@@ -1,0 +1,58 @@
+---
+/**
+ * The playground's Connect page (GrillTrack playground-pretend-connected-20261022).
+ * Connect, Approve and Ship's own pages open DinkusKit.com on a real store; in
+ * the playground they land here. Its words are the CMS page "connect-to-dinkuskit",
+ * which only the playground seeds; a store without that page answers 404.
+ */
+import { getEmDashEntry, type PortableTextBlock } from "emdash";
+import { PortableText } from "emdash/ui";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
+import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
+import { START_REAL_STORE_URL } from "../features/playground/contract.js";
+import "../features/store-shell/global.css";
+
+const { entry } = await getEmDashEntry("pages", "connect-to-dinkuskit");
+if (!entry) return new Response(null, { status: 404 });
+const profile = readStorefrontProfile();
+const content = Array.isArray(entry.data?.content) ? (entry.data.content as PortableTextBlock[]) : [];
+// Only a page of this store's own admin is a way back.
+const requested = Astro.url.searchParams.get("back") ?? "";
+const back = /^\/_emdash\/admin\/plugins\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/.test(requested) ? requested : "/_emdash/admin";
+---
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><meta name="robots" content="noindex, nofollow" /><title>{entry.data?.title ?? "Connect to DinkusKit"} | {STORE_TITLE}</title></head>
+  <body data-storefront-profile={profile}>
+    <StoreHeader profile={profile} />
+    <main class="connect-page">
+      <section class="connect-card" aria-labelledby="connect-heading" data-playground-connect>
+        <p class="connect-card__kicker">Playground</p>
+        <h1 id="connect-heading">{entry.data?.title ?? "Connect to DinkusKit"}</h1>
+        {content.length > 0 && (
+          <div class="connect-card__body prose">
+            <PortableText value={content} components={legacyPortableTextComponents} />
+          </div>
+        )}
+        <div class="connect-card__actions">
+          <a class="connect-card__primary" href={back} data-playground-connect-back>Back to your store</a>
+          <a class="connect-card__secondary" href={START_REAL_STORE_URL} data-playground-connect-start>Start your real store</a>
+        </div>
+      </section>
+    </main>
+    <StoreFooter profile={profile} />
+  </body>
+</html>
+<style>
+  .connect-page{width:min(44rem,calc(100% - 2rem));margin:2.5rem auto 4rem;min-height:60vh;line-height:1.6}
+  .connect-card{padding:clamp(1.35rem,3vw,2.25rem);border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow)}
+  .connect-card__kicker{margin:0 0 .35rem;color:var(--store-accent);font-family:var(--font-mono);font-size:.75rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+  .connect-card h1{margin:0 0 1rem;font-size:clamp(2rem,5vw,3rem);line-height:1.05;letter-spacing:-.04em}
+  .connect-card__body :global(p){margin:0 0 .9rem}
+  .connect-card__actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.5rem}
+  .connect-card__actions a{display:inline-block;padding:.7rem 1.1rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-control,.5rem);font-weight:800;text-decoration:none}
+  .connect-card__primary{background:var(--store-ink,#1b2033);color:var(--store-surface,#fff)}
+  .connect-card__secondary{background:transparent;color:inherit}
+</style>

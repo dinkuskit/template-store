@@ -43,7 +43,12 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   await expect(page.locator("[data-product-status]")).toHaveText("Out of stock");
   await expect(page.locator("[data-add-to-cart]")).toHaveCount(0);
   await page.goto("/products/demo-hoodie");
-  await expect(page.locator("[data-product-from-price]")).toHaveText("from $56.00");
+  // One Size picker and one Add to cart; the sold-out Large stays visible.
+  await expect(page.locator("[data-product-from-price]")).toHaveCount(0);
+  await expect(page.locator("[data-product-variants]")).toHaveCount(1);
+  await expect(page.locator("[data-product-variants] legend")).toHaveText("Size");
+  await expect(page.locator("[data-add-to-cart-batch]")).toHaveCount(0);
+  await expect(page.getByLabel("Large")).toHaveAttribute("data-variant-sold-out", "true");
   await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
   const hoodieJsonLd = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "");
   const hoodieCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");

@@ -204,13 +204,18 @@
     },
     {
       "name": "footer_policies",
-      "label": "Footer policies and account",
+      "label": "Footer policies",
       "items": [
         { "type": "custom", "label": "Shipping", "url": "/shipping" },
-        { "type": "custom", "label": "Returns", "url": "/returns" },
+        { "type": "custom", "label": "Returns", "url": "/returns" }
+      ]
+    },
+    {
+      "name": "footer_account",
+      "label": "Footer account links",
+      "items": [
         { "type": "custom", "label": "Account", "url": "/account" },
-        { "type": "custom", "label": "Shopping bag", "url": "/cart" },
-        { "type": "custom", "label": "Search", "url": "/search" }
+        { "type": "custom", "label": "Shopping bag", "url": "/cart" }
       ]
     }
   ],
@@ -241,8 +246,8 @@
         },
         {
           "type": "menu",
-          "title": "Policies & tools",
-          "menuName": "footer_policies"
+          "title": "Your account",
+          "menuName": "footer_account"
         },
         {
           "type": "component",
