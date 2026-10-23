@@ -69,6 +69,10 @@
     --store-backorder-ink: light-dark(#6b3f08, #fcd34d);
     --dinkus-action-background: light-dark(#172033, #d1492f);
     --dinkus-action-color: light-dark(#fffefb, #fffefb);
+    --pigment-stop-1: light-dark(#1f3b82, #2b4fa8);
+    --pigment-stop-2: light-dark(#6b2d7a, #883ca0);
+    --pigment-stop-3: light-dark(#d1492f, #e85d3f);
+    --pigment-stop-4: light-dark(#d98a2b, #eba03f);
     --emdash-search-bg: var(--store-surface);
     --emdash-search-text: var(--store-ink);
     --emdash-search-muted: var(--store-muted);
@@ -97,6 +101,10 @@
     --store-shadow: light-dark(#0f1f18, #040907);
     --dinkus-action-background: light-dark(#172033, #c85a32);
     --dinkus-action-color: light-dark(#fffefb, #fffefb);
+    --pigment-stop-1: light-dark(#184734, #24684d);
+    --pigment-stop-2: light-dark(#1f5c68, #2b7b8a);
+    --pigment-stop-3: light-dark(#c85a32, #db6b42);
+    --pigment-stop-4: light-dark(#d4943a, #e5a94c);
   }
 
   /* Preset 3: Carbon Graphite & Bauhaus Cobalt */
@@ -118,5 +126,9 @@
     --store-shadow: light-dark(#111318, #050608);
     --dinkus-action-background: light-dark(#172033, #2554d9);
     --dinkus-action-color: light-dark(#fffefb, #fffefb);
+    --pigment-stop-1: light-dark(#1d44b8, #3461e0);
+    --pigment-stop-2: light-dark(#5835c4, #7350e0);
+    --pigment-stop-3: light-dark(#d9384a, #ed4c5e);
+    --pigment-stop-4: light-dark(#e09124, #f2a638);
   }
 }

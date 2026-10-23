@@ -1,1 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Demo shirt placeholder"><rect width="640" height="480" fill="#d9e2ec"/><circle cx="320" cy="220" r="110" fill="#ffffff" opacity=".55"/><text x="320" y="245" text-anchor="middle" font-family="system-ui,sans-serif" font-size="64" font-weight="700" fill="#4a5363" letter-spacing="4">SHIRT</text><text x="320" y="420" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" fill="#6b7280">Demo placeholder</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Dinkus Demo Heavyweight T-Shirt — Aizome pigment wash illustration">
+  <defs>
+    <linearGradient id="washi-shirt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5f1e8"/>
+      <stop offset="55%" stop-color="#ece5d8"/>
+      <stop offset="100%" stop-color="#e2d9c8"/>
+    </linearGradient>
+    <linearGradient id="garment-shirt" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0%" stop-color="#22334d"/>
+      <stop offset="50%" stop-color="#172438"/>
+      <stop offset="100%" stop-color="#0f1826"/>
+    </linearGradient>
+    <pattern id="riso-shirt" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="0.75" fill="#101827" fill-opacity="0.08"/>
+      <circle cx="6" cy="6" r="0.65" fill="#d1492f" fill-opacity="0.07"/>
+    </pattern>
+    <filter id="pigment-drift-shirt" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.014 0.022" numOctaves="3" seed="11" result="noise">
+        <animate attributeName="baseFrequency" values="0.014 0.022;0.018 0.028;0.014 0.022" dur="9s" repeatCount="indefinite"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="11" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="drop-shirt" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#101827" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect width="640" height="480" fill="url(#washi-shirt)"/>
+
+  <g filter="url(#pigment-drift-shirt)" opacity="0.88">
+    <ellipse cx="295" cy="235" rx="195" ry="145" fill="#1d314d" fill-opacity="0.14"/>
+    <ellipse cx="375" cy="260" rx="155" ry="120" fill="#d1492f" fill-opacity="0.12"/>
+    <path d="M120 170 C200 95, 430 110, 515 195 C560 265, 470 385, 325 390 C180 395, 95 290, 120 170 Z" fill="#274060" fill-opacity="0.11"/>
+    <circle cx="220" cy="155" r="68" fill="#d1492f" fill-opacity="0.09"/>
+  </g>
+
+  <rect width="640" height="480" fill="url(#riso-shirt)"/>
+
+  <g stroke="#101827" stroke-opacity="0.18" stroke-width="1" fill="none">
+    <rect x="24" y="24" width="592" height="432" rx="4"/>
+    <path d="M24 62 H616 M24 418 H616"/>
+    <path d="M42 18 V30 M36 24 H48 M598 18 V30 M592 24 H604 M42 450 V462 M36 456 H48"/>
+  </g>
+
+  <text x="40" y="47" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="700" fill="#101827" fill-opacity="0.65" letter-spacing="2">CAT // 01 — HEAVYWEIGHT STUDIO TEE</text>
+  <text x="600" y="47" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="700" fill="#d1492f" letter-spacing="1.5">320 GSM · AIZOME</text>
+
+  <ellipse cx="320" cy="396" rx="150" ry="16" fill="#101827" fill-opacity="0.16"/>
+
+  <g filter="url(#drop-shirt)">
+    <path d="M254 96 C276 116, 364 116, 386 96 L458 130 L516 202 L458 246 L418 206 L418 374 C355 384, 285 384, 222 374 L222 206 L182 246 L124 202 L182 130 Z" fill="url(#garment-shirt)" stroke="#101827" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M266 101 C286 117, 354 117, 374 101 C364 128, 276 128, 266 101 Z" fill="#e8e1d3" stroke="#101827" stroke-width="2.5"/>
+    <rect x="303" y="107" width="34" height="11" rx="2" fill="#fcfbf8" stroke="#d1492f" stroke-width="1.5"/>
+    <path d="M254 96 C274 134, 366 134, 386 96" fill="none" stroke="#fcfbf8" stroke-opacity="0.4" stroke-width="2" stroke-dasharray="3 2"/>
+    <path d="M218 138 L222 206 M422 138 L418 206" fill="none" stroke="#fcfbf8" stroke-opacity="0.22" stroke-width="2"/>
+    <path d="M136 196 L188 236 M504 196 L452 236" fill="none" stroke="#d1492f" stroke-opacity="0.7" stroke-width="2" stroke-dasharray="4 3"/>
+    <path d="M224 358 C286 368, 354 368, 416 358" fill="none" stroke="#fcfbf8" stroke-opacity="0.3" stroke-width="2" stroke-dasharray="4 3"/>
+    <path d="M342 178 H388 V228 C388 234, 365 240, 365 240 C365 240, 342 234, 342 228 Z" fill="#1d2f47" stroke="#fcfbf8" stroke-opacity="0.55" stroke-width="2"/>
+    <rect x="342" y="186" width="6" height="10" fill="#d1492f"/>
+    <circle cx="365" cy="206" r="9" fill="none" stroke="#d1492f" stroke-width="2"/>
+    <path d="M265 225 C270 275, 262 320, 268 360 M312 245 C315 290, 308 330, 312 366" fill="none" stroke="#fcfbf8" stroke-opacity="0.14" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <g transform="translate(528, 344)">
+    <rect x="0" y="0" width="68" height="56" rx="4" fill="#fcfbf8" fill-opacity="0.9" stroke="#d1492f" stroke-width="2.2"/>
+    <rect x="4" y="4" width="60" height="48" rx="2" fill="none" stroke="#d1492f" stroke-width="1" stroke-opacity="0.6"/>
+    <text x="34" y="23" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9.5" font-weight="800" fill="#d1492f" letter-spacing="0.8">DINKUS //</text>
+    <line x1="12" y1="29" x2="56" y2="29" stroke="#d1492f" stroke-width="1.2"/>
+    <text x="34" y="42" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" font-weight="700" fill="#d1492f" letter-spacing="1.5">STUDIO</text>
+  </g>
+
+  <text x="40" y="440" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700" fill="#101827" fill-opacity="0.55" letter-spacing="1.5">DINKUS // STUDIO · PIGMENT DRIFT RISOGRAPH PLATE 01</text>
+</svg>

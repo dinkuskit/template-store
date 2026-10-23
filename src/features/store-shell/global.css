@@ -453,17 +453,32 @@
     min-width: 0;
   }
 
-  /* Shared Global StoreFooter (`StoreFooter.astro` — Tiebreaker A: Footer 1 + 4 Hybrid) */
+  /* Shared Global StoreFooter (`StoreFooter.astro` — Tiebreaker A + Soft Current Chromatic Pigment Drift) */
   .store-footer {
-    margin: 4rem 0 0;
-    border-top: 3px solid var(--store-accent);
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    margin: 3.5rem 0 0;
+    border-top: 0;
     background: var(--store-vault-bg);
     color: var(--store-vault-ink);
     font-size: 0.92rem;
   }
 
+  .store-footer__pigment-wash {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    z-index: 0;
+  }
+
   .store-footer__top {
-    padding: 2.75rem 0 2.25rem;
+    position: relative;
+    z-index: 1;
+    padding: 4.5rem 0 2.35rem;
   }
 
   .store-footer__inner {
@@ -481,10 +496,21 @@
   .store-footer__stamp-card,
   .store-footer__widgets :where(.widget[data-widget-type="component"]) {
     padding: 1.15rem 1.25rem;
-    border: 1.5px solid var(--store-vault-line);
+    border: 1.5px solid color-mix(in srgb, var(--store-vault-ink) 22%, var(--store-vault-line));
     border-radius: var(--store-radius-card);
-    background: var(--store-vault-surface);
+    background: color-mix(in srgb, var(--store-vault-bg) 78%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     box-shadow: 4px 4px 0 var(--store-accent);
+  }
+
+  .store-footer__nav {
+    padding: 0.9rem 1.05rem;
+    border: 1px solid color-mix(in srgb, var(--store-vault-ink) 16%, transparent);
+    border-radius: var(--store-radius-card);
+    background: color-mix(in srgb, var(--store-vault-bg) 62%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .store-footer__eyebrow {
@@ -614,9 +640,13 @@
 
   /* Bottom Colophon Band with Theme & Color-Coded Preset Pills */
   .store-footer__colophon {
+    position: relative;
+    z-index: 1;
     padding: 1.1rem 0;
-    border-top: 1px solid var(--store-vault-line);
-    background: #0b111d;
+    border-top: 1px solid color-mix(in srgb, var(--store-vault-ink) 18%, var(--store-vault-line));
+    background: color-mix(in srgb, #0b111d 74%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .store-footer__meta {
@@ -829,7 +859,7 @@
 }
 
 .guest-checkout-return {
-  width: min(52rem, calc(100% - 2rem));
+  width: min(64rem, calc(100% - 2rem));
   margin: 4rem auto;
   min-height: 55vh;
   padding: clamp(1.25rem, 3vw, 2.25rem);
@@ -846,11 +876,12 @@
 .guest-checkout-return h2 {
   font-size: 1.5rem;
 }
-.guest-checkout-return h3 {
+.guest-checkout-return :where([data-guest-checkout-order] > h3) {
   margin: 2rem 0 0.7rem;
   font-size: 1.05rem;
 }
-.guest-checkout-return p {
+.guest-checkout-return > p,
+.guest-checkout-return [data-guest-checkout-order] > p {
   line-height: 1.6;
   color: var(--store-muted);
 }
@@ -1017,7 +1048,7 @@
   color: inherit;
   text-decoration: none;
 }
-.guest-checkout-return button {
+.guest-checkout-return > button {
   min-height: 44px;
   padding: 0.7rem 1rem;
   border: 1.5px solid var(--store-ink-border);
@@ -1035,4 +1066,146 @@
 .guest-checkout-return button:disabled {
   color: var(--store-muted);
   cursor: not-allowed;
+}
+
+/* Ephemera Thermal Receipt + Eroded Ink Rubber Stamp + FNV-1a Barcode (`GuestCheckoutReturn.astro`) */
+.ephemera-stamp-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ephemera-receipt-card {
+  position: relative;
+  margin-top: 1.5rem;
+  padding: 1.85rem 1.65rem 1.95rem;
+  border-left: 1.5px dashed var(--store-line);
+  border-right: 1.5px dashed var(--store-line);
+  background:
+    radial-gradient(circle at 86% 14%, color-mix(in srgb, var(--pigment-stop-3, var(--store-accent)) 10%, transparent), transparent 52%),
+    var(--store-surface-subtle, #ebe6dc);
+  box-shadow: 0 10px 26px -14px var(--store-shadow);
+}
+
+.ephemera-receipt-card::before,
+.ephemera-receipt-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background-size: 16px 10px;
+  background-repeat: repeat-x;
+  pointer-events: none;
+}
+
+.ephemera-receipt-card::before {
+  top: -10px;
+  background-image: linear-gradient(135deg, transparent 33.33%, var(--store-surface-subtle, #ebe6dc) 33.33%, var(--store-surface-subtle, #ebe6dc) 66.67%, transparent 66.67%),
+    linear-gradient(45deg, var(--store-surface-subtle, #ebe6dc) 33.33%, transparent 33.33%);
+}
+
+.ephemera-receipt-card::after {
+  bottom: -10px;
+  background-image: linear-gradient(45deg, transparent 33.33%, var(--store-surface-subtle, #ebe6dc) 33.33%, var(--store-surface-subtle, #ebe6dc) 66.67%, transparent 66.67%),
+    linear-gradient(135deg, var(--store-surface-subtle, #ebe6dc) 33.33%, transparent 33.33%);
+}
+
+.ephemera-rubber-stamp {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.32rem 0.72rem;
+  border: 2.5px solid var(--store-accent);
+  border-radius: 0.28rem;
+  color: var(--store-accent);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transform: rotate(-4.5deg);
+  filter: url(#ephemera-stamp-erosion);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--store-accent) 45%, transparent);
+  animation: ephemeraStampThud 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ephemeraStampThud {
+  0% {
+    opacity: 0;
+    transform: scale(1.65) rotate(-11deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.95) rotate(-3.5deg);
+  }
+  100% {
+    opacity: 0.92;
+    transform: scale(1) rotate(-4.5deg);
+  }
+}
+
+.ephemera-receipt-barcode {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1.5px dashed var(--store-line);
+  color: var(--store-ink);
+  opacity: 0.86;
+}
+
+/* RoughNotation Double-Pass SVG Ink Callout & Product Stage Tilt */
+.rough-ink-callout {
+  position: relative;
+  display: inline-block;
+}
+
+.rough-ink-callout__svg {
+  position: absolute;
+  inset: -4px -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 8px);
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rough-ink-callout__path {
+  fill: none;
+  stroke: var(--store-accent);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.product-detail__visual {
+  position: relative;
+  overflow: hidden;
+  transform: perspective(960px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.22s ease-out, box-shadow 0.28s ease;
+}
+
+.product-detail__visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(
+    circle at var(--glare-x, 50%) var(--glare-y, 130%),
+    color-mix(in srgb, var(--pigment-stop-4, var(--store-accent)) 26%, transparent),
+    transparent 62%
+  );
+  opacity: var(--near, 0);
+  transition: opacity 0.22s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ephemera-rubber-stamp {
+    animation: none;
+  }
+  .product-detail__visual {
+    transform: none;
+    transition: none;
+  }
 }

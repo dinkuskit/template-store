@@ -75,6 +75,70 @@ const activePreset: StorePresetName = isStorePresetName(cookiePreset) ? cookiePr
 const defaultProvenance = `Transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
 ---
 <footer class="store-footer" data-store-footer>
+  <svg
+    class="store-footer__pigment-wash"
+    data-pigment-drift="footer"
+    viewBox="0 0 1440 420"
+    preserveAspectRatio="none"
+    aria-hidden="true"
+  >
+    <defs>
+      <filter id="footer-pigment-bleed" x="-8%" y="-12%" width="116%" height="124%" color-interpolation-filters="sRGB">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.011 0.022"
+          numOctaves="4"
+          seed="19"
+          result="pigment-noise"
+        >
+          <animate
+            attributeName="baseFrequency"
+            values="0.011 0.022;0.015 0.027;0.011 0.022"
+            dur="12s"
+            repeatCount="indefinite"
+          />
+        </feTurbulence>
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="pigment-noise"
+          scale="26"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+      <linearGradient id="footer-chromatic-tide" x1="0%" y1="15%" x2="100%" y2="85%">
+        <stop offset="0%" stop-color="var(--pigment-stop-1, #1f3b82)" stop-opacity="0.92" />
+        <stop offset="34%" stop-color="var(--pigment-stop-2, #6b2d7a)" stop-opacity="0.88" />
+        <stop offset="68%" stop-color="var(--pigment-stop-3, #d1492f)" stop-opacity="0.90" />
+        <stop offset="100%" stop-color="var(--pigment-stop-4, #d98a2b)" stop-opacity="0.86" />
+      </linearGradient>
+      <linearGradient id="footer-paper-feather" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="var(--store-bg)" stop-opacity="1" />
+        <stop offset="18%" stop-color="var(--store-bg)" stop-opacity="0.62" />
+        <stop offset="42%" stop-color="var(--store-vault-bg)" stop-opacity="0.18" />
+        <stop offset="100%" stop-color="var(--store-vault-bg)" stop-opacity="0.58" />
+      </linearGradient>
+      <pattern id="footer-coldpress-grain" width="14" height="14" patternUnits="userSpaceOnUse">
+        <circle cx="2.5" cy="3" r="0.8" fill="var(--store-vault-ink)" fill-opacity="0.08" />
+        <circle cx="9.5" cy="8.5" r="0.65" fill="var(--store-bg)" fill-opacity="0.07" />
+        <circle cx="6" cy="12" r="0.7" fill="var(--store-accent)" fill-opacity="0.09" />
+      </pattern>
+    </defs>
+    <rect width="1440" height="420" fill="var(--store-vault-bg)" />
+    <g filter="url(#footer-pigment-bleed)">
+      <rect x="-40" y="16" width="1520" height="420" fill="url(#footer-chromatic-tide)" opacity="0.78" />
+      <ellipse cx="240" cy="250" rx="390" ry="175" fill="var(--pigment-stop-1, #1f3b82)" opacity="0.62" />
+      <ellipse cx="640" cy="280" rx="360" ry="165" fill="var(--pigment-stop-2, #6b2d7a)" opacity="0.55" />
+      <ellipse cx="1020" cy="240" rx="380" ry="180" fill="var(--pigment-stop-3, #d1492f)" opacity="0.58" />
+      <ellipse cx="1310" cy="290" rx="310" ry="155" fill="var(--pigment-stop-4, #d98a2b)" opacity="0.52" />
+      <path
+        d="M-60,0 L1500,0 L1500,64 C1260,96 1050,34 790,72 C520,108 270,38 -60,82 Z"
+        fill="var(--store-bg)"
+      />
+    </g>
+    <rect width="1440" height="420" fill="url(#footer-paper-feather)" />
+    <rect width="1440" height="420" fill="url(#footer-coldpress-grain)" />
+  </svg>
   <div class="store-footer__top">
     <div class="store-footer__inner">
       <div class="store-footer__grid">
@@ -238,4 +302,17 @@ const defaultProvenance = `Transactional facts remain in Commerce${profile === "
 <script>
   import { hydrateStoreTheme } from "./theme-client.ts";
   hydrateStoreTheme();
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncFooterMotion = (reduce: boolean) => {
+      document.querySelectorAll<SVGSVGElement>('svg[data-pigment-drift="footer"]').forEach((svg) => {
+        if (typeof svg.pauseAnimations === "function") {
+          if (reduce) svg.pauseAnimations();
+          else svg.unpauseAnimations();
+        }
+      });
+    };
+    syncFooterMotion(mql.matches);
+    mql.addEventListener("change", (ev) => syncFooterMotion(ev.matches));
+  }
 </script>

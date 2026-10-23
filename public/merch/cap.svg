@@ -1,1 +1,63 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Illustration of a canvas baseball cap"><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#e9dfd2"/><stop offset="1" stop-color="#d8cab8"/></linearGradient><linearGradient id="cloth" x2=".1" y2="1"><stop stop-color="#d1ab83"/><stop offset="1" stop-color="#926b4e"/></linearGradient><filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feGaussianBlur stdDeviation="13"/></filter></defs><rect width="640" height="480" fill="url(#bg)"/><path d="M0 376 Q320 326 640 370 V480 H0Z" fill="#fff" opacity=".14"/><ellipse cx="320" cy="402" rx="174" ry="27" fill="#34342d" opacity=".18" filter="url(#shadow)"/><path d="M184 281 Q190 146 317 139 Q441 144 458 281 Q335 311 184 281Z" fill="url(#cloth)" stroke="#806044" stroke-width="4"/><path d="M317 141 Q305 210 320 288 M317 141 Q390 176 404 275 M317 141 Q243 170 233 273" fill="none" stroke="#a58160" stroke-width="3"/><path d="M177 278 Q320 302 463 278 Q499 291 540 316 Q411 366 206 332 Q156 325 122 307Z" fill="#b88e68" stroke="#806044" stroke-width="4"/><path d="M173 283 Q321 312 463 282" fill="none" stroke="#e2c4a1" stroke-width="4"/><circle cx="317" cy="140" r="8" fill="#8b684c"/><path d="M55 68 h530" stroke="#fff" stroke-opacity=".24"/><path d="M55 412 h530" stroke="#34342d" stroke-opacity=".09"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Illustration of a canvas baseball cap">
+  <defs>
+    <linearGradient id="washi-merch-cap" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5f1e8"/>
+      <stop offset="55%" stop-color="#ebe4d5"/>
+      <stop offset="100%" stop-color="#e0d6c3"/>
+    </linearGradient>
+    <linearGradient id="crown-merch-cap" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#d86042"/>
+      <stop offset="65%" stop-color="#b84026"/>
+      <stop offset="100%" stop-color="#8a2c18"/>
+    </linearGradient>
+    <pattern id="riso-merch-cap" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="0.75" fill="#101827" fill-opacity="0.08"/>
+      <circle cx="6" cy="6" r="0.65" fill="#d1492f" fill-opacity="0.07"/>
+    </pattern>
+    <filter id="pigment-drift-merch-cap" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.014 0.022" numOctaves="3" seed="73" result="noise">
+        <animate attributeName="baseFrequency" values="0.014 0.022;0.018 0.028;0.014 0.022" dur="9s" repeatCount="indefinite"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="11" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="drop-merch-cap" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#101827" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <rect width="640" height="480" fill="url(#washi-merch-cap)"/>
+
+  <g filter="url(#pigment-drift-merch-cap)" opacity="0.88">
+    <ellipse cx="320" cy="245" rx="205" ry="135" fill="#1b304d" fill-opacity="0.15"/>
+    <ellipse cx="265" cy="260" rx="145" ry="105" fill="#d1492f" fill-opacity="0.12"/>
+  </g>
+
+  <rect width="640" height="480" fill="url(#riso-merch-cap)"/>
+
+  <g stroke="#101827" stroke-opacity="0.18" stroke-width="1" fill="none">
+    <rect x="24" y="24" width="592" height="432" rx="4"/>
+    <path d="M24 62 H616 M24 418 H616"/>
+  </g>
+
+  <text x="40" y="47" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="700" fill="#101827" fill-opacity="0.65" letter-spacing="2">ARCHIVE // MERCH CAP — VERMILION TWILL</text>
+  <text x="600" y="47" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="700" fill="#d1492f" letter-spacing="1.5">EDITION 03</text>
+
+  <ellipse cx="330" cy="360" rx="178" ry="18" fill="#101827" fill-opacity="0.17"/>
+
+  <g filter="url(#drop-merch-cap)">
+    <path d="M168 282 C172 152, 260 128, 326 130 C398 132, 464 176, 468 284 C368 308, 250 304, 168 282 Z" fill="url(#crown-merch-cap)" stroke="#101827" stroke-width="3" stroke-linejoin="round"/>
+    <rect x="254" y="218" width="66" height="34" rx="3" fill="#fcfbf8" stroke="#101827" stroke-width="2"/>
+    <text x="287" y="239" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="800" fill="#101827" letter-spacing="1">DINKUS</text>
+    <path d="M166 278 C272 302, 386 298, 468 280 C506 292, 542 314, 548 326 C446 364, 276 356, 146 320 C130 314, 142 290, 166 278 Z" fill="#172438" stroke="#101827" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+
+  <g transform="translate(528, 344)">
+    <rect x="0" y="0" width="68" height="56" rx="4" fill="#fcfbf8" fill-opacity="0.9" stroke="#d1492f" stroke-width="2.2"/>
+    <rect x="4" y="4" width="60" height="48" rx="2" fill="none" stroke="#d1492f" stroke-width="1" stroke-opacity="0.6"/>
+    <text x="34" y="23" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9.5" font-weight="800" fill="#d1492f" letter-spacing="0.8">DINKUS //</text>
+    <line x1="12" y1="29" x2="56" y2="29" stroke="#d1492f" stroke-width="1.2"/>
+    <text x="34" y="42" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" font-weight="700" fill="#d1492f" letter-spacing="1.5">STUDIO</text>
+  </g>
+
+  <text x="40" y="440" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700" fill="#101827" fill-opacity="0.55" letter-spacing="1.5">DINKUS // STUDIO · MERCH ARCHIVE PLATE 03</text>
+</svg>

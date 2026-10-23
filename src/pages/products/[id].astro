@@ -204,8 +204,8 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
     <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{noLongerAvailable ? "No longer available" : productName ?? "Not found"}</span></nav>
       {noLongerAvailable ? <section class="product-removed" data-product-removed><h1>This product is no longer available</h1><p>It has been removed from the shop.</p><a href="/">Browse the shop</a></section> : item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource} data-commerce-item={linkedProduct?.id}>
-            <div class={`product-detail__visual product-detail__visual--${item.illustration}`}>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
+            <div class={`product-detail__visual product-detail__visual--${item.illustration}`} data-product-stage-visual>
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} /> : <><span class="product-media__pigment-wash" data-pigment-drift="product-media" aria-hidden="true"></span><img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" /></>}
             </div>
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
@@ -277,6 +277,58 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
     }
   }
   for (const input of choices) input.addEventListener("change", update);
+
+  // Elevated Product Detail Stage: proximity 3D tilt + RoughNotation two-pass ink underline on price
+  const stageVisual = document.querySelector<HTMLElement>("[data-product-stage-visual]");
+  const reduceMotion = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const finePointer = typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (stageVisual && finePointer && !reduceMotion) {
+    stageVisual.addEventListener("pointermove", (ev: PointerEvent) => {
+      const r = stageVisual.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const px = (ev.clientX - r.left) / r.width;
+      const py = (ev.clientY - r.top) / r.height;
+      stageVisual.style.setProperty("--near", "1");
+      stageVisual.style.setProperty("--rx", `${((0.5 - py) * 7).toFixed(2)}deg`);
+      stageVisual.style.setProperty("--ry", `${((px - 0.5) * 7).toFixed(2)}deg`);
+      stageVisual.style.setProperty("--glare-x", `${(px * 100).toFixed(1)}%`);
+      stageVisual.style.setProperty("--glare-y", `${(py * 100).toFixed(1)}%`);
+    });
+    stageVisual.addEventListener("pointerleave", () => {
+      stageVisual.style.setProperty("--near", "0");
+      stageVisual.style.setProperty("--rx", "0deg");
+      stageVisual.style.setProperty("--ry", "0deg");
+    });
+  }
+
+  const priceHost = document.querySelector<HTMLElement>("[data-product-price]");
+  if (priceHost && !priceHost.querySelector("[data-rough-callout]")) {
+    priceHost.classList.add("rough-ink-callout");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "rough-ink-callout__svg");
+    svg.setAttribute("viewBox", "0 0 180 42");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("aria-hidden", "true");
+    svg.dataset.roughCallout = "underline";
+    svg.innerHTML = `
+      <path class="rough-ink-callout__path" d="M 4 35 Q 92 31 175 36" stroke-dasharray="190" stroke-dashoffset="${reduceMotion ? "0" : "190"}"></path>
+      <path class="rough-ink-callout__path" d="M 8 38 Q 88 41 171 34" stroke-dasharray="190" stroke-dashoffset="${reduceMotion ? "0" : "190"}" opacity="0.72"></path>
+    `;
+    priceHost.append(svg);
+    if (!reduceMotion) {
+      const paths = svg.querySelectorAll<SVGPathElement>("path");
+      requestAnimationFrame(() => {
+        if (paths[0]) {
+          paths[0].style.transition = "stroke-dashoffset 0.65s cubic-bezier(0.22, 1, 0.36, 1)";
+          paths[0].style.strokeDashoffset = "0";
+        }
+        if (paths[1]) {
+          paths[1].style.transition = "stroke-dashoffset 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.32s";
+          paths[1].style.strokeDashoffset = "0";
+        }
+      });
+    }
+  }
 </script>
 <style>
   .product-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}

@@ -24,7 +24,8 @@ const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image,
   },
 });
 ---
-<div class="commerce-product-media">
+<div class="commerce-product-media" data-pigment-drift-media>
+  <span class="product-media__pigment-wash" data-pigment-drift="product-media" aria-hidden="true"></span>
   {resolved ? (
     <img
       src={resolved.src}
@@ -46,20 +47,60 @@ const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image,
 </div>
 <style>
   .commerce-product-media {
+    position: relative;
     display: grid;
     place-items: center;
-    margin: 0 0 1rem;
-    border-radius: 0.6rem;
+    margin: 0;
+    border-bottom: 1.5px solid var(--store-line);
     overflow: hidden;
-    background: #efece3;
+    background:
+      radial-gradient(circle at 80% 22%, color-mix(in srgb, var(--pigment-stop-3, var(--store-accent)) 18%, transparent), transparent 56%),
+      radial-gradient(circle at 52% 62%, color-mix(in srgb, var(--pigment-stop-2, var(--store-accent)) 12%, transparent), transparent 62%),
+      radial-gradient(circle at 20% 80%, color-mix(in srgb, var(--pigment-stop-1, var(--store-ink)) 14%, transparent), transparent 60%),
+      var(--store-surface-subtle, #efece3);
     aspect-ratio: 4 / 3;
+    isolation: isolate;
+  }
+  .product-media__pigment-wash {
+    position: absolute;
+    inset: -12%;
+    background:
+      radial-gradient(circle at 24% 30%, color-mix(in srgb, var(--pigment-stop-1, var(--store-ink)) 38%, transparent) 0%, transparent 56%),
+      radial-gradient(circle at 56% 52%, color-mix(in srgb, var(--pigment-stop-2, var(--store-accent)) 32%, transparent) 0%, transparent 58%),
+      radial-gradient(circle at 78% 28%, color-mix(in srgb, var(--pigment-stop-3, var(--store-accent)) 42%, transparent) 0%, transparent 56%),
+      radial-gradient(circle at 72% 78%, color-mix(in srgb, var(--pigment-stop-4, var(--store-accent)) 34%, transparent) 0%, transparent 58%);
+    filter: blur(16px) saturate(1.18);
+    opacity: 0.34;
+    pointer-events: none;
+    z-index: 0;
+    transform: scale(0.95);
+    transition:
+      opacity 0.38s ease,
+      transform 0.48s cubic-bezier(0.22, 1, 0.36, 1),
+      filter 0.48s ease;
+  }
+  :global(.shop-card:hover) .product-media__pigment-wash,
+  :global(.merch-card:hover) .product-media__pigment-wash,
+  :global(.product-detail__visual:hover) .product-media__pigment-wash {
+    opacity: 0.96;
+    transform: scale(1.09) rotate(-2deg) translate(-3px, 2px);
+    filter: blur(18px) saturate(1.32) hue-rotate(12deg);
   }
   .commerce-product-media img {
+    position: relative;
+    z-index: 1;
     display: block;
     width: 100%;
     height: 100%;
     max-width: 100%;
     object-fit: cover;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease;
+  }
+  :global(.shop-card:hover) .commerce-product-media img,
+  :global(.merch-card:hover) .commerce-product-media img,
+  :global(.product-detail__visual:hover) .commerce-product-media img {
+    transform: translateY(-2px) scale(1.028);
+    filter: saturate(1.08) contrast(1.02);
   }
   .commerce-product-media p {
     display: grid;
@@ -68,6 +109,17 @@ const resolved: ResolvedCommerceImage | null = await resolveCommerceImage(image,
     margin: 0;
     color: var(--store-muted);
     font-size: 0.95rem;
-    letter-spacing: .04em;
+    letter-spacing: 0.04em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .product-media__pigment-wash,
+    :global(.shop-card:hover) .product-media__pigment-wash,
+    :global(.merch-card:hover) .product-media__pigment-wash,
+    .commerce-product-media img,
+    :global(.shop-card:hover) .commerce-product-media img,
+    :global(.merch-card:hover) .commerce-product-media img {
+      transition: none;
+      transform: none;
+    }
   }
 </style>
