@@ -19,8 +19,8 @@ const commerceEntry = fileURLToPath(
 const playgroundCommerceEntry = fileURLToPath(
   new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
 );
-const welcomeEntry = fileURLToPath(
-  new URL("./src/features/playground-plugins/welcome-plugin.ts", import.meta.url),
+const tourEntry = fileURLToPath(
+  new URL("./src/features/playground-tour/tour-plugin.ts", import.meta.url),
 );
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
@@ -54,12 +54,13 @@ export default defineConfig({
         // adds build-time checkout options (binding "playground", flat-rate
         // shipping, host-side Payments port). Commerce is unchanged.
         { ...dinkusCommerce({ enableLocalStockManagement: false }), entrypoint: playgroundCommerceEntry },
-        // Playground-only welcome card on the admin dashboard.
+        // Playground-only tour: a card on the admin dashboard and its own admin page.
         {
-          id: "dinkus-playground-welcome",
+          id: "dinkus-playground-tour",
           version: "1.0.0",
-          entrypoint: welcomeEntry,
-          adminWidgets: [{ id: "welcome", size: "full", title: "Welcome to your DinkusKit store" }],
+          entrypoint: tourEntry,
+          adminWidgets: [{ id: "tour", size: "full", title: "Playground tour" }],
+          adminPages: [{ path: "/tour", label: "Playground tour", icon: "compass" }],
         },
         // Payments and Ship: their released Registry bundles, run inside the
         // visitor's own store. EmDash's sandbox saves plugin data only to a

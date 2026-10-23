@@ -2,13 +2,13 @@
   "closeout": null,
   "created_at": "2026-10-08T19:35:31+00:00",
   "current_focus": {
-    "cadence": "sequential",
+    "cadence": "frontier-batch",
     "confirmed": true,
-    "confirmed_at": "2026-10-21T22:55:23+00:00",
-    "domain": "storefront-missing-product-media",
-    "started_at": "2026-10-21T22:55:23+00:00",
+    "confirmed_at": "2026-10-23T19:34:44+00:00",
+    "domain": "One product screen, product states and plugin sidebar folders",
+    "started_at": "2026-10-23T19:34:44+00:00",
     "status": "confirmed",
-    "summary": "Owner confirmed the neutral placeholder rule for missing product media; implement on PR 133 first, then 130/131."
+    "summary": "Ronald said 'lock it' at 19:29 UTC 23 Oct 2026 in the playground thread."
   },
   "decisions": [
     {
@@ -4402,6 +4402,174 @@
       "superseded_by": null,
       "updated_at": "2026-10-23T03:10:41+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "A guided playground tour replaces the welcome card. Five steps that tick themselves off from the visitor's own store: edit a product, connect Payments, place a 4242 test order (or look at the shop when checkout is off), connect Ship and make a practice label, then Start your real store at dinkuskit.com. In the admin: a Playground tour dashboard widget and a Playground tour sidebar page (Block Kit only, nothing injected into EmDash's admin), with Take me there and Check my progress. In the shop only: a small guide card with a pulsing 'Press here' pointer on the next button to press, Show me, and Hide. Step words live in the playground-only CMS page 'playground-tour', also shown at /playground-tour; real stores never get the tour.",
+      "context_ref": null,
+      "created_at": "2026-10-23T03:14:00+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-pretend-connected-20261022"
+      ],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-23T03:14:00+00:00",
+          "choice": "A guided playground tour replaces the welcome card. Five steps that tick themselves off from the visitor's own store: edit a product, connect Payments, place a 4242 test order (or look at the shop when checkout is off), connect Ship and make a practice label, then Start your real store at dinkuskit.com. In the admin: a Playground tour dashboard widget and a Playground tour sidebar page (Block Kit only, nothing injected into EmDash's admin), with Take me there and Check my progress. In the shop only: a small guide card with a pulsing 'Press here' pointer on the next button to press, Show me, and Hide. Step words live in the playground-only CMS page 'playground-tour', also shown at /playground-tour; real stores never get the tour.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-guided-tour-20261023",
+      "implementation_ref": null,
+      "question": "How should the playground guide a prospect through owning a store?",
+      "rationale": "Ronald approved the four tour picks on 23 Oct 2026 02:15 UTC in the project thread ('The plan seems good.' then 'Let's build it.'), and said the existing welcome widget may be pruned so the tour does not duplicate it.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-23T03:14:00+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:6ec1ba7",
+      "candidate_refs": [],
+      "choice": "Content > Products is the one product screen. The products collection editor shows Commerce's editor panel (Commerce catalog-one-product-screen-20261023); Make this sellable fills commerce_item_id, so nobody pastes an id. The field and the one-published-page-per-item rule stay; only how the id gets there changes.",
+      "context_ref": "https://claude.ai/artifact/65TfhB7RTAhaWdXf7L8kn8",
+      "created_at": "2026-10-23T19:34:44+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-10-23T19:34:45+00:00",
+          "choice": "Content > Products is the one product screen. The products collection editor shows Commerce's editor panel (Commerce catalog-one-product-screen-20261023); Make this sellable fills commerce_item_id, so nobody pastes an id. The field and the one-published-page-per-item rule stay; only how the id gets there changes.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-one-product-screen-20261023",
+      "implementation_ref": null,
+      "question": "How does the products collection work with Commerce's one product screen?",
+      "rationale": "Ronald locked one product screen, 19:29 UTC 23 Oct 2026; every product stays a CMS page.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-23T19:34:45+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:6ec1ba7",
+      "candidate_refs": [],
+      "choice": "The store's existing publish check (the commerce_item_id claim on publish, release on unpublish and delete) also turns the item's Commerce on-sale flag on when its page is published and off when it is unpublished or deleted, through an explicit call Commerce provides (Commerce catalog-product-states-20261023). Draft pages stay out of the shop and their items cannot be bought; pages already published keep their items on sale.",
+      "context_ref": "https://claude.ai/artifact/65TfhB7RTAhaWdXf7L8kn8",
+      "created_at": "2026-10-23T19:34:45+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-10-23T19:34:45+00:00",
+          "choice": "The store's existing publish check (the commerce_item_id claim on publish, release on unpublish and delete) also turns the item's Commerce on-sale flag on when its page is published and off when it is unpublished or deleted, through an explicit call Commerce provides (Commerce catalog-product-states-20261023). Draft pages stay out of the shop and their items cannot be bought; pages already published keep their items on sale.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-product-states-20261023",
+      "implementation_ref": null,
+      "question": "How does a product page's Draft or Published state reach Commerce?",
+      "rationale": "Today a draft page hides only the page while Commerce would still sell the item by id. Ronald locked Draft, Published and Archived, 19:29 UTC 23 Oct 2026.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-23T19:34:45+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:6ec1ba7",
+      "candidate_refs": [],
+      "choice": "Edit a product opens Content > Products and asks the visitor to change a product's description and press Publish; it ticks when a product page in Content > Products changes. A Commerce catalog change still counts, so earlier progress is kept. The tour's admin page sits in its own Playground sidebar folder once the plugins move to folders.",
+      "context_ref": "https://claude.ai/artifact/65TfhB7RTAhaWdXf7L8kn8",
+      "created_at": "2026-10-23T19:34:45+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-guided-tour-20261023"
+      ],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-10-23T19:34:45+00:00",
+          "choice": "Edit a product opens Content > Products and asks the visitor to change a product's description and press Publish; it ticks when a product page in Content > Products changes. A Commerce catalog change still counts, so earlier progress is kept. The tour's admin page sits in its own Playground sidebar folder once the plugins move to folders.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-tour-step-one-content-products-20261023",
+      "implementation_ref": null,
+      "question": "Where does the playground tour's first step send the visitor, and where does the tour page sit?",
+      "rationale": "Ronald found step 1's Commerce Products page confusing (13:12 UTC 23 Oct 2026) and locked Content > Products as the one product screen.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-23T19:34:45+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4424,5 +4592,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-23T03:10:41+00:00"
+  "updated_at": "2026-10-23T19:34:45+00:00"
 }

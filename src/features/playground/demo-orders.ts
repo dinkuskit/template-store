@@ -41,7 +41,7 @@ const SAMPLES: { orderId: string; paidHoursAgo: number; shippedHoursAgo?: number
   },
 ];
 
-/** The sample orders' ids, so the welcome card can tell them from the visitor's own orders. */
+/** The sample orders' ids, so the playground tour can tell them from the visitor's own orders. */
 export const PLAYGROUND_SAMPLE_ORDER_IDS: readonly string[] = SAMPLES.map((sample) => sample.orderId);
 
 const money = (minor: number) => ({ currency: "USD", minor: String(minor) });

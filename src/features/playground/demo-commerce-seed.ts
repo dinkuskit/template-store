@@ -34,6 +34,7 @@ import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, type Dem
 import { ensureStorefrontSearchSupport } from "../store-shell/index.js";
 import { buildDemoProductEntries } from "./demo-products.js";
 import { ensurePlaygroundSampleOrders } from "./demo-orders.js";
+import { PLAYGROUND_TOUR_PAGE_ENTRY } from "../playground-tour/copy.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 interface StorageDeclaration {
@@ -197,7 +198,7 @@ export async function ensurePlaygroundDemoCatalog(db: Db, options: { playground?
   }
   await ensureStorefrontSearchSupport(db as never);
   if (!options.playground) return { created };
-  await applySeed(db as Parameters<typeof applySeed>[0], { version: "1", content: { pages: [PLAYGROUND_CONNECT_PAGE_ENTRY] } } as SeedFile, {
+  await applySeed(db as Parameters<typeof applySeed>[0], { version: "1", content: { pages: [PLAYGROUND_CONNECT_PAGE_ENTRY, PLAYGROUND_TOUR_PAGE_ENTRY] } } as SeedFile, {
     includeContent: true, onConflict: "skip", skipMediaDownload: true,
   });
   // Sizes are catalog items of their own, so read every item's SKU, not just listed products.

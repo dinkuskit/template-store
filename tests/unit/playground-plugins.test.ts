@@ -6,10 +6,12 @@ import {
   retargetPlaygroundPluginLinks,
 } from "../../src/features/playground-plugins/registry-plugins.mjs";
 import { playgroundDinkusKitFetch, playgroundPluginSettingsKey, standInStoreKey } from "../../src/features/playground-plugins/dinkuskit-stand-in.js";
-import { welcomeBlocks } from "../../src/features/playground-plugins/welcome-plugin.js";
+import { PLAYGROUND_TOUR_PAGE_ENTRY, readTourCopy, TOUR_COPY_DEFAULTS } from "../../src/features/playground-tour/copy.js";
+import { EMPTY_TOUR_STATE, nextTourStep, tourSteps, type TourState } from "../../src/features/playground-tour/state.js";
+import { tourBlocks } from "../../src/features/playground-tour/tour-plugin.js";
 import { retargetPlaygroundDeployLink, START_REAL_STORE_URL } from "../../src/features/playground/contract.js";
 
-describe("Playground Payments, Ship and welcome card", () => {
+describe("Playground Payments, Ship and tour", () => {
   it("installs the released Payments and Ship Registry bundles under their Registry ids", () => {
     const pins = JSON.parse(readFileSync("package.json", "utf8")).dinkuskit.playgroundPlugins;
     const plugins = playgroundRegistryPlugins();
@@ -108,31 +110,73 @@ describe("Playground Payments, Ship and welcome card", () => {
     expect(retargetPlaygroundPluginLinks("/_emdash/api/plugins/dinkus-commerce/admin", "https://x")).toBeNull();
   });
 
-  it("ticks off the steps a prospect has done and keeps one link out to DinkusKit.com", () => {
-    const fresh = JSON.stringify(welcomeBlocks("https://playground.dinkuskit.com", { productEdited: false, orders: 0, checkoutOpen: true }));
-    expect(fresh).toContain("0 of 2 things to do so far");
-    expect(fresh).toContain("○ Edit a product");
-    expect(fresh).toContain("https://playground.dinkuskit.com/_emdash/admin/plugins/dinkus-commerce/products");
-    expect(fresh).not.toContain("/_emdash/admin/content/");
-    expect(fresh).toContain(`https://playground.dinkuskit.com/_emdash/admin/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`);
+  const ORIGIN = "https://playground.dinkuskit.com";
+  const copy = readTourCopy(PLAYGROUND_TOUR_PAGE_ENTRY.data.content as never);
+  const state = (patch: Partial<TourState> = {}): TourState => ({ ...EMPTY_TOUR_STATE, checkoutOpen: true, ...patch });
 
-    const done = welcomeBlocks("https://playground.dinkuskit.com", { productEdited: true, orders: 1, checkoutOpen: true });
-    const text = JSON.stringify(done);
-    expect(text).toContain("2 of 2 things to do so far");
-    expect(text).toContain("✓ Edit a product (done)");
-    expect(text).toContain("✓ Place a test order (done)");
+  it("walks the tour in order: edit a product, connect Payments, order, ship, then start a real store", () => {
+    const order = (patch: Partial<TourState>) => nextTourStep(tourSteps(state(patch))).id;
+    expect(order({})).toBe("edit-product");
+    expect(order({ productEdited: true })).toBe("connect-payments");
+    expect(order({ productEdited: true, paymentsConnected: true })).toBe("place-order");
+    expect(order({ productEdited: true, paymentsConnected: true, orders: 1 })).toBe("ship-order");
+    expect(order({ productEdited: true, paymentsConnected: true, orders: 1, labels: 1 })).toBe("real-store");
+    // A step done out of order still ticks; the next one is the first not done.
+    expect(order({ productEdited: true, labels: 1 })).toBe("connect-payments");
+  });
+
+  it("shows one next step with Take me there, ticks done steps and keeps one link out to DinkusKit.com", () => {
+    const fresh = JSON.stringify(tourBlocks(ORIGIN, state(), copy));
+    expect(fresh).toContain("0 of 4 steps done");
+    expect(fresh).toContain("Next: Edit a product");
+    expect(fresh).toContain("Take me there");
+    expect(fresh).toContain('"action_id":"tour_check_progress"');
+    expect(fresh).toContain("→ Edit a product (next)");
+    expect(fresh).toContain("○ Connect Payments");
+    expect(fresh).toContain(`${ORIGIN}/_emdash/admin/content/products`);
+    expect(fresh).toContain(`${ORIGIN}/_emdash/admin/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`);
+    expect(fresh).toContain(`${ORIGIN}/_emdash/admin/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`);
+    expect(fresh).toContain(`${ORIGIN}/playground-tour`);
+
+    const halfway = JSON.stringify(tourBlocks(ORIGIN, state({ productEdited: true, paymentsConnected: true }), copy, ["connect-payments"]));
+    expect(halfway).toContain("Done: Connect Payments ✓");
+    expect(halfway).toContain("Next: Place a test order.");
+    expect(halfway).toContain("✓ Edit a product (done)");
+    expect(halfway).toContain("4242 4242 4242 4242");
+
+    const finished = tourBlocks(ORIGIN, state({ productEdited: true, paymentsConnected: true, orders: 1, labels: 2 }), copy);
+    const text = JSON.stringify(finished);
+    expect(text).toContain("4 of 4 steps done");
+    expect(text).not.toContain("tour_check_progress");
     const outside = [...text.matchAll(/"url":"(https:\/\/[^"]+)"/g)]
       .map(([, url]) => new URL(url).origin)
-      .filter((origin) => origin !== "https://playground.dinkuskit.com");
-    expect(outside).toEqual(["https://dinkuskit.com"]);
+      .filter((origin) => origin !== ORIGIN);
+    expect(new Set(outside)).toEqual(new Set(["https://dinkuskit.com"]));
+    expect(text).toContain(START_REAL_STORE_URL);
   });
 
   it("only invites a test order when the playground's checkout is open", () => {
-    const closed = JSON.stringify(welcomeBlocks("https://pr-137.playground.dinkuskit.com", { productEdited: false, orders: 0, checkoutOpen: false }));
+    const closed = JSON.stringify(tourBlocks("https://pr-137.playground.dinkuskit.com", state({ checkoutOpen: false, productEdited: true, paymentsConnected: true }), copy));
     expect(closed).not.toContain("4242");
     expect(closed).not.toContain("Place a test order");
-    expect(closed).toContain("Test checkout is switched off in this playground");
-    expect(closed).toContain("0 of 1 thing to do so far");
+    expect(closed).toContain("Next: Look at your shop");
+    expect(closed).toContain("Checkout is switched off in this playground");
+    expect(nextTourStep(tourSteps(state({ checkoutOpen: false, productEdited: true, paymentsConnected: true, shopVisited: true }))).id).toBe("ship-order");
+  });
+
+  it("takes the tour's words from the CMS page, falling back to its own for a missing step", () => {
+    const content = PLAYGROUND_TOUR_PAGE_ENTRY.data.content.map((block) =>
+      block._key === "edit-product-title" ? { ...block, children: [{ ...block.children[0]!, text: "Change a price" }] } : block,
+    ).filter((block) => block._key !== "ship-order-text");
+    const edited = readTourCopy(content as never);
+    expect(edited["edit-product"].title).toBe("Change a price");
+    expect(edited["ship-order"].text).toBe(TOUR_COPY_DEFAULTS["ship-order"].text);
+    expect(readTourCopy(undefined)).toEqual(copy);
+    // Every step and hint has a heading and a paragraph in the seeded page.
+    const keys = new Set(PLAYGROUND_TOUR_PAGE_ENTRY.data.content.map((block) => block._key));
+    for (const key of Object.keys(TOUR_COPY_DEFAULTS)) {
+      expect(keys.has(`${key}-title`) && keys.has(`${key}-text`)).toBe(true);
+    }
   });
 
   it("sends Start your real store to DinkusKit.com's onboarding page", () => {

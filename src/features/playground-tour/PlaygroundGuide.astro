@@ -1,0 +1,214 @@
+---
+/**
+ * The playground's shop guide (GrillTrack playground-guided-tour-20261023): a
+ * small card that says what to do next in the tour and, while the next step is
+ * the test order, points at the button to press. Only playground stores render
+ * it; its words come from the CMS page "playground-tour".
+ */
+import { recordShopVisit, TOUR_SHOP_PATH, type TourStep } from "./state.js";
+import { loadTourView } from "./view.js";
+import type { TourCopyKey } from "./copy.js";
+
+type Db = Parameters<typeof recordShopVisit>[0];
+const db = (Astro.locals as { __playgroundDb?: Db }).__playgroundDb;
+const path = Astro.url.pathname.replace(/\/+$/, "") || "/";
+const page =
+  path === "/playground-tour" ? "tour" :
+  path === "/checkout/success" ? "success" :
+  path === "/checkout" ? "checkout" :
+  path === "/cart" ? "cart" :
+  path.startsWith("/products/") ? "product" :
+  path === "/" || path === "/home" || path === "/search" || path.startsWith("/categories/") ? "catalog" :
+  "other";
+
+type Pointer = { hint: TourCopyKey; target: string };
+// What to press next while the next step is the test order, page by page. When
+// the cart already holds something, the guide points at the cart instead.
+const ORDER_POINTERS: Partial<Record<typeof page, Pointer>> = {
+  catalog: { hint: "hint-pick-product", target: "a[data-product-link], [data-merch-item] a[href]" },
+  product: { hint: "hint-add-to-cart", target: "[data-add-to-cart]" },
+  cart: { hint: "hint-cart-checkout", target: "[data-guest-cart-page] [data-guest-cart-checkout]" },
+  checkout: { hint: "hint-checkout-pay", target: "[data-guest-checkout-page] [data-guest-cart-checkout]" },
+};
+const OPEN_CART: Pointer = { hint: "hint-open-cart", target: "[data-guest-cart-nav]" };
+
+let view: Awaited<ReturnType<typeof loadTourView>> | null = null;
+if (db && page !== "tour") {
+  await recordShopVisit(db);
+  view = await loadTourView(db);
+}
+const steps = view?.steps ?? [];
+const total = steps.length;
+const kicker = (step: TourStep) => `Playground tour · ${step.id === "real-store" ? "All done" : `Step ${steps.indexOf(step) + 1} of ${total}`}`;
+// The return page only says the order is in once Commerce confirms it there,
+// so the "order is in" card waits hidden until the page shows the confirmed order.
+const shipStep = steps.find((step) => step.id === "ship-order");
+const placed = view && page === "success" && view.state.checkoutOpen && shipStep ? shipStep : undefined;
+const pointer = view && view.next.id === "place-order" && view.state.checkoutOpen ? ORDER_POINTERS[page] : undefined;
+const cartPointer = pointer && (page === "catalog" || page === "product") ? OPEN_CART : undefined;
+const step: TourStep | undefined = view?.next;
+const words = view && step ? (pointer ? view.copy[pointer.hint] : view.copy[step.copy]) : null;
+// While pointing, the title stays the step's and the words say what to press.
+const title = view && step ? view.copy[step.copy].title : "";
+const go = step && !pointer ? { href: step.href, label: step.id === "real-store" ? step.button : "Take me there", external: !step.href.startsWith("/") } : null;
+---
+{view && step && words && (
+  <aside
+    class="playground-guide"
+    data-playground-guide
+    data-playground-guide-step={step.id}
+    data-playground-guide-target={pointer?.target}
+    data-playground-guide-cart-target={cartPointer?.target}
+    data-playground-guide-cart-text={cartPointer ? view.copy[cartPointer.hint].text : undefined}
+    aria-label="Playground tour"
+  >
+    <div class="playground-guide__card" data-playground-guide-card>
+      <p class="playground-guide__kicker">{kicker(step)}</p>
+      <p class="playground-guide__title">{title}</p>
+      <p class="playground-guide__text" data-playground-guide-text>{words.text}</p>
+      <div class="playground-guide__actions">
+        {go && (
+          <a class="playground-guide__go" href={go.href} data-playground-guide-go target={go.external ? "_blank" : undefined} rel={go.external ? "noopener noreferrer" : undefined}>{go.label}</a>
+        )}
+        {pointer && <button type="button" class="playground-guide__go" data-playground-guide-find>Show me</button>}
+        <a class="playground-guide__all" href={TOUR_SHOP_PATH}>Whole tour</a>
+        <button type="button" class="playground-guide__hide" data-playground-guide-hide aria-label="Hide the tour guide">Hide</button>
+      </div>
+    </div>
+    {placed && (
+      <div class="playground-guide__card" data-playground-guide-card data-playground-guide-placed hidden>
+        <p class="playground-guide__kicker">{kicker(placed)}</p>
+        <p class="playground-guide__title">{view.copy["hint-order-placed"].title}</p>
+        <p class="playground-guide__text">{view.copy["hint-order-placed"].text}</p>
+        <div class="playground-guide__actions">
+          <a class="playground-guide__go" href={placed.href}>Ship this order</a>
+          <a class="playground-guide__all" href={TOUR_SHOP_PATH}>Whole tour</a>
+          <button type="button" class="playground-guide__hide" data-playground-guide-hide aria-label="Hide the tour guide">Hide</button>
+        </div>
+      </div>
+    )}
+    <button type="button" class="playground-guide__show" data-playground-guide-show hidden>Playground tour</button>
+    <div class="playground-guide__pointer" data-playground-guide-pointer hidden aria-hidden="true"><span>Press here</span></div>
+  </aside>
+)}
+<style>
+  .playground-guide{position:fixed;z-index:60;right:1rem;bottom:4.75rem;width:min(22rem,calc(100% - 2rem));font-size:.95rem;line-height:1.45}
+  .playground-guide__card{padding:.95rem 1rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);color:var(--store-ink);box-shadow:4px 4px 0 var(--store-shadow)}
+  .playground-guide__card[hidden]{display:none}
+  .playground-guide__kicker{margin:0;color:var(--store-muted);font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .playground-guide__title{margin:.2rem 0 .25rem;font-weight:800;font-size:1.05rem}
+  .playground-guide__text{margin:0}
+  .playground-guide__actions{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .9rem;margin-top:.75rem}
+  .playground-guide__go{border:0;font:inherit;cursor:pointer;padding:.5rem .85rem;border-radius:var(--store-radius-pill);background:var(--store-accent);color:var(--store-accent-ink);font-weight:800;text-decoration:none}
+  .playground-guide__all{color:var(--store-ink);font-weight:700}
+  .playground-guide__hide,.playground-guide__show{border:0;background:none;color:var(--store-muted);font:inherit;font-weight:700;cursor:pointer;padding:.25rem}
+  .playground-guide__show{float:right;padding:.55rem .9rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-pill);background:var(--store-surface);color:var(--store-ink);box-shadow:3px 3px 0 var(--store-shadow)}
+  .playground-guide__show[hidden]{display:none}
+  .playground-guide__go:focus-visible,.playground-guide__all:focus-visible,.playground-guide__hide:focus-visible,.playground-guide__show:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
+  .playground-guide__pointer{position:fixed;z-index:59;pointer-events:none;border:3px solid var(--store-accent);border-radius:.6rem;box-shadow:0 0 0 4px color-mix(in srgb,var(--store-accent) 30%,transparent);animation:playground-guide-pulse 1.4s ease-in-out infinite}
+  .playground-guide__pointer[hidden]{display:none}
+  .playground-guide__pointer span{position:absolute;left:50%;bottom:calc(100% + .55rem);transform:translateX(-50%);white-space:nowrap;padding:.2rem .55rem;border-radius:var(--store-radius-pill);background:var(--store-accent);color:var(--store-accent-ink);font-size:.8rem;font-weight:800}
+  .playground-guide__pointer span::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:.4rem solid transparent;border-top-color:var(--store-accent)}
+  @keyframes playground-guide-pulse{50%{box-shadow:0 0 0 10px color-mix(in srgb,var(--store-accent) 0%,transparent)}}
+  @media (prefers-reduced-motion:reduce){.playground-guide__pointer{animation:none}}
+  @media (max-width:40rem){.playground-guide{right:.5rem;left:.5rem;bottom:6.5rem;width:auto}}
+</style>
+<script>
+  const HIDDEN_KEY = "dinkus-playground-guide-hidden";
+  const guide = document.querySelector<HTMLElement>("[data-playground-guide]");
+  if (guide) {
+    const nextCard = guide.querySelector<HTMLElement>("[data-playground-guide-card]:not([data-playground-guide-placed])")!;
+    const placedCard = guide.querySelector<HTMLElement>("[data-playground-guide-placed]");
+    let card = nextCard;
+    const show = guide.querySelector<HTMLButtonElement>("[data-playground-guide-show]")!;
+    const pointer = guide.querySelector<HTMLElement>("[data-playground-guide-pointer]")!;
+    const text = guide.querySelector<HTMLElement>("[data-playground-guide-text]")!;
+    const pageText = text.textContent ?? "";
+    const remember = (hidden: boolean) => {
+      try {
+        if (hidden) sessionStorage.setItem(HIDDEN_KEY, "1");
+        else sessionStorage.removeItem(HIDDEN_KEY);
+      } catch {}
+    };
+    const wasHidden = () => {
+      try {
+        return sessionStorage.getItem(HIDDEN_KEY) === "1";
+      } catch {
+        return false;
+      }
+    };
+    const visible = (element: Element | null): element is HTMLElement =>
+      element instanceof HTMLElement && !element.closest("[hidden]") && element.getClientRects().length > 0;
+    const cartHasItems = () => {
+      const count = document.querySelector<HTMLElement>("[data-guest-cart-count]");
+      return Boolean(count && !count.hidden && Number(count.textContent) > 0);
+    };
+    const targetFor = (): HTMLElement | null => {
+      const cartTarget = guide.dataset.playgroundGuideCartTarget;
+      const toCart = Boolean(cartTarget && cartHasItems());
+      const words = toCart ? guide.dataset.playgroundGuideCartText ?? pageText : pageText;
+      if (text.textContent !== words) text.textContent = words;
+      if (toCart) {
+        const cart = document.querySelector(cartTarget!);
+        if (visible(cart)) return cart;
+      }
+      const selector = guide.dataset.playgroundGuideTarget;
+      if (!selector) return null;
+      return [...document.querySelectorAll(selector)].find(visible) ?? null;
+    };
+    let frame = 0;
+    const place = () => {
+      frame = 0;
+      const target = card.hidden ? null : targetFor();
+      if (!target) {
+        pointer.hidden = true;
+        return;
+      }
+      const box = target.getBoundingClientRect();
+      const inset = 6;
+      pointer.style.left = `${box.left - inset}px`;
+      pointer.style.top = `${box.top - inset}px`;
+      pointer.style.width = `${box.width + inset * 2}px`;
+      pointer.style.height = `${box.height + inset * 2}px`;
+      pointer.hidden = false;
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place);
+    };
+    const setHidden = (hidden: boolean) => {
+      card.hidden = hidden;
+      show.hidden = !hidden;
+      remember(hidden);
+      schedule();
+    };
+    // On the return page, switch to "Your test order is in" once the page shows the order Commerce confirmed.
+    const showPlaced = () => {
+      const order = document.querySelector("[data-guest-checkout-order]");
+      if (!placedCard || card === placedCard || !(order instanceof HTMLElement) || order.hidden) return;
+      placedCard.hidden = card.hidden;
+      nextCard.hidden = true;
+      card = placedCard;
+      schedule();
+    };
+    guide.querySelector("[data-playground-guide-find]")?.addEventListener("click", () => {
+      const target = targetFor();
+      if (!target) return;
+      // Near the top of the screen, clear of this card at the bottom.
+      const top = scrollY + target.getBoundingClientRect().top - innerHeight * 0.18;
+      scrollTo({ top: Math.max(0, top), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+    guide.querySelectorAll("[data-playground-guide-hide]").forEach((hide) => hide.addEventListener("click", () => setHidden(true)));
+    show.addEventListener("click", () => setHidden(false));
+    if (wasHidden()) setHidden(true);
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", schedule);
+    // The page's own changes move or reveal the target; the guide's own changes don't.
+    new MutationObserver((records) => {
+      if (!records.some((record) => !guide.contains(record.target))) return;
+      showPlaced();
+      schedule();
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "disabled", "class"] });
+    showPlaced();
+    schedule();
+  }
+</script>

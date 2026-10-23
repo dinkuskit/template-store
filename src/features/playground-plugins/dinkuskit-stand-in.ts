@@ -9,7 +9,7 @@
  * key only this playground uses; anything not made here goes out unchanged,
  * which keeps the playground's own test checkout on the real Payments service.
  */
-import { PluginStorageRepository } from "emdash";
+import { OptionsRepository, PluginStorageRepository } from "emdash";
 import { getRequestContext } from "emdash/request-context";
 import { readStripeAccount } from "../playground-checkout/index.js";
 
@@ -128,6 +128,7 @@ async function connectToken(init: RequestInit | undefined): Promise<Response> {
   if (!SERVICES[clientId] || typeof body.connection_id !== "string" || typeof body.code_verifier !== "string") {
     return json({ error: "invalid_request" }, 400);
   }
+  await recordConnected(SERVICES[clientId].service);
   return json({
     access_token: await token(clientId === "dinkus-payments-emdash" ? "dinkus-payments" : "dinkuskit", `${SERVICES[clientId].service}:admin`),
     token_type: "Bearer",
@@ -176,6 +177,16 @@ const COMMERCE = "dinkus-commerce";
 /** Where the stand-in keeps each playground store's practice labels. */
 export const STAND_IN_STORAGE = { pluginId: "dinkuskit-playground", labels: "labels" } as const;
 const STAND_IN = STAND_IN_STORAGE.pluginId;
+
+/** The store option that says when a plugin's pretend Connect finished, so the tour can tick it off. */
+export const standInConnectedOption = (service: string) => `plugin:${STAND_IN}:connected:${service}`;
+
+async function recordConnected(service: string): Promise<void> {
+  const db = getRequestContext()?.db as Db | undefined;
+  if (!db) return;
+  const options = new OptionsRepository(db as ConstructorParameters<typeof OptionsRepository>[0]);
+  if ((await options.get(standInConnectedOption(service))) === null) await options.set(standInConnectedOption(service), new Date().toISOString());
+}
 const LABEL_WEIGHT_OZ = 8;
 export const BOXES = [
   { boxId: "small", name: "Small box", lengthIn: 9, widthIn: 6, heightIn: 3, weightOz: 4 },
