@@ -9,7 +9,7 @@ function runtime(fields: Record<string, unknown> | null, result = { success: tru
   return {
     calls,
     handleContentGet: vi.fn(async (_collection: string, id: string) =>
-      fields ? { success: true, data: { item: { id: "01PAGE", slug: id, data: fields } } } : { success: false, error: { message: "not found" } }),
+      fields ? { success: true, data: { item: { id: "01PAGE", slug: id, data: fields } } } : { success: false, error: { code: "NOT_FOUND", message: "not found" } }),
     handlePluginApiRoute: vi.fn(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
       calls.push({ pluginId, path, body: await request.json(), user: caller });
       return result;
@@ -81,11 +81,47 @@ describe("product page publish check tells Commerce", () => {
   });
 
   it("lets a page that does not own its product, or a store without the publish check, change freely", async () => {
-    for (const code of ["PRODUCT_PAGE_CONFLICT", "NOT_FOUND"]) {
+    for (const code of ["PRODUCT_PAGE_CONFLICT", "NOT_FOUND", "ROUTE_NOT_FOUND"]) {
       const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code, message: code } } as never);
       const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
       expect(await out.text()).toBe("done");
     }
+  });
+
+  it("lets a sandboxed Commerce's conflict through by its reason", async () => {
+    const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "ROUTE_ERROR", message: "Another page sells this product" } } as never);
+    const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
+    expect(out.status).toBe(200);
+  });
+
+  it("puts the product back on sale when the page change fails after Commerce took it off", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const rt = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: true } });
+    const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 409 }));
+    expect(out.status).toBe(409);
+    expect(rt.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+    ]);
+    // A product that was already off sale is left alone.
+    const draft = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: false } });
+    await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", draft), async () => new Response(null, { status: 500 }));
+    expect(draft.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    warn.mockRestore();
+  });
+
+  it("refuses unpublish and trash when the page cannot be read, and lets a missing page through", async () => {
+    const rt = runtime({ commerce_item_id: "item-1" });
+    rt.handleContentGet.mockResolvedValue({ success: false, error: { code: "INTERNAL_ERROR", message: "db down" } } as never);
+    const cms = vi.fn(async () => new Response(null, { status: 200 }));
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), cms)).status).toBe(503);
+    rt.handleContentGet.mockRejectedValueOnce(new Error("boom"));
+    expect((await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), cms)).status).toBe(503);
+    expect(cms).not.toHaveBeenCalled();
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), cms)).status).toBe(200);
+    const missing = runtime(null);
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/gone/unpublish", missing), async () => new Response(null, { status: 404 }))).status).toBe(404);
+    expect([...rt.calls, ...missing.calls]).toEqual([]);
   });
 
   it("keeps a publish when Commerce refuses or is unavailable; the product stays a Draft", async () => {

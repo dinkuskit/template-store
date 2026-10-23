@@ -43,10 +43,13 @@ function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
-/** The page's own id and the Commerce product it sells, read before the change. */
-async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string) {
-  const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true });
-  if (!found.success) return null;
+/**
+ * The page's own id and the Commerce product it sells, read before the change;
+ * null when the page sells nothing or does not exist, "unreadable" when the read failed.
+ */
+async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string } | null | "unreadable"> {
+  const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true }).catch(() => null);
+  if (!found?.success) return found?.error?.code === "NOT_FOUND" ? null : "unreadable";
   const data = record(found.data);
   const item = record(data?.item) ?? data;
   const fields = record(item?.data) ?? item;
@@ -55,8 +58,11 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
   return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId } : null;
 }
 
-// Commerce answers these when it has no publish check for the page: no such route yet, or another page sells the product.
-const NOT_THIS_PAGES = new Set(["NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
+// Commerce answers these when it has no publish check for the page: no such plugin or route yet, or another page
+// sells the product (a sandboxed route carries that only in its message).
+const NOT_THIS_PAGES = new Set(["NOT_FOUND", "ROUTE_NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
+const notThisPages = (error?: { code?: string; message?: string }) =>
+  NOT_THIS_PAGES.has(error?.code ?? "") || /Another page sells this product/.test(error?.message ?? "");
 
 function refuse(status: number, code: string, message: string): Response {
   return new Response(JSON.stringify({ error: { code, message } }), { status, headers: { "Content-Type": "application/json" } });
@@ -75,6 +81,8 @@ function refuse(status: number, code: string, message: string): Response {
  *   fails, the product stays a Draft (not buyable) and the page's Commerce
  *   panel shows it; publishing again retries.
  * - Trash drops the page's link afterwards.
+ * - If the page change fails after Commerce took the product off sale, the
+ *   product goes back on sale; a page that cannot be read is not unpublished.
  */
 export async function withProductOnSale(
   input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string },
@@ -84,9 +92,15 @@ export async function withProductOnSale(
   if (!change || !input.runtime || !input.user) return next();
   const runtime = input.runtime;
   const locale = input.url.searchParams.get("locale") ?? undefined;
-  const page = await productPage(runtime, change.entryId, locale).catch(() => null);
+  const page = await productPage(runtime, change.entryId, locale);
+  if (page === "unreadable") {
+    // Unpublish and trash must not run blind: the page might sell a product that would stay buyable.
+    return change.action === "publish" ? next() : refuse(503, "COMMERCE_UNAVAILABLE", "The page could not be checked for a product, so nothing was changed. Try again.");
+  }
   if (!page) return next();
   const allowed = hasPermission(input.user as Parameters<typeof hasPermission>[0], "content:publish_any");
+  // The Commerce answer: null when it is done (or has nothing to do for this page), else why it failed.
+  let changed = false;
   const tell = async (body: Record<string, unknown>) => {
     try {
       const result = await runtime.handlePluginApiRoute(input.commercePluginId, "POST", SET_ON_SALE_ROUTE,
@@ -95,7 +109,8 @@ export async function withProductOnSale(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ catalogItemId: page.catalogItemId, entryId: page.id, ...body }),
         }), input.user);
-      return result.success || NOT_THIS_PAGES.has(result.error?.code ?? "") ? null : result.error?.message ?? "Commerce refused";
+      if (result.success) changed = record(result.data)?.changed === true;
+      return result.success || notThisPages(result.error) ? null : result.error?.message ?? "Commerce refused";
     } catch (error) {
       return error instanceof Error ? error.message : "Commerce unavailable";
     }
@@ -109,7 +124,13 @@ export async function withProductOnSale(
   if (!allowed) return refuse(403, "FORBIDDEN", "This page sells a product. Ask an editor or admin to unpublish or trash it.");
   const failed = await tell({ onSale: false });
   if (failed) return refuse(503, "COMMERCE_UNAVAILABLE", "Commerce could not take this page's product off sale, so nothing was changed. Try again.");
+  const tookOff = changed;
   const response = await next();
+  if (!response.ok && tookOff) {
+    // The page change failed after Commerce took the product off sale: put it back as it was.
+    const restored = await tell({ onSale: true });
+    if (restored) console.warn("[product-on-sale] the product stays a Draft after a failed page change:", restored);
+  }
   if (response.ok && change.action === "trash") {
     const dropped = await tell({ onSale: false, deleted: true });
     if (dropped) console.warn("[product-on-sale] the trashed page's link stays:", dropped);
