@@ -1,6 +1,8 @@
 /**
  * The playground's two sample orders (GrillTrack playground-commerce-until-part-2-20261022):
- * one shipped, with its practice label, and one paid and waiting to ship. They sit
+ * #1002 shipped, with its practice label, and #1003 paid and waiting to ship.
+ * #1001 stays the demo shopper's order (DEMO_SHOPPER_ORDER_NUMBER), which the
+ * shopper account demo adds when someone signs in. They sit
  * in Commerce's orders like every other TEST order, so Ship lists them beside the
  * prospect's own. Made once per playground store; never touched after.
  */
@@ -17,7 +19,7 @@ const HOUR = 3_600_000;
 
 const SAMPLES: { orderId: string; number: number; paidHoursAgo: number; shippedHoursAgo?: number; name: string; email: string; city: string; region: string; postalCode: string; line1: string; lines: Line[] }[] = [
   {
-    orderId: "playground-sample-1001", number: 1001, paidHoursAgo: 50, shippedHoursAgo: 26,
+    orderId: "playground-sample-1002", number: 1002, paidHoursAgo: 50, shippedHoursAgo: 26,
     name: "Jordan Rivers", email: "jordan.rivers@example.com", line1: "214 Laurel Ave", city: "Asheville", region: "NC", postalCode: "28801",
     lines: [
       { sku: "DEMO-HOSTED-SHIRT", name: "Dinkus Demo Heavyweight T-Shirt", quantity: 1, unitMinor: "3200" },
@@ -25,7 +27,7 @@ const SAMPLES: { orderId: string; number: number; paidHoursAgo: number; shippedH
     ],
   },
   {
-    orderId: "playground-sample-1002", number: 1002, paidHoursAgo: 3,
+    orderId: "playground-sample-1003", number: 1003, paidHoursAgo: 3,
     name: "Sam Okafor", email: "sam.okafor@example.com", line1: "88 Pine Street", city: "Knoxville", region: "TN", postalCode: "37902",
     lines: [
       { sku: "DEMO-HOSTED-HOODIE-M", name: "Dinkus Demo Everyday Hoodie", quantity: 1, unitMinor: "6000" },
@@ -33,6 +35,9 @@ const SAMPLES: { orderId: string; number: number; paidHoursAgo: number; shippedH
     ],
   },
 ];
+
+/** The sample orders' ids, so the welcome card can tell them from the visitor's own orders. */
+export const PLAYGROUND_SAMPLE_ORDER_IDS: readonly string[] = SAMPLES.map((sample) => sample.orderId);
 
 const money = (minor: number) => ({ currency: "USD", minor: String(minor) });
 

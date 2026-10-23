@@ -31,6 +31,8 @@ import { listOrdersForEmail, type OrdersCollection } from "@dinkuskit/commerce/f
 import { applySeed } from "emdash/seed";
 import { readFileSync } from "node:fs";
 import { ensurePlaygroundDemoCatalog } from "../../src/features/playground/demo-commerce-seed.js";
+import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../../src/features/playground/demo-orders.js";
+import { visitorOrderCount } from "../../src/features/playground-plugins/welcome-plugin.js";
 import { playgroundCheckoutBindingStore } from "../../src/features/playground-checkout/binding-store.js";
 import { playgroundAttemptBelongsToVisitor } from "../../src/features/playground-checkout/binding-auth.js";
 import {
@@ -45,13 +47,15 @@ import {
 } from "../../src/features/shopper-account/playground-runtime.js";
 
 let db: Kysely<never>;
-beforeEach(async () => {
-  db = new Kysely<never>({ dialect: createDialect({ url: ":memory:" }) });
-  await runMigrations(db as never);
+async function visitorDb(): Promise<Kysely<never>> {
+  const visitor = new Kysely<never>({ dialect: createDialect({ url: ":memory:" }) });
+  await runMigrations(visitor as never);
   // The playground's own seed (schema only), as every visitor database gets it.
   const seed = JSON.parse(readFileSync(new URL("../../seed/seed.json", import.meta.url), "utf8"));
-  await applySeed(db as never, seed, { includeContent: false, onConflict: "skip", skipMediaDownload: true });
-});
+  await applySeed(visitor as never, seed, { includeContent: false, onConflict: "skip", skipMediaDownload: true });
+  return visitor;
+}
+beforeEach(async () => { db = await visitorDb(); });
 afterEach(async () => { await db.destroy(); });
 
 const settingsOf = () => loadMerchantStoreSettings(createSettingsAccess(new OptionsRepository(db as never), COMMERCE_PLUGIN_ID));
@@ -272,5 +276,29 @@ describe("playground visitor database state", () => {
       ok: false,
       error: expect.objectContaining({ code: "SESSION_DENIED" }),
     });
+  });
+
+  it("gives the playground's sample orders their own numbers beside the demo shopper's, and never counts them as the visitor's", async () => {
+    const orders = new PluginStorageRepository<OrderRecord>(db as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
+    // An existing store: the demo shopper signed in before the samples existed.
+    await ensureDemoShopperOrder(db as never);
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    const numbers = new Map<string, number | null | undefined>();
+    for (const id of [DEMO_SHOPPER_ORDER_ID, ...PLAYGROUND_SAMPLE_ORDER_IDS]) numbers.set(id, (await orders.get(id))?.number);
+    expect([...numbers.values()]).toEqual([1001, 1002, 1003]);
+    expect(await orders.count()).toBe(3);
+    const next = await new PluginStorageRepository<{ next: number }>(db as never, COMMERCE_PLUGIN_ID, "order_numbers", []).get("next");
+    expect(next?.next).toBeGreaterThanOrEqual(1004);
+    expect(await visitorOrderCount(db as never)).toBe(0);
+
+    // A fresh store whose shopper signs in later gets the same numbers.
+    const fresh = await visitorDb();
+    await ensurePlaygroundDemoCatalog(fresh as never, { playground: true });
+    await ensureDemoShopperOrder(fresh as never);
+    const freshOrders = new PluginStorageRepository<OrderRecord>(fresh as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
+    expect((await freshOrders.get(DEMO_SHOPPER_ORDER_ID))?.number).toBe(1001);
+    expect(await visitorOrderCount(fresh as never)).toBe(0);
+    await fresh.destroy();
   });
 });

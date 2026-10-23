@@ -9,6 +9,8 @@ import { getRequestContext } from "emdash/request-context";
 import { playgroundCheckoutConfigured } from "../playground-checkout/index.js";
 import { START_REAL_STORE_URL } from "../playground/contract.js";
 import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "./registry-plugins.mjs";
+import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../playground/demo-orders.js";
+import { DEMO_SHOPPER_ORDER_ID } from "../shopper-account/index.js";
 
 export const WELCOME_PLUGIN_ID = "dinkus-playground-welcome";
 export const WELCOME_WIDGET = { id: "welcome", size: "full", title: "Welcome to your DinkusKit store" } as const;
@@ -28,12 +30,21 @@ function requestDb(): Db | undefined {
   return getRequestContext()?.db as Db | undefined;
 }
 
-/** Orders Commerce holds in this visitor's store, read from Commerce's own storage. */
+// Orders the playground adds itself, as examples; placing a test order means one of the visitor's own.
+const EXAMPLE_ORDER_IDS = [...PLAYGROUND_SAMPLE_ORDER_IDS, DEMO_SHOPPER_ORDER_ID];
+
+/** Orders the visitor placed in their store, read from Commerce's own storage. */
+export async function visitorOrderCount(db: Db): Promise<number> {
+  const orders = new PluginStorageRepository(db, COMMERCE, "orders", []);
+  const examples = await orders.getMany(EXAMPLE_ORDER_IDS);
+  return Math.max(0, (await orders.count()) - examples.size);
+}
+
 async function commerceOrderCount(): Promise<number> {
   const db = requestDb();
   if (!db) return 0;
   try {
-    return await new PluginStorageRepository(db, COMMERCE, "orders", []).count();
+    return await visitorOrderCount(db);
   } catch {
     return 0;
   }

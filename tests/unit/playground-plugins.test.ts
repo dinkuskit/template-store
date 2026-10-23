@@ -5,7 +5,7 @@ import {
   playgroundRegistryPlugins,
   retargetPlaygroundPluginLinks,
 } from "../../src/features/playground-plugins/registry-plugins.mjs";
-import { playgroundDinkusKitFetch, standInStoreKey } from "../../src/features/playground-plugins/dinkuskit-stand-in.js";
+import { playgroundDinkusKitFetch, playgroundPluginSettingsKey, standInStoreKey } from "../../src/features/playground-plugins/dinkuskit-stand-in.js";
 import { welcomeBlocks } from "../../src/features/playground-plugins/welcome-plugin.js";
 import { retargetPlaygroundDeployLink, START_REAL_STORE_URL } from "../../src/features/playground/contract.js";
 
@@ -59,13 +59,43 @@ describe("Playground Payments, Ship and welcome card", () => {
       expect(network).not.toHaveBeenCalled();
     });
 
+    it("keeps everything it hands out inside the playground", async () => {
+      network.mockClear();
+      const storeKey = await standInStoreKey("dinkus-ship-emdash");
+      const refused = await post("https://dinkuskit.com/api/store-passes", { site_id: "someone-else", scope: "ship:admin", audience: "dinkus-ship" },
+        { authorization: `Bearer ${storeKey}` });
+      expect(refused.status).toBe(403);
+      const wrongService = await post("https://dinkuskit.com/api/store-passes", { site_id: "playground", scope: "payments:checkout", audience: "dinkus-payments" },
+        { authorization: `Bearer ${storeKey}` });
+      expect(wrongService.status).toBe(403);
+      const pass = await (await post("https://dinkuskit.com/api/store-passes", { site_id: "playground", scope: "ship:admin", audience: "dinkus-ship" },
+        { authorization: `Bearer ${storeKey}` })).json() as { access_token: string };
+      // A pretend pass answers here even for a page the pretend Ship doesn't have; it never reaches the real Ship or Payments.
+      const unknown = await standIn("https://ship.dinkuskit.com/v1/admin/refunds", { headers: { authorization: `Bearer ${pass.access_token}` } });
+      expect(unknown.ok).toBe(false);
+      const payments = await standIn("https://payments.dinkuskit.com/v1/checkout", { method: "POST", headers: { authorization: `Bearer ${pass.access_token}` } });
+      expect(payments.status).toBe(404);
+      expect(network).not.toHaveBeenCalled();
+    });
+
     it("leaves a real store key and real passes to the real services", async () => {
+      network.mockClear();
       await post("https://dinkuskit.com/api/store-passes", { site_id: "s", scope: "payments:checkout", audience: "dinkus-payments" },
         { authorization: "Bearer dk_store_real" });
       await standIn("https://payments.dinkuskit.com/v1/checkout", { headers: { authorization: "Bearer real.pass.token" } });
       await standIn("https://example.com/");
       expect(network).toHaveBeenCalledTimes(3);
     });
+  });
+
+  it("encrypts plugin settings with one key every isolate agrees on", async () => {
+    const off = await playgroundPluginSettingsKey({});
+    expect(off).toMatch(/^emdash_enc_v1_[A-Za-z0-9_-]{43}$/);
+    expect(await playgroundPluginSettingsKey({})).toBe(off);
+    const on = await playgroundPluginSettingsKey({ PAYMENTS_STORE_KEY: "dk_store_secret" });
+    expect(on).toBe(await playgroundPluginSettingsKey({ PAYMENTS_STORE_KEY: "dk_store_secret" }));
+    expect(on).not.toBe(off);
+    expect(on).not.toContain("secret");
   });
 
   it("sends Connect and Ship's own pages to the playground's Connect page", () => {

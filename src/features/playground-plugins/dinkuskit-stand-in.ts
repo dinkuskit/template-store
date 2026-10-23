@@ -342,17 +342,15 @@ function headerOf(input: RequestInfo | URL, init: RequestInit | undefined, name:
  * answered here. Calls this stand-in did not start (the playground's own test
  * checkout, which carries the real Payments key and passes) go out as they are.
  */
-// Workers refuse random values at load time, so this isolate picks its seed on first use.
-let isolateSeed: string | undefined;
-
 /**
  * The key EmDash encrypts plugin secret settings with (Payments and Ship keep
  * their Connect sign-in there). A playground store holds only pretend keys, so
- * the Worker makes its own, from its checkout secret when it has one so every
- * isolate agrees, else from a seed this isolate picked.
+ * the Worker makes its own. Every isolate must make the same key, since a
+ * visitor's store outlives the isolate that saved to it: it comes from the
+ * Worker's checkout secret, or from a fixed phrase when checkout is off.
  */
 export async function playgroundPluginSettingsKey(env: Record<string, unknown>): Promise<string> {
-  const secret = typeof env.PAYMENTS_STORE_KEY === "string" && env.PAYMENTS_STORE_KEY ? env.PAYMENTS_STORE_KEY : (isolateSeed ??= random(32));
+  const secret = typeof env.PAYMENTS_STORE_KEY === "string" && env.PAYMENTS_STORE_KEY ? env.PAYMENTS_STORE_KEY : "checkout-off";
   return `emdash_enc_v1_${base64url(await sha256(`dinkuskit-playground:plugin-settings:${secret}`))}`;
 }
 
