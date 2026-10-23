@@ -7,7 +7,9 @@ import {
   addGuestCartLine,
   emptyGuestCartIntent,
   admitPlaygroundStoreStorage,
+  playgroundStoreStorage,
   presentGuestCart,
+  retainGuestCheckoutCapability,
 } from "../../src/features/guest-cart/index.js";
 import {
   PLAYGROUND_STORE_META as WORKER_STORE_META,
@@ -103,6 +105,37 @@ describe("a new playground store starts with an empty cart", () => {
     pageNamingStore(null);
     expect(admitPlaygroundStoreStorage(storage)).toBe(true);
     expect(kept(storage)).toBe(true);
+  });
+});
+
+describe("storage handed to work that outlives its store", () => {
+  const checkout = (capabilityId: string) => ({
+    ok: true as const,
+    capabilityId,
+    capability: { capabilityId, capability: `${capabilityId}.secret`, retention: "json-body" as const, header: "x" },
+    checkout: { attemptId: null },
+  });
+
+  it("cannot write an older store's checkout into a newer store", () => {
+    const storage = memoryStorage({ "dinkus.playground-store": JSON.stringify({ tag: "a", started: 1000 }) });
+    pageNamingStore("a", 1000);
+    const port = playgroundStoreStorage(storage);
+    expect(port).not.toBeNull();
+    // A newer store's page takes over while this page's checkout is on its way.
+    storage.setItem("dinkus.playground-store", JSON.stringify({ tag: "b", started: 2000 }));
+    storage.setItem("dinkus.guest-cart.v1", '{"lines":[]}');
+    expect(port!.getItem("dinkus.guest-cart.v1")).toBeNull();
+    expect(retainGuestCheckoutCapability(port, checkout("cap-a") as never)).toBeNull();
+    expect(storage.getItem("dinkus.guest-checkout.v1")).toBeNull();
+    expect(storage.getItem("dinkus.guest-cart.v1")).toBe('{"lines":[]}');
+  });
+
+  it("works as plain storage while its store is current, and on pages with no tag", () => {
+    const storage = memoryStorage();
+    pageNamingStore("a", 1000);
+    expect(retainGuestCheckoutCapability(playgroundStoreStorage(storage), checkout("cap-a") as never)).not.toBeNull();
+    pageNamingStore(null);
+    expect(playgroundStoreStorage(storage)).toBe(storage);
   });
 });
 

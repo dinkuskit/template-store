@@ -30,6 +30,7 @@ export {
   readBrowserGuestCartStorage,
   saveGuestCartIntent,
   admitPlaygroundStoreStorage,
+  playgroundStoreStorage,
 } from "./storage.js";
 export type {
   GuestCartLoadResult,

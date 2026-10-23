@@ -80,11 +80,15 @@ const PLAYGROUND_STORE_KEYS = ["dinkus.guest-cart.v1", "dinkus.guest-checkout.v1
 type PlaygroundStore = { tag: string; started: number };
 
 function pagePlaygroundStore(): PlaygroundStore | null {
-  if (typeof document === "undefined") return null;
-  const meta = document.querySelector(`meta[name="${PLAYGROUND_STORE_META}"]`);
-  const tag = meta?.getAttribute("content");
-  const started = Number(meta?.getAttribute("data-started"));
-  return tag && Number.isSafeInteger(started) ? { tag, started } : null;
+  try {
+    if (typeof document === "undefined") return null;
+    const meta = document.querySelector(`meta[name="${PLAYGROUND_STORE_META}"]`);
+    const tag = meta?.getAttribute("content");
+    const started = Number(meta?.getAttribute("data-started"));
+    return tag && Number.isSafeInteger(started) ? { tag, started } : null;
+  } catch {
+    return null;
+  }
 }
 
 function savedPlaygroundStore(storage: Storage): PlaygroundStore | null {
@@ -122,12 +126,33 @@ export function admitPlaygroundStoreStorage(storage: Storage): boolean {
   }
 }
 
+export type PlaygroundStoreStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+/**
+ * Storage for this page's playground store, or null when an older store's tab
+ * asks. A playground page's port checks its store again on every call, so work
+ * started before a newer store took over (a checkout response still on its
+ * way) reads nothing and cannot write into the newer store's state.
+ */
+export function playgroundStoreStorage(storage: Storage): PlaygroundStoreStorage | null {
+  if (!admitPlaygroundStoreStorage(storage)) return null;
+  if (!pagePlaygroundStore()) return storage;
+  const admitted = () => {
+    if (!admitPlaygroundStoreStorage(storage)) throw new Error("A newer playground store owns this browser's cart.");
+  };
+  return {
+    getItem: (key) => (admitPlaygroundStoreStorage(storage) ? storage.getItem(key) : null),
+    setItem: (key, value) => { admitted(); storage.setItem(key, value); },
+    removeItem: (key) => { admitted(); storage.removeItem(key); },
+  };
+}
+
 export function readBrowserGuestCartStorage(): GuestCartStoragePort | null {
   try {
     if (typeof globalThis.localStorage === "undefined") return null;
     const storage = globalThis.localStorage;
     storage.getItem("dinkus.guest-cart.probe");
-    return admitPlaygroundStoreStorage(storage) ? storage : null;
+    return playgroundStoreStorage(storage);
   } catch {
     return null;
   }
