@@ -126,3 +126,5 @@
 {"action": "decision_locked", "at": "2026-10-23T02:19:08+00:00", "data": {"decision_id": "playground-plugins-in-store-20261023"}, "event_id": "f868b33f-fef4-48a1-8241-5143b21a07ac"}
 {"action": "decision_proposed", "at": "2026-10-23T03:10:41+00:00", "data": {"decision_id": "playground-commerce-050-source-first-20261023"}, "event_id": "85893d10-c2d6-4a03-9347-b912b12c03b2"}
 {"action": "decision_locked", "at": "2026-10-23T03:10:41+00:00", "data": {"decision_id": "playground-commerce-050-source-first-20261023"}, "event_id": "04e8103e-3546-4506-86cc-d5142e649fbc"}
+{"action": "decision_proposed", "at": "2026-10-23T03:14:00+00:00", "data": {"decision_id": "playground-guided-tour-20261023"}, "event_id": "07601b70-93da-441c-b857-9442e0df4e23"}
+{"action": "decision_locked", "at": "2026-10-23T03:14:00+00:00", "data": {"decision_id": "playground-guided-tour-20261023"}, "event_id": "2f248a72-21d0-4c7c-a6bf-2e560d257797"}
