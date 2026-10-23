@@ -30,6 +30,27 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   await expect(heroAction).toHaveCSS("color", "rgb(255, 254, 251)");
   await expect(heroAction).toHaveCSS("background-color", "rgb(23, 32, 51)");
   await expect(page.locator("[data-cms-composition]")).toBeVisible();
+  await expect(page.locator("#commerce-catalog")).toHaveCount(1);
+  const factRailOverflow = await page
+    .locator(".home-opener__facts")
+    .evaluate((element) => element.scrollWidth > element.clientWidth);
+  expect(factRailOverflow).toBe(false);
+  await expect(page.locator("[data-integration-demos]")).toHaveCount(0);
+  await expect(page.locator("[data-managed-product]")).toHaveCount(0);
+  await expect(page.locator("[data-unmanaged-product]")).toHaveCount(0);
+  await expect(page.locator(".store-header__status")).toHaveText("Store");
+  await expect(page.locator("[data-footer-provenance]")).toHaveText(
+    "Transactional facts remain in Commerce; EmDash owns the surrounding composition.",
+  );
+
+  await page.goto("/proof");
+  await expect(page.locator("[data-proof-intro] h1")).toHaveText("Integration demonstrations");
+  await expect(page.locator("[data-cms-composition]")).toHaveCount(0);
+  await expect(page.locator('a[href="#commerce-catalog"]')).toHaveCount(0);
+  await expect(page.locator(".store-header__status")).toHaveText("Demo store");
+  await expect(page.locator("[data-footer-provenance]")).toHaveText(
+    "Transactional facts remain in Commerce and Inventory; EmDash owns the surrounding composition.",
+  );
   await expect(page.locator("[data-collection-nav] a")).toHaveText(["Hats", "Hoodies", "Tees"]);
   await expect(page.locator("[data-merch-item=everyday-tee] [data-merch-status]")).toHaveText("8 available");
   await expect(page.locator("[data-merch-item=pullover-hoodie-preview] [data-merch-status]")).toHaveText("Preview only · not purchasable");
@@ -69,7 +90,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   await page.getByRole("link", { name: "View Everyday Tee details" }).click();
   await expect(page.locator("[data-product-status]")).toHaveText("5 available");
   await page.screenshot({ path: resolve(screenshotRoot, "product-changed.png"), fullPage: true });
-  await page.goto("/");
+  await page.goto("/proof");
   const changedVersion = await page
     .locator("[data-managed-product]")
     .getAttribute("data-stock-version");
@@ -100,11 +121,7 @@ test("renders Blocks and observes the Inventory 8 -> 5 -> 8 sequence", async ({
   const horizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
-  const factRailOverflow = await page
-    .locator(".home-opener__facts")
-    .evaluate((element) => element.scrollWidth > element.clientWidth);
   expect(horizontalOverflow).toBe(false);
-  expect(factRailOverflow).toBe(false);
   expect(BigInt(changedVersion ?? "0")).toBeGreaterThan(
     BigInt(initialVersion ?? "0"),
   );

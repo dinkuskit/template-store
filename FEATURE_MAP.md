@@ -8,7 +8,7 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.store-shell` | Neutral Astro/EmDash shell, upstream EmDash `@layer base` `tokens.css` (`light-dark()` + `aizome`/`forest`/`cobalt` Stitch presets) and unlayered adopter `theme.css`, first-class page layout renderers (`blocks`) with Portable Text fallback, reusable `policy-support-note` section (`sections`) on `/shipping` and `/returns` alongside paired Commerce `<dl>` + EmDash `PortableText` policy pages, `/search` page with `<LiveSearch>` and non-demo `pnpm search:upgrade` (`scripts/upgrade-storefront-search.ts`) upgrade entrypoint, shared `StoreHeader` (`primary` menu) and `StoreFooter` (`getSiteSettingsWithCacheHint()`, `footer_shop` / `footer_policies` menus exposing `/shipping` and `/returns` under **Policies & Care**, and `<WidgetArea name="footer" />` exercising `content`, `menu` (`footer_account`: Account, Shopping bag), and `core:search` `component` widgets), product page variant pickers (one per Commerce option, one Add to cart, `src/features/store-shell/variant-picker.ts`), canonical slashless products/categories, and Commerce-linked product resolver | `src/styles/tokens.css`; `src/styles/theme.css`; `src/features/store-shell/`; `scripts/upgrade-storefront-search.ts`; `src/pages/index.astro`; `src/pages/search.astro`; `src/pages/shipping.astro`; `src/pages/returns.astro`; `src/pages/categories/`; `src/pages/products/`; `src/live.config.ts`; `seed/`; `tests/unit/store-menu.test.ts`; `tests/unit/emdash-theme-composition.test.ts`; `tests/unit/variant-picker.test.ts`; `tests/e2e/store-header-nav.spec.ts` | `src/features/store-shell/index.ts`; `pnpm search:upgrade` | EmDash (`ui`, `ui/search`, `menus`, `sections`, `widgets`, `settings`, `search`); installed Commerce public item lookup; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | canonical URL + Stitch design & EmDash composition candidate |
+| `dinkus.store-shell` | Neutral Astro/EmDash shell, upstream EmDash `@layer base` `tokens.css` (`light-dark()` + `aizome`/`forest`/`cobalt` Stitch presets) and unlayered adopter `theme.css`, first-class page layout renderers (`blocks`) with Portable Text fallback, reusable `policy-support-note` section (`sections`) on `/shipping` and `/returns` alongside paired Commerce `<dl>` + EmDash `PortableText` policy pages, `/search` page with `<LiveSearch>` and non-demo `pnpm search:upgrade` (`scripts/upgrade-storefront-search.ts`) upgrade entrypoint, shared `StoreHeader` (`primary` menu) and `StoreFooter` (`getSiteSettingsWithCacheHint()`, `footer_shop` / `footer_policies` menus exposing `/shipping` and `/returns` under **Policies & Care**, and `<WidgetArea name="footer" />` exercising `content`, `menu` (`footer_account`: Account, Shopping bag), and `core:search` `component` widgets), product page variant pickers (one per Commerce option, one Add to cart, `src/features/store-shell/variant-picker.ts`), canonical slashless products/categories, and Commerce-linked product resolver | `src/styles/tokens.css`; `src/styles/theme.css`; `src/features/store-shell/`; `scripts/upgrade-storefront-search.ts`; `src/pages/index.astro`; `src/pages/proof.astro`; `src/pages/search.astro`; `src/pages/shipping.astro`; `src/pages/returns.astro`; `src/pages/categories/`; `src/pages/products/`; `src/live.config.ts`; `seed/`; `tests/unit/store-menu.test.ts`; `tests/unit/emdash-theme-composition.test.ts`; `tests/unit/variant-picker.test.ts`; `tests/e2e/store-header-nav.spec.ts` | `src/features/store-shell/index.ts`; `pnpm search:upgrade` | EmDash (`ui`, `ui/search`, `menus`, `sections`, `widgets`, `settings`, `search`); installed Commerce public item lookup; managed-product and unmanaged-product public entries | `bin/verify-web quick` | `bin/verify-web full` | canonical URL + Stitch design & EmDash composition candidate |
 | `dinkus.site-verifier` | Read-only public-origin crawler for URL status, redirects, sitemap, robots, canonical, and structured-data/feed contract | `bin/verify-site` | `bin/verify-site <origin>` | Public EmDash routes | `bin/verify-site <local-origin>` | `bin/verify-web full` | #34 URL checks and #35 Product JSON-LD/feed checks run from fetched bytes; an origin with no product URL does not fail only for that absence |
 | `dinkus.access-route-policy` | Fail-closed Cloudflare Access policy generation from installed Commerce/Payments route declarations; no plugin-wide bypasses | `scripts/verify-access-routes.mjs`; `DEPLOY.md`; `tests/workflows/access-route-policy.test.mjs` | `pnpm verify:access-routes`; `node scripts/verify-access-routes.mjs --format=markdown` | Pinned Commerce source; paired Payments route manifest; separately authorized Access operator | `node --test tests/workflows/access-route-policy.test.mjs` | `pnpm verify:access-routes` plus production `bin/verify-site` | source-pin preview only, not deployment authority; live rules blocked on Commerce #79 installed manifest; no live Access mutation |
 | `dinkus.managed-product-availability` | Commerce catalog identity, official Configure Inventory orchestration, Inventory registration/opening/read/adjust composition, proof adapter, proof-only HTTP action, and storefront availability panel | `src/features/managed-product-availability/`; `src/pages/api/proof/stock.ts` | `src/features/managed-product-availability/index.ts` | `@dinkuskit/commerce` package root; `@dinkuskit/inventory` package root | `bin/verify-web quick` | `bin/verify-web full` | verified pilot |
@@ -163,6 +163,71 @@ No seed collection, new route, price, stock, cart, filters, or pagination is add
   delivery gates outside this preparation slice; catalog proof alone cannot
   establish v1 readiness. Inventory is not a shipping v1 gate. Deployment is
   planned separately and requires explicit approval.
+
+## Test-enforced invariants
+
+Tests and scripts enforce these rules. Keep them through redesigns and
+refactors; changing an enforcing check needs owner approval in the same pull
+request.
+
+- No `src/**/*.{astro,mjs,ts}` file may contain the whole lowercase word `any`
+  (`/\bany\b/u` in `scripts/check-features.mjs:141`, run by `bin/verify-web`).
+  The ban covers types, comments, and UI copy: use `unknown` or a precise type,
+  and reword prose.
+- In light mode the home opener's primary action keeps
+  `color: rgb(255, 254, 251)` and `background-color: rgb(23, 32, 51)`
+  (`tests/e2e/managed-product-availability.spec.ts:30-31`). These are the light
+  values of `--dinkus-action-color: #fffefb` and
+  `--dinkus-action-background: #172033` in `src/styles/tokens.css:70-71`.
+- Page-wide link locators must each find one link:
+  `getByRole("link", { name: /Cart/ })` in `tests/e2e/guest-cart.spec.ts:120`,
+  `:142`, and `:310`, and `getByRole("link", { name: "Catalog" })` in
+  `tests/e2e/merch-catalog.spec.ts:53`, `:58`, and `:64`. Playwright matches a
+  string name as a case-insensitive substring. The header cart link is named
+  `Cart` (`src/features/guest-cart/GuestCartNav.astro:3`), so the footer
+  `/cart` link in the `footer_account` menu is `Shopping bag` (`seed/seed.json:218`,
+  `src/features/store-shell/store-menu.ts:40`). Keep `Cart`, and `catalog` in
+  any case, out of every other link name; the header and footer render on
+  every page.
+- Pages never scroll sideways: `document.documentElement.scrollWidth` must not
+  exceed `clientWidth`. The phone project checks this at 320×640 with the menu
+  open (`tests/e2e/store-header-nav.spec.ts:287-293`), and other specs check it
+  at each project viewport. Wide header items collapse: below 48rem the store
+  label and search pill are hidden
+  (`src/features/store-shell/global.css:232-245`).
+- When no shipping policy is configured, `/shipping` `<main>` text must not
+  match `/\$\d|\b[A-Z]{2}\b|\d+ days/u`
+  (`tests/e2e/structured-data-policy-feed.spec.ts:151-155`). That rules out
+  text such as `$5`, `US`, `GO`, or `5 days` in the fallback prose
+  (`src/pages/shipping.astro:52-54`), the seeded `policy-support-note` section,
+  and other main content. The check reads `textContent`, so hidden text counts.
+- A seeded `custom` menu item's `url` lands in `_emdash_menu_items.custom_url`;
+  the table has no `url` column, so queries select `custom_url`.
+  `tests/unit/emdash-theme-composition.test.ts:139-150` does, and pins
+  `footer_policies` to `/shipping` and `/returns`, in that order. Account and
+  Shopping bag live in the `footer_account` menu, which the footer menu widget
+  shows (`tests/unit/emdash-theme-composition.test.ts:170`).
+- `tests/unit/emdash-theme-composition.test.ts:43-87` reads source as text:
+  `src/styles/tokens.css` stays in `@layer base` with the `aizome`, `forest`,
+  and `cobalt` presets, `src/styles/theme.css` keeps an empty unlayered
+  `:root {}`, and each public page it lists contains
+  `<StoreFooter profile={profile} />`.
+
+Keep these store-shell `data-*` hooks, with their values:
+
+| Surface | Hooks | Defined in | Read by |
+| --- | --- | --- | --- |
+| Header | `data-store-header`, `data-store-main-nav`, `data-shopper-account-nav` | `src/features/store-shell/StoreHeader.astro:39`, `:47`, `:84` | `tests/e2e/store-header-nav.spec.ts:15`, `:76`; `tests/e2e/shopper-account.spec.ts:17` |
+| Header menu | `data-store-menu-toggle`, `data-store-menu-parent`, `data-store-menu-expand` | `src/features/store-shell/StoreHeader.astro:42`, `:50`, `:52` | `src/features/store-shell/store-menu-client.ts:11-22`, which `tests/e2e/store-header-nav.spec.ts` exercises |
+| Cart link | `data-guest-cart-nav`, `data-guest-cart-count` | `src/features/guest-cart/GuestCartNav.astro:3`, `:5` | `tests/e2e/store-header-nav.spec.ts:77`; `tests/e2e/guest-checkout-feasibility.spec.ts:144`; `tests/unit/guest-cart.test.ts:271`, `:295` |
+| Footer | `data-store-footer`, `data-footer-shop-nav`, `data-footer-policies-nav`, `data-nav-source`, `data-theme-switcher`, `data-theme-choice`, `data-preset-switcher` | `src/features/store-shell/StoreFooter.astro:77`, `:93-94`, `:115-116`, `:170-201` | `tests/e2e/store-header-nav.spec.ts:78`, `:85`, `:92-93`; `tests/unit/emdash-theme-composition.test.ts:95-99` |
+| Footer widgets | `data-widget-area="footer"` and `data-widget-type`, rendered by EmDash `<WidgetArea name="footer" />` | `src/features/store-shell/StoreFooter.astro:139` | `tests/e2e/store-header-nav.spec.ts:86-90`; `tests/unit/emdash-theme-composition.test.ts:94`, `:109` |
+| Policy pages | `data-policy-support-section="policy-support-note"`, `data-section-source` | `src/pages/shipping.astro:45-46`; `src/pages/returns.astro:59-60` | `tests/e2e/store-header-nav.spec.ts:102-107` |
+| Search | `data-search-result={hit.slug ?? hit.id}` | `src/pages/search.astro:162` | `tests/e2e/store-header-nav.spec.ts:113` |
+
+Feature specs and source-reading unit tests such as
+`tests/unit/shopper-account.test.ts:635` pin many more hooks. Search `tests/`
+for a `data-*` name before renaming or removing it.
 
 ## Installed catalog consumer (2026-10-07)
 

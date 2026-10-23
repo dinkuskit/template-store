@@ -2,6 +2,7 @@
 import { getMenu } from "emdash";
 import { GuestCartNav } from "../guest-cart/ui.ts";
 import PlaygroundGuide from "../playground-tour/PlaygroundGuide.astro";
+import { PROOF_DEMONSTRATIONS_PATH } from "./profile.js";
 import { MAIN_MENU_NAME, isCurrentMenuItem, type StoreMenuItem } from "./store-menu.js";
 
 interface Props {
@@ -15,6 +16,7 @@ const items: readonly StoreMenuItem[] = menu?.items ?? [];
 const path = Astro.url.pathname;
 // Only a playground visitor's store has its own database here; the guide is theirs alone.
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const isProofRoute = profile === "proof" && (path.replace(/\/+$/u, "") || "/") === PROOF_DEMONSTRATIONS_PATH;
 const linkProps = (item: StoreMenuItem) => ({
   href: item.url,
   target: item.target,
@@ -73,7 +75,7 @@ const linkProps = (item: StoreMenuItem) => ({
     </nav>
   )}
   <nav class="store-header__nav" aria-label="Store">
-    <span class="store-header__status">{profile === "proof" ? "Demo store" : "Store"}</span>
+    <span class="store-header__status">{isProofRoute ? "Demo store" : "Store"}</span>
     <form class="store-header__search-pill" method="get" action="/search" role="search" data-store-search-nav>
       <input
         class="store-header__search-input"
