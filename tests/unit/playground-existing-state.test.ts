@@ -32,7 +32,9 @@ import { applySeed } from "emdash/seed";
 import { readFileSync } from "node:fs";
 import { ensurePlaygroundDemoCatalog } from "../../src/features/playground/demo-commerce-seed.js";
 import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../../src/features/playground/demo-orders.js";
-import { visitorOrderCount } from "../../src/features/playground-plugins/welcome-plugin.js";
+import { newlyDoneSteps, readTourState, recordShopVisit, tourSteps, visitorOrderCount } from "../../src/features/playground-tour/state.js";
+import { playgroundDinkusKitFetch } from "../../src/features/playground-plugins/dinkuskit-stand-in.js";
+import { runWithContext } from "emdash/request-context";
 import { playgroundCheckoutBindingStore } from "../../src/features/playground-checkout/binding-store.js";
 import { playgroundAttemptBelongsToVisitor } from "../../src/features/playground-checkout/binding-auth.js";
 import {
@@ -314,5 +316,39 @@ describe("playground visitor database state", () => {
     expect(await nextIn(fresh)).toBe(1005);
     expect(await visitorOrderCount(fresh as never)).toBe(0);
     await fresh.destroy();
+  });
+
+  it("ticks the playground tour off from what the visitor's own store holds", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    // The shipped sample's practice label and the sample orders are the playground's, not the visitor's.
+    const first = await readTourState(db as never, true);
+    expect(first).toEqual({ productEdited: false, paymentsConnected: false, orders: 0, labels: 0, shopVisited: false, checkoutOpen: true });
+    expect(await newlyDoneSteps(db as never, tourSteps(first))).toEqual([]);
+
+    // Change a product the way Commerce's Products page saves it.
+    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalogItems", []);
+    const [item] = (await items.query({ limit: 1 })).items;
+    await items.put(item!.id, { ...item!.data, title: "Renamed by the visitor" });
+
+    // Finish Payments' pretend Connect through the stand-in, inside the visitor's request.
+    const network = async () => new Response("network", { status: 599 });
+    const standIn = playgroundDinkusKitFetch(network as unknown as typeof fetch, { env: () => ({}), origin: () => "https://playground.dinkuskit.com" });
+    await runWithContext({ editMode: false, db } as never, () => standIn("https://dinkuskit.com/api/store-connections/token", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: "dinkus-payments-emdash", connection_id: "c", code_verifier: "v" }),
+    }));
+
+    // The visitor's own paid order and practice label.
+    await new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, [])
+      .put("ord_visitor", { number: 1005, revision: 1, paidOrder: { orderId: "ord_visitor" } });
+    await new PluginStorageRepository<Record<string, unknown>>(db as never, "dinkuskit-playground", "labels", [])
+      .put("practice_visitor", { labelId: "practice_visitor", orderId: "ord_visitor" });
+    await recordShopVisit(db as never);
+
+    const later = await readTourState(db as never, true);
+    expect(later).toEqual({ productEdited: true, paymentsConnected: true, orders: 1, labels: 1, shopVisited: true, checkoutOpen: true });
+    // Each finished step is announced once.
+    expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual(["edit-product", "connect-payments", "place-order", "ship-order"]);
+    expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual([]);
   });
 });

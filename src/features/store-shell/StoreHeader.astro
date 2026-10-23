@@ -1,6 +1,7 @@
 ---
 import { getMenu } from "emdash";
 import { GuestCartNav } from "../guest-cart/ui.ts";
+import PlaygroundGuide from "../playground-tour/PlaygroundGuide.astro";
 import { MAIN_MENU_NAME, isCurrentMenuItem, type StoreMenuItem } from "./store-menu.js";
 
 interface Props {
@@ -12,6 +13,8 @@ const { profile } = Astro.props;
 const menu = await getMenu(MAIN_MENU_NAME).catch(() => null);
 const items: readonly StoreMenuItem[] = menu?.items ?? [];
 const path = Astro.url.pathname;
+// Only a playground visitor's store has its own database here; the guide is theirs alone.
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const linkProps = (item: StoreMenuItem) => ({
   href: item.url,
   target: item.target,
@@ -85,6 +88,7 @@ const linkProps = (item: StoreMenuItem) => ({
     <GuestCartNav />
   </nav>
 </header>
+{isPlayground && <PlaygroundGuide />}
 <script>
   import { hydrateStoreMenu } from "./store-menu-client.ts";
   hydrateStoreMenu();

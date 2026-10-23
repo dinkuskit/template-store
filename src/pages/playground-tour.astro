@@ -1,0 +1,83 @@
+---
+/**
+ * The playground tour in the shop (GrillTrack playground-guided-tour-20261023):
+ * every step, ticked off as the visitor does it, each with a button that goes
+ * there. Its words are the CMS page "playground-tour", which only the playground
+ * seeds; a store without that page, or outside the playground, answers 404.
+ */
+import { getEmDashEntry } from "emdash";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
+import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { TOUR_PAGE_SLUG } from "../features/playground-tour/copy.js";
+import { recordShopVisit } from "../features/playground-tour/state.js";
+import { loadTourView } from "../features/playground-tour/view.js";
+import "../features/store-shell/global.css";
+
+type Db = Parameters<typeof recordShopVisit>[0];
+const db = (Astro.locals as { __playgroundDb?: Db }).__playgroundDb;
+const { entry } = await getEmDashEntry("pages", TOUR_PAGE_SLUG);
+if (!db || !entry) return new Response(null, { status: 404 });
+Astro.response.headers.set("Cache-Control", "no-store");
+await recordShopVisit(db);
+const profile = readStorefrontProfile();
+const { steps, next, copy } = await loadTourView(db);
+const goals = steps.filter((step) => step.id !== "real-store");
+const done = goals.filter((step) => step.done).length;
+---
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><meta name="robots" content="noindex, nofollow" /><title>{entry.data?.title ?? "Playground tour"} | {STORE_TITLE}</title></head>
+  <body data-storefront-profile={profile}>
+    <StoreHeader profile={profile} />
+    <main class="tour-page">
+      <section class="tour-card" aria-labelledby="tour-heading" data-playground-tour>
+        <p class="tour-card__kicker">Playground</p>
+        <h1 id="tour-heading">{entry.data?.title ?? "Playground tour"}</h1>
+        <p class="tour-card__intro"><strong>{copy.intro.title}.</strong> {copy.intro.text}</p>
+        <p class="tour-card__progress" data-playground-tour-progress>
+          <span>{done} of {goals.length} steps done</span>
+          <progress max={goals.length} value={done}>{done} of {goals.length}</progress>
+        </p>
+        <ol class="tour-steps">
+          {steps.map((step) => {
+            const isNext = step === next;
+            const external = !step.href.startsWith("/");
+            return (
+              <li class:list={["tour-step", { "tour-step--done": step.done, "tour-step--next": isNext }]} data-playground-tour-step={step.id} data-done={step.done ? "true" : "false"}>
+                <span class="tour-step__mark" aria-hidden="true">{step.done ? "✓" : isNext ? "→" : "○"}</span>
+                <div class="tour-step__body">
+                  <h2>{copy[step.copy].title}{step.done && <span class="tour-step__status"> (done)</span>}{isNext && !step.done && <span class="tour-step__status"> (next)</span>}</h2>
+                  <p>{copy[step.copy].text}</p>
+                  <a class:list={["tour-step__go", { "tour-step__go--primary": isNext }]} href={step.href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer" : undefined}>{isNext && step.id !== "real-store" ? "Take me there" : step.button}</a>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    </main>
+    <StoreFooter profile={profile} />
+  </body>
+</html>
+<style>
+  .tour-page{width:min(48rem,calc(100% - 2rem));margin:2.5rem auto 4rem;min-height:60vh;line-height:1.6}
+  .tour-card{padding:clamp(1.35rem,3vw,2.25rem);border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow)}
+  .tour-card__kicker{margin:0 0 .35rem;color:var(--store-accent);font-family:var(--font-mono);font-size:.75rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+  .tour-card h1{margin:0 0 1rem;font-size:clamp(2rem,5vw,3rem);line-height:1.05;letter-spacing:-.04em}
+  .tour-card__intro{margin:0 0 1rem}
+  .tour-card__progress{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin:0 0 1.5rem;font-weight:700}
+  .tour-card__progress progress{flex:1 1 10rem;height:.7rem;accent-color:var(--store-accent)}
+  .tour-steps{display:grid;gap:1rem;margin:0;padding:0;list-style:none}
+  .tour-step{display:grid;grid-template-columns:2rem 1fr;gap:.75rem;padding:1rem;border:1px solid var(--store-line);border-radius:.6rem}
+  .tour-step--next{border:2px solid var(--store-accent)}
+  .tour-step--done{color:var(--store-muted)}
+  .tour-step__mark{font-size:1.35rem;font-weight:800;line-height:1.2}
+  .tour-step--done .tour-step__mark,.tour-step--next .tour-step__mark{color:var(--store-accent)}
+  .tour-step h2{margin:0;font-size:1.15rem}
+  .tour-step__status{font-weight:600;color:var(--store-muted)}
+  .tour-step p{margin:.25rem 0 .75rem}
+  .tour-step__go{display:inline-block;padding:.5rem .9rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-pill);color:inherit;font-weight:800;text-decoration:none}
+  .tour-step__go--primary{border-color:var(--store-accent);background:var(--store-accent);color:var(--store-accent-ink)}
+  .tour-step__go:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
+</style>
