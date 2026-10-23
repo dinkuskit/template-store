@@ -4,7 +4,7 @@ import ts from "typescript";
 
 import { commerceProfile } from "../src/features/commerce-profile/profiles.mjs";
 
-const STATIC_ROUTE_KEYS = new Set(["public", "methods", "request", "cacheControl", "handler", "permission"]);
+const STATIC_ROUTE_KEYS = new Set(["public", "methods", "request", "response", "cacheControl", "handler", "permission"]);
 
 function parse(file) {
   const source = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -208,6 +208,40 @@ function validateGuestRoute(file, source) {
   return metadata;
 }
 
+// Commerce 0.5.0 declares its shopper-account routes as
+// shopperRoute(methods, request, handler), a helper that must directly return
+// pluginRoute({ public, methods, request, cacheControl, handler }) built from
+// its own parameters. Each call then supplies its methods as a literal array.
+function validateShopperRoute(file, source) {
+  const functionDeclaration = findFunction(source, "shopperRoute");
+  if (!functionDeclaration) return null;
+  const parameters = functionDeclaration.parameters.map((parameter) => ts.isIdentifier(parameter.name) ? parameter.name.text : null);
+  if (parameters.length !== 3 || parameters.some((name) => name === null)) {
+    return { diagnostic: diagnostic(file, functionDeclaration, "shopperRoute must have methods, request, and handler parameters") };
+  }
+  const [methodsName, requestName, handlerName] = parameters;
+  const statements = functionDeclaration.body?.statements ?? [];
+  if (statements.length !== 1 || !ts.isReturnStatement(statements[0]) || !statements[0].expression ||
+      !ts.isCallExpression(statements[0].expression) || !ts.isIdentifier(statements[0].expression.expression) ||
+      statements[0].expression.expression.text !== "pluginRoute" || statements[0].expression.arguments.length !== 1) {
+    return { diagnostic: diagnostic(file, functionDeclaration, "shopperRoute must directly return pluginRoute(static metadata)") };
+  }
+  const object = statements[0].expression.arguments[0];
+  const { properties, diagnostic: propertiesDiagnostic } = ts.isObjectLiteralExpression(object)
+    ? directProperties(file, object, new Set(["public", "methods", "request", "cacheControl", "handler"]))
+    : { properties: new Map(), diagnostic: diagnostic(file, object, "shopperRoute metadata must be a static object literal") };
+  if (propertiesDiagnostic) return { diagnostic: propertiesDiagnostic };
+  for (const [key, name] of [["methods", methodsName], ["request", requestName], ["handler", handlerName]]) {
+    const value = properties.get(key);
+    if (!value || !ts.isIdentifier(value) || value.text !== name) {
+      return { diagnostic: diagnostic(file, value ?? object, `shopperRoute ${key} must be its ${name} parameter`) };
+    }
+  }
+  const publicValue = literalBoolean(file, properties.get("public"), "public");
+  if (typeof publicValue === "object") return { diagnostic: publicValue.diagnostic };
+  return { public: publicValue, diagnostic: null };
+}
+
 export function extractCommerceRoutes(commercePlugin, { profile = process.env.DINKUS_COMMERCE_PROFILE } = {}) {
   const { runtimeId } = commerceProfile(profile);
   const source = parse(commercePlugin);
@@ -240,6 +274,9 @@ export function extractCommerceRoutes(commercePlugin, { profile = process.env.DI
   const guestMetadata = validateGuestRoute(commercePlugin, source);
   const guestDiagnostic = guestMetadata?.diagnostic;
   if (guestDiagnostic) unsupported.push({ name: "guestRoute", path: null, diagnostic: guestDiagnostic });
+  const shopperMetadata = validateShopperRoute(commercePlugin, source);
+  const shopperDiagnostic = shopperMetadata?.diagnostic;
+  if (shopperDiagnostic) unsupported.push({ name: "shopperRoute", path: null, diagnostic: shopperDiagnostic });
   const result = [];
   const seenRoutes = new Set();
   for (const property of routes.properties) {
@@ -286,6 +323,15 @@ export function extractCommerceRoutes(commercePlugin, { profile = process.env.DI
         continue;
       }
       metadata = guestMetadata;
+    } else if (ts.isCallExpression(initializer) && ts.isIdentifier(initializer.expression) && initializer.expression.text === "shopperRoute") {
+      if (!knownPluginRoute || !shopperMetadata || shopperDiagnostic || initializer.arguments.length !== 3) {
+        unsupported.push({ name: key.name, path, diagnostic: shopperDiagnostic ?? diagnostic(commercePlugin, initializer, "shopperRoute must receive methods, request, and handler") });
+        continue;
+      }
+      const methods = literalMethods(commercePlugin, initializer.arguments[0]);
+      metadata = methods.diagnostic
+        ? { public: null, methods: [], diagnostic: methods.diagnostic }
+        : { public: shopperMetadata.public, methods: methods.methods, diagnostic: null };
     } else {
       metadata = validateMetadata(commercePlugin, initializer, "route");
     }

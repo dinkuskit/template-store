@@ -172,8 +172,10 @@ For a separate Cloudflare Registry target, `DINKUS_WRANGLER_CONFIG` selects both
 
 Git builds use `pnpm run build:registry` with preprovisioned resource identities from private build variables. [Registry Git build settings](docs/implementation/registry-git-build.md) define the build/deploy commands and inputs. `tests/workflows/registry-build.test.mjs` checks missing-input refusal, pinned resource IDs, shipping selection, and closed bootstrap defaults.
 
-The current local source pin is Commerce `0.3.0` at
-`c42597bddd35d949f4e69f8ca97cc26206200da0`, with EmDash `1.2.0`. Existing
+The local source pin is the released Commerce tag and commit in `package.json`
+`dinkuskit.sourcePins.commerce` (`v0.5.0` at
+`6ff63efb58fbbc501d07bada6ee84a088b9ada32` when written), with EmDash `1.2.0`;
+the Update playground plugins button moves it to the latest stable release. Existing
 Commerce49/Payments12 package verifiers are historical exact-artifact fixtures
 and intentionally refuse this new pairing. They are not proof of this source
 candidate. The optional cart coupon passes only intent to canonical checkout;

@@ -9,7 +9,16 @@ rmSync(artifact, { recursive: true, force: true });
 mkdirSync(artifact, { recursive: true });
 const trace = [];
 const calls = [];
-const expiry = Math.floor(Date.now() / 1000) + 1860;
+// Each attempt keeps one session, opened when Payments is first asked for it,
+// so its window holds however long the local server took to start.
+const sessions = new Map();
+function sessionFor(attemptId) {
+  if (!sessions.has(attemptId)) {
+    const createdAt = Math.floor(Date.now() / 1000);
+    sessions.set(attemptId, { sessionId: `cs_${attemptId}`, redirectUrl: "https://checkout.stripe.test/session", createdAt, expiresAt: createdAt + 1860 });
+  }
+  return sessions.get(attemptId);
+}
 const payments = createServer(async (request, response) => {
   const body = await new Promise((resolveBody) => {
     let text = "";
@@ -24,11 +33,11 @@ const payments = createServer(async (request, response) => {
   }
   if (request.url === "/v1/checkout/session") {
     return json(response, { outcome: "open", attemptId: parsed.attemptId, total: parsed.total,
-      session: { sessionId: `cs_${parsed.attemptId}`, redirectUrl: "https://checkout.stripe.test/session", createdAt: Math.floor(Date.now() / 1000), expiresAt: expiry } });
+      session: sessionFor(parsed.attemptId) });
   }
   if (request.url === "/v1/checkout/lookup") {
     return json(response, { outcome: "paid", attemptId: parsed.attemptId, total: parsed.total,
-      paymentId: `pay_${parsed.attemptId}`, session: { sessionId: `cs_${parsed.attemptId}`, redirectUrl: "https://checkout.stripe.test/session", createdAt: Math.floor(Date.now() / 1000), expiresAt: expiry } });
+      paymentId: `pay_${parsed.attemptId}`, session: sessionFor(parsed.attemptId) });
   }
   response.writeHead(404); response.end();
 });
@@ -174,7 +183,7 @@ const started = await request("/_emdash/api/plugins/dinkus-commerce/checkout/gue
   { lines: [{ catalogItemId: productId, quantity: 1 }],
     contact: { email: "proof@example.test", delivery: {
       name: "Proof Visitor", line1: "1 Test Way", city: "Testville",
-      region: "TS", postalCode: "00000", country: "US",
+      region: "NC", postalCode: "00000", country: "US",
     } } }, capability);
 const attemptId = started.body?.data?.checkout?.attemptId ?? started.body?.checkout?.attemptId ?? started.body?.data?.attemptId ?? started.body?.attemptId;
 if (typeof attemptId !== "string" || attemptId.length === 0) {

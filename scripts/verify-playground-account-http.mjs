@@ -785,7 +785,12 @@ for (const surface of ["registry", "native"]) {
     }
   }
 }
-if (cases["missing-origin:demo-session"]?.status !== 503 || cases["missing-origin:registry:orders"]?.status !== 503) {
+// Commerce 0.5.0 refuses a missing site origin on its own orders route with
+// 403 ORIGIN_DENIED; either answer fails closed.
+const missingOriginOrders = cases["missing-origin:registry:orders"];
+const ordersFailClosed = missingOriginOrders?.status === 503 ||
+  (missingOriginOrders?.status === 403 && missingOriginOrders.errorCode === "ORIGIN_DENIED");
+if (cases["missing-origin:demo-session"]?.status !== 503 || !ordersFailClosed) {
   failures.push(`missing origin must fail closed with 503 -> demo=${cases["missing-origin:demo-session"]?.status} orders=${cases["missing-origin:registry:orders"]?.status}`);
 }
 

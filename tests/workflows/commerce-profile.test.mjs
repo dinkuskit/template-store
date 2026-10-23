@@ -96,10 +96,15 @@ for (const profile of ["stable", "beta"]) {
       { name: "account/orders", methods: ["GET"], public: true },
       { name: "account/profile", methods: ["GET", "POST"], public: true },
     ];
+    // Commerce 0.5.0 adds Connect's public receipt route after the store policies route.
+    const manifestRoutes = manifest.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic }));
+    const connectReceiptAt = manifestRoutes.findIndex((route) => route.name === "policies/public") + 1;
     assert.deepEqual(
       extracted.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
       [
-        ...manifest.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
+        ...manifestRoutes.slice(0, connectReceiptAt),
+        { name: "store-proof", methods: ["GET"], public: true },
+        ...manifestRoutes.slice(connectReceiptAt),
         ...shopperAccountRoutes,
       ],
     );

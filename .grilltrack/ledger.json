@@ -4359,6 +4359,49 @@
       "superseded_by": null,
       "updated_at": "2026-10-23T02:19:08+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "In two steps. First, the playground's Commerce source pin moves from the development copy c42597b to the released tag v0.5.0 (6ff63ef), in the same in-store setup, so the 4242 test checkout keeps working; package.json is the only place the pin lives, and the Update playground plugins button moves it to each new stable Commerce release along with Payments and Ship. Second, in its own PR after the guided tour, the playground switches to the released Registry Commerce plugin as playground-commerce-until-part-2-20261022 calls for, so the admin matches a real store.",
+      "context_ref": null,
+      "created_at": "2026-10-23T03:10:41+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-commerce-until-part-2-20261022"
+      ],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-23T03:10:41+00:00",
+          "choice": "In two steps. First, the playground's Commerce source pin moves from the development copy c42597b to the released tag v0.5.0 (6ff63ef), in the same in-store setup, so the 4242 test checkout keeps working; package.json is the only place the pin lives, and the Update playground plugins button moves it to each new stable Commerce release along with Payments and Ship. Second, in its own PR after the guided tour, the playground switches to the released Registry Commerce plugin as playground-commerce-until-part-2-20261022 calls for, so the admin matches a real store.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-commerce-050-source-first-20261023",
+      "implementation_ref": null,
+      "question": "How should the playground move to released Commerce 0.5.0?",
+      "rationale": "Ronald chose 'Code now, Registry plugin next' on the project-thread decision card on 23 Oct 2026 03:06 UTC (recommended option). It puts released Commerce in the playground today at low risk; the Registry switch reworks seeding and checkout and gets its own review.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-23T03:10:41+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4381,5 +4424,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-23T02:19:08+00:00"
+  "updated_at": "2026-10-23T03:10:41+00:00"
 }

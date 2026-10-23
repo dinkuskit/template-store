@@ -2,16 +2,18 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-// Moves each playground plugin pin in package.json to that plugin's latest
-// stable GitHub release (prereleases are never picked), by exact tag and
-// commit. The "Update playground plugins" workflow opens the result as a PR,
-// so every bump gets its own preview and review before it goes live.
+// Moves each playground plugin pin in package.json, and the Commerce source
+// pin, to that repository's latest stable GitHub release (prereleases are
+// never picked), by exact tag and commit. The "Update playground plugins"
+// workflow opens the result as a PR, so every bump gets its own preview and
+// review before it goes live.
 
 const root = resolve(import.meta.dirname, "..");
 const manifestPath = resolve(root, "package.json");
 const source = readFileSync(manifestPath, "utf8");
 const manifest = JSON.parse(source);
-const pins = manifest.dinkuskit?.playgroundPlugins ?? {};
+const pins = { ...manifest.dinkuskit?.playgroundPlugins };
+if (manifest.dinkuskit?.sourcePins?.commerce?.tag) pins.commerce = manifest.dinkuskit.sourcePins.commerce;
 
 async function latestStableTag(name) {
   const headers = { accept: "application/vnd.github+json", "user-agent": "dinkuskit-template-store" };
