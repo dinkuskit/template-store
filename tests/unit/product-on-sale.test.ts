@@ -4,12 +4,12 @@ import { productPageChange, withProductOnSale } from "../../src/features/product
 
 const user = { id: "u1", email: "owner@example.test", name: null, role: 50, createdAt: "2026-10-23T00:00:00.000Z" };
 
-function runtime(fields: Record<string, unknown> | null, result = { success: true, data: { changed: true } }) {
+function runtime(fields: Record<string, unknown> | null, result = { success: true, data: { changed: true } }, status = "published") {
   const calls: Array<{ pluginId: string; path: string; body: unknown; user: unknown }> = [];
   return {
     calls,
     handleContentGet: vi.fn(async (_collection: string, id: string) =>
-      fields ? { success: true, data: { item: { id: "01PAGE", slug: id, data: fields } } } : { success: false, error: { code: "NOT_FOUND", message: "not found" } }),
+      fields ? { success: true, data: { item: { id: "01PAGE", slug: id, status, data: fields } } } : { success: false, error: { code: "NOT_FOUND", message: "not found" } }),
     handlePluginApiRoute: vi.fn(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
       calls.push({ pluginId, path, body: await request.json(), user: caller });
       return result;
@@ -107,6 +107,29 @@ describe("product page publish check tells Commerce", () => {
     const draft = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: false } });
     await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", draft), async () => new Response(null, { status: 500 }));
     expect(draft.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    warn.mockRestore();
+  });
+
+  it("never undoes someone else's unpublish: the page is read again before the product goes back on sale", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const rt = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: true } });
+    // Our unpublish fails, but by then another request has unpublished the page.
+    const contentGet = rt.handleContentGet.getMockImplementation()!;
+    rt.handleContentGet.mockImplementationOnce(contentGet).mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { commerce_item_id: "item-1" } } } }) as never);
+    const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 409 }));
+    expect(out.status).toBe(409);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    warn.mockRestore();
+  });
+
+  it("puts the product back when the page handler throws, and rethrows", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const rt = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: true } });
+    await expect(withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), async () => { throw new Error("db gone"); })).rejects.toThrow("db gone");
+    expect(rt.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+    ]);
     warn.mockRestore();
   });
 

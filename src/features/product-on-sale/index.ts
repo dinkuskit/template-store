@@ -47,7 +47,7 @@ function record(value: unknown): Record<string, unknown> | null {
  * The page's own id and the Commerce product it sells, read before the change;
  * null when the page sells nothing or does not exist, "unreadable" when the read failed.
  */
-async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string } | null | "unreadable"> {
+async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean } | null | "unreadable"> {
   const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true }).catch(() => null);
   if (!found?.success) return found?.error?.code === "NOT_FOUND" ? null : "unreadable";
   const data = record(found.data);
@@ -55,7 +55,7 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
   const fields = record(item?.data) ?? item;
   const id = typeof item?.id === "string" ? item.id : entryId;
   const catalogItemId = typeof fields?.commerce_item_id === "string" ? fields.commerce_item_id.trim() : "";
-  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId } : null;
+  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published: item?.status === "published" } : null;
 }
 
 // Commerce answers these when it has no publish check for the page: no such plugin or route yet, or another page
@@ -125,12 +125,22 @@ export async function withProductOnSale(
   const failed = await tell({ onSale: false });
   if (failed) return refuse(503, "COMMERCE_UNAVAILABLE", "Commerce could not take this page's product off sale, so nothing was changed. Try again.");
   const tookOff = changed;
-  const response = await next();
-  if (!response.ok && tookOff) {
-    // The page change failed after Commerce took the product off sale: put it back as it was.
-    const restored = await tell({ onSale: true });
+  // The page change failed after Commerce took the product off sale. Put it back only if the page, read again
+  // now, is still published and still names that product, so a stale undo never reverses someone else's unpublish.
+  const undo = async () => {
+    if (!tookOff) return;
+    const now = await productPage(runtime, change.entryId, locale);
+    const restored = now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId ? await tell({ onSale: true }) : "the page is no longer published as it was";
     if (restored) console.warn("[product-on-sale] the product stays a Draft after a failed page change:", restored);
+  };
+  let response: Response;
+  try {
+    response = await next();
+  } catch (error) {
+    await undo();
+    throw error;
   }
+  if (!response.ok) await undo();
   if (response.ok && change.action === "trash") {
     const dropped = await tell({ onSale: false, deleted: true });
     if (dropped) console.warn("[product-on-sale] the trashed page's link stays:", dropped);
