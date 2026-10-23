@@ -26,13 +26,15 @@ describe("products whose Commerce product left the catalog", () => {
     expect(shown.find((group) => group.slug === "hats")?.items.map((item) => item.id)).toEqual(["canvas-cap"]);
   });
 
-  it("drop out of category pages and homepage groups only when the catalog was read", () => {
+  it("drop out of category pages only when the catalog was read, while proof-only MerchCatalog groups live on /proof", () => {
     const category = readFileSync("src/pages/categories/[slug].astro", "utf8");
     expect(category).toContain("const removedEntryIds = new Set(catalogRead");
     expect(category).toContain("withoutRemovedProducts([listedCategory], removedEntryIds)[0]");
     const home = readFileSync("src/pages/index.astro", "utf8");
-    expect(home).toContain('profile === "shipping" && !catalogUnavailable');
-    expect(home).toContain("<MerchCatalog collections={shownCollections} ");
+    expect(home).not.toContain("<MerchCatalog");
+    expect(home).not.toContain("data-integration-demos");
+    const proof = readFileSync("src/pages/proof.astro", "utf8");
+    expect(proof).toContain("<MerchCatalog collections={collections} ");
   });
 
   it("have a product page that says the product is no longer available, as a 404", () => {

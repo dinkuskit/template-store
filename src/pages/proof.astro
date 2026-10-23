@@ -1,0 +1,85 @@
+---
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import { getEmDashCollection, getMenu } from "emdash";
+
+import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
+import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
+import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
+import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
+import {
+  PROOF_STORE_DESCRIPTION,
+  STORE_TITLE,
+  isProofStorefrontProfile,
+  loadStorefrontRouteContext,
+} from "../features/store-shell/index.js";
+import { storeBannerText } from "../features/store-shell/checkout-copy.js";
+import { hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
+import "../features/store-shell/global.css";
+
+if (!isProofStorefrontProfile()) {
+  return new Response("Not found", {
+    status: 404,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
+const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
+const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
+const storeMenu = await getMenu("store-primary");
+const productLinks = readProductEntries(products.entries, categoryEntries.entries);
+if (productLinks.errors.length > 0) {
+  console.error(`[product-url] excluded published product entries: ${productLinks.errors.join("; ")}`);
+}
+const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
+  products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
+  categoryEntries.entries,
+);
+if (profile !== "proof" || !demonstrations) {
+  return new Response("Not found", {
+    status: 404,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+  Boolean(await acquireGuestCheckoutAdmission({
+    runtime: Astro.locals.emdash,
+    request: Astro.request,
+  }).catch(() => null));
+const availability = demonstrations.managed;
+const unmanaged = demonstrations.unmanaged;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={PROOF_STORE_DESCRIPTION} />
+    <title>{STORE_TITLE}</title>
+  </head>
+  <body data-storefront-profile={profile}>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
+    <StoreHeader profile={profile} />
+    <main>
+      <section class="store-default-home" data-proof-intro>
+        <h1>Integration demonstrations</h1>
+        <p>Seeded proof examples for Commerce and Inventory. The merchant catalog lives on the <a href="/">store home page</a>.</p>
+      </section>
+      <section aria-label="Separate integration demonstrations" data-integration-demos>
+        <h2 class="demo-heading">Seeded examples</h2>
+        <p class="demo-heading">These seeded examples are separate from the merchant catalog.</p>
+        <MerchCatalog collections={collections} menu={storeMenu ?? undefined} managed={availability} unmanaged={unmanaged} />
+        {availability.price.listable && <ManagedProductAvailability availability={availability} />}
+        {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
+      </section>
+      {productLinks.errors.length > 0 && (
+        <aside data-product-url-errors hidden>{productLinks.errors.join(" | ")}</aside>
+      )}
+    </main>
+    <StoreFooter profile={profile} />
+  </body>
+</html>

@@ -87,6 +87,7 @@ for (const path of [
   "src/features/store-shell/index.ts",
   "src/features/store-shell/StoreFooter.astro",
   "src/features/store-shell/price.ts",
+  "src/pages/proof.astro",
   "src/pages/search.astro",
   "scripts/upgrade-storefront-search.ts",
   "docs/implementation/unpriced-public-home.md",
@@ -145,6 +146,7 @@ for (const path of sourceFiles(resolve(root, "src"))) {
 
 for (const relative of [
   "src/pages/index.astro",
+  "src/pages/proof.astro",
   "src/pages/search.astro",
   "src/pages/categories/[slug].astro",
   "src/pages/products/[id].astro",
