@@ -30,6 +30,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
 
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
   expect((await request.post("/api/proof/stock", { data: { commandId: "shipping-blocked", delta: "-3", reason: "proof-change" } })).status()).toBe(404);
+  expect((await request.get("/proof")).status()).toBe(404);
 
   const installedCatalog = await request.get(
     `/_emdash/api/plugins/${COMMERCE_NATIVE_PLUGIN_ID}/catalog/public`,

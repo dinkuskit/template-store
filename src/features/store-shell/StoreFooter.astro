@@ -6,7 +6,7 @@ import {
   sanitizeHref,
 } from "emdash";
 import { WidgetArea } from "emdash/ui";
-import { STORE_DESCRIPTION, STORE_TITLE } from "./index.js";
+import { PROOF_DEMONSTRATIONS_PATH, STORE_DESCRIPTION, STORE_TITLE } from "./index.js";
 import {
   FALLBACK_FOOTER_POLICIES_LINKS,
   FALLBACK_FOOTER_SHOP_LINKS,
@@ -30,6 +30,7 @@ interface Props {
 
 const { profile, currentPath, note } = Astro.props;
 const path = currentPath ?? Astro.url.pathname;
+const isProofRoute = profile === "proof" && (path.replace(/\/+$/u, "") || "/") === PROOF_DEMONSTRATIONS_PATH;
 
 const settingsResult = await getSiteSettingsWithCacheHint().catch(() => null);
 if (settingsResult?.cacheHint && Astro.cache?.enabled) {
@@ -72,7 +73,7 @@ const activeTheme: StoreThemeMode = isStoreThemeMode(cookieTheme) ? cookieTheme 
 
 const cookiePreset = Astro.cookies.get(PRESET_COOKIE_NAME)?.value;
 const activePreset: StorePresetName = isStorePresetName(cookiePreset) ? cookiePreset : "aizome";
-const defaultProvenance = `Transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
+const defaultProvenance = `Transactional facts remain in Commerce${isProofRoute ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
 ---
 <footer class="store-footer" data-store-footer>
   <svg

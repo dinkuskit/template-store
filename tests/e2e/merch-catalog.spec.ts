@@ -16,7 +16,7 @@ test("products are visible in the canonical category catalog", async ({ page, re
     await expect(page.getByRole("heading", { level: 1 })).toContainText("not found");
   }
 
-  await page.goto("/");
+  await page.goto("/proof");
   await expect(page.locator("[data-merch-catalog]")).toBeVisible();
   await expect(page.locator("[data-merch-catalog]")).not.toContainText(/catalog is unavailable/i);
   await expect(page.locator("[data-merch-item]")).not.toHaveCount(0);
@@ -51,19 +51,26 @@ test("products are visible in the canonical category catalog", async ({ page, re
   await page.getByRole("link", { name: "Back to Tees" }).click();
   await expect(page.locator("h1")).toHaveText("Tees");
   await page.getByRole("link", { name: "Catalog" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("[data-integration-demos]")).toHaveCount(0);
+  await page.goto("/proof");
   await expect(page.locator("[data-merch-catalog]")).toBeVisible();
   await page.getByRole("link", { name: "View Boxy Tee details" }).click();
   await expect(page.locator("[data-product-status]")).toHaveText("Preview only · not purchasable");
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
   await page.getByRole("link", { name: "Catalog" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/proof");
   await page.getByRole("link", { name: "View Canvas Cap details" }).click();
   await expect(page.locator("[data-product-page=canvas-cap]")).toHaveAttribute("data-product-source", "unmanaged");
   await expect(page.locator("[data-product-status]")).toHaveText("In stock");
   await expect(page.locator("[data-product-page] [data-stock-value]")).toHaveCount(0);
   await page.screenshot({ path: resolve(root, "public-cap-product.png"), fullPage: true });
   await page.getByRole("link", { name: "Catalog" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto("/proof");
   await page.getByRole("link", { name: "View availability for Everyday Tee" }).click();
-  await expect(page).toHaveURL(/#managed-product$/);
+  await expect(page).toHaveURL(/\/proof#managed-product$/);
   await expect(page.locator("#managed-product")).toBeFocused();
   await expect(page.locator("#managed-product h2")).toHaveText("Everyday Tee");
   await expect(page.locator("#managed-product [data-stock-value]")).toHaveText("8");
@@ -77,7 +84,7 @@ test("products are visible in the canonical category catalog", async ({ page, re
   await page.keyboard.press("Enter");
   await expect(managedDetails).not.toHaveAttribute("open", "");
   await page.getByRole("link", { name: "View availability for Canvas Cap" }).click();
-  await expect(page).toHaveURL(/#unmanaged-product$/);
+  await expect(page).toHaveURL(/\/proof#unmanaged-product$/);
   await expect(page.locator("#unmanaged-product")).toBeFocused();
   await expect(page.locator("#unmanaged-product h2")).toHaveText("Canvas Cap");
   await expect(page.locator("[data-availability-label]")).toHaveText("In stock");
