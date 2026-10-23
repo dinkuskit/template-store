@@ -4277,11 +4277,52 @@
       "verification_ref": null
     },
     {
-      "baseline_ref": "git:9b7f18e634d3333bfebd6ad6e5b222c4d83fb44b",
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Like Shopify and WooCommerce merch pages (checked against MrBeast's Shopify store: Color then Size, one quantity, one Add to cart): one picker per Commerce option in Commerce's option order (for example Color, then Size), one quantity stepper and one Add to cart per product page. The 'Quantity by option' batch block from template-store#125 is removed; buying two sizes means adding each one. A value with no sellable member beside the other picked values stays visible, struck through, with a screen-reader 'sold out' note; picking it shows its price and status and turns Add to cart into a disabled 'Sold out' button (or 'Unavailable' when that combination does not exist). The redundant 'from' price line is dropped. The demo hoodie gains Color (Black, Heather gray) once the playground runs a Commerce copy that allows more than one option; the pinned dev copy c42597b allows one.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanKgfoihXTKTDSbkEKqnMAvG",
+      "created_at": "2026-10-23T00:47:00+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "storefront-missing-product-media",
+      "history": [
+        {
+          "at": "2026-10-23T01:19:41+00:00",
+          "choice": "Like Shopify and WooCommerce merch pages (checked against MrBeast's Shopify store: Color then Size, one quantity, one Add to cart): one picker per Commerce option in Commerce's option order (for example Color, then Size), one quantity stepper and one Add to cart per product page. The 'Quantity by option' batch block from template-store#125 is removed; buying two sizes means adding each one. A value with no sellable member beside the other picked values stays visible, struck through, with a screen-reader 'sold out' note; picking it shows its price and status and turns Add to cart into a disabled 'Sold out' button (or 'Unavailable' when that combination does not exist). The redundant 'from' price line is dropped. The demo hoodie gains Color (Black, Heather gray) once the playground runs a Commerce copy that allows more than one option; the pinned dev copy c42597b allows one.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "pdp-one-picker-per-option-20261023",
+      "implementation_ref": null,
+      "question": "How should a product page with sizes and colors let a shopper choose and add to cart?",
+      "rationale": "Ronald chose 'Lock it: one Add to cart' on the decision card, 01:19 UTC 23 Oct 2026. A combination with no member hides the price and shows Product data without an Offer (ClawSweeper finding on #146).",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-23T01:19:41+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:52b8e7cbd20621442fca9de42601a3765ee82ad6",
       "candidate_refs": [],
       "choice": "Run the released Payments and Ship Registry bundles inside each visitor's playground store (EmDash's in-process plugins, under their Registry ids), not in EmDash's sandbox. The pretend DinkusKit answers their calls by wrapping the playground Worker's fetch instead of the sandbox runner's host fetch. The Worker gives each playground store its own Site URL and a plugin settings key so Connect can save. Real stores are unchanged: they keep the sandbox.",
       "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanXKk3TDfTZNaP2J6TxxzsRk",
-      "created_at": "2026-10-23T01:14:35+00:00",
+      "created_at": "2026-10-23T01:58:49+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -4301,7 +4342,7 @@
       "review_source_identity": null,
       "status": "proposed",
       "superseded_by": null,
-      "updated_at": "2026-10-23T01:14:35+00:00",
+      "updated_at": "2026-10-23T01:58:49+00:00",
       "verification_ref": null
     }
   ],
@@ -4325,5 +4366,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-23T01:14:35+00:00"
+  "updated_at": "2026-10-23T01:58:49+00:00"
 }

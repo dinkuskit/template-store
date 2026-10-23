@@ -2,14 +2,12 @@ import {
   GUEST_CART_PROCEED_LABEL,
   GUEST_CART_STORAGE_KEY,
   addGuestCartLine,
-  addGuestCartLines,
   emptyGuestCartIntent,
   guestCartItemCount,
   guestReturnQueryIsPresent,
   isSafeGuestCartProductId,
   isSafeOrderLineImageUrl,
   loadGuestCartIntent,
-  parseGuestCartBatchSelections,
   parseGuestCartQuantityInput,
   parseGuestCartSnapshotResponse,
   presentGuestCart,
@@ -661,35 +659,6 @@ function commitAddToCartMutation(
   return true;
 }
 
-function readVariantBatchInputs(container: Element | null | undefined): HTMLInputElement[] {
-  if (!container) return [];
-  return [...container.querySelectorAll("[data-variant-qty]")].filter(
-    (node): node is HTMLInputElement => node instanceof HTMLInputElement && !node.disabled,
-  );
-}
-
-function runVariantBatchAdd(container: Element | null | undefined, button: HTMLButtonElement): void {
-  button.disabled = true;
-  const inputs = readVariantBatchInputs(container);
-  const parsed = parseGuestCartBatchSelections(
-    inputs.map((input) => ({
-      id: input.getAttribute("data-variant-qty") ?? "",
-      rawQuantity: input.value,
-    })),
-  );
-  if (parsed.reason !== null) {
-    setAddToCartStatus(container, parsed.reason, true);
-    button.disabled = false;
-    return;
-  }
-  if (commitAddToCartMutation(container, addGuestCartLines(session.intent, parsed.lines))) {
-    for (const input of inputs) {
-      input.value = "0";
-    }
-  }
-  button.disabled = false;
-}
-
 function isSingleAddBlocked(button: HTMLButtonElement, container: Element | null | undefined): boolean {
   if (button.disabled || button.hidden) return true;
   if (button.getAttribute("data-add-to-cart-sellable") === "false") return true;
@@ -720,29 +689,6 @@ export function hydrateGuestCartControls(): void {
       if (!(input instanceof HTMLInputElement) || input.disabled) return;
       const delta = button.getAttribute("data-add-to-cart-qty-step") === "-1" ? -1 : 1;
       input.value = String(stepGuestCartQuantityInput(input.value, delta, 1));
-    });
-  });
-  document.querySelectorAll("[data-variant-qty-step]").forEach((button) => {
-    if (!(button instanceof HTMLButtonElement) || button.dataset.guestCartStepReady === "1") return;
-    button.dataset.guestCartStepReady = "1";
-    button.addEventListener("click", () => {
-      const container = button.closest(".guest-cart-add") ?? button.parentElement;
-      const targetId = button.getAttribute("data-variant-qty-target");
-      const row = button.closest("[data-variant-batch-row]") ?? button.parentElement;
-      const input =
-        (targetId ? container?.querySelector(`[data-variant-qty="${CSS.escape(targetId)}"]`) : null) ??
-        row?.querySelector("[data-variant-qty]");
-      if (!(input instanceof HTMLInputElement) || input.disabled) return;
-      const delta = button.getAttribute("data-variant-qty-step") === "-1" ? -1 : 1;
-      input.value = String(stepGuestCartQuantityInput(input.value, delta, 0));
-    });
-  });
-  document.querySelectorAll("[data-add-to-cart-batch]").forEach((button) => {
-    if (!(button instanceof HTMLButtonElement) || button.dataset.guestCartBatchReady === "1") return;
-    button.dataset.guestCartBatchReady = "1";
-    button.addEventListener("click", () => {
-      const container = button.closest(".guest-cart-add") ?? button.parentElement;
-      runVariantBatchAdd(container, button);
     });
   });
   document.querySelectorAll("[data-add-to-cart]").forEach((button) => {
