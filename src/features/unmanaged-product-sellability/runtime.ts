@@ -11,7 +11,7 @@ import {
   type StorefrontAvailabilityResolverStorage,
 } from "@dinkuskit/commerce";
 
-import manifest from "../../../package.json";
+import manifest from "../../../package.json" with { type: "json" };
 
 import { presentStorefrontPrice } from "../store-shell/index.js";
 import { UnmanagedProductSellabilityError } from "./errors.js";

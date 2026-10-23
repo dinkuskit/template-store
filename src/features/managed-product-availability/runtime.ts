@@ -10,7 +10,7 @@ import {
   type StoreInventoryConfigurationRecord,
 } from "@dinkuskit/commerce";
 
-import manifest from "../../../package.json";
+import manifest from "../../../package.json" with { type: "json" };
 import {
   COMMAND_SCHEMA,
   CREATE_LOCATION_TYPE,
