@@ -80,6 +80,26 @@ const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checko
 const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo, checkoutEnabled });
 const variants = linkedProduct?.variants ?? [];
 const selectedVariant = variants.find((member) => member.availability.sellable) ?? variants[0] ?? null;
+// One picker per option (Color, then Size), like Shopify or WooCommerce
+// product pages. The browser matches the picked values to one member.
+const variantOptions = [...new Set(variants.flatMap((member) => member.selections.map(([option]) => option)))]
+  .map((label) => ({
+    label,
+    values: [...new Set(variants.flatMap((member) => member.selections.filter(([option]) => option === label).map(([, value]) => value)))],
+  }));
+const selectedValue = (option: string) => selectedVariant?.selections.find(([name]) => name === option)?.[1];
+// A value is sold out when no sellable member has it beside the other picked values.
+const valueSoldOut = (option: string, value: string) => !variants.some((member) =>
+  member.availability.sellable && member.selections.every(([name, picked]) =>
+    name === option ? picked === value : picked === selectedValue(name)));
+const variantMembers = variants.map((member) => ({
+  id: member.id,
+  values: Object.fromEntries(member.selections),
+  price: member.priceText,
+  availability: member.availability.status,
+  status: availabilityLabels[member.availability.status] ?? "Availability unavailable",
+  sellable: member.availability.sellable,
+}));
 const cartProduct = linkedProduct && selectedVariant
   ? { ...linkedProduct, id: selectedVariant.id, availability: { ...selectedVariant.availability, listable: true } }
   : linkedProduct;
@@ -190,18 +210,16 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
             {linkedProduct?.mpn && <p class="product-detail__identifier" data-product-mpn={linkedProduct.mpn}>MPN {linkedProduct.mpn}</p>}
             {linkedProduct?.brand && <p class="product-detail__identifier" data-product-brand={linkedProduct.brand}>Brand {linkedProduct.brand}</p>}
             {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price data-variant-price>{selectedVariant?.priceText ?? linkedProduct.price.regularText}</strong>}</p>}
-            {variants.length > 0 && <p class="product-detail__from" data-product-from-price>{linkedProduct!.price.regularText}</p>}
-            {variants.length > 0 && <fieldset class="product-variants" data-product-variants>
-              <legend>{[...new Set(variants.flatMap((member) => member.selections.map(([option]) => option)))].join(" / ")}</legend>
-              {variants.map((member) => <label class="product-variant">
-                <input type="radio" name="variant" value={member.id} checked={member === selectedVariant}
-                  data-variant-choice data-choice-price={member.priceText}
-                  data-variant-availability={member.availability.status}
-                  data-variant-status={availabilityLabels[member.availability.status] ?? "Availability unavailable"}
-                  data-variant-sellable={String(member.availability.sellable)} />
-                <span>{member.selections.map(([, value]) => value).join(" / ")}</span>
+            {variantOptions.map((option, index) => <fieldset class="product-variants" data-product-variants data-variant-option={option.label}>
+              <legend>{option.label}</legend>
+              {option.values.map((value) => <label class="product-variant">
+                <input type="radio" name={`variant-option-${index}`} value={value} checked={value === selectedValue(option.label)}
+                  data-variant-choice data-variant-option={option.label}
+                  data-variant-sold-out={String(valueSoldOut(option.label, value))} />
+                <span>{value}</span><span class="product-variant__sold-out"> (sold out)</span>
               </label>)}
-            </fieldset>}
+            </fieldset>)}
+            {variantMembers.length > 0 && <script type="application/json" data-variant-members set:html={jsonLdScript(variantMembers)} />}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
@@ -216,35 +234,45 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
   </body>
 </html>
 <script>
-  // Variant picker: show the chosen member's Commerce price and availability.
+  // Variant pickers: match the picked values to one Commerce member, then show
+  // its price and availability and point the single Add to cart at it.
+  type VariantMember = { id: string; values: Record<string, string>; price: string; availability: string; status: string; sellable: boolean };
   const productJsonLd = document.querySelector<HTMLScriptElement>("[data-product-jsonld]");
   const variantJsonLdData = document.querySelector<HTMLScriptElement>("[data-variant-product-jsonld]");
   const variantJsonLd = JSON.parse(variantJsonLdData?.textContent ?? "{}") as Record<string, unknown>;
-  for (const input of document.querySelectorAll<HTMLInputElement>("[data-variant-choice]")) {
-    input.addEventListener("change", () => {
-      const price = document.querySelector("[data-variant-price]");
-      const status = document.querySelector("[data-product-status]");
-      const add = document.querySelector<HTMLElement>("[data-add-to-cart]");
-      if (price) price.textContent = input.dataset.choicePrice ?? "";
-      if (status) {
-        status.textContent = input.dataset.variantStatus ?? "";
-        status.setAttribute("data-availability-status", input.dataset.variantAvailability ?? "");
-      }
-      if (productJsonLd && Object.hasOwn(variantJsonLd, input.value)) {
-        productJsonLd.textContent = JSON.stringify(variantJsonLd[input.value]);
-      }
-      if (add) {
-        add.dataset.addToCart = input.value;
-        const sellable = input.dataset.variantSellable === "true";
-        add.dataset.addToCartSellable = String(sellable);
-        if (add instanceof HTMLButtonElement) add.disabled = !sellable;
-        const single = add.closest<HTMLElement>("[data-add-to-cart-single]");
-        const container = add.closest<HTMLElement>(".guest-cart-add");
-        if (single) single.hidden = !sellable;
-        else if (container) container.hidden = !sellable;
-      }
-    });
+  const members = JSON.parse(document.querySelector("[data-variant-members]")?.textContent ?? "[]") as VariantMember[];
+  const choices = [...document.querySelectorAll<HTMLInputElement>("[data-variant-choice]")];
+  const picked = () => Object.fromEntries(choices.filter((input) => input.checked).map((input) => [input.dataset.variantOption ?? "", input.value]));
+  const matches = (member: VariantMember, values: Record<string, string>) =>
+    Object.entries(member.values).every(([option, value]) => values[option] === value);
+  function update(): void {
+    const values = picked();
+    const member = members.find((candidate) => matches(candidate, values));
+    for (const input of choices) {
+      const option = input.dataset.variantOption ?? "";
+      const soldOut = !members.some((candidate) => candidate.sellable && matches(candidate, { ...values, [option]: input.value }));
+      input.dataset.variantSoldOut = String(soldOut);
+    }
+    const price = document.querySelector("[data-variant-price]");
+    const status = document.querySelector("[data-product-status]");
+    const add = document.querySelector<HTMLElement>("[data-add-to-cart]");
+    if (price && member) price.textContent = member.price;
+    if (status) {
+      status.textContent = member?.status ?? "Unavailable";
+      status.setAttribute("data-availability-status", member?.availability ?? "");
+    }
+    if (productJsonLd && member && Object.hasOwn(variantJsonLd, member.id)) {
+      productJsonLd.textContent = JSON.stringify(variantJsonLd[member.id]);
+    }
+    if (add) {
+      const sellable = Boolean(member?.sellable);
+      if (member) add.dataset.addToCart = member.id;
+      add.dataset.addToCartSellable = String(sellable);
+      if (add instanceof HTMLButtonElement) add.disabled = !sellable;
+      add.textContent = sellable ? "Add to cart" : member ? "Sold out" : "Unavailable";
+    }
   }
+  for (const input of choices) input.addEventListener("change", update);
 </script>
 <style>
   .product-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}
@@ -264,5 +292,9 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
   .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
   .product-variants{display:flex;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}
   .product-variant{display:inline-flex;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
+  .product-variant__sold-out{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .product-variant:has(input[data-variant-sold-out="true"]){color:var(--store-muted);box-shadow:none}
+  .product-variant:has(input[data-variant-sold-out="true"]) span:first-of-type{text-decoration:line-through}
+  .product-variant:has(input[data-variant-sold-out="false"]) .product-variant__sold-out{display:none}
   @media(max-width:40rem){.product-detail{grid-template-columns:1fr;gap:1.5rem}}
 </style>

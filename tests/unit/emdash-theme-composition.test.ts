@@ -128,12 +128,13 @@ describe("EmDash composition primitives & seed contract", () => {
         skipMediaDownload: true,
       });
 
-      // 1. Menus: footer_shop & footer_policies
+      // 1. Menus: footer_shop, footer_policies & footer_account
       const menus = (
         await sql<{ name: string }>`select name from _emdash_menus order by name`.execute(db)
       ).rows.map((r) => r.name);
       expect(menus).toContain(FOOTER_SHOP_MENU_NAME);
       expect(menus).toContain(FOOTER_POLICIES_MENU_NAME);
+      expect(menus).toContain("footer_account");
 
       const policiesLinks = (
         await sql<{ label: string; custom_url: string }>`
@@ -147,9 +148,6 @@ describe("EmDash composition primitives & seed contract", () => {
       expect(policiesLinks.map((item) => item.custom_url)).toEqual([
         "/shipping",
         "/returns",
-        "/account",
-        "/cart",
-        "/search",
       ]);
 
       // 2. WidgetArea: "footer" with content, menu, and component (core:search) widgets
@@ -168,7 +166,8 @@ describe("EmDash composition primitives & seed contract", () => {
         `.execute(db)
       ).rows;
       expect(widgets.map((w) => w.type)).toEqual(["content", "menu", "component"]);
-      expect(widgets[1]?.menu_name).toBe(FOOTER_POLICIES_MENU_NAME);
+      // The menu widget lists different links from the fixed "Policies & Care" column.
+      expect(widgets[1]?.menu_name).toBe("footer_account");
       expect(widgets[2]?.component_id).toBe("core:search");
       expect(JSON.parse(widgets[2]?.component_props ?? "{}")).toEqual({
         placeholder: "Search products...",

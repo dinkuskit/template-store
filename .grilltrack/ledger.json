@@ -4275,6 +4275,32 @@
       "superseded_by": null,
       "updated_at": "2026-10-22T22:54:48+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Like Shopify and WooCommerce merch pages (checked against MrBeast's Shopify store: Color then Size, one quantity, one Add to cart): one picker per Commerce option in Commerce's option order (for example Color, then Size), one quantity stepper and one Add to cart per product page. The 'Quantity by option' batch block from template-store#125 is removed; buying two sizes means adding each one. A value with no sellable member beside the other picked values stays visible, struck through, with a screen-reader 'sold out' note; picking it shows its price and status and turns Add to cart into a disabled 'Sold out' button (or 'Unavailable' when that combination does not exist). The redundant 'from' price line is dropped. The demo hoodie gains Color (Black, Heather gray) once the playground runs a Commerce copy that allows more than one option; the pinned dev copy c42597b allows one.",
+      "context_ref": "thread:cmsg_01JLcLQeD34rfoMic23aamanKgfoihXTKTDSbkEKqnMAvG",
+      "created_at": "2026-10-23T00:47:00+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "storefront-missing-product-media",
+      "history": [],
+      "id": "pdp-one-picker-per-option-20261023",
+      "implementation_ref": null,
+      "question": "How should a product page with sizes and colors let a shopper choose and add to cart?",
+      "rationale": "Ronald, 23 Oct 2026 00:32 UTC: the hoodie page let a shopper pick size twice and showed two Add to cart buttons. Recommended answers posted in thread Playground product page and footer.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "proposed",
+      "superseded_by": null,
+      "updated_at": "2026-10-23T00:47:00+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4297,5 +4323,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-22T22:54:48+00:00"
+  "updated_at": "2026-10-23T00:47:00+00:00"
 }
