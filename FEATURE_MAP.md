@@ -185,7 +185,7 @@ request.
   `tests/e2e/merch-catalog.spec.ts:53`, `:58`, and `:64`. Playwright matches a
   string name as a case-insensitive substring. The header cart link is named
   `Cart` (`src/features/guest-cart/GuestCartNav.astro:3`), so the footer
-  `/cart` link is `Shopping bag` (`seed/seed.json:212`,
+  `/cart` link in the `footer_account` menu is `Shopping bag` (`seed/seed.json:218`,
   `src/features/store-shell/store-menu.ts:40`). Keep `Cart`, and `catalog` in
   any case, out of every other link name; the header and footer render on
   every page.
@@ -203,9 +203,10 @@ request.
   and other main content. The check reads `textContent`, so hidden text counts.
 - A seeded `custom` menu item's `url` lands in `_emdash_menu_items.custom_url`;
   the table has no `url` column, so queries select `custom_url`.
-  `tests/unit/emdash-theme-composition.test.ts:139-153` does, and pins
-  `footer_policies` to `/shipping`, `/returns`, `/account`, `/cart`, and
-  `/search`, in that order.
+  `tests/unit/emdash-theme-composition.test.ts:139-150` does, and pins
+  `footer_policies` to `/shipping` and `/returns`, in that order. Account and
+  Shopping bag live in the `footer_account` menu, which the footer menu widget
+  shows (`tests/unit/emdash-theme-composition.test.ts:170`).
 - `tests/unit/emdash-theme-composition.test.ts:43-87` reads source as text:
   `src/styles/tokens.css` stays in `@layer base` with the `aizome`, `forest`,
   and `cobalt` presets, `src/styles/theme.css` keeps an empty unlayered
@@ -218,7 +219,7 @@ Keep these store-shell `data-*` hooks, with their values:
 | --- | --- | --- | --- |
 | Header | `data-store-header`, `data-store-main-nav`, `data-shopper-account-nav` | `src/features/store-shell/StoreHeader.astro:39`, `:47`, `:84` | `tests/e2e/store-header-nav.spec.ts:15`, `:76`; `tests/e2e/shopper-account.spec.ts:17` |
 | Header menu | `data-store-menu-toggle`, `data-store-menu-parent`, `data-store-menu-expand` | `src/features/store-shell/StoreHeader.astro:42`, `:50`, `:52` | `src/features/store-shell/store-menu-client.ts:11-22`, which `tests/e2e/store-header-nav.spec.ts` exercises |
-| Cart link | `data-guest-cart-nav`, `data-guest-cart-count` | `src/features/guest-cart/GuestCartNav.astro:3`, `:5` | `tests/e2e/store-header-nav.spec.ts:77`; `tests/e2e/guest-checkout-feasibility.spec.ts:144`; `tests/unit/guest-cart.test.ts:336`, `:368` |
+| Cart link | `data-guest-cart-nav`, `data-guest-cart-count` | `src/features/guest-cart/GuestCartNav.astro:3`, `:5` | `tests/e2e/store-header-nav.spec.ts:77`; `tests/e2e/guest-checkout-feasibility.spec.ts:144`; `tests/unit/guest-cart.test.ts:271`, `:295` |
 | Footer | `data-store-footer`, `data-footer-shop-nav`, `data-footer-policies-nav`, `data-nav-source`, `data-theme-switcher`, `data-theme-choice`, `data-preset-switcher` | `src/features/store-shell/StoreFooter.astro:77`, `:93-94`, `:115-116`, `:170-201` | `tests/e2e/store-header-nav.spec.ts:78`, `:85`, `:92-93`; `tests/unit/emdash-theme-composition.test.ts:95-99` |
 | Footer widgets | `data-widget-area="footer"` and `data-widget-type`, rendered by EmDash `<WidgetArea name="footer" />` | `src/features/store-shell/StoreFooter.astro:139` | `tests/e2e/store-header-nav.spec.ts:86-90`; `tests/unit/emdash-theme-composition.test.ts:94`, `:109` |
 | Policy pages | `data-policy-support-section="policy-support-note"`, `data-section-source` | `src/pages/shipping.astro:45-46`; `src/pages/returns.astro:59-60` | `tests/e2e/store-header-nav.spec.ts:102-107` |
