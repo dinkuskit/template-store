@@ -40,13 +40,20 @@ describe("product page publish check tells Commerce", () => {
     expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { catalogItemId: "item-1", entryId: "01PAGE", onSale: true }, user }]);
   });
 
-  it("takes it back to Draft on unpublish, and drops the link on trash", async () => {
+  it("takes the product off sale before unpublish, and drops the link after trash", async () => {
     const rt = runtime({ commerce_item_id: "item-1" });
-    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 200 }));
-    await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), async () => new Response(null, { status: 200 }));
-    expect(rt.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false, deleted: true },
+    const order: string[] = [];
+    rt.handlePluginApiRoute.mockImplementation(async (_p: string, _m: string, _path: string, request: Request) => {
+      order.push("commerce " + JSON.stringify(await request.json()));
+      return { success: true, data: { changed: true } };
+    });
+    const page = async () => { order.push("cms"); return new Response(null, { status: 200 }); };
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), page);
+    await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), page);
+    expect(order).toEqual([
+      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
+      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
+      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false,"deleted":true}',
     ]);
   });
 
@@ -54,16 +61,36 @@ describe("product page publish check tells Commerce", () => {
     const rt = runtime({ commerce_item_id: "item-1" });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(null, { status: 409 }));
     const empty = runtime({ commerce_item_id: "" });
-    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", empty), async () => new Response(null, { status: 200 }));
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", empty), async () => new Response(null, { status: 200 }));
     const anonymous = runtime({ commerce_item_id: "item-1" });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", anonymous, null), async () => new Response(null, { status: 200 }));
     expect([...rt.calls, ...empty.calls, ...anonymous.calls]).toEqual([]);
     expect(anonymous.handleContentGet).not.toHaveBeenCalled();
   });
 
-  it("keeps the page change when Commerce refuses or is unavailable", async () => {
+  it("refuses unpublish and trash, changing nothing, when Commerce refuses or is unavailable", async () => {
+    const refused = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } } as never);
+    const cms = vi.fn(async () => new Response(null, { status: 200 }));
+    const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", refused), cms);
+    expect(out.status).toBe(503);
+    expect((await out.json()).error.code).toBe("COMMERCE_UNAVAILABLE");
+    const broken = runtime({ commerce_item_id: "item-1" });
+    broken.handlePluginApiRoute.mockRejectedValueOnce(new Error("down"));
+    expect((await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", broken), cms)).status).toBe(503);
+    expect(cms).not.toHaveBeenCalled();
+  });
+
+  it("lets a page that does not own its product, or a store without the publish check, change freely", async () => {
+    for (const code of ["PRODUCT_PAGE_CONFLICT", "NOT_FOUND"]) {
+      const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code, message: code } } as never);
+      const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
+      expect(await out.text()).toBe("done");
+    }
+  });
+
+  it("keeps a publish when Commerce refuses or is unavailable; the product stays a Draft", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const refused = runtime({ commerce_item_id: "item-1" }, { success: false, data: undefined as never, error: { message: "forbidden" } } as never);
+    const refused = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } } as never);
     const ok = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", refused), async () => new Response("published", { status: 200 }));
     expect(await ok.text()).toBe("published");
     const broken = runtime({ commerce_item_id: "item-1" });
@@ -72,6 +99,18 @@ describe("product page publish check tells Commerce", () => {
     expect(still.status).toBe(200);
     expect(warn).toHaveBeenCalledTimes(2);
     warn.mockRestore();
+  });
+
+  it("only someone who may publish all content changes a product's sale state", async () => {
+    const author = { ...user, role: 30 };
+    const rt = runtime({ commerce_item_id: "item-1" });
+    const published = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt, author), async () => new Response(null, { status: 200 }));
+    expect(published.status).toBe(200);
+    const cms = vi.fn(async () => new Response(null, { status: 200 }));
+    const unpublished = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt, author), cms);
+    expect(unpublished.status).toBe(403);
+    expect(cms).not.toHaveBeenCalled();
+    expect(rt.calls).toEqual([]);
   });
 
   it("leaves every other request alone", async () => {

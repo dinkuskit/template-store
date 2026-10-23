@@ -7,6 +7,8 @@
  * product goes on sale or back to Draft with the page.
  */
 
+import { hasPermission } from "@emdash-cms/auth";
+
 export const SET_ON_SALE_ROUTE = "catalog-items/set-on-sale";
 
 const PRODUCTS = "products";
@@ -30,7 +32,7 @@ export function productPageChange(method: string, pathname: string): ProductPage
   return null;
 }
 
-type HandlerResult = { success: boolean; data?: unknown; error?: { message?: string } };
+type HandlerResult = { success: boolean; data?: unknown; error?: { code?: string; message?: string } };
 
 export interface OnSaleRuntime {
   handleContentGet(collection: string, id: string, locale?: string, options?: { includeDrafts: boolean }): Promise<HandlerResult>;
@@ -53,10 +55,26 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
   return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId } : null;
 }
 
+// Commerce answers these when it has no publish check for the page: no such route yet, or another page sells the product.
+const NOT_THIS_PAGES = new Set(["NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
+
+function refuse(status: number, code: string, message: string): Response {
+  return new Response(JSON.stringify({ error: { code, message } }), { status, headers: { "Content-Type": "application/json" } });
+}
+
 /**
- * Runs the content request, then, when it succeeded, tells Commerce. A failed
- * Commerce call leaves the page change in place and the product as it was;
- * the editor's Commerce panel shows which state the product is in.
+ * Wraps a products-page publish, unpublish or trash with Commerce's half.
+ *
+ * - Only someone who may publish all content (`content:publish_any`, the
+ *   route's own permission) changes a product's sale state. EmDash's
+ *   handlePluginApiRoute does not check route permissions, so it is checked here.
+ * - Unpublish and trash take the product off sale first. If Commerce refuses
+ *   or cannot be reached, the page change is refused too, so a product is never
+ *   left buyable behind an unpublished or trashed page.
+ * - Publish puts the product on sale after the page is published. If that
+ *   fails, the product stays a Draft (not buyable) and the page's Commerce
+ *   panel shows it; publishing again retries.
+ * - Trash drops the page's link afterwards.
  */
 export async function withProductOnSale(
   input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string },
@@ -64,31 +82,37 @@ export async function withProductOnSale(
 ): Promise<Response> {
   const change = productPageChange(input.request.method, input.url.pathname);
   if (!change || !input.runtime || !input.user) return next();
+  const runtime = input.runtime;
   const locale = input.url.searchParams.get("locale") ?? undefined;
-  const page = await productPage(input.runtime, change.entryId, locale).catch(() => null);
-  const response = await next();
-  if (!page || !response.ok) return response;
-  const body = {
-    catalogItemId: page.catalogItemId,
-    entryId: page.id,
-    onSale: change.action === "publish",
-    ...(change.action === "trash" ? { deleted: true } : {}),
+  const page = await productPage(runtime, change.entryId, locale).catch(() => null);
+  if (!page) return next();
+  const allowed = hasPermission(input.user as Parameters<typeof hasPermission>[0], "content:publish_any");
+  const tell = async (body: Record<string, unknown>) => {
+    try {
+      const result = await runtime.handlePluginApiRoute(input.commercePluginId, "POST", SET_ON_SALE_ROUTE,
+        new Request(new URL(`/_emdash/api/plugins/${input.commercePluginId}/${SET_ON_SALE_ROUTE}`, input.url), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ catalogItemId: page.catalogItemId, entryId: page.id, ...body }),
+        }), input.user);
+      return result.success || NOT_THIS_PAGES.has(result.error?.code ?? "") ? null : result.error?.message ?? "Commerce refused";
+    } catch (error) {
+      return error instanceof Error ? error.message : "Commerce unavailable";
+    }
   };
-  try {
-    const result = await input.runtime.handlePluginApiRoute(
-      input.commercePluginId,
-      "POST",
-      SET_ON_SALE_ROUTE,
-      new Request(new URL(`/_emdash/api/plugins/${input.commercePluginId}/${SET_ON_SALE_ROUTE}`, input.url), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }),
-      input.user,
-    );
-    if (!result.success) console.warn("[product-on-sale] Commerce refused", change.action, result.error?.message ?? "");
-  } catch (error) {
-    console.warn("[product-on-sale] Commerce unavailable", change.action, error instanceof Error ? error.message : "");
+  if (change.action === "publish") {
+    const response = await next();
+    const failed = response.ok && allowed ? await tell({ onSale: true }) : null;
+    if (failed) console.warn("[product-on-sale] the product stays a Draft:", failed);
+    return response;
+  }
+  if (!allowed) return refuse(403, "FORBIDDEN", "This page sells a product. Ask an editor or admin to unpublish or trash it.");
+  const failed = await tell({ onSale: false });
+  if (failed) return refuse(503, "COMMERCE_UNAVAILABLE", "Commerce could not take this page's product off sale, so nothing was changed. Try again.");
+  const response = await next();
+  if (response.ok && change.action === "trash") {
+    const dropped = await tell({ onSale: false, deleted: true });
+    if (dropped) console.warn("[product-on-sale] the trashed page's link stays:", dropped);
   }
   return response;
 }
