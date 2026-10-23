@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import manifest from "../../package.json";
+
 import {
   UNMANAGED_PRODUCT_ITEM_ID,
   UNMANAGED_PRODUCT_SKU,
@@ -70,7 +72,7 @@ describe("unmanaged product sellability", () => {
       sellable: true,
     });
     expect(restored.provenance).toEqual({
-      commerce: "c42597bddd35d949f4e69f8ca97cc26206200da0",
+      commerce: manifest.dinkuskit.sourcePins.commerce.commit,
       inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
     });
   });

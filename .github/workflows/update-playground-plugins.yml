@@ -2,8 +2,9 @@ name: Update playground plugins
 
 # Press "Run workflow" on main after a plugin release is promoted. It moves the
 # playground's Payments and Ship pins (package.json dinkuskit.playgroundPlugins)
-# to each plugin's latest stable release and opens a PR, so the bump gets its
-# own pr-N playground preview and review before merging puts it live.
+# and the Commerce source pin (dinkuskit.sourcePins.commerce) to each plugin's
+# latest stable release and opens a PR, so the bump gets its own pr-N
+# playground preview and review before merging puts it live.
 # Needs the DinkusKit release app (secrets RELEASE_APP_ID and
 # RELEASE_APP_PRIVATE_KEY) so the PR it opens runs CI.
 
@@ -69,4 +70,4 @@ jobs:
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
           gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
             --title "Playground: move plugins to their latest stable releases" \
-            --body "$(printf 'Opened by the Update playground plugins workflow.\n\n%s\n\nThe pr-N playground preview proves Payments, Ship and the welcome card on the new versions; merging puts them live on playground.dinkuskit.com.' "$SUMMARY")"
+            --body "$(printf 'Opened by the Update playground plugins workflow.\n\n%s\n\nThe pr-N playground preview proves Commerce, Payments, Ship and the welcome card on the new versions; merging puts them live on playground.dinkuskit.com.' "$SUMMARY")"
