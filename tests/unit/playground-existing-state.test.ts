@@ -5,7 +5,7 @@
  * (an isolate restart), and checkout bindings persisted in an existing database
  * stay readable and authoritative after re-seeding.
  */
-import { createSettingsAccess, OptionsRepository, PluginStorageRepository } from "emdash";
+import { ContentRepository, createSettingsAccess, OptionsRepository, PluginStorageRepository } from "emdash";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
 import { Kysely } from "kysely";
@@ -350,6 +350,21 @@ describe("playground visitor database state", () => {
     // Each finished step is announced once.
     expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual(["edit-product", "connect-payments", "place-order", "ship-order"]);
     expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual([]);
+  });
+
+  it("ticks Edit a product when the visitor publishes a change to a product page in Content > Products", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
+
+    // Publishing writes the page's live values; a new short description is enough.
+    const pages = new ContentRepository(db as never);
+    const [page] = (await pages.findMany("products", { limit: 1 })).items;
+    expect(page).toBeTruthy();
+    await pages.update("products", page!.id, { data: { description: "Changed by the visitor" } });
+
+    const later = await readTourState(db as never, true);
+    expect(later).toMatchObject({ productEdited: true });
+    expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual(["edit-product"]);
   });
 
   it("keeps the progress a visitor made before the tour replaced the welcome card", async () => {

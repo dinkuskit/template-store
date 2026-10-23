@@ -128,3 +128,11 @@
 {"action": "decision_locked", "at": "2026-10-23T03:10:41+00:00", "data": {"decision_id": "playground-commerce-050-source-first-20261023"}, "event_id": "04e8103e-3546-4506-86cc-d5142e649fbc"}
 {"action": "decision_proposed", "at": "2026-10-23T03:14:00+00:00", "data": {"decision_id": "playground-guided-tour-20261023"}, "event_id": "07601b70-93da-441c-b857-9442e0df4e23"}
 {"action": "decision_locked", "at": "2026-10-23T03:14:00+00:00", "data": {"decision_id": "playground-guided-tour-20261023"}, "event_id": "2f248a72-21d0-4c7c-a6bf-2e560d257797"}
+{"action": "focus_started", "at": "2026-10-23T19:34:44+00:00", "data": {"cadence": "frontier-batch", "domain": "One product screen, product states and plugin sidebar folders"}, "event_id": "7f120ced-de06-40d4-ad38-21093f29c749"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-23T19:34:44+00:00", "data": {"summary": "Ronald said 'lock it' at 19:29 UTC 23 Oct 2026 in the playground thread."}, "event_id": "eb5c1181-f27d-4650-a2db-6897168d2891"}
+{"action": "decision_proposed", "at": "2026-10-23T19:34:44+00:00", "data": {"decision_id": "template-one-product-screen-20261023"}, "event_id": "33257d26-c8e4-43c4-bf40-980b24617a24"}
+{"action": "decision_locked", "at": "2026-10-23T19:34:45+00:00", "data": {"decision_id": "template-one-product-screen-20261023"}, "event_id": "c25bdf9b-7fa0-45ab-aaf2-a813f0ee964a"}
+{"action": "decision_proposed", "at": "2026-10-23T19:34:45+00:00", "data": {"decision_id": "template-product-states-20261023"}, "event_id": "cbbd61bb-a7f0-43ad-b293-b2e9a374c8f8"}
+{"action": "decision_locked", "at": "2026-10-23T19:34:45+00:00", "data": {"decision_id": "template-product-states-20261023"}, "event_id": "e9839ed4-288f-4b53-8d6e-c588e548a797"}
+{"action": "decision_proposed", "at": "2026-10-23T19:34:45+00:00", "data": {"decision_id": "playground-tour-step-one-content-products-20261023"}, "event_id": "df995bf7-4230-4bcc-8e4c-9f7cb6bb8bf3"}
+{"action": "decision_locked", "at": "2026-10-23T19:34:45+00:00", "data": {"decision_id": "playground-tour-step-one-content-products-20261023"}, "event_id": "e7746b95-dddf-4116-a655-60693132f532"}

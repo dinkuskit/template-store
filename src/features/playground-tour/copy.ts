@@ -16,7 +16,7 @@ export const TOUR_COPY_DEFAULTS = {
   },
   "edit-product": {
     title: "Edit a product",
-    text: "Open Products, pick a product and change its name or price. Your shop shows the change straight away.",
+    text: "Open Content > Products, pick a product and change its short description. Press Save, then Publish changes, and your shop shows it straight away.",
   },
   "connect-payments": {
     title: "Connect Payments",

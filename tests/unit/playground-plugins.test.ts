@@ -133,7 +133,7 @@ describe("Playground Payments, Ship and tour", () => {
     expect(fresh).toContain('"action_id":"tour_check_progress"');
     expect(fresh).toContain("→ Edit a product (next)");
     expect(fresh).toContain("○ Connect Payments");
-    expect(fresh).toContain(`${ORIGIN}/_emdash/admin/plugins/dinkus-commerce/products`);
+    expect(fresh).toContain(`${ORIGIN}/_emdash/admin/content/products`);
     expect(fresh).toContain(`${ORIGIN}/_emdash/admin/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`);
     expect(fresh).toContain(`${ORIGIN}/_emdash/admin/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`);
     expect(fresh).toContain(`${ORIGIN}/playground-tour`);

@@ -1,11 +1,12 @@
 /**
  * Where a prospect is in the playground tour (GrillTrack playground-guided-tour-20261023).
  * Every step ticks itself off from what the visitor's own store holds: an
- * edited product, a finished pretend Connect, their own paid order and their
+ * edited product page, a finished pretend Connect, their own paid order and their
  * own practice label. The admin card, the tour page and the shop guide all
  * read it here, so they always agree.
  */
 import { OptionsRepository, PluginStorageRepository } from "emdash";
+import { sql } from "kysely";
 import { START_REAL_STORE_URL } from "../playground/contract.js";
 import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../playground/demo-orders.js";
 import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "../playground-plugins/registry-plugins.mjs";
@@ -27,6 +28,7 @@ const CATALOG_PAGE_LIMIT = 100;
 const CATALOG_MAX_PAGES = 10;
 const option = (key: string) => `plugin:${TOUR_PLUGIN_ID}:${key}`;
 const CATALOG_BASELINE = option("catalog-baseline");
+const PRODUCT_PAGES_BASELINE = option("product-pages-baseline");
 const SHOP_VISITED = option("shop-visited");
 const CELEBRATED = option("celebrated");
 // Before the tour, the welcome card kept the untouched catalog's digest under its own plugin id.
@@ -71,24 +73,47 @@ async function catalogFingerprint(db: Db): Promise<string> {
     }
   }
   rows.sort();
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rows.join("\n")));
+  return sha256(rows.join("\n"));
+}
+
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
- * True once the products differ from how they looked the first time the tour
- * (or, for a visitor from before the tour, the welcome card) read them. The
- * playground seeds the catalog before the first page loads, so that first look
- * is the untouched store.
+ * A digest of the product pages in Content > Products as the shop shows them.
+ * Products keep revisions, so a saved draft changes nothing here until it is published.
  */
-async function productEdited(db: Db): Promise<boolean> {
-  const current = await catalogFingerprint(db);
-  let baseline = await options(db).get<string>(CATALOG_BASELINE);
+async function productPagesFingerprint(db: Db): Promise<string> {
+  const result = await sql<Record<string, unknown>>`
+    SELECT id, status, live_revision_id, title, description FROM ec_products
+    WHERE deleted_at IS NULL ORDER BY id
+  `.execute(db);
+  return sha256(result.rows.map((row) => JSON.stringify(row)).join("\n"));
+}
+
+async function changedSince(db: Db, key: string, current: string, earlier?: string): Promise<boolean> {
+  let baseline = await options(db).get<string>(key);
   if (baseline === null) {
-    baseline = (await options(db).get<string>(WELCOME_CATALOG_BASELINE)) ?? current;
-    await options(db).set(CATALOG_BASELINE, baseline);
+    baseline = (earlier ? await options(db).get<string>(earlier) : null) ?? current;
+    await options(db).set(key, baseline);
   }
   return baseline !== current;
+}
+
+/**
+ * True once a product page in Content > Products, or Commerce's catalog, differs
+ * from how it looked the first time the tour (or, for the catalog of a visitor
+ * from before the tour, the welcome card) read it. The playground seeds both
+ * before the first page loads, so that first look is the untouched store.
+ * The catalog still counts so a visitor who edited a price before step 1 moved
+ * to Content > Products keeps the tick.
+ */
+async function productEdited(db: Db): Promise<boolean> {
+  const pages = await orFalse(async () => changedSince(db, PRODUCT_PAGES_BASELINE, await productPagesFingerprint(db)), false);
+  if (pages) return true;
+  return changedSince(db, CATALOG_BASELINE, await catalogFingerprint(db), WELCOME_CATALOG_BASELINE);
 }
 
 /** True once Payments' pretend Connect finished, whether before or since the tour arrived. */
@@ -154,7 +179,7 @@ const adminPath = (path: string) => `/_emdash/admin${path}`;
 /** The tour in order. The last step, Start your real store, is never ticked. */
 export function tourSteps(state: TourState): TourStep[] {
   return [
-    { id: "edit-product", copy: "edit-product", done: state.productEdited, href: adminPath(`/plugins/${COMMERCE}/products`), button: "Open Products", inAdmin: true },
+    { id: "edit-product", copy: "edit-product", done: state.productEdited, href: adminPath("/content/products"), button: "Open Products", inAdmin: true },
     { id: "connect-payments", copy: "connect-payments", done: state.paymentsConnected, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`), button: "Open Payments", inAdmin: true },
     state.checkoutOpen
       ? { id: "place-order", copy: "place-order", done: state.orders > 0, href: "/", button: "Open your shop", inAdmin: false }
