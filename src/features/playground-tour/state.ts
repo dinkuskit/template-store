@@ -82,13 +82,14 @@ async function sha256(text: string): Promise<string> {
 }
 
 /**
- * A digest of the product pages in Content > Products as the shop shows them.
- * Products keep revisions, so a saved draft changes nothing here until it is published.
+ * A digest of the published product pages in Content > Products, as the shop shows them.
+ * Products keep revisions, so a saved draft (or a new, unpublished product) changes
+ * nothing here until it is published.
  */
 async function productPagesFingerprint(db: Db): Promise<string> {
   const result = await sql<Record<string, unknown>>`
-    SELECT id, status, live_revision_id, title, description FROM ec_products
-    WHERE deleted_at IS NULL ORDER BY id
+    SELECT id, live_revision_id, title, description FROM ec_products
+    WHERE deleted_at IS NULL AND status = 'published' ORDER BY id
   `.execute(db);
   return sha256(result.rows.map((row) => JSON.stringify(row)).join("\n"));
 }

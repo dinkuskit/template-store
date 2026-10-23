@@ -367,6 +367,18 @@ describe("playground visitor database state", () => {
     expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual(["edit-product"]);
   });
 
+  it("doesn't tick Edit a product for a new product that is only a draft, until it is published", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
+
+    const pages = new ContentRepository(db as never);
+    const draft = await pages.create({ type: "products", slug: "visitor-draft", status: "draft", data: { title: "Visitor draft", description: "Not in the shop yet" } });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
+
+    await pages.update("products", draft.id, { status: "published" });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: true });
+  });
+
   it("keeps the progress a visitor made before the tour replaced the welcome card", async () => {
     await ensurePlaygroundDemoCatalog(db as never, { playground: true });
     const options = new OptionsRepository(db as never);

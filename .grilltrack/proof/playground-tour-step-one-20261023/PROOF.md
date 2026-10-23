@@ -14,3 +14,7 @@ The other tick on the way (1 of 4 after Save) is Look at your shop, because the 
 Unit coverage: `tests/unit/playground-existing-state.test.ts` "ticks Edit a product when the visitor publishes a
 change to a product page in Content > Products", plus the existing upgrade test that keeps a catalog change made
 before the tour. `tests/unit/playground-plugins.test.ts` checks the step's link.
+
+Only published product pages count: a new product saved as a draft does not tick the step until it is published
+(`tests/unit/playground-existing-state.test.ts`, "doesn't tick Edit a product for a new product that is only a draft,
+until it is published"; it fails when the query also reads drafts).
