@@ -205,7 +205,7 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
       {noLongerAvailable ? <section class="product-removed" data-product-removed><h1>This product is no longer available</h1><p>It has been removed from the shop.</p><a href="/">Browse the shop</a></section> : item ? (
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource} data-commerce-item={linkedProduct?.id}>
             <div class={`product-detail__visual product-detail__visual--${item.illustration}`} data-product-stage-visual>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} /> : <><span class="product-media__pigment-wash" data-pigment-drift="product-media" aria-hidden="true"></span><img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" /></>}
+              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
             </div>
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}

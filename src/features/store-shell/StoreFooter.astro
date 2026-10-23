@@ -87,17 +87,10 @@ const defaultProvenance = `Transactional facts remain in Commerce${profile === "
         <feTurbulence
           type="fractalNoise"
           baseFrequency="0.011 0.022"
-          numOctaves="4"
+          numOctaves="2"
           seed="19"
           result="pigment-noise"
-        >
-          <animate
-            attributeName="baseFrequency"
-            values="0.011 0.022;0.015 0.027;0.011 0.022"
-            dur="12s"
-            repeatCount="indefinite"
-          />
-        </feTurbulence>
+        />
         <feDisplacementMap
           in="SourceGraphic"
           in2="pigment-noise"

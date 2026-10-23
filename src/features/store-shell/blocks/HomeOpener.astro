@@ -37,14 +37,7 @@ const patternId = `home-opener-riso-grain-${index ?? 0}`;
           numOctaves="3"
           seed="17"
           result="pigmentNoise"
-        >
-          <animate
-            attributeName="baseFrequency"
-            values="0.012 0.020;0.017 0.027;0.012 0.020"
-            dur="11s"
-            repeatCount="indefinite"
-          />
-        </feTurbulence>
+        />
         <feDisplacementMap
           in="SourceGraphic"
           in2="pigmentNoise"

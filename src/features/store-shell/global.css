@@ -473,6 +473,9 @@
     display: block;
     pointer-events: none;
     z-index: 0;
+    /* Its own layer: the ink filter rasterizes once instead of on every page repaint. */
+    will-change: transform;
+    contain: strict;
   }
 
   .store-footer__top {

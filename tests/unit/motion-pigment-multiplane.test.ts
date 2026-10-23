@@ -66,7 +66,8 @@ describe("A2 — Pigment Drift product illustrations & living hero/card ink-wash
       expect(source, relPath).not.toContain("#d9e2ec");
       expect(source, relPath).toContain("<feTurbulence");
       expect(source, relPath).toContain("<feDisplacementMap");
-      expect(source, relPath).toContain('attributeName="baseFrequency"');
+      // Loaded through <img>, so the page cannot pause them: the artwork stays still.
+      expect(source, relPath).not.toContain("<animate");
       expect(source, relPath).toContain("DINKUS //");
       expect(source, relPath).toContain("DINKUS // STUDIO");
     }
@@ -136,4 +137,3 @@ describe("A2 — Pigment Drift product illustrations & living hero/card ink-wash
     expect(checkoutReturn).toContain("data-ephemera-barcode");
   });
 });
-

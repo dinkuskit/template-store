@@ -109,9 +109,9 @@ const { contactHref } = Astro.props;
       const stampText = orderBlock.querySelector<HTMLElement>("[data-ephemera-stamp-text]");
       const barcodeHost = orderBlock.querySelector<HTMLElement>("[data-ephemera-barcode]");
       const rawOrder = (numEl?.textContent || "ORDER-CONFIRMED").replace(/^Order\s+/iu, "").trim();
-      if (stampText) {
-        stampText.textContent = testBadge && !testBadge.hidden ? "PAID · STRIPE TEST" : "SETTLED · COMMERCE";
-      }
+      const stampLabel = testBadge && !testBadge.hidden ? "PAID · STRIPE TEST" : "SETTLED · COMMERCE";
+      // Writing text always replaces the node, which this observer sees; write only on change.
+      if (stampText && stampText.textContent !== stampLabel) stampText.textContent = stampLabel;
       if (barcodeHost && barcodeHost.dataset.renderedCode !== rawOrder) {
         barcodeHost.dataset.renderedCode = rawOrder;
         barcodeHost.innerHTML = renderBarcodeSvg(`DK-${rawOrder}`);

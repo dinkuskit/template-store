@@ -224,10 +224,13 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.route("**/api/guest-cart/snapshot**", async (route) => {
     // Outlasts the cart's 15 s price-check limit.
     await new Promise((resolveHold) => setTimeout(resolveHold, 30_000));
+    // The reload below abandons this held request first, so the late answer has nowhere to go.
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ products: [] }),
+    }).catch((error: unknown) => {
+      if (!String(error).includes("Route is already handled")) throw error;
     });
   });
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
