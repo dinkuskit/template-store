@@ -40,7 +40,7 @@ describe("product page publish check tells Commerce", () => {
     expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { catalogItemId: "item-1", entryId: "01PAGE", onSale: true }, user }]);
   });
 
-  it("takes the product off sale before unpublish, and drops the link after trash", async () => {
+  it("takes the product off sale before and after unpublish, and drops the link after trash", async () => {
     const rt = runtime({ commerce_item_id: "item-1" });
     const order: string[] = [];
     rt.handlePluginApiRoute.mockImplementation(async (_p: string, _m: string, _path: string, request: Request) => {
@@ -52,6 +52,7 @@ describe("product page publish check tells Commerce", () => {
     await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), page);
     expect(order).toEqual([
       'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
+      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}',
       'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
       'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false,"deleted":true}',
     ]);
@@ -119,6 +120,30 @@ describe("product page publish check tells Commerce", () => {
     const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 409 }));
     expect(out.status).toBe(409);
     expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    warn.mockRestore();
+  });
+
+  it("takes the product off sale again when the page was unpublished while it was being put on sale", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const draft = async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { commerce_item_id: "item-1" } } } }) as never;
+    // Our publish succeeds; another request unpublishes the page before our on-sale write is read back.
+    const published = runtime({ commerce_item_id: "item-1" });
+    published.handleContentGet.mockImplementationOnce(published.handleContentGet.getMockImplementation()!).mockImplementation(draft);
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", published), async () => new Response(null, { status: 200 }));
+    expect(published.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+    ]);
+    // Our unpublish fails and the page still reads as published, but another unpublish lands before our undo is read back.
+    const undone = runtime({ commerce_item_id: "item-1" });
+    const get = undone.handleContentGet.getMockImplementation()!;
+    undone.handleContentGet.mockImplementationOnce(get).mockImplementationOnce(get).mockImplementation(draft);
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", undone), async () => new Response(null, { status: 409 }));
+    expect(undone.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+    ]);
     warn.mockRestore();
   });
 

@@ -83,6 +83,16 @@ function refuse(status: number, code: string, message: string): Response {
  * - Trash drops the page's link afterwards.
  * - If the page change fails after Commerce took the product off sale, the
  *   product goes back on sale; a page that cannot be read is not unpublished.
+ *
+ * Overlapping requests settle on the page's final state. Every write that puts
+ * a product on sale is followed by a fresh read of the page, and takes the
+ * product off sale again if the page is no longer published with it. A
+ * successful unpublish takes the product off sale both before and after the
+ * page change. So whichever lands last is an off-sale write, unless the page
+ * really is published: an on-sale write either runs before the unpublish's
+ * last off-sale write, or its own read comes after the page change and sees
+ * it. A late off-sale write can only leave a published page's product a Draft,
+ * which never sells anything it should not, and publishing again fixes it.
  */
 export async function withProductOnSale(
   input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string },
@@ -115,9 +125,19 @@ export async function withProductOnSale(
       return error instanceof Error ? error.message : "Commerce unavailable";
     }
   };
+  // Put the product on sale, then read the page again: if it is no longer published with this product, take it off.
+  const putOnSale = async () => {
+    const failed = await tell({ onSale: true });
+    if (failed) return failed;
+    const now = await productPage(runtime, change.entryId, locale);
+    if (now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId) return null;
+    const off = await tell({ onSale: false });
+    if (off) console.warn("[product-on-sale] the page changed meanwhile and the product could not be taken off sale:", off);
+    return "the page is no longer published as it was";
+  };
   if (change.action === "publish") {
     const response = await next();
-    const failed = response.ok && allowed ? await tell({ onSale: true }) : null;
+    const failed = response.ok && allowed ? await putOnSale() : null;
     if (failed) console.warn("[product-on-sale] the product stays a Draft:", failed);
     return response;
   }
@@ -125,12 +145,12 @@ export async function withProductOnSale(
   const failed = await tell({ onSale: false });
   if (failed) return refuse(503, "COMMERCE_UNAVAILABLE", "Commerce could not take this page's product off sale, so nothing was changed. Try again.");
   const tookOff = changed;
-  // The page change failed after Commerce took the product off sale. Put it back only if the page, read again
-  // now, is still published and still names that product, so a stale undo never reverses someone else's unpublish.
+  // The page change failed after Commerce took the product off sale. Put it back only if the page is still
+  // published with that product, read before and again after the write, so an undo never outlasts another unpublish.
   const undo = async () => {
     if (!tookOff) return;
     const now = await productPage(runtime, change.entryId, locale);
-    const restored = now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId ? await tell({ onSale: true }) : "the page is no longer published as it was";
+    const restored = now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId ? await putOnSale() : "the page is no longer published as it was";
     if (restored) console.warn("[product-on-sale] the product stays a Draft after a failed page change:", restored);
   };
   let response: Response;
@@ -141,9 +161,13 @@ export async function withProductOnSale(
     throw error;
   }
   if (!response.ok) await undo();
-  if (response.ok && change.action === "trash") {
+  else if (change.action === "trash") {
     const dropped = await tell({ onSale: false, deleted: true });
     if (dropped) console.warn("[product-on-sale] the trashed page's link stays:", dropped);
+  } else {
+    // Off sale again after the page change, so an on-sale write that overlapped it cannot be the last word.
+    const failed = await tell({ onSale: false });
+    if (failed) console.warn("[product-on-sale] the product could not be taken off sale again after unpublish:", failed);
   }
   return response;
 }
