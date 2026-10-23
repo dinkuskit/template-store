@@ -120,3 +120,5 @@
 {"action": "decision_locked", "at": "2026-10-22T15:16:13+00:00", "data": {"decision_id": "playground-plugin-pins-20261022"}, "event_id": "a264abeb-855d-4cf9-b6c3-b7c8e0d4c9ab"}
 {"action": "decision_proposed", "at": "2026-10-22T22:54:48+00:00", "data": {"decision_id": "playground-checkout-payments-key-20261022"}, "event_id": "0afff0c8-c85c-48cb-8b95-b50f341fa0c4"}
 {"action": "decision_locked", "at": "2026-10-22T22:54:48+00:00", "data": {"decision_id": "playground-checkout-payments-key-20261022"}, "event_id": "c0cbfb96-1f00-43fe-ab9b-25392e371cc2"}
+{"action": "decision_proposed", "at": "2026-10-23T00:47:00+00:00", "data": {"decision_id": "pdp-one-picker-per-option-20261023"}, "event_id": "94b136be-c985-40b7-b9c3-10a95a9cea6e"}
+{"action": "decision_locked", "at": "2026-10-23T01:19:41+00:00", "data": {"decision_id": "pdp-one-picker-per-option-20261023"}, "event_id": "c0e8218f-87e6-4a9f-b0c1-e841e20817fa"}
