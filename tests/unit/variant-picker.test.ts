@@ -44,4 +44,17 @@ describe("product page variant pickers", () => {
     expect(variantPickerView(members, { Color: "Red", Size: "Medium" }).soldOut.Size)
       .toEqual({ Small: true, Medium: false, Large: true });
   });
+
+  it("keeps catalog labels like __proto__ as plain keys", () => {
+    const odd = (id: string, value: string, sellable: boolean): VariantPickerMember => ({
+      ...member(id, "x", value, "$1.00", sellable),
+      values: Object.fromEntries([["__proto__", value]]),
+    });
+    const view = variantPickerView([odd("a", "toString", true), odd("b", "constructor", false)],
+      Object.fromEntries([["__proto__", "toString"]]));
+    expect(typeof Object.prototype.toString).toBe("function");
+    expect(view.member?.id).toBe("a");
+    expect(view.soldOut["__proto__"]?.["toString"]).toBe(false);
+    expect(view.soldOut["__proto__"]?.["constructor"]).toBe(true);
+  });
 });

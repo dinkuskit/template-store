@@ -38,10 +38,12 @@ export function variantPickerView(
   picked: Readonly<Record<string, string>>,
 ): VariantPickerView {
   const member = members.find((candidate) => matches(candidate, picked)) ?? null;
-  const soldOut: Record<string, Record<string, boolean>> = {};
+  // Option and value labels come from the catalog, so the maps have no
+  // prototype: a label such as "__proto__" stays an ordinary key.
+  const soldOut: Record<string, Record<string, boolean>> = Object.create(null);
   for (const candidate of members) {
     for (const [option, value] of Object.entries(candidate.values)) {
-      soldOut[option] ??= {};
+      soldOut[option] ??= Object.create(null);
       // A value is sold out when no sellable member has it beside the other picked values.
       soldOut[option][value] = !members.some((other) =>
         other.sellable && matches(other, { ...picked, [option]: value }));
