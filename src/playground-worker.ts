@@ -19,9 +19,18 @@ import {
   withoutPlaygroundSession,
 } from "./features/playground/contract.js";
 import { withShopperAccountRequest } from "./features/shopper-account/playground-runtime.js";
+import { playgroundDinkusKitFetch, playgroundPluginSettingsKey } from "./features/playground-plugins/dinkuskit-stand-in.js";
+import { retargetPlaygroundPluginLinks } from "./features/playground-plugins/registry-plugins.mjs";
 
-// Payments and Ship run in the sandbox, which reaches EmDash through PluginBridge.
+// EmDash's runtime still looks for PluginBridge, though no plugin runs in the sandbox here.
 export { EmDashPreviewDB, PluginBridge };
+
+type PlaygroundGlobals = { __dinkusPlaygroundEnv?: Record<string, unknown>; __dinkusPlaygroundRequestOrigin?: string };
+// Payments' and Ship's calls to DinkusKit.com are answered inside the playground.
+globalThis.fetch = playgroundDinkusKitFetch(globalThis.fetch.bind(globalThis), {
+  env: () => (globalThis as PlaygroundGlobals).__dinkusPlaygroundEnv ?? {},
+  origin: () => (globalThis as PlaygroundGlobals).__dinkusPlaygroundRequestOrigin ?? "https://playground.dinkuskit.com",
+});
 
 interface WorkerExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
@@ -40,6 +49,11 @@ export default {
     const staleSession = session !== undefined && !isUsablePlaygroundSession(session);
     if (staleSession) request = withoutPlaygroundSession(request);
     const requestOrigin = new URL(request.url).origin;
+    // A playground store is never set up by hand, so it has no Site URL. Payments
+    // and Ship need one to connect; EmDash reads this once, on the first request.
+    process.env.EMDASH_SITE_URL ||= requestOrigin;
+    // Their Connect sign-in is a secret setting, which EmDash will only save encrypted.
+    process.env.EMDASH_ENCRYPTION_KEY ||= await playgroundPluginSettingsKey(env);
     (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv = env;
     (globalThis as { __dinkusPlaygroundRequestOrigin?: string }).__dinkusPlaygroundRequestOrigin =
       requestOrigin;
@@ -67,6 +81,11 @@ export default {
       headers.append("Set-Cookie", CLEAR_PLAYGROUND_COOKIE);
     }
 
+    const pluginLinks = retargetPlaygroundPluginLinks(new URL(request.url).pathname, requestOrigin);
+    if (pluginLinks && headers.get("content-type")?.includes("application/json")) {
+      dropRewrittenBodyHeaders(headers);
+      return new Response(pluginLinks(await response.text()), { status: response.status, headers });
+    }
     if (!headers.get("content-type")?.includes("text/html")) {
       return new Response(response.body, { status: response.status, headers });
     }

@@ -1,0 +1,61 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 288 432] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 1732 >>
+stream
+2 w 10 10 268 412 re S
+BT /F2 22 Tf 51.6 385 Td (PRACTICE LABEL) Tj ET
+BT /F1 10 Tf 89.4 368 Td (Not valid for postage) Tj ET
+1 w 10 355 m 278 355 l S
+BT /F2 9 Tf 22.0 335 Td (FROM) Tj ET
+BT /F1 10 Tf 22.0 320 Td (Your DinkusKit Store) Tj ET
+BT /F1 10 Tf 22.0 307 Td (123 Example Street) Tj ET
+BT /F1 10 Tf 22.0 294 Td (Asheville, NC 28801) Tj ET
+BT /F2 9 Tf 22.0 262 Td (SHIP TO) Tj ET
+BT /F2 13 Tf 40.0 244 Td (The shopper's name) Tj ET
+BT /F2 13 Tf 40.0 227 Td (Their street address) Tj ET
+BT /F2 13 Tf 40.0 210 Td (City, ST 00000) Tj ET
+10 180 m 278 180 l S
+40 100 2 62 re 44 100 3 62 re 48 100 1 62 re 50 100 2 62 re 53 100 1 62 re 55 100 1 62 re 59 100 3 62 re 63 100 1 62 re 65 100 3 62 re 69 100 1 62 re 72 100 1 62 re 76 100 1 62 re 79 100 1 62 re 82 100 2 62 re 87 100 1 62 re 89 100 2 62 re 93 100 1 62 re 96 100 2 62 re 99 100 1 62 re 101 100 1 62 re 105 100 3 62 re 110 100 3 62 re 116 100 2 62 re 120 100 1 62 re 123 100 1 62 re 125 100 2 62 re 130 100 2 62 re 135 100 2 62 re 138 100 1 62 re 142 100 1 62 re 145 100 1 62 re 149 100 3 62 re 153 100 1 62 re 156 100 2 62 re 160 100 3 62 re 166 100 1 62 re 168 100 2 62 re 173 100 1 62 re 175 100 2 62 re 180 100 2 62 re 185 100 2 62 re 188 100 3 62 re 193 100 1 62 re 195 100 3 62 re 199 100 1 62 re 202 100 1 62 re 205 100 3 62 re 211 100 3 62 re 215 100 1 62 re 219 100 3 62 re 224 100 1 62 re 228 100 2 62 re 233 100 2 62 re 238 100 1 62 re 241 100 1 62 re 244 100 1 62 re 247 100 1 62 re f
+BT /F3 10 Tf 72.0 86 Td (TEST 0000 0000 0000 0000) Tj ET
+BT /F1 8.5 Tf 33.5 58 Td (Made in the DinkusKit playground. On a real store,) Tj ET
+BT /F1 8.5 Tf 49.0 47 Td (Ship prints a USPS label here that you tape) Tj ET
+BT /F1 8.5 Tf 91.0 36 Td (to the box and drop off.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+8 0 obj
+<< /Title (DinkusKit playground practice label) /Producer (DinkusKit) >>
+endobj
+xref
+0 9
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000261 00000 n
+0000002045 00000 n
+0000002115 00000 n
+0000002190 00000 n
+0000002258 00000 n
+trailer
+<< /Size 9 /Root 1 0 R /Info 8 0 R >>
+startxref
+2346
+%%EOF

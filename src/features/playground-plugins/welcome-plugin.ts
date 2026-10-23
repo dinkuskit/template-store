@@ -8,6 +8,10 @@ import { definePlugin, PluginStorageRepository } from "emdash";
 import { getRequestContext } from "emdash/request-context";
 import { playgroundCheckoutConfigured } from "../playground-checkout/index.js";
 import { START_REAL_STORE_URL } from "../playground/contract.js";
+import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "./registry-plugins.mjs";
+import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../playground/demo-orders.js";
+import { DEMO_SHOPPER_ORDER_ID } from "../shopper-account/index.js";
+import { PRE_UPGRADE_SHOPPER_ORDER_ID } from "../shopper-account/playground-runtime.js";
 
 export const WELCOME_PLUGIN_ID = "dinkus-playground-welcome";
 export const WELCOME_WIDGET = { id: "welcome", size: "full", title: "Welcome to your DinkusKit store" } as const;
@@ -27,12 +31,21 @@ function requestDb(): Db | undefined {
   return getRequestContext()?.db as Db | undefined;
 }
 
-/** Orders Commerce holds in this visitor's store, read from Commerce's own storage. */
+// Orders the playground adds itself, as examples; placing a test order means one of the visitor's own.
+const EXAMPLE_ORDER_IDS = [...PLAYGROUND_SAMPLE_ORDER_IDS, DEMO_SHOPPER_ORDER_ID, PRE_UPGRADE_SHOPPER_ORDER_ID];
+
+/** Orders the visitor placed in their store, read from Commerce's own storage. */
+export async function visitorOrderCount(db: Db): Promise<number> {
+  const orders = new PluginStorageRepository(db, COMMERCE, "orders", []);
+  const examples = await orders.getMany(EXAMPLE_ORDER_IDS);
+  return Math.max(0, (await orders.count()) - examples.size);
+}
+
 async function commerceOrderCount(): Promise<number> {
   const db = requestDb();
   if (!db) return 0;
   try {
-    return await new PluginStorageRepository(db, COMMERCE, "orders", []).count();
+    return await visitorOrderCount(db);
   } catch {
     return 0;
   }
@@ -114,10 +127,10 @@ export function welcomeBlocks(origin: string, state: WelcomeState): Block[] {
         { type: "link", label: "Open the storefront", target: { kind: "external", url: `${origin}/` }, appearance: "secondary" })
       : step(undefined, "Look at your storefront", "Test checkout is switched off in this playground, so the cart says checkout is unavailable. In a real store, shoppers pay by card through Payments.",
         { type: "link", label: "Open the storefront", target: { kind: "external", url: `${origin}/` }, appearance: "secondary" })),
-    ...step(undefined, "Look at Shipping", "Ship buys, prints and cancels USPS labels for paid orders. In a real store it connects to DinkusKit.com; here it shows what you would connect.",
-      { type: "link", label: "Open Shipping", target: admin("/plugins/dinkus-ship/shipping"), appearance: "secondary" }),
-    ...step(undefined, "Look at Payments", "Payments takes card payments through Stripe. In a real store you connect it to DinkusKit.com once; here it stays unconnected.",
-      { type: "link", label: "Open Payments", target: admin("/plugins/dinkus-payments/status"), appearance: "secondary" }),
+    ...step(undefined, "Make a practice shipping label", "Ship buys, prints and cancels USPS labels for paid orders. Press Connect (it's pretend here), then open an order and press Make practice label.",
+      { type: "link", label: "Open Shipping", target: admin(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`), appearance: "secondary" }),
+    ...step(undefined, "Look at Payments", "Payments takes card payments through Stripe. Press Connect (it's pretend here) and it shows Stripe test mode ready.",
+      { type: "link", label: "Open Payments", target: admin(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`), appearance: "secondary" }),
     { type: "divider" },
     { type: "header", text: "Ready for real?" },
     {

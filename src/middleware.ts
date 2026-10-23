@@ -199,7 +199,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const session = context.cookies.get("emdash_playground")?.value;
     if (session && !seededPlaygroundSessions.has(session)) {
       const db = (context.locals as { __playgroundDb: Parameters<typeof ensurePlaygroundDemoCatalog>[0] }).__playgroundDb;
-      await ensurePlaygroundDemoCatalog(db);
+      await ensurePlaygroundDemoCatalog(db, { playground: true });
       seededPlaygroundSessions.add(session);
     }
   } else if (isDemoCatalogProfile() && !demoProfileSeeded) {
