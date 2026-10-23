@@ -238,6 +238,18 @@ test("the store's status route relays Commerce's paid answer to the thank-you pa
     await expect(page.locator("[data-guest-checkout-account]")).toHaveAttribute("href", "/account");
     await expect(page.locator(".guest-checkout-continue")).toHaveAttribute("href", "/");
     await expect(page.locator("[data-guest-cart-count]")).toBeHidden();
+    await expect(page.locator("[data-ephemera-stamp-text]")).toHaveText(/^(PAID · STRIPE TEST|SETTLED · COMMERCE)$/u);
+    await expect(page.locator("[data-ephemera-barcode] svg")).toHaveAttribute("aria-label", "Order barcode DK-FIXTURE");
+    // The receipt decoration settles: once the order shows, nothing keeps rewriting it.
+    const receiptWrites = await page.evaluate(() => new Promise<number>((done) => {
+      const order = document.querySelector("[data-guest-checkout-order]");
+      if (!order) return done(-1);
+      let writes = 0;
+      const watch = new MutationObserver((records) => { writes += records.length; });
+      watch.observe(order, { attributes: true, childList: true, characterData: true, subtree: true });
+      setTimeout(() => { watch.disconnect(); done(writes); }, 750);
+    }));
+    expect(receiptWrites).toBe(0);
     expect(dispatched).toEqual(["r_gshdrqaldna3r7sn POST checkout/guest/status"]);
     expect(harness.counts().statusCalls).toBe(1);
     await mkdir(resolve("runs/checkout-success-commerce"), { recursive: true });

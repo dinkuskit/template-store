@@ -1,1 +1,61 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Illustration of a classic short-sleeve tee"><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#e8e5d9"/><stop offset="1" stop-color="#cdd2c7"/></linearGradient><linearGradient id="cloth" x2=".1" y2="1"><stop stop-color="#f6f3eb"/><stop offset="1" stop-color="#bdc4b9"/></linearGradient><filter id="shadow" x="-30%" y="-30%" width="160%" height="180%"><feGaussianBlur stdDeviation="13"/></filter></defs><rect width="640" height="480" fill="url(#bg)"/><path d="M0 376 Q320 326 640 370 V480 H0Z" fill="#fff" opacity=".14"/><ellipse cx="320" cy="402" rx="174" ry="27" fill="#34342d" opacity=".18" filter="url(#shadow)"/><path d="M260 104 Q320 137 380 104 L449 145 506 211 454 249 417 217 417 372 Q320 387 223 372 V217 L186 249 134 211 191 145Z" fill="url(#cloth)" stroke="#68786d" stroke-width="3"/><path d="M260 104 Q320 137 380 104 Q362 148 320 151 Q278 148 260 104Z" fill="#d7dfd5" stroke="#68786d" stroke-width="3"/><path d="M225 225 L225 364 Q320 378 415 364 M191 148 L224 220 M449 148 L416 220" fill="none" stroke="#fff" stroke-opacity=".46" stroke-width="3"/><path d="M293 169 H347" stroke="#7b897e" stroke-opacity=".5" stroke-width="2"/><path d="M55 68 h530" stroke="#fff" stroke-opacity=".24"/><path d="M55 412 h530" stroke="#34342d" stroke-opacity=".09"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Illustration of a classic short-sleeve tee">
+  <defs>
+    <linearGradient id="washi-merch-tee" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5f1e8"/>
+      <stop offset="55%" stop-color="#ece5d8"/>
+      <stop offset="100%" stop-color="#e2d9c8"/>
+    </linearGradient>
+    <linearGradient id="cloth-merch-tee" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0%" stop-color="#fcf9f2"/>
+      <stop offset="65%" stop-color="#e9e2d2"/>
+      <stop offset="100%" stop-color="#d5cbb8"/>
+    </linearGradient>
+    <pattern id="riso-merch-tee" width="8" height="8" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="0.75" fill="#101827" fill-opacity="0.08"/>
+      <circle cx="6" cy="6" r="0.65" fill="#d1492f" fill-opacity="0.07"/>
+    </pattern>
+    <filter id="pigment-drift-merch-tee" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.014 0.022" numOctaves="3" seed="19" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="11" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="drop-merch-tee" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#101827" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect width="640" height="480" fill="url(#washi-merch-tee)"/>
+
+  <g filter="url(#pigment-drift-merch-tee)" opacity="0.88">
+    <ellipse cx="305" cy="235" rx="195" ry="145" fill="#1d314d" fill-opacity="0.15"/>
+    <ellipse cx="365" cy="255" rx="150" ry="118" fill="#d1492f" fill-opacity="0.12"/>
+  </g>
+
+  <rect width="640" height="480" fill="url(#riso-merch-tee)"/>
+
+  <g stroke="#101827" stroke-opacity="0.18" stroke-width="1" fill="none">
+    <rect x="24" y="24" width="592" height="432" rx="4"/>
+    <path d="M24 62 H616 M24 418 H616"/>
+  </g>
+
+  <text x="40" y="47" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="700" fill="#101827" fill-opacity="0.65" letter-spacing="2">ARCHIVE // MERCH TEE — NATURAL COMBED</text>
+  <text x="600" y="47" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="700" fill="#d1492f" letter-spacing="1.5">EDITION 01</text>
+
+  <ellipse cx="320" cy="396" rx="150" ry="16" fill="#101827" fill-opacity="0.16"/>
+
+  <g filter="url(#drop-merch-tee)">
+    <path d="M254 96 C276 116, 364 116, 386 96 L458 130 L516 202 L458 246 L418 206 L418 374 C355 384, 285 384, 222 374 L222 206 L182 246 L124 202 L182 130 Z" fill="url(#cloth-merch-tee)" stroke="#101827" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M266 101 C286 117, 354 117, 374 101 C364 128, 276 128, 266 101 Z" fill="#172438" stroke="#101827" stroke-width="2.5"/>
+    <path d="M342 178 H388 V228 C388 234, 365 240, 365 240 C365 240, 342 234, 342 228 Z" fill="#f5efe2" stroke="#101827" stroke-width="2"/>
+    <circle cx="365" cy="206" r="9" fill="#d1492f"/>
+  </g>
+
+  <g transform="translate(528, 344)">
+    <rect x="0" y="0" width="68" height="56" rx="4" fill="#fcfbf8" fill-opacity="0.9" stroke="#d1492f" stroke-width="2.2"/>
+    <rect x="4" y="4" width="60" height="48" rx="2" fill="none" stroke="#d1492f" stroke-width="1" stroke-opacity="0.6"/>
+    <text x="34" y="23" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9.5" font-weight="800" fill="#d1492f" letter-spacing="0.8">DINKUS //</text>
+    <line x1="12" y1="29" x2="56" y2="29" stroke="#d1492f" stroke-width="1.2"/>
+    <text x="34" y="42" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" font-weight="700" fill="#d1492f" letter-spacing="1.5">STUDIO</text>
+  </g>
+
+  <text x="40" y="440" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700" fill="#101827" fill-opacity="0.55" letter-spacing="1.5">DINKUS // STUDIO · MERCH ARCHIVE PLATE 01</text>
+</svg>
