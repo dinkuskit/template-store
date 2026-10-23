@@ -29,6 +29,11 @@ const option = (key: string) => `plugin:${TOUR_PLUGIN_ID}:${key}`;
 const CATALOG_BASELINE = option("catalog-baseline");
 const SHOP_VISITED = option("shop-visited");
 const CELEBRATED = option("celebrated");
+// Before the tour, the welcome card kept the untouched catalog's digest under its own plugin id.
+const WELCOME_CATALOG_BASELINE = "plugin:dinkus-playground-welcome:catalog-baseline";
+// Payments keeps its own Connect progress here. Visitors who connected before the
+// tour have this but no stand-in note, so either one counts.
+const PAYMENTS_CONNECT_STATE = `plugin:${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}:state:registry-v2-control`;
 // The shipped sample comes with its practice label; every other label is the visitor's own.
 const SAMPLE_LABEL_ID = `practice_${PLAYGROUND_SAMPLE_ORDER_IDS[0]}`;
 
@@ -72,17 +77,25 @@ async function catalogFingerprint(db: Db): Promise<string> {
 
 /**
  * True once the products differ from how they looked the first time the tour
- * read them. The playground seeds the catalog before the first page loads, so that
- * first look is the untouched store.
+ * (or, for a visitor from before the tour, the welcome card) read them. The
+ * playground seeds the catalog before the first page loads, so that first look
+ * is the untouched store.
  */
 async function productEdited(db: Db): Promise<boolean> {
   const current = await catalogFingerprint(db);
-  const baseline = await options(db).get<string>(CATALOG_BASELINE);
+  let baseline = await options(db).get<string>(CATALOG_BASELINE);
   if (baseline === null) {
-    await options(db).set(CATALOG_BASELINE, current);
-    return false;
+    baseline = (await options(db).get<string>(WELCOME_CATALOG_BASELINE)) ?? current;
+    await options(db).set(CATALOG_BASELINE, baseline);
   }
   return baseline !== current;
+}
+
+/** True once Payments' pretend Connect finished, whether before or since the tour arrived. */
+async function paymentsConnected(db: Db): Promise<boolean> {
+  if ((await options(db).get(standInConnectedOption("payments"))) !== null) return true;
+  const control = await options(db).get<{ phase?: unknown }>(PAYMENTS_CONNECT_STATE);
+  return control?.phase === "complete";
 }
 
 export interface TourState {
@@ -110,7 +123,7 @@ async function orFalse<T>(read: () => Promise<T>, fallback: T): Promise<T> {
 export async function readTourState(db: Db, checkoutOpen: boolean): Promise<TourState> {
   return {
     productEdited: await orFalse(() => productEdited(db), false),
-    paymentsConnected: await orFalse(async () => (await options(db).get(standInConnectedOption("payments"))) !== null, false),
+    paymentsConnected: await orFalse(() => paymentsConnected(db), false),
     orders: await orFalse(() => visitorOrderCount(db), 0),
     labels: await orFalse(() => visitorLabelCount(db), 0),
     shopVisited: await orFalse(async () => (await options(db).get(SHOP_VISITED)) !== null, false),

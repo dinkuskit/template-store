@@ -351,4 +351,31 @@ describe("playground visitor database state", () => {
     expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual(["edit-product", "connect-payments", "place-order", "ship-order"]);
     expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual([]);
   });
+
+  it("keeps the progress a visitor made before the tour replaced the welcome card", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    const options = new OptionsRepository(db as never);
+    // The welcome card's first look at the untouched catalog, kept under its own plugin id.
+    await readTourState(db as never, true);
+    const untouched = await options.get<string>("plugin:dinkus-playground-tour:catalog-baseline");
+    await options.delete("plugin:dinkus-playground-tour:catalog-baseline");
+    await options.set("plugin:dinkus-playground-welcome:catalog-baseline", untouched);
+
+    // Before the tour: the visitor renamed a product and finished Payments' Connect, which Payments saved itself.
+    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalogItems", []);
+    const [item] = (await items.query({ limit: 1 })).items;
+    await items.put(item!.id, { ...item!.data, title: "Renamed before the tour" });
+    await options.set("plugin:r_3brsc2on3bu673rn:state:registry-v2-control", { phase: "complete", flowId: "flow_before" });
+
+    const upgraded = await readTourState(db as never, true);
+    expect(upgraded).toMatchObject({ productEdited: true, paymentsConnected: true });
+    expect(await newlyDoneSteps(db as never, tourSteps(upgraded))).toEqual(["edit-product", "connect-payments"]);
+
+    // A Connect that never finished doesn't count.
+    const unfinished = await visitorDb();
+    await ensurePlaygroundDemoCatalog(unfinished as never, { playground: true });
+    await new OptionsRepository(unfinished as never).set("plugin:r_3brsc2on3bu673rn:state:registry-v2-control", { phase: "pending" });
+    expect(await readTourState(unfinished as never, true)).toMatchObject({ productEdited: false, paymentsConnected: false });
+    await unfinished.destroy();
+  });
 });

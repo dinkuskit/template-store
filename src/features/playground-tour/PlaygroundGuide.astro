@@ -39,16 +39,18 @@ if (db && page !== "tour") {
 }
 const steps = view?.steps ?? [];
 const total = steps.length;
+const kicker = (step: TourStep) => `Playground tour · ${step.id === "real-store" ? "All done" : `Step ${steps.indexOf(step) + 1} of ${total}`}`;
+// The return page only says the order is in once Commerce confirms it there,
+// so the "order is in" card waits hidden until the page shows the confirmed order.
 const shipStep = steps.find((step) => step.id === "ship-order");
-const placed = Boolean(view && page === "success" && view.state.checkoutOpen && shipStep);
-const pointer = view && !placed && view.next.id === "place-order" && view.state.checkoutOpen ? ORDER_POINTERS[page] : undefined;
+const placed = view && page === "success" && view.state.checkoutOpen && shipStep ? shipStep : undefined;
+const pointer = view && view.next.id === "place-order" && view.state.checkoutOpen ? ORDER_POINTERS[page] : undefined;
 const cartPointer = pointer && (page === "catalog" || page === "product") ? OPEN_CART : undefined;
-const step: TourStep | undefined = placed ? shipStep : view?.next;
-const number = step ? steps.indexOf(step) + 1 : 0;
-const words = view && step ? (placed ? view.copy["hint-order-placed"] : pointer ? view.copy[pointer.hint] : view.copy[step.copy]) : null;
+const step: TourStep | undefined = view?.next;
+const words = view && step ? (pointer ? view.copy[pointer.hint] : view.copy[step.copy]) : null;
 // While pointing, the title stays the step's and the words say what to press.
-const title = view && step ? view.copy[placed ? "hint-order-placed" : step.copy].title : "";
-const go = step && !pointer ? { href: step.href, label: placed ? "Ship this order" : step.id === "real-store" ? step.button : "Take me there", external: !step.href.startsWith("/") } : null;
+const title = view && step ? view.copy[step.copy].title : "";
+const go = step && !pointer ? { href: step.href, label: step.id === "real-store" ? step.button : "Take me there", external: !step.href.startsWith("/") } : null;
 ---
 {view && step && words && (
   <aside
@@ -61,7 +63,7 @@ const go = step && !pointer ? { href: step.href, label: placed ? "Ship this orde
     aria-label="Playground tour"
   >
     <div class="playground-guide__card" data-playground-guide-card>
-      <p class="playground-guide__kicker">Playground tour · {step.id === "real-store" ? "All done" : `Step ${number} of ${total}`}</p>
+      <p class="playground-guide__kicker">{kicker(step)}</p>
       <p class="playground-guide__title">{title}</p>
       <p class="playground-guide__text" data-playground-guide-text>{words.text}</p>
       <div class="playground-guide__actions">
@@ -73,6 +75,18 @@ const go = step && !pointer ? { href: step.href, label: placed ? "Ship this orde
         <button type="button" class="playground-guide__hide" data-playground-guide-hide aria-label="Hide the tour guide">Hide</button>
       </div>
     </div>
+    {placed && (
+      <div class="playground-guide__card" data-playground-guide-card data-playground-guide-placed hidden>
+        <p class="playground-guide__kicker">{kicker(placed)}</p>
+        <p class="playground-guide__title">{view.copy["hint-order-placed"].title}</p>
+        <p class="playground-guide__text">{view.copy["hint-order-placed"].text}</p>
+        <div class="playground-guide__actions">
+          <a class="playground-guide__go" href={placed.href}>Ship this order</a>
+          <a class="playground-guide__all" href={TOUR_SHOP_PATH}>Whole tour</a>
+          <button type="button" class="playground-guide__hide" data-playground-guide-hide aria-label="Hide the tour guide">Hide</button>
+        </div>
+      </div>
+    )}
     <button type="button" class="playground-guide__show" data-playground-guide-show hidden>Playground tour</button>
     <div class="playground-guide__pointer" data-playground-guide-pointer hidden aria-hidden="true"><span>Press here</span></div>
   </aside>
@@ -103,7 +117,9 @@ const go = step && !pointer ? { href: step.href, label: placed ? "Ship this orde
   const HIDDEN_KEY = "dinkus-playground-guide-hidden";
   const guide = document.querySelector<HTMLElement>("[data-playground-guide]");
   if (guide) {
-    const card = guide.querySelector<HTMLElement>("[data-playground-guide-card]")!;
+    const nextCard = guide.querySelector<HTMLElement>("[data-playground-guide-card]:not([data-playground-guide-placed])")!;
+    const placedCard = guide.querySelector<HTMLElement>("[data-playground-guide-placed]");
+    let card = nextCard;
     const show = guide.querySelector<HTMLButtonElement>("[data-playground-guide-show]")!;
     const pointer = guide.querySelector<HTMLElement>("[data-playground-guide-pointer]")!;
     const text = guide.querySelector<HTMLElement>("[data-playground-guide-text]")!;
@@ -165,6 +181,15 @@ const go = step && !pointer ? { href: step.href, label: placed ? "Ship this orde
       remember(hidden);
       schedule();
     };
+    // On the return page, switch to "Your test order is in" once the page shows the order Commerce confirmed.
+    const showPlaced = () => {
+      const order = document.querySelector("[data-guest-checkout-order]");
+      if (!placedCard || card === placedCard || !(order instanceof HTMLElement) || order.hidden) return;
+      placedCard.hidden = card.hidden;
+      nextCard.hidden = true;
+      card = placedCard;
+      schedule();
+    };
     guide.querySelector("[data-playground-guide-find]")?.addEventListener("click", () => {
       const target = targetFor();
       if (!target) return;
@@ -172,15 +197,18 @@ const go = step && !pointer ? { href: step.href, label: placed ? "Ship this orde
       const top = scrollY + target.getBoundingClientRect().top - innerHeight * 0.18;
       scrollTo({ top: Math.max(0, top), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     });
-    guide.querySelector("[data-playground-guide-hide]")?.addEventListener("click", () => setHidden(true));
+    guide.querySelectorAll("[data-playground-guide-hide]").forEach((hide) => hide.addEventListener("click", () => setHidden(true)));
     show.addEventListener("click", () => setHidden(false));
     if (wasHidden()) setHidden(true);
     addEventListener("scroll", schedule, { passive: true });
     addEventListener("resize", schedule);
     // The page's own changes move or reveal the target; the guide's own changes don't.
     new MutationObserver((records) => {
-      if (records.some((record) => !guide.contains(record.target))) schedule();
+      if (!records.some((record) => !guide.contains(record.target))) return;
+      showPlaced();
+      schedule();
     }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["hidden", "disabled", "class"] });
+    showPlaced();
     schedule();
   }
 </script>
