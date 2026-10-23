@@ -278,26 +278,40 @@ describe("playground visitor database state", () => {
     });
   });
 
-  it("gives the playground's sample orders their own numbers beside the demo shopper's, and never counts them as the visitor's", async () => {
-    const orders = new PluginStorageRepository<OrderRecord>(db as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
-    // An existing store: the demo shopper signed in before the samples existed.
-    await ensureDemoShopperOrder(db as never);
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
-    const numbers = new Map<string, number | null | undefined>();
-    for (const id of [DEMO_SHOPPER_ORDER_ID, ...PLAYGROUND_SAMPLE_ORDER_IDS]) numbers.set(id, (await orders.get(id))?.number);
-    expect([...numbers.values()]).toEqual([1001, 1002, 1003]);
-    expect(await orders.count()).toBe(3);
-    const next = await new PluginStorageRepository<{ next: number }>(db as never, COMMERCE_PLUGIN_ID, "order_numbers", []).get("next");
-    expect(next?.next).toBeGreaterThanOrEqual(1004);
-    expect(await visitorOrderCount(db as never)).toBe(0);
+  it("gives the playground's sample orders numbers no other order in the store has, and never counts them as the visitor's", async () => {
+    const numbersIn = async (visitor: Kysely<never>) => {
+      const orders = new PluginStorageRepository<OrderRecord>(visitor as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
+      const all = (await orders.query({ limit: 100 })).items.map((row) => row.data.number);
+      const samples: Array<number | null | undefined> = [];
+      for (const id of PLAYGROUND_SAMPLE_ORDER_IDS) samples.push((await orders.get(id))?.number);
+      return { all, samples };
+    };
+    const nextIn = async (visitor: Kysely<never>) =>
+      (await new PluginStorageRepository<{ next: number }>(visitor as never, COMMERCE_PLUGIN_ID, "order_numbers", []).get("next"))?.next;
 
-    // A fresh store whose shopper signs in later gets the same numbers.
+    // An existing store that already holds the shopper demo's #1001 and #1002 and a placed order #1003.
+    await ensureDemoShopperOrder(db as never);
+    await ensurePreUpgradeShopperOrder(db as never);
+    const placed = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
+    await placed.put("ord_visitor_1003", { number: 1003, revision: 1, paidOrder: { orderId: "ord_visitor_1003" } });
+    await new PluginStorageRepository<{ next: number }>(db as never, COMMERCE_PLUGIN_ID, "order_numbers", []).put("next", { next: 1004 });
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    const existing = await numbersIn(db);
+    expect(existing.samples).toEqual([1004, 1005]);
+    expect(new Set(existing.all).size).toBe(existing.all.length);
+    expect(await nextIn(db)).toBe(1006);
+    expect(await visitorOrderCount(db as never)).toBe(1);
+
+    // A fresh store, where the shopper demo adds its orders after the samples.
     const fresh = await visitorDb();
     await ensurePlaygroundDemoCatalog(fresh as never, { playground: true });
     await ensureDemoShopperOrder(fresh as never);
-    const freshOrders = new PluginStorageRepository<OrderRecord>(fresh as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
-    expect((await freshOrders.get(DEMO_SHOPPER_ORDER_ID))?.number).toBe(1001);
+    await ensurePreUpgradeShopperOrder(fresh as never);
+    const later = await numbersIn(fresh);
+    expect(later.samples).toEqual([1003, 1004]);
+    expect(new Set(later.all).size).toBe(later.all.length);
+    expect(await nextIn(fresh)).toBe(1005);
     expect(await visitorOrderCount(fresh as never)).toBe(0);
     await fresh.destroy();
   });
