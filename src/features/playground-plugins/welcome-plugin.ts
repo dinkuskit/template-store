@@ -8,6 +8,7 @@ import { definePlugin, PluginStorageRepository } from "emdash";
 import { getRequestContext } from "emdash/request-context";
 import { playgroundCheckoutConfigured } from "../playground-checkout/index.js";
 import { START_REAL_STORE_URL } from "../playground/contract.js";
+import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "./registry-plugins.mjs";
 
 export const WELCOME_PLUGIN_ID = "dinkus-playground-welcome";
 export const WELCOME_WIDGET = { id: "welcome", size: "full", title: "Welcome to your DinkusKit store" } as const;
@@ -114,10 +115,10 @@ export function welcomeBlocks(origin: string, state: WelcomeState): Block[] {
         { type: "link", label: "Open the storefront", target: { kind: "external", url: `${origin}/` }, appearance: "secondary" })
       : step(undefined, "Look at your storefront", "Test checkout is switched off in this playground, so the cart says checkout is unavailable. In a real store, shoppers pay by card through Payments.",
         { type: "link", label: "Open the storefront", target: { kind: "external", url: `${origin}/` }, appearance: "secondary" })),
-    ...step(undefined, "Look at Shipping", "Ship buys, prints and cancels USPS labels for paid orders. In a real store it connects to DinkusKit.com; here it shows what you would connect.",
-      { type: "link", label: "Open Shipping", target: admin("/plugins/dinkus-ship/shipping"), appearance: "secondary" }),
-    ...step(undefined, "Look at Payments", "Payments takes card payments through Stripe. In a real store you connect it to DinkusKit.com once; here it stays unconnected.",
-      { type: "link", label: "Open Payments", target: admin("/plugins/dinkus-payments/status"), appearance: "secondary" }),
+    ...step(undefined, "Make a practice shipping label", "Ship buys, prints and cancels USPS labels for paid orders. Press Connect (it's pretend here), then open an order and press Make practice label.",
+      { type: "link", label: "Open Shipping", target: admin(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`), appearance: "secondary" }),
+    ...step(undefined, "Look at Payments", "Payments takes card payments through Stripe. Press Connect (it's pretend here) and it shows Stripe test mode ready.",
+      { type: "link", label: "Open Payments", target: admin(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`), appearance: "secondary" }),
     { type: "divider" },
     { type: "header", text: "Ready for real?" },
     {

@@ -388,13 +388,13 @@ jobs:
             echo "::error::Playground preview shows 'The catalog is unavailable right now.'"
             exit 1
           fi
-          # Payments, Ship (sandboxed Registry bundles) and the welcome card
+          # Payments, Ship (released Registry bundles, under their Registry ids) and the welcome card
           # answer from the visitor's own admin.
           curl --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
             --cookie-jar "$cookie_jar" --cookie "$cookie_jar" \
             --request POST "$PREVIEW_URL/_playground/init" --output /dev/null
-          for check in "dinkus-ship|/shipping|Shipping" \
-            "dinkus-payments|/status|Payment setup" \
+          for check in "r_ehdlg5cxkb3ffqvr|/shipping|Shipping" \
+            "r_3brsc2on3bu673rn|/status|Payment setup" \
             "dinkus-playground-welcome|widget:welcome|Start your real store"; do
             IFS='|' read -r plugin page expected <<< "$check"
             plugin_body="$(mktemp)"

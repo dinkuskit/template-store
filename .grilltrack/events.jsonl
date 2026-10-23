@@ -120,3 +120,4 @@
 {"action": "decision_locked", "at": "2026-10-22T15:16:13+00:00", "data": {"decision_id": "playground-plugin-pins-20261022"}, "event_id": "a264abeb-855d-4cf9-b6c3-b7c8e0d4c9ab"}
 {"action": "decision_proposed", "at": "2026-10-22T22:54:48+00:00", "data": {"decision_id": "playground-checkout-payments-key-20261022"}, "event_id": "0afff0c8-c85c-48cb-8b95-b50f341fa0c4"}
 {"action": "decision_locked", "at": "2026-10-22T22:54:48+00:00", "data": {"decision_id": "playground-checkout-payments-key-20261022"}, "event_id": "c0cbfb96-1f00-43fe-ab9b-25392e371cc2"}
+{"action": "decision_proposed", "at": "2026-10-23T01:14:35+00:00", "data": {"decision_id": "playground-plugins-in-store-20261023"}, "event_id": "4a1f5de5-dc02-4166-bd7f-f89fb6867ce5"}

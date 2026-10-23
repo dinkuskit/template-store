@@ -77,11 +77,6 @@
       "name": "EMAIL"
     }
   ],
-  "worker_loaders": [
-    {
-      "binding": "LOADER"
-    }
-  ],
   "previews": {
     "vars": {
       "DINKUS_DEMO_NOINDEX": "1",
@@ -129,11 +124,6 @@
     "send_email": [
       {
         "name": "EMAIL"
-      }
-    ],
-    "worker_loaders": [
-      {
-        "binding": "LOADER"
       }
     ]
   }

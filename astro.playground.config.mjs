@@ -19,9 +19,6 @@ const commerceEntry = fileURLToPath(
 const playgroundCommerceEntry = fileURLToPath(
   new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
 );
-const sandboxRunnerEntry = fileURLToPath(
-  new URL("./src/features/playground-plugins/runner.ts", import.meta.url),
-);
 const welcomeEntry = fileURLToPath(
   new URL("./src/features/playground-plugins/welcome-plugin.ts", import.meta.url),
 );
@@ -64,11 +61,11 @@ export default defineConfig({
           entrypoint: welcomeEntry,
           adminWidgets: [{ id: "welcome", size: "full", title: "Welcome to your DinkusKit store" }],
         },
+        // Payments and Ship: their released Registry bundles, run inside the
+        // visitor's own store. EmDash's sandbox saves plugin data only to a
+        // regular store database, never to a playground visitor's store.
+        ...playgroundRegistryPlugins(),
       ],
-      // Payments and Ship run as their released Registry bundles in the
-      // sandbox (Worker Loader binding LOADER), as on a real store.
-      sandboxed: playgroundRegistryPlugins(),
-      sandboxRunner: sandboxRunnerEntry,
     }),
   ],
   vite: {
