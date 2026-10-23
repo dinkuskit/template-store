@@ -99,34 +99,6 @@ export function stepGuestCartQuantityInput(
   return Math.min(GUEST_CART_MAX_QUANTITY, Math.max(min, parsed + delta));
 }
 
-export function parseGuestCartBatchSelections(
-  entries: readonly Readonly<{ id: string; rawQuantity: string }>[],
-): Readonly<{ lines: readonly GuestCartLine[]; reason: string | null }> {
-  const lines: GuestCartLine[] = [];
-  for (const entry of entries) {
-    const trimmed = entry.rawQuantity.trim();
-    if (trimmed === "" || trimmed === "0") continue;
-    const quantity = parseGuestCartQuantityInput(trimmed);
-    if (quantity === null) {
-      return {
-        lines: [],
-        reason: `Quantity must be a whole number from 1 to ${GUEST_CART_MAX_QUANTITY}.`,
-      };
-    }
-    if (!isSafeGuestCartProductId(entry.id)) {
-      return { lines: [], reason: "That product cannot be added to the cart." };
-    }
-    lines.push({ id: entry.id, quantity });
-  }
-  if (lines.length === 0) {
-    return {
-      lines: [],
-      reason: `Select at least one variant quantity from 1 to ${GUEST_CART_MAX_QUANTITY}.`,
-    };
-  }
-  return { lines, reason: null };
-}
-
 export function addGuestCartLine(
   intent: GuestCartIntent,
   id: string,
@@ -151,28 +123,6 @@ export function addGuestCartLine(
     ? intent.lines.map((line) => (line.id === id ? { id, quantity: nextQuantity } : line))
     : [...intent.lines, { id, quantity: nextQuantity }];
   return { intent: { version: GUEST_CART_VERSION, lines }, accepted: true, reason: null };
-}
-
-export function addGuestCartLines(
-  intent: GuestCartIntent,
-  entries: readonly GuestCartLine[],
-): GuestCartMutationResult {
-  if (entries.length === 0) {
-    return {
-      intent,
-      accepted: false,
-      reason: `Select at least one variant quantity from 1 to ${GUEST_CART_MAX_QUANTITY}.`,
-    };
-  }
-  let next = intent;
-  for (const entry of entries) {
-    const step = addGuestCartLine(next, entry.id, entry.quantity);
-    if (!step.accepted) {
-      return { intent, accepted: false, reason: step.reason };
-    }
-    next = step.intent;
-  }
-  return { intent: next, accepted: true, reason: null };
 }
 
 export function setGuestCartLineQuantity(

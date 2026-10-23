@@ -9,7 +9,6 @@ const expectedPins = {
   "@dinkuskit/inventory":
     "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
 };
-const expectedCommerceCommit = "c42597bddd35d949f4e69f8ca97cc26206200da0";
 
 const failures = [];
 for (const feature of [
@@ -28,9 +27,10 @@ for (const feature of [
 if (
   manifest.dinkuskit?.sourcePins?.commerce?.repository !==
     "https://github.com/dinkuskit/commerce.git" ||
-  manifest.dinkuskit?.sourcePins?.commerce?.commit !== expectedCommerceCommit
+  !/^[0-9a-f]{40}$/u.test(manifest.dinkuskit?.sourcePins?.commerce?.commit ?? "") ||
+  !/^v\d+\.\d+\.\d+$/u.test(manifest.dinkuskit?.sourcePins?.commerce?.tag ?? "")
 ) {
-  failures.push("Commerce source preparation must retain its exact repository and commit");
+  failures.push("Commerce source preparation must retain its exact repository, release tag and commit");
 }
 
 const managedProductRuntime = readFileSync(
@@ -82,9 +82,14 @@ if (
   );
 }
 for (const path of [
+  "src/styles/tokens.css",
+  "src/styles/theme.css",
   "src/features/store-shell/index.ts",
+  "src/features/store-shell/StoreFooter.astro",
   "src/features/store-shell/price.ts",
   "src/pages/proof.astro",
+  "src/pages/search.astro",
+  "scripts/upgrade-storefront-search.ts",
   "docs/implementation/unpriced-public-home.md",
   "src/features/managed-product-availability/index.ts",
   "src/features/unmanaged-product-sellability/index.ts",
@@ -142,6 +147,7 @@ for (const path of sourceFiles(resolve(root, "src"))) {
 for (const relative of [
   "src/pages/index.astro",
   "src/pages/proof.astro",
+  "src/pages/search.astro",
   "src/pages/categories/[slug].astro",
   "src/pages/products/[id].astro",
   "src/pages/cart.astro",

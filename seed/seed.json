@@ -13,19 +13,22 @@
       "labelSingular": "Page",
       "supports": [
         "drafts",
-        "revisions"
+        "revisions",
+        "search"
       ],
       "fields": [
         {
           "slug": "title",
           "label": "Title",
           "type": "string",
-          "required": true
+          "required": true,
+          "searchable": true
         },
         {
           "slug": "content",
           "label": "Content",
-          "type": "portableText"
+          "type": "portableText",
+          "searchable": true
         },
         {
           "slug": "layout",
@@ -50,14 +53,16 @@
       "seo": true,
       "supports": [
         "drafts",
-        "revisions"
+        "revisions",
+        "search"
       ],
       "fields": [
         {
           "slug": "title",
           "label": "Product title",
           "type": "string",
-          "required": true
+          "required": true,
+          "searchable": true
         },
         {
           "slug": "categories",
@@ -76,7 +81,8 @@
         {
           "slug": "description",
           "label": "Short description",
-          "type": "string"
+          "type": "string",
+          "searchable": true
         },
         {
           "slug": "visual_label",
@@ -94,19 +100,22 @@
       "seo": true,
       "supports": [
         "drafts",
-        "revisions"
+        "revisions",
+        "search"
       ],
       "fields": [
         {
           "slug": "title",
           "label": "Category title",
           "type": "string",
-          "required": true
+          "required": true,
+          "searchable": true
         },
         {
           "slug": "description",
           "label": "Description",
-          "type": "string"
+          "type": "string",
+          "searchable": true
         },
         {
           "slug": "products",
@@ -182,6 +191,73 @@
           "ref": "tees"
         }
       ]
+    },
+    {
+      "name": "footer_shop",
+      "label": "Footer shop links",
+      "items": [
+        { "type": "custom", "label": "All products", "url": "/#commerce-catalog" },
+        { "type": "collection", "label": "Hats", "collection": "categories", "ref": "hats" },
+        { "type": "collection", "label": "Hoodies", "collection": "categories", "ref": "hoodies" },
+        { "type": "collection", "label": "Tees", "collection": "categories", "ref": "tees" }
+      ]
+    },
+    {
+      "name": "footer_policies",
+      "label": "Footer policies",
+      "items": [
+        { "type": "custom", "label": "Shipping", "url": "/shipping" },
+        { "type": "custom", "label": "Returns", "url": "/returns" }
+      ]
+    },
+    {
+      "name": "footer_account",
+      "label": "Footer account links",
+      "items": [
+        { "type": "custom", "label": "Account", "url": "/account" },
+        { "type": "custom", "label": "Shopping bag", "url": "/cart" }
+      ]
+    }
+  ],
+  "widgetAreas": [
+    {
+      "name": "footer",
+      "label": "Footer",
+      "widgets": [
+        {
+          "type": "content",
+          "title": "Store note",
+          "content": [
+            {
+              "_type": "block",
+              "_key": "footer-note-block",
+              "style": "normal",
+              "markDefs": [],
+              "children": [
+                {
+                  "_type": "span",
+                  "_key": "footer-note-span",
+                  "text": "Editorial pages, menus, sections, and widgets are managed in EmDash.",
+                  "marks": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "menu",
+          "title": "Your account",
+          "menuName": "footer_account"
+        },
+        {
+          "type": "component",
+          "title": "Search catalog",
+          "componentId": "core:search",
+          "props": {
+            "placeholder": "Search products..."
+          }
+        }
+      ]
     }
   ],
   "sections": [
@@ -230,6 +306,64 @@
               "_key": "home-opener-fact-notes",
               "label": "Notes",
               "value": "Rewrite this rail"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "policy-support-note",
+      "title": "Policy and care note",
+      "description": "Reusable Portable Text support note rendered alongside Shipping and Returns policies.",
+      "keywords": [
+        "policy",
+        "shipping",
+        "returns",
+        "care",
+        "support",
+        "provenance"
+      ],
+      "source": "theme",
+      "content": [
+        {
+          "_type": "block",
+          "_key": "policy-support-heading",
+          "style": "h3",
+          "markDefs": [],
+          "children": [
+            {
+              "_type": "span",
+              "_key": "policy-support-heading-span",
+              "text": "Garment care & policy provenance",
+              "marks": []
+            }
+          ]
+        },
+        {
+          "_type": "block",
+          "_key": "policy-support-care",
+          "style": "normal",
+          "markDefs": [],
+          "children": [
+            {
+              "_type": "span",
+              "_key": "policy-support-care-span",
+              "text": "Wash cold and hang dry to preserve fabric weight and collar structure across everyday wear.",
+              "marks": []
+            }
+          ]
+        },
+        {
+          "_type": "block",
+          "_key": "policy-support-authority",
+          "style": "normal",
+          "markDefs": [],
+          "children": [
+            {
+              "_type": "span",
+              "_key": "policy-support-authority-span",
+              "text": "Authoritative shipping charges, handling windows, and return eligibility come directly from the connected Commerce store.",
+              "marks": []
             }
           ]
         }

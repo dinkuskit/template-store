@@ -129,7 +129,7 @@ describe("checkout body validation", () => {
   it("guards checkout routes in middleware before seeding the playground DB", () => {
     const middleware = readFileSync("src/middleware.ts", "utf8");
     expect(middleware.indexOf("guardSandboxCheckout(context.request"))
-      .toBeLessThan(middleware.indexOf("await ensurePlaygroundDemoCatalog(db)"));
+      .toBeLessThan(middleware.indexOf("await ensurePlaygroundDemoCatalog(db, { playground: true })"));
     expect(middleware.indexOf("guardSandboxCheckout(context.request"))
       .toBeLessThan(middleware.indexOf("withCheckoutVisitor("));
   });

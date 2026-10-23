@@ -1,11 +1,7 @@
 ---
 import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
-import { getEmDashEntry, getEmDashCollection, getMenu, getSiteSettings, type PortableTextBlock } from "emdash";
-import { Blocks, PortableText, type BlockValue } from "emdash/ui";
-import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
-import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
-import UnknownBlock from "../features/store-shell/blocks/UnknownBlock.astro";
+import { getEmDashCollection, getMenu } from "emdash";
 
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
@@ -29,10 +25,6 @@ if (!isProofStorefrontProfile()) {
   });
 }
 
-const { entry: page } = await getEmDashEntry("pages", "home");
-const pageData = page ? page.data as (typeof page.data & { layout?: BlockValue[] }) : undefined;
-const layout = pageData?.layout;
-const content = pageData?.content as PortableTextBlock[] | undefined;
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
@@ -57,10 +49,6 @@ const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, play
     runtime: Astro.locals.emdash,
     request: Astro.request,
   }).catch(() => null));
-const composed = Boolean(layout?.length || content?.length);
-const siteSettings = composed ? null : await getSiteSettings().catch(() => null);
-const siteTitle = siteSettings?.title?.trim() || STORE_TITLE;
-const siteTagline = siteSettings?.tagline?.trim() || null;
 const availability = demonstrations.managed;
 const unmanaged = demonstrations.unmanaged;
 ---
@@ -77,30 +65,13 @@ const unmanaged = demonstrations.unmanaged;
     <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(checkoutAvailable)} role="status">{storeBannerText(checkoutAvailable)}</div>
     <StoreHeader profile={profile} />
     <main>
-      {
-        layout?.length ? (
-          <div class="cms-composition" data-cms-composition data-layout="blocks">
-            <Blocks
-              value={layout}
-              components={pageLayoutComponents}
-              fallback={UnknownBlock}
-            />
-          </div>
-        ) : content?.length ? (
-          <div class="cms-composition" data-cms-composition data-layout="portable-text">
-            <PortableText value={content} components={legacyPortableTextComponents} />
-          </div>
-        ) : (
-          <section class="store-default-home" data-home-default>
-            <h1>{siteTitle}</h1>
-            {siteTagline && <p>{siteTagline}</p>}
-            <a href="#commerce-catalog">Browse the shop</a>
-          </section>
-        )
-      }
+      <section class="store-default-home" data-proof-intro>
+        <h1>Integration demonstrations</h1>
+        <p>Seeded proof examples for Commerce and Inventory. The merchant catalog lives on the <a href="/">store home page</a>.</p>
+      </section>
       <section aria-label="Separate integration demonstrations" data-integration-demos>
-        <h2 class="demo-heading">Integration demonstrations</h2>
-        <p class="demo-heading">These seeded examples are separate from the merchant catalog above.</p>
+        <h2 class="demo-heading">Seeded examples</h2>
+        <p class="demo-heading">These seeded examples are separate from the merchant catalog.</p>
         <MerchCatalog collections={collections} menu={storeMenu ?? undefined} managed={availability} unmanaged={unmanaged} />
         {availability.price.listable && <ManagedProductAvailability availability={availability} />}
         {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}

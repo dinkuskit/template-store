@@ -5,6 +5,7 @@ import { playgroundDatabase } from "@emdash-cms/cloudflare";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
+import { playgroundRegistryPlugins } from "./src/features/playground-plugins/registry-plugins.mjs";
 
 // The playground always serves the synthetic native catalog; the playground
 // middleware seeds it into each per-visitor DB. Sandbox checkout stays closed
@@ -17,6 +18,9 @@ const commerceEntry = fileURLToPath(
 );
 const playgroundCommerceEntry = fileURLToPath(
   new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
+);
+const welcomeEntry = fileURLToPath(
+  new URL("./src/features/playground-plugins/welcome-plugin.ts", import.meta.url),
 );
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
@@ -50,6 +54,17 @@ export default defineConfig({
         // adds build-time checkout options (binding "playground", flat-rate
         // shipping, host-side Payments port). Commerce is unchanged.
         { ...dinkusCommerce({ enableLocalStockManagement: false }), entrypoint: playgroundCommerceEntry },
+        // Playground-only welcome card on the admin dashboard.
+        {
+          id: "dinkus-playground-welcome",
+          version: "1.0.0",
+          entrypoint: welcomeEntry,
+          adminWidgets: [{ id: "welcome", size: "full", title: "Welcome to your DinkusKit store" }],
+        },
+        // Payments and Ship: their released Registry bundles, run inside the
+        // visitor's own store. EmDash's sandbox saves plugin data only to a
+        // regular store database, never to a playground visitor's store.
+        ...playgroundRegistryPlugins(),
       ],
     }),
   ],

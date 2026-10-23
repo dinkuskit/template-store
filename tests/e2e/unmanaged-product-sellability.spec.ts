@@ -45,9 +45,10 @@ test("admin composition and public unmanaged availability stay operable", async 
     fullPage: true,
   });
 
-  await page.goto("/proof");
+  await page.goto("/");
   await expect(page.locator('[data-layout="blocks"] [data-home-opener] h1')).toHaveText("Everyday essentials, clearly presented");
   await expect(page.locator(".home-opener__actions a").nth(1)).toHaveText("View products");
+  await page.goto("/proof");
   await expect(page.locator("[data-unmanaged-sku]")).toHaveText(
     "DINKUS-DEMO-UNMANAGED",
   );

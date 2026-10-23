@@ -18,6 +18,7 @@ import {
 import { allowsProductJsonLd, canonicalUrl, jsonLdScript } from "../../features/store-shell/structured-data.js";
 import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
+import { variantPickerView, NO_OFFER_JSON_LD_KEY, type VariantPickerMember } from "../../features/store-shell/variant-picker.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, productPageOffersCart, readProductEntries } from "../../features/store-shell/product-routes.js";
 import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
@@ -80,6 +81,23 @@ const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checko
 const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo, checkoutEnabled });
 const variants = linkedProduct?.variants ?? [];
 const selectedVariant = variants.find((member) => member.availability.sellable) ?? variants[0] ?? null;
+// One picker per option (Color, then Size), like Shopify or WooCommerce
+// product pages. The browser matches the picked values to one member.
+const variantOptions = [...new Set(variants.flatMap((member) => member.selections.map(([option]) => option)))]
+  .map((label) => ({
+    label,
+    values: [...new Set(variants.flatMap((member) => member.selections.filter(([option]) => option === label).map(([, value]) => value)))],
+  }));
+const selectedValue = (option: string) => selectedVariant?.selections.find(([name]) => name === option)?.[1];
+const variantMembers: VariantPickerMember[] = variants.map((member) => ({
+  id: member.id,
+  values: Object.fromEntries(member.selections),
+  price: member.priceText,
+  availability: member.availability.status,
+  status: availabilityLabels[member.availability.status] ?? "Availability unavailable",
+  sellable: member.availability.sellable,
+}));
+const initialPicker = variantPickerView(variantMembers, Object.fromEntries(selectedVariant?.selections ?? []));
 const cartProduct = linkedProduct && selectedVariant
   ? { ...linkedProduct, id: selectedVariant.id, availability: { ...selectedVariant.availability, listable: true } }
   : linkedProduct;
@@ -156,8 +174,16 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
       images: [new URL(`/merch/${item.illustration}.svg`, productCanonical).href],
     })
   : null;
-const variantJsonLd = productJsonLd && linkedProduct && variants.length
-  ? Object.fromEntries(variants.map((variant) => [variant.id, linkedProductJsonLd(variant)]))
+// A picked combination with no member shows Product facts without an Offer.
+const variantJsonLd = productJsonLd && linkedProduct && item && productName && variants.length
+  ? {
+    ...Object.fromEntries(variants.map((variant) => [variant.id, linkedProductJsonLd(variant)])),
+    [NO_OFFER_JSON_LD_KEY]: buildProductPreviewJsonLd({
+      url: productCanonical,
+      name: productName,
+      ...(item.description ? { description: item.description } : {}),
+    }),
+  }
   : null;
 ---
 <!doctype html>
@@ -190,18 +216,16 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
             {linkedProduct?.mpn && <p class="product-detail__identifier" data-product-mpn={linkedProduct.mpn}>MPN {linkedProduct.mpn}</p>}
             {linkedProduct?.brand && <p class="product-detail__identifier" data-product-brand={linkedProduct.brand}>Brand {linkedProduct.brand}</p>}
             {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price data-variant-price>{selectedVariant?.priceText ?? linkedProduct.price.regularText}</strong>}</p>}
-            {variants.length > 0 && <p class="product-detail__from" data-product-from-price>{linkedProduct!.price.regularText}</p>}
-            {variants.length > 0 && <fieldset class="product-variants" data-product-variants>
-              <legend>{[...new Set(variants.flatMap((member) => member.selections.map(([option]) => option)))].join(" / ")}</legend>
-              {variants.map((member) => <label class="product-variant">
-                <input type="radio" name="variant" value={member.id} checked={member === selectedVariant}
-                  data-variant-choice data-choice-price={member.priceText}
-                  data-variant-availability={member.availability.status}
-                  data-variant-status={availabilityLabels[member.availability.status] ?? "Availability unavailable"}
-                  data-variant-sellable={String(member.availability.sellable)} />
-                <span>{member.selections.map(([, value]) => value).join(" / ")}</span>
+            {variantOptions.map((option, index) => <fieldset class="product-variants" data-product-variants data-variant-option={option.label}>
+              <legend>{option.label}</legend>
+              {option.values.map((value) => <label class="product-variant">
+                <input type="radio" name={`variant-option-${index}`} value={value} checked={value === selectedValue(option.label)}
+                  data-variant-choice data-variant-option={option.label}
+                  data-variant-sold-out={String(initialPicker.soldOut[option.label]?.[value] ?? true)} />
+                <span>{value}</span><span class="product-variant__sold-out"> (sold out)</span>
               </label>)}
-            </fieldset>}
+            </fieldset>)}
+            {variantMembers.length > 0 && <script type="application/json" data-variant-members set:html={jsonLdScript(variantMembers)} />}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
@@ -212,57 +236,69 @@ const variantJsonLd = productJsonLd && linkedProduct && variants.length
         </article>
       ) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
-    <StoreFooter profile={profile} note={`Merchandise copy is editable in EmDash; transactional facts remain in Commerce${profile === "proof" ? " and Inventory" : ""}.`} />
+    <StoreFooter profile={profile} />
   </body>
 </html>
 <script>
-  // Variant picker: show the chosen member's Commerce price and availability.
+  // Variant pickers: match the picked values to one Commerce member, then show
+  // its price and availability and point the single Add to cart at it.
+  import { variantPickerView, NO_OFFER_JSON_LD_KEY, type VariantPickerMember } from "../../features/store-shell/variant-picker.ts";
   const productJsonLd = document.querySelector<HTMLScriptElement>("[data-product-jsonld]");
   const variantJsonLdData = document.querySelector<HTMLScriptElement>("[data-variant-product-jsonld]");
   const variantJsonLd = JSON.parse(variantJsonLdData?.textContent ?? "{}") as Record<string, unknown>;
-  for (const input of document.querySelectorAll<HTMLInputElement>("[data-variant-choice]")) {
-    input.addEventListener("change", () => {
-      const price = document.querySelector("[data-variant-price]");
-      const status = document.querySelector("[data-product-status]");
-      const add = document.querySelector<HTMLElement>("[data-add-to-cart]");
-      if (price) price.textContent = input.dataset.choicePrice ?? "";
-      if (status) {
-        status.textContent = input.dataset.variantStatus ?? "";
-        status.setAttribute("data-availability-status", input.dataset.variantAvailability ?? "");
-      }
-      if (productJsonLd && Object.hasOwn(variantJsonLd, input.value)) {
-        productJsonLd.textContent = JSON.stringify(variantJsonLd[input.value]);
-      }
-      if (add) {
-        add.dataset.addToCart = input.value;
-        const sellable = input.dataset.variantSellable === "true";
-        add.dataset.addToCartSellable = String(sellable);
-        if (add instanceof HTMLButtonElement) add.disabled = !sellable;
-        const single = add.closest<HTMLElement>("[data-add-to-cart-single]");
-        const container = add.closest<HTMLElement>(".guest-cart-add");
-        if (single) single.hidden = !sellable;
-        else if (container) container.hidden = !sellable;
-      }
-    });
+  const members = JSON.parse(document.querySelector("[data-variant-members]")?.textContent ?? "[]") as VariantPickerMember[];
+  const choices = [...document.querySelectorAll<HTMLInputElement>("[data-variant-choice]")];
+  function update(): void {
+    const view = variantPickerView(members, Object.fromEntries(
+      choices.filter((input) => input.checked).map((input) => [input.dataset.variantOption ?? "", input.value]),
+    ));
+    for (const input of choices) {
+      input.dataset.variantSoldOut = String(view.soldOut[input.dataset.variantOption ?? ""]?.[input.value] ?? true);
+    }
+    const priceRow = document.querySelector<HTMLElement>("[data-product-price]");
+    const price = document.querySelector("[data-variant-price]");
+    if (priceRow) priceRow.hidden = view.price === null;
+    if (price && view.price !== null) price.textContent = view.price;
+    const status = document.querySelector("[data-product-status]");
+    if (status) {
+      status.textContent = view.status;
+      status.setAttribute("data-availability-status", view.availability);
+    }
+    const jsonLdKey = view.member?.id ?? NO_OFFER_JSON_LD_KEY;
+    if (productJsonLd && Object.hasOwn(variantJsonLd, jsonLdKey)) {
+      productJsonLd.textContent = JSON.stringify(variantJsonLd[jsonLdKey]);
+    }
+    const add = document.querySelector<HTMLElement>("[data-add-to-cart]");
+    if (add) {
+      if (view.member) add.dataset.addToCart = view.member.id;
+      add.dataset.addToCartSellable = String(view.sellable);
+      if (add instanceof HTMLButtonElement) add.disabled = !view.sellable;
+      add.textContent = view.buttonLabel;
+    }
   }
+  for (const input of choices) input.addEventListener("change", update);
 </script>
 <style>
   .product-page{width:min(70rem,calc(100% - 2rem));margin:0 auto;min-height:65vh}
   .browse-breadcrumb{display:flex;flex-wrap:wrap;gap:.7rem;padding:2rem 0;color:var(--store-muted)}
   .browse-breadcrumb a{color:inherit;text-underline-offset:.2em}
   .product-detail{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:clamp(1.5rem,5vw,5rem);align-items:center;margin:1rem 0 5rem}
-  .product-detail__visual{min-width:0;aspect-ratio:4/3;overflow:hidden;border-radius:1rem;background:#e9e8df}
+  .product-detail__visual{min-width:0;aspect-ratio:4/3;overflow:hidden;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:#e9e8df;box-shadow:4px 4px 0 var(--store-shadow)}
   .product-detail__visual--hoodie{background:#dce2df}.product-detail__visual--cap{background:#e6ddd1}.product-detail__visual--beanie{background:#e2e1d6}
   .product-detail__visual img{display:block;width:100%;height:100%;object-fit:cover}
   .product-detail__body{min-width:0;overflow-wrap:anywhere}
-  .product-detail__eyebrow{color:var(--store-muted);font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  .product-detail__eyebrow{color:var(--store-accent);font-family:var(--font-mono);font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
   h1{font-size:clamp(2.5rem,6vw,5.5rem);line-height:1;letter-spacing:-.05em;margin:.4rem 0 1.5rem}
   .product-detail__description{font-size:clamp(1.05rem,2vw,1.3rem);line-height:1.6}
-  .product-detail__price{display:flex;gap:.7rem;align-items:baseline;font-size:1.5rem}.product-detail__price s{color:var(--store-muted)}
+  .product-detail__price{display:flex;gap:.7rem;align-items:baseline;font-size:1.5rem}.product-detail__price[hidden]{display:none}.product-detail__price s{color:var(--store-muted)}
   .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
   .product-detail__notice{line-height:1.5;color:var(--store-muted)}
   .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
   .product-variants{display:flex;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}
-  .product-variant{display:inline-flex;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1px solid var(--store-line);border-radius:.4rem;cursor:pointer}
+  .product-variant{display:inline-flex;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
+  .product-variant__sold-out{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .product-variant:has(input[data-variant-sold-out="true"]){color:var(--store-muted);box-shadow:none}
+  .product-variant:has(input[data-variant-sold-out="true"]) span:first-of-type{text-decoration:line-through}
+  .product-variant:has(input[data-variant-sold-out="false"]) .product-variant__sold-out{display:none}
   @media(max-width:40rem){.product-detail{grid-template-columns:1fr;gap:1.5rem}}
 </style>

@@ -84,12 +84,12 @@ const manualLabel: Record<string, string> = {
   .catalog-heading p:last-child{max-width:40rem;color:var(--store-muted);line-height:1.6}
   .catalog-count,.collection-heading span{color:var(--store-muted);white-space:nowrap}
   .collection-nav{display:flex;flex-wrap:wrap;gap:.6rem;padding:1.2rem 0 2rem}
-  .collection-nav a{padding:.65rem 1.1rem;border:1px solid var(--store-line);border-radius:99rem;color:inherit;text-decoration:none;font-weight:700;background:var(--store-surface)}
-  .collection-nav a:hover{background:#e9e6dc}
+  .collection-nav a{padding:.65rem 1.1rem;border:1.5px solid var(--store-ink-border);border-radius:99rem;color:inherit;text-decoration:none;font-weight:700;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow)}
+  .collection-nav a:hover{background:var(--store-surface-subtle)}
   .collection{scroll-margin-top:1.5rem;margin:0 0 3.5rem}
   .collection-heading{margin-bottom:1rem}.collection-heading a{color:inherit;text-decoration-thickness:1px;text-underline-offset:.2em}.collection-heading h3{margin:0;font-size:1.7rem;letter-spacing:-.03em}
-  .merch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
-  .merch-card{min-width:0;overflow:hidden;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface)}
+  .merch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.25rem}
+  .merch-card{min-width:0;overflow:hidden;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow)}
   .merch-card__visual{aspect-ratio:4/3;background:#e9e8df;overflow:hidden}
   .merch-card__visual--hoodie{background:#dce2df}.merch-card__visual--cap{background:#e6ddd1}.merch-card__visual--beanie{background:#e2e1d6}
   .merch-card__visual img{display:block;width:100%;height:100%;object-fit:cover}
