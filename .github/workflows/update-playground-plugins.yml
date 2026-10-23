@@ -70,4 +70,4 @@ jobs:
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
           gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
             --title "Playground: move plugins to their latest stable releases" \
-            --body "$(printf 'Opened by the Update playground plugins workflow.\n\n%s\n\nThe pr-N playground preview proves Commerce, Payments, Ship and the welcome card on the new versions; merging puts them live on playground.dinkuskit.com.' "$SUMMARY")"
+            --body "$(printf 'Opened by the Update playground plugins workflow.\n\n%s\n\nThe pr-N playground preview proves Commerce, Payments, Ship and the playground tour on the new versions; merging puts them live on playground.dinkuskit.com.' "$SUMMARY")"

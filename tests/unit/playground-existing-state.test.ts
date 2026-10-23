@@ -5,7 +5,7 @@
  * (an isolate restart), and checkout bindings persisted in an existing database
  * stay readable and authoritative after re-seeding.
  */
-import { createSettingsAccess, OptionsRepository, PluginStorageRepository } from "emdash";
+import { ContentRepository, createSettingsAccess, OptionsRepository, PluginStorageRepository } from "emdash";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
 import { Kysely } from "kysely";
@@ -32,7 +32,9 @@ import { applySeed } from "emdash/seed";
 import { readFileSync } from "node:fs";
 import { ensurePlaygroundDemoCatalog } from "../../src/features/playground/demo-commerce-seed.js";
 import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../../src/features/playground/demo-orders.js";
-import { visitorOrderCount } from "../../src/features/playground-plugins/welcome-plugin.js";
+import { newlyDoneSteps, readTourState, recordShopVisit, tourSteps, visitorOrderCount } from "../../src/features/playground-tour/state.js";
+import { playgroundDinkusKitFetch } from "../../src/features/playground-plugins/dinkuskit-stand-in.js";
+import { runWithContext } from "emdash/request-context";
 import { playgroundCheckoutBindingStore } from "../../src/features/playground-checkout/binding-store.js";
 import { playgroundAttemptBelongsToVisitor } from "../../src/features/playground-checkout/binding-auth.js";
 import {
@@ -314,5 +316,93 @@ describe("playground visitor database state", () => {
     expect(await nextIn(fresh)).toBe(1005);
     expect(await visitorOrderCount(fresh as never)).toBe(0);
     await fresh.destroy();
+  });
+
+  it("ticks the playground tour off from what the visitor's own store holds", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    // The shipped sample's practice label and the sample orders are the playground's, not the visitor's.
+    const first = await readTourState(db as never, true);
+    expect(first).toEqual({ productEdited: false, paymentsConnected: false, orders: 0, labels: 0, shopVisited: false, checkoutOpen: true });
+    expect(await newlyDoneSteps(db as never, tourSteps(first))).toEqual([]);
+
+    // Change a product the way Commerce's Products page saves it.
+    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalogItems", []);
+    const [item] = (await items.query({ limit: 1 })).items;
+    await items.put(item!.id, { ...item!.data, title: "Renamed by the visitor" });
+
+    // Finish Payments' pretend Connect through the stand-in, inside the visitor's request.
+    const network = async () => new Response("network", { status: 599 });
+    const standIn = playgroundDinkusKitFetch(network as unknown as typeof fetch, { env: () => ({}), origin: () => "https://playground.dinkuskit.com" });
+    await runWithContext({ editMode: false, db } as never, () => standIn("https://dinkuskit.com/api/store-connections/token", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: "dinkus-payments-emdash", connection_id: "c", code_verifier: "v" }),
+    }));
+
+    // The visitor's own paid order and practice label.
+    await new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, [])
+      .put("ord_visitor", { number: 1005, revision: 1, paidOrder: { orderId: "ord_visitor" } });
+    await new PluginStorageRepository<Record<string, unknown>>(db as never, "dinkuskit-playground", "labels", [])
+      .put("practice_visitor", { labelId: "practice_visitor", orderId: "ord_visitor" });
+    await recordShopVisit(db as never);
+
+    const later = await readTourState(db as never, true);
+    expect(later).toEqual({ productEdited: true, paymentsConnected: true, orders: 1, labels: 1, shopVisited: true, checkoutOpen: true });
+    // Each finished step is announced once.
+    expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual(["edit-product", "connect-payments", "place-order", "ship-order"]);
+    expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual([]);
+  });
+
+  it("ticks Edit a product when the visitor publishes a change to a product page in Content > Products", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
+
+    // Publishing writes the page's live values; a new short description is enough.
+    const pages = new ContentRepository(db as never);
+    const [page] = (await pages.findMany("products", { limit: 1 })).items;
+    expect(page).toBeTruthy();
+    await pages.update("products", page!.id, { data: { description: "Changed by the visitor" } });
+
+    const later = await readTourState(db as never, true);
+    expect(later).toMatchObject({ productEdited: true });
+    expect(await newlyDoneSteps(db as never, tourSteps(later))).toEqual(["edit-product"]);
+  });
+
+  it("doesn't tick Edit a product for a new product that is only a draft, until it is published", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
+
+    const pages = new ContentRepository(db as never);
+    const draft = await pages.create({ type: "products", slug: "visitor-draft", status: "draft", data: { title: "Visitor draft", description: "Not in the shop yet" } });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
+
+    await pages.update("products", draft.id, { status: "published" });
+    expect(await readTourState(db as never, true)).toMatchObject({ productEdited: true });
+  });
+
+  it("keeps the progress a visitor made before the tour replaced the welcome card", async () => {
+    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    const options = new OptionsRepository(db as never);
+    // The welcome card's first look at the untouched catalog, kept under its own plugin id.
+    await readTourState(db as never, true);
+    const untouched = await options.get<string>("plugin:dinkus-playground-tour:catalog-baseline");
+    await options.delete("plugin:dinkus-playground-tour:catalog-baseline");
+    await options.set("plugin:dinkus-playground-welcome:catalog-baseline", untouched);
+
+    // Before the tour: the visitor renamed a product and finished Payments' Connect, which Payments saved itself.
+    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalogItems", []);
+    const [item] = (await items.query({ limit: 1 })).items;
+    await items.put(item!.id, { ...item!.data, title: "Renamed before the tour" });
+    await options.set("plugin:r_3brsc2on3bu673rn:state:registry-v2-control", { phase: "complete", flowId: "flow_before" });
+
+    const upgraded = await readTourState(db as never, true);
+    expect(upgraded).toMatchObject({ productEdited: true, paymentsConnected: true });
+    expect(await newlyDoneSteps(db as never, tourSteps(upgraded))).toEqual(["edit-product", "connect-payments"]);
+
+    // A Connect that never finished doesn't count.
+    const unfinished = await visitorDb();
+    await ensurePlaygroundDemoCatalog(unfinished as never, { playground: true });
+    await new OptionsRepository(unfinished as never).set("plugin:r_3brsc2on3bu673rn:state:registry-v2-control", { phase: "pending" });
+    expect(await readTourState(unfinished as never, true)).toMatchObject({ productEdited: false, paymentsConnected: false });
+    await unfinished.destroy();
   });
 });
