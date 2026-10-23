@@ -46,6 +46,8 @@ export const GUEST_CHECKOUT_REASON = "Checkout is not available yet.";
 /** Shown when checkout is admitted but there is nothing to buy yet. */
 export const GUEST_CHECKOUT_READY_LABEL = "Checkout";
 export const GUEST_CHECKOUT_EMPTY_REASON = "Add products to your cart to check out.";
+/** Shown when checkout is admitted but a cart line cannot be bought. */
+export const GUEST_CHECKOUT_BLOCKED_REASON = "Remove the products that can't be bought to check out.";
 /** Shown on /cart when checkout is ready to proceed to /checkout. */
 export const GUEST_CART_PROCEED_LABEL = "Proceed to Checkout";
 
@@ -293,6 +295,9 @@ export function presentGuestCart(options: {
   // that checkout is off.
   const emptyAdmitted = options.checkoutAdmitted === true && lines.length === 0 &&
     !options.pending && !options.snapshotFailed;
+  // On a store that takes checkouts, say which lines are in the way, not that checkout is off.
+  const blockedAdmitted = options.checkoutAdmitted === true && lines.length > 0 &&
+    !options.pending && !options.snapshotFailed && lines.some((line) => !line.sellable);
   return {
     lines,
     subtotalText: totalsUnconfirmed ? null : cartSubtotalText(options.intent.lines, options.snapshots ?? null),
@@ -306,7 +311,8 @@ export function presentGuestCart(options: {
       : emptyAdmitted ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL,
     checkoutReason: checkoutEnabled
       ? "Commerce will confirm the final amount and availability."
-      : emptyAdmitted ? GUEST_CHECKOUT_EMPTY_REASON : GUEST_CHECKOUT_REASON,
+      : emptyAdmitted ? GUEST_CHECKOUT_EMPTY_REASON
+      : blockedAdmitted ? GUEST_CHECKOUT_BLOCKED_REASON : GUEST_CHECKOUT_REASON,
     checkoutEnabled,
     needsDelivery,
   };

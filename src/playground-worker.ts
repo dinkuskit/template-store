@@ -7,11 +7,15 @@ import {
   applyPlaygroundNoIndex,
   dropRewrittenBodyHeaders,
   injectPlaygroundNoIndex,
+  injectPlaygroundStoreTag,
   isPlaygroundInitFailure,
   isUsablePlaygroundSession,
+  playgroundSessionCreatedAt,
+  playgroundStoreTag,
   readPlaygroundSession,
   recoverFromPlaygroundInitFailure,
   retargetPlaygroundDeployLink,
+  startedPlaygroundSession,
   withoutPlaygroundSession,
 } from "./features/playground/contract.js";
 import { withShopperAccountRequest } from "./features/shopper-account/playground-runtime.js";
@@ -67,7 +71,10 @@ export default {
       return new Response(response.body, { status: response.status, headers });
     }
 
-    const html = retargetPlaygroundDeployLink(injectPlaygroundNoIndex(await response.text()));
+    let html = retargetPlaygroundDeployLink(injectPlaygroundNoIndex(await response.text()));
+    const store = startedPlaygroundSession(headers) ?? (staleSession ? undefined : session);
+    const started = store === undefined ? undefined : playgroundSessionCreatedAt(store);
+    if (store && started !== undefined) html = injectPlaygroundStoreTag(html, await playgroundStoreTag(store), started);
     dropRewrittenBodyHeaders(headers);
     return new Response(html, {
       status: response.status,

@@ -1,5 +1,7 @@
 /** Public contract for the disposable TemplateStore playground. */
 export const PLAYGROUND_COOKIE_NAME = "emdash_playground";
+/** Matches PLAYGROUND_STORE_META in src/features/guest-cart/storage.ts. */
+export const PLAYGROUND_STORE_META = "dinkus-playground-store";
 export const PLAYGROUND_TTL_SECONDS = 60 * 60;
 export const PLAYGROUND_ADMIN_ID = "playground-admin";
 export const PLAYGROUND_CREATION_LIMITER_BINDING = "PLAYGROUND_CREATION_LIMITER";
@@ -138,6 +140,34 @@ export function readPlaygroundSession(request: Request): string | undefined {
     }
   }
   return undefined;
+}
+
+/** The playground session a response starts, from its Set-Cookie, or undefined. */
+export function startedPlaygroundSession(headers: Headers): string | undefined {
+  for (const cookie of headers.getSetCookie()) {
+    const value = cookie.split(";")[0] ?? "";
+    if (value.startsWith(`${PLAYGROUND_COOKIE_NAME}=`)) {
+      return value.slice(PLAYGROUND_COOKIE_NAME.length + 1) || undefined;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Names the visitor's playground store without revealing its session token,
+ * so the browser can tell when its cart belongs to a store that has ended.
+ */
+export async function playgroundStoreTag(sessionToken: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`playground-store:${sessionToken}`));
+  return [...new Uint8Array(digest).slice(0, 16)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Tags the page with its store and when that store's session started, so the cart can tell newer from older. */
+export function injectPlaygroundStoreTag(html: string, tag: string, started: number): string {
+  return html.replace(
+    /<head(\s[^>]*)?>/i,
+    (head) => `${head}<meta name="${PLAYGROUND_STORE_META}" content="${tag}" data-started="${started}" />`,
+  );
 }
 
 /** The same request without the playground session cookie. */
