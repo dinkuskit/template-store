@@ -84,13 +84,6 @@ const patternId = `home-opener-riso-grain-${index ?? 0}`;
     {value.facts.map((fact) => <div><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}
   </dl> : null}
 </section>
-<script>
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    for (const svg of document.querySelectorAll<SVGSVGElement>('[data-pigment-drift="hero"]')) {
-      if (typeof svg.pauseAnimations === "function") svg.pauseAnimations();
-    }
-  }
-</script>
 <style>
   .home-opener {
     position: relative;

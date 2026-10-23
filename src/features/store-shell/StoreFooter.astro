@@ -295,17 +295,4 @@ const defaultProvenance = `Transactional facts remain in Commerce${profile === "
 <script>
   import { hydrateStoreTheme } from "./theme-client.ts";
   hydrateStoreTheme();
-  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
-    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncFooterMotion = (reduce: boolean) => {
-      document.querySelectorAll<SVGSVGElement>('svg[data-pigment-drift="footer"]').forEach((svg) => {
-        if (typeof svg.pauseAnimations === "function") {
-          if (reduce) svg.pauseAnimations();
-          else svg.unpauseAnimations();
-        }
-      });
-    };
-    syncFooterMotion(mql.matches);
-    mql.addEventListener("change", (ev) => syncFooterMotion(ev.matches));
-  }
 </script>

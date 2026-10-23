@@ -87,7 +87,8 @@ describe("A2 — Pigment Drift product illustrations & living hero/card ink-wash
     expect(homeOpener).toContain("var(--store-accent)");
     expect(homeOpener).toContain("var(--store-ink)");
     expect(homeOpener).toContain("prefers-reduced-motion: reduce");
-    expect(homeOpener).toContain("pauseAnimations");
+    // The ink wash is still artwork: nothing to pause for reduced motion.
+    expect(homeOpener).not.toContain("<animate");
 
     const productMedia = readFileSync(
       resolve("src/features/commerce-catalog/ProductMedia.astro"),
@@ -120,6 +121,7 @@ describe("A2 — Pigment Drift product illustrations & living hero/card ink-wash
     expect(storeFooter).toContain("footer-chromatic-tide");
     expect(storeFooter).toContain("var(--pigment-stop-1");
     expect(storeFooter).toContain("var(--pigment-stop-4");
+    expect(storeFooter).not.toContain("<animate");
 
     const productDetail = readFileSync(
       resolve("src/pages/products/[id].astro"),
