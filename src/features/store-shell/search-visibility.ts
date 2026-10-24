@@ -95,14 +95,14 @@ export function isSearchProductVisibleOnStorefront(
   }
 
   const shouldEnforceCommerceCatalog =
-    options.catalogAvailable &&
-    (options.profile === "shipping" || options.activeCommerceIds.size > 0);
+    options.profile === "shipping" ||
+    (options.catalogAvailable && options.activeCommerceIds.size > 0);
 
   if (
     shouldEnforceCommerceCatalog &&
     leftCommerceCatalog(
       product.commerceItemId,
-      options.activeCommerceIds.has(product.commerceItemId),
+      options.catalogAvailable && options.activeCommerceIds.has(product.commerceItemId),
     )
   ) {
     return false;

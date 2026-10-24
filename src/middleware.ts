@@ -379,7 +379,9 @@ async function filterPublicSearchApiResponse(
       return response;
     }
     const hasProducts = items.some((item) => item?.collection === "products");
-    const visibleSlugs = hasProducts ? await loadVisibleStorefrontProductSlugs(context) : new Set<string>();
+    const visibleSlugs = hasProducts
+      ? await loadVisibleStorefrontProductSlugs(context).catch(() => new Set<string>())
+      : new Set<string>();
     const filteredItems = filterStorefrontSearchHits(items, visibleSlugs);
     if (filteredItems.length === items.length) return response;
 

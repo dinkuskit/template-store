@@ -453,6 +453,45 @@ describe("EmDash composition primitives & seed contract", () => {
       ),
     ).toBe(false);
 
+    // When Commerce catalog read fails on shipping profile, Commerce-linked items fail closed
+    // (even if activeCommerceIds were stale/non-empty), while editorial previews stay visible:
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "archived-hoodie", slug: "archived-hoodie", commerceItemId: "cat_archived_hoodie" },
+        {
+          profile: "shipping",
+          catalogAvailable: false,
+          activeCommerceIds: new Set(),
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(false);
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "live-tee", slug: "live-tee", commerceItemId: "cat_live_tee" },
+        {
+          profile: "shipping",
+          catalogAvailable: false,
+          activeCommerceIds: activeIds,
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(false);
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "boxy-tee-preview", slug: "boxy-tee-preview", commerceItemId: "dinkus-template-preview-boxy-tee" },
+        {
+          profile: "shipping",
+          catalogAvailable: false,
+          activeCommerceIds: new Set(),
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(true);
+
     const visibleSlugs = new Set(["live-tee", "boxy-tee-preview"]);
     const rawHits = [
       { collection: "products", id: "live-tee", slug: "live-tee" },
