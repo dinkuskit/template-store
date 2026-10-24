@@ -61,6 +61,7 @@ export {
   renderHighlightedSnippetParts,
   isSearchProductVisibleOnStorefront,
   filterStorefrontSearchHits,
+  filterPublicSearchApiResponse,
   loadVisibleStorefrontProductSlugs,
   type HighlightedSnippetPart,
   type SearchProductVisibilityOptions,

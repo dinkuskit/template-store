@@ -181,3 +181,57 @@ export async function loadVisibleStorefrontProductSlugs(
   }
   return visible;
 }
+
+export async function filterPublicSearchApiResponse(
+  response: Response,
+  context: InstalledCatalogContext,
+  resolveVisibleSlugs: (context: InstalledCatalogContext) => Promise<ReadonlySet<string>> = loadVisibleStorefrontProductSlugs,
+): Promise<Response> {
+  if (!response.ok) return response;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) return response;
+  try {
+    const body = (await response.clone().json()) as {
+      success?: unknown;
+      data?: {
+        items?: Array<{ collection?: unknown; id?: unknown; slug?: unknown }>;
+        total?: unknown;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+    const items = body?.data?.items;
+    if (!Array.isArray(items) || items.length === 0) {
+      return response;
+    }
+    const hasProducts = items.some((item) => item?.collection === "products");
+    const visibleSlugs = hasProducts
+      ? await resolveVisibleSlugs(context).catch(() => new Set<string>())
+      : new Set<string>();
+    const filteredItems = filterStorefrontSearchHits(items, visibleSlugs);
+    if (filteredItems.length === items.length) return response;
+
+    const removedCount = items.length - filteredItems.length;
+    const nextData: Record<string, unknown> = {
+      ...body.data,
+      items: filteredItems,
+    };
+    if (typeof body.data?.total === "number") {
+      nextData.total = Math.max(0, body.data.total - removedCount);
+    }
+    const headers = new Headers(response.headers);
+    headers.delete("content-length");
+    return Response.json(
+      {
+        ...body,
+        data: nextData,
+      },
+      {
+        status: response.status,
+        headers,
+      },
+    );
+  } catch {
+    return response;
+  }
+}
