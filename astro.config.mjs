@@ -1,4 +1,5 @@
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
 import node from "@astrojs/node";
@@ -12,7 +13,7 @@ import { unstable_readConfig } from "wrangler";
 import { selectedRegistryAccessOptions } from "./scripts/registry-access.mjs";
 import { selectedRegistrySandboxRunner } from "./scripts/registry-sandbox.mjs";
 
-import { commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
+import { commerceProfile, commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
@@ -47,6 +48,17 @@ const enableLocalStockManagement =
   process.env.DINKUS_STOREFRONT_PROFILE === "proof";
 
 const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
+
+// Proof only: a local store that installs a built Commerce Registry bundle the way a Registry store does,
+// under the selected profile's runtime id (scripts/verify-paired-product-on-sale.mjs).
+const pairedCommerceDir = !isCloudflare && process.env.DINKUS_PAIRED_COMMERCE_DIR;
+const pairedCommerce = pairedCommerceDir
+  ? {
+      ...(await import(pathToFileURL(resolve(pairedCommerceDir, "dist/sandbox/index.mjs")).href)).default,
+      id: commerceProfile(process.env.DINKUS_COMMERCE_PROFILE).runtimeId,
+      entrypoint: resolve(pairedCommerceDir, "dist/sandbox/plugin.mjs"),
+    }
+  : undefined;
 const accessOptions = selectedRegistryAccessOptions(process.env);
 
 // EmDash 1.2.0's sandbox() only reads the default Wrangler file. Keep a
@@ -89,6 +101,7 @@ export default defineConfig({
       ...(siteUrl ? { siteUrl } : {}),
       ...(accessOptions ? { auth: access(accessOptions) } : {}),
       ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : {}),
+      ...(pairedCommerce ? { sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox", sandboxed: [pairedCommerce] } : {}),
       plugins: [
         {
           id: "dinkus-template-product-urls",

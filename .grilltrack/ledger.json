@@ -4525,6 +4525,20 @@
           "review_source_identity": null,
           "to": "implemented",
           "verification_ref": null
+        },
+        {
+          "at": "2026-10-24T23:55:51+00:00",
+          "choice": "The store's existing publish check (the commerce_item_id claim on publish, release on unpublish and delete) also turns the item's Commerce on-sale flag on when its page is published and off when it is unpublished or deleted, through an explicit call Commerce provides (Commerce catalog-product-states-20261023). Draft pages stay out of the shop and their items cannot be bought; pages already published keep their items on sale.",
+          "from": "implemented",
+          "implementation_ref": "file:src/features/product-on-sale/index.ts file:src/middleware.ts file:tests/unit/product-on-sale.test.ts; scheduled publishes pending owner decision",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
         }
       ],
       "id": "template-product-states-20261023",
@@ -4537,10 +4551,10 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "implemented",
+      "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-10-23T21:38:44+00:00",
-      "verification_ref": null
+      "updated_at": "2026-10-24T23:55:51+00:00",
+      "verification_ref": ".grilltrack/proof/template-product-states-20261023/PROOF.md: pnpm verify:paired-product-on-sale passes against Commerce v0.6.0-beta.1 (publish, refused Author, unpublish, existing store, trash); scheduled publishes and same-moment overlap left as owner-reviewed limits"
     },
     {
       "baseline_ref": "git:6ec1ba7",
@@ -4606,5 +4620,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-23T21:38:44+00:00"
+  "updated_at": "2026-10-24T23:55:51+00:00"
 }
