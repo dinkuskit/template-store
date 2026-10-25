@@ -162,7 +162,7 @@ export const PLAYGROUND_CONNECT_PAGE_ENTRY = {
   },
 };
 
-/** Every demo product, including the size-variant hoodie. */
+/** Every demo product, including the color and size hoodie. */
 export const PLAYGROUND_DEMO_PRODUCTS = DEMO_PRODUCTS;
 
 /** Creates missing demo catalog items and product entries. Existing SKUs and entries are left untouched. */
