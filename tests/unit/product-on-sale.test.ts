@@ -286,11 +286,17 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
 
   class Pending {
     rows = new Map<string, { value: Record<string, unknown>; revision: string }>();
+    pageSize = 50;
+    private next = 0;
     put(id: string, value: Record<string, unknown>) {
-      this.rows.set(id, { value, revision: `${id}-${this.rows.size}-${Math.random()}` });
+      this.rows.set(id, { value, revision: `r${(this.next += 1)}` });
     }
-    async query() {
-      return { items: [...this.rows.keys()].map((id) => ({ id })) };
+    async query({ limit, cursor }: { limit: number; cursor?: string }) {
+      const ids = [...this.rows.keys()];
+      const from = cursor ? ids.indexOf(cursor) + 1 : 0;
+      const size = Math.min(limit, this.pageSize);
+      const items = ids.slice(from, from + size).map((id) => ({ id }));
+      return { items, cursor: from + size < ids.length ? items.at(-1)?.id : undefined };
     }
     async getVersioned(id: string) {
       return this.rows.get(id) ?? null;
@@ -299,6 +305,9 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
       const applied = this.rows.get(id)?.revision === revision;
       if (applied) this.rows.delete(id);
       return { applied };
+    }
+    value(id: string) {
+      return this.rows.get(id)?.value;
     }
   }
 
@@ -313,11 +322,13 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     });
     return rt;
   }
-  const sale = (id: string, by = "u1", recordedAt = "2026-10-25T11:59:00.000Z", role = 50) => ({ entryId: id, itemId: `item-${id}`, scheduledAt: "2026-10-25T11:59:30.000Z", by, role, recordedAt });
-  const sweep = (rt: ReturnType<typeof runtime>, pending: Pending, extra: Record<string, unknown> = {}) =>
-    sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: pending, userById: async (id: string) => people[id] ?? null, ...extra }, now);
+  // A record as the product-url plugin leaves it once EmDash's scheduled publish succeeded.
+  const sale = (id: string, by = "u1", role = 50, state = "published", updatedAt = "2026-10-25T11:59:00.000Z") =>
+    ({ entryId: id, proposed: null, confirmed: { by, role, itemId: `item-${id}`, scheduledAt: "2026-10-25T11:59:30.000Z" }, state, updatedAt });
+  const sweep = (rt: ReturnType<typeof runtime>, pending: Pending, extra: Record<string, unknown> = {}, cursor?: string) =>
+    sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: pending, userById: async (id: string) => people[id] ?? null, ...extra }, now, () => true, cursor);
 
-  it("puts a page an admin scheduled on sale once EmDash has published it, as the visiting admin", async () => {
+  it("puts a page an admin scheduled on sale once EmDash's scheduled publish succeeded, as the visiting admin", async () => {
     const pending = new Pending();
     pending.put("hat", sale("hat"));
     const rt = site({ hat: { status: "published" } });
@@ -326,23 +337,36 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     expect(pending.rows.size).toBe(0);
   });
 
-  it("leaves a page that is still scheduled, and keeps its record", async () => {
+  it("sells nothing before EmDash's scheduled publish has succeeded, or for a schedule that was never confirmed", async () => {
     const pending = new Pending();
-    pending.put("hat", sale("hat"));
-    pending.put("cap", sale("cap"));
-    // Scheduled for later, and a published page scheduled to republish its draft.
-    const rt = site({ hat: { status: "scheduled", scheduledAt: "2026-10-26T00:00:00.000Z" }, cap: { status: "published", scheduledAt: "2026-10-26T00:00:00.000Z" } });
+    pending.put("hat", sale("hat", "u1", 50, "scheduled"));
+    pending.put("cap", sale("cap", "u1", 50, "publishing"));
+    // A failed reschedule of a page that was already live: proposed, never confirmed.
+    pending.put("tee", { entryId: "tee", proposed: { by: "u1", role: 50, itemId: "item-tee", scheduledAt: "2026-10-26T00:00:00.000Z" }, confirmed: null, state: "scheduled", updatedAt: "2026-10-25T11:59:00.000Z" });
+    const rt = site({ hat: { status: "published" }, cap: { status: "published" }, tee: { status: "published" } });
     await sweep(rt, pending);
     expect(rt.calls).toEqual([]);
-    expect(pending.rows.size).toBe(2);
+    // Kept while they may still be in progress, dropped once stale.
+    expect(pending.rows.size).toBe(3);
+    await sellScheduledPages({ url: new URL("https://shop.example.test/"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: pending, userById: async (id: string) => people[id] ?? null }, now + 11 * 60_000);
+    expect(rt.calls).toEqual([]);
+    expect(pending.rows.size).toBe(0);
   });
 
-  it("drops an Author's schedule, or one by someone who has since lost the permission: the product stays a Draft", async () => {
+  it("leaves a page that is scheduled again, and keeps its record", async () => {
     const pending = new Pending();
-    pending.put("hat", sale("hat", "u2"));
+    pending.put("hat", sale("hat"));
+    const rt = site({ hat: { status: "published", scheduledAt: "2026-10-26T00:00:00.000Z" } });
+    await sweep(rt, pending);
+    expect(rt.calls).toEqual([]);
+    expect(pending.rows.size).toBe(1);
+  });
+
+  it("drops an Author's schedule, or one by someone who has since lost the permission or gained it only later", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat", "u2", 30));
     pending.put("cap", sale("cap", "gone"));
-    // Scheduled while an Author, an admin now.
-    pending.put("tee", sale("tee", "u1", "2026-10-25T11:59:00.000Z", 30));
+    pending.put("tee", sale("tee", "u1", 30));
     const rt = site({ hat: { status: "published" }, cap: { status: "published" }, tee: { status: "published" } });
     await sweep(rt, pending);
     expect(rt.calls).toEqual([]);
@@ -363,51 +387,83 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     expect(pending.rows.size).toBe(1);
   });
 
-  it("drops records whose page is gone or sells another product, and stale ones for pages that never went live", async () => {
+  it("drops records whose page is gone, unpublished, or sells another product", async () => {
     const pending = new Pending();
     pending.put("gone", sale("gone"));
     pending.put("relinked", sale("relinked"));
-    pending.put("old", sale("old", "u1", "2026-10-25T11:00:00.000Z"));
-    pending.put("fresh", sale("fresh"));
-    const rt = site({ relinked: { status: "published", item: "item-other" }, old: { status: "draft" }, fresh: { status: "draft" } });
+    pending.put("draft", sale("draft"));
+    const rt = site({ relinked: { status: "published", item: "item-other" }, draft: { status: "draft" } });
     await sweep(rt, pending);
     expect(rt.calls).toEqual([]);
-    // A draft recorded a minute ago may be a schedule EmDash is still storing.
-    expect([...pending.rows.keys()]).toEqual(["fresh"]);
+    expect(pending.rows.size).toBe(0);
   });
 
-  it("keeps the record to retry when Commerce refuses, and a schedule made meanwhile survives the sale", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("sells nothing when the record was removed or replaced after it was read", async () => {
     const pending = new Pending();
     pending.put("hat", sale("hat"));
-    const refused = site({ hat: { status: "published" } }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } });
-    await sweep(refused, pending);
-    expect(pending.rows.size).toBe(1);
-    const rt = site({ hat: { status: "published" } });
-    rt.handlePluginApiRoute.mockImplementationOnce(async () => {
-      pending.put("hat", sale("hat"));
-      return { success: true, data: { changed: true } };
-    });
-    await sweep(rt, pending);
-    expect(pending.rows.size).toBe(1);
-    warn.mockRestore();
+    pending.put("cap", sale("cap"));
+    const rt = site({ hat: { status: "published" }, cap: { status: "published" } });
+    let reads = 0;
+    // A person's own publish removes one record, and a new schedule replaces the other, while the sweep reads the visitor.
+    const visitor = async () => {
+      reads += 1;
+      if (reads === 1) pending.rows.delete("hat");
+      if (reads === 2) pending.put("cap", sale("cap", "u2", 30, "scheduled"));
+      return user;
+    };
+    await sweep(rt, pending, { currentUser: visitor });
+    expect(rt.calls).toEqual([]);
+    expect(pending.value("cap")).toMatchObject({ state: "scheduled" });
   });
 
-  it("takes the product off sale again when the page is unpublished while it goes on sale", async () => {
+  it("takes the product off sale again when the record or page changes while it goes on sale", async () => {
     const pending = new Pending();
     pending.put("hat", sale("hat"));
-    const pages: Record<string, Page> = { hat: { status: "published" } };
+    pending.put("cap", sale("cap"));
+    const pages: Record<string, Page> = { hat: { status: "published" }, cap: { status: "published" } };
     const rt = site(pages);
     rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
-      rt.calls.push({ pluginId, path, body: await request.json(), user: caller });
-      pages.hat = { status: "draft" };
+      const body = await request.json() as { entryId: string; onSale: boolean };
+      rt.calls.push({ pluginId, path, body, user: caller });
+      // At the on-sale write: hat's record is removed (a person's own publish), cap is unpublished.
+      if (body.onSale && body.entryId === "hat") pending.rows.delete("hat");
+      if (body.onSale && body.entryId === "cap") pages.cap = { status: "draft" };
       return { success: true, data: { changed: true } };
     });
     await sweep(rt, pending);
     expect(rt.calls.map((call) => call.body)).toEqual([
       { catalogItemId: "item-hat", entryId: "hat", onSale: true },
       { catalogItemId: "item-hat", entryId: "hat", onSale: false },
+      { catalogItemId: "item-cap", entryId: "cap", onSale: true },
+      { catalogItemId: "item-cap", entryId: "cap", onSale: false },
     ]);
+  });
+
+  it("keeps the record to retry when Commerce refuses", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    await sweep(site({ hat: { status: "published" } }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } }), pending);
+    expect(pending.rows.size).toBe(1);
+    warn.mockRestore();
+  });
+
+  it("reaches every record a batch per sweep, however many wait", async () => {
+    const pending = new Pending();
+    pending.pageSize = 2;
+    const pages: Record<string, Page> = {};
+    for (const id of ["a", "b", "c", "d"]) {
+      pending.put(id, sale(id));
+      pages[id] = { status: "scheduled", scheduledAt: "2026-10-26T00:00:00.000Z" };
+    }
+    pending.put("live", sale("live"));
+    pages.live = { status: "published" };
+    const rt = site(pages);
+    const sweeper = scheduledSaleSweeper(60_000);
+    const base = { url: new URL("https://shop.example.test/"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: pending, userById: async (id: string) => people[id] ?? null };
+    for (let minute = 0; minute < 3; minute += 1) await sweeper(base, now + minute * 60_001);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-live", entryId: "live", onSale: true }]);
+    expect([...pending.rows.keys()]).toEqual(["a", "b", "c", "d"]);
   });
 
   it("checks at most once a minute, counting only allowed people's requests", async () => {

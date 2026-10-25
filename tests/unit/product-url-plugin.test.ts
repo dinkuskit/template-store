@@ -23,14 +23,31 @@ class Claims {
 }
 
 class Pending {
-  rows = new Map<string, Record<string, unknown>>();
+  rows = new Map<string, { value: Record<string, unknown>; revision: string }>();
+  private next = 0;
 
-  async put(id: string, data: Record<string, unknown>): Promise<void> {
-    this.rows.set(id, data);
+  async getVersioned(id: string) {
+    return this.rows.get(id) ?? null;
   }
 
-  async delete(id: string): Promise<boolean> {
+  async compareAndSet(id: string, expected: string | null, value: Record<string, unknown>) {
+    if ((this.rows.get(id)?.revision ?? null) !== expected) return { applied: false };
+    this.rows.set(id, { value, revision: `r${(this.next += 1)}` });
+    return { applied: true };
+  }
+
+  async compareAndDelete(id: string, expected: string) {
+    if (this.rows.get(id)?.revision !== expected) return { applied: false };
+    this.rows.delete(id);
+    return { applied: true };
+  }
+
+  async delete(id: string) {
     return this.rows.delete(id);
+  }
+
+  value(id: string) {
+    return this.rows.get(id)?.value;
   }
 }
 
@@ -118,56 +135,98 @@ describe("product URL publish claims", () => {
 });
 
 describe("schedules recorded for the store's admin-visit sale", () => {
-  const scheduled = (id: string, itemId: string, actor?: { id: string; role: number }) => ({
+  const at = "2030-01-01T00:00:00Z";
+  const admin = { id: "admin", role: 50 };
+  const scheduled = (id: string, itemId: string, actor?: { id: string; role: number }, scheduledAt = at) => ({
     ...event(id, itemId),
-    scheduledAt: "2030-01-01T00:00:00Z",
+    scheduledAt,
     ...(actor ? { actor: { ...actor, source: "api" as const } } : {}),
   });
+  // What EmDash hands content:afterSchedule once the schedule is stored.
+  const stored = (id: string, itemId: string, scheduledAt: string = at) => ({
+    collection: "products",
+    content: { id, slug: id, status: "scheduled", scheduledAt: scheduledAt.replace("Z", ".000Z"), data: { commerce_item_id: itemId } },
+  });
+  const run = (plugin: ReturnType<typeof createPlugin>, hook: string, payload: unknown, claims: Claims, pending: Pending) =>
+    (plugin.hooks as Record<string, { handler: (event: never, ctx: never) => Promise<unknown> }>)[hook]!.handler(payload as never, context(claims, pending));
 
-  it("records who scheduled the page, and nothing for a schedule with no person", async () => {
+  it("proposes the schedule first and grants it only once EmDash has stored it", async () => {
     const plugin = createPlugin();
     const claims = new Claims();
     const pending = new Pending();
-    const schedule = plugin.hooks["content:beforeSchedule"]!.handler;
-    await schedule(scheduled("one", "item-1", { id: "admin", role: 50 }), context(claims, pending));
-    expect(pending.rows.get("one")).toMatchObject({ entryId: "one", itemId: "item-1", scheduledAt: "2030-01-01T00:00:00Z", by: "admin", role: 50 });
-    await schedule(scheduled("one", "item-1"), context(claims, pending));
-    expect(pending.rows.has("one")).toBe(false);
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin), claims, pending);
+    expect(pending.value("one")).toMatchObject({ proposed: { by: "admin", role: 50, itemId: "item-1", scheduledAt: at }, confirmed: null, state: "scheduled" });
+    await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
+    expect(pending.value("one")).toMatchObject({ proposed: null, confirmed: { by: "admin", role: 50, itemId: "item-1" }, state: "scheduled" });
+  });
+
+  it("grants nothing for a schedule that failed, came from no person, or does not match what EmDash stored", async () => {
+    const plugin = createPlugin();
+    const claims = new Claims();
+    const pending = new Pending();
+    // An Author's schedule is stored; an admin's later attempt fails, so EmDash never confirms it.
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", { id: "author", role: 30 }), claims, pending);
+    await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin, "2030-02-01T00:00:00Z"), claims, pending);
+    expect(pending.value("one")).toMatchObject({ confirmed: { by: "author", role: 30 } });
+    // A schedule from no person.
+    await run(plugin, "content:beforeSchedule", scheduled("two", "item-2"), claims, pending);
+    await run(plugin, "content:afterSchedule", stored("two", "item-2"), claims, pending);
+    expect(pending.value("two")).toMatchObject({ confirmed: null });
+    // EmDash stored another time than the one proposed.
+    await run(plugin, "content:beforeSchedule", scheduled("three", "item-3", admin), claims, pending);
+    await run(plugin, "content:afterSchedule", stored("three", "item-3", "2031-01-01T00:00:00Z"), claims, pending);
+    expect(pending.value("three")).toMatchObject({ confirmed: null });
   });
 
   it("records nothing for a schedule the claim refuses", async () => {
     const plugin = createPlugin();
     const claims = new Claims();
     const pending = new Pending();
-    const schedule = plugin.hooks["content:beforeSchedule"]!.handler;
-    await schedule(scheduled("one", "item-1", { id: "admin", role: 50 }), context(claims, pending));
-    await schedule(scheduled("two", "item-1", { id: "admin", role: 50 }), context(claims, pending));
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin), claims, pending);
+    await run(plugin, "content:beforeSchedule", scheduled("two", "item-1", admin), claims, pending);
     expect([...pending.rows.keys()]).toEqual(["one"]);
   });
 
-  it("keeps the record through EmDash's scheduled publish and drops it on any other publish, unschedule, unpublish or trash", async () => {
+  it("marks a granted schedule published only through EmDash's own scheduled publish", async () => {
     const plugin = createPlugin();
     const claims = new Claims();
     const pending = new Pending();
-    const hooks = plugin.hooks;
-    const again = () => hooks["content:beforeSchedule"]!.handler(scheduled("one", "item-1", { id: "admin", role: 50 }), context(claims, pending));
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin), claims, pending);
+    await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
+    await run(plugin, "content:beforePublish", { ...event("one", "item-1"), origin: { source: "scheduler" } }, claims, pending);
+    expect(pending.value("one")).toMatchObject({ state: "publishing" });
+    await run(plugin, "content:afterPublish", { collection: "products", content: { id: "one" } }, claims, pending);
+    expect(pending.value("one")).toMatchObject({ state: "published", confirmed: { by: "admin" } });
+    // A scheduled publish without a grant leaves no record.
+    await run(plugin, "content:beforeSchedule", scheduled("two", "item-2", admin), claims, pending);
+    await run(plugin, "content:beforePublish", { ...event("two", "item-2"), origin: { source: "scheduler" } }, claims, pending);
+    expect(pending.rows.has("two")).toBe(false);
+  });
 
-    await again();
-    await hooks["content:beforePublish"]!.handler({ ...event("one", "item-1"), origin: { source: "scheduler" as const } }, context(claims, pending));
-    expect(pending.rows.has("one")).toBe(true);
-    await hooks["content:beforePublish"]!.handler(event("one", "item-1"), context(claims, pending));
+  it("drops the record on a person's own publish, an unschedule, unpublish or trash", async () => {
+    const plugin = createPlugin();
+    const claims = new Claims();
+    const pending = new Pending();
+    const grant = async () => {
+      await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin), claims, pending);
+      await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
+      expect(pending.rows.has("one")).toBe(true);
+    };
+    await grant();
+    await run(plugin, "content:beforePublish", event("one", "item-1"), claims, pending);
     expect(pending.rows.has("one")).toBe(false);
-
-    await again();
-    await hooks["content:afterUnschedule"]!.handler({ content: { id: "one" }, collection: "products" }, context(claims, pending));
+    // afterPublish of that publish changes nothing.
+    await run(plugin, "content:afterPublish", { collection: "products", content: { id: "one" } }, claims, pending);
     expect(pending.rows.has("one")).toBe(false);
-
-    await again();
-    await hooks["content:afterUnpublish"]!.handler({ content: { id: "one" }, collection: "products" }, context(claims, pending));
-    expect(pending.rows.has("one")).toBe(false);
-
-    await again();
-    await hooks["content:afterDelete"]!.handler({ id: "one", collection: "products" } as never, context(claims, pending));
-    expect(pending.rows.has("one")).toBe(false);
+    for (const [hook, payload] of [
+      ["content:afterUnschedule", { content: { id: "one" }, collection: "products" }],
+      ["content:afterUnpublish", { content: { id: "one" }, collection: "products" }],
+      ["content:afterDelete", { id: "one", collection: "products" }],
+    ] as const) {
+      await grant();
+      await run(plugin, hook, payload, claims, pending);
+      expect(pending.rows.has("one")).toBe(false);
+    }
   });
 });

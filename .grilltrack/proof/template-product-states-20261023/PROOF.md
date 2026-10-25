@@ -80,33 +80,40 @@ and calls nothing, so pages change exactly as before, including an Author's own 
 Screenshots from the run are written to `test-results/paired-product-on-sale/` (not committed):
 `desktop-` and `phone-` versions of `1-draft.png`, `2-published-on-sale.png`, `6-author-published-still-draft.png`,
 `8-trashed-product-without-page.png`, `13-scheduled-on-sale.png` and `14-author-scheduled-still-draft.png`. The run with
-the schedule steps passed 4 of 4 (two tests on desktop and phone) in 5.9 minutes.
+steps 13-15 passed 4 of 4 (two tests, desktop and phone) in 7.5 minutes.
 
 ## Scheduled publishes (follow-up the owner chose, 25 Oct 2026 00:20 UTC: "Merge now, fix schedules next")
 
 EmDash publishes a scheduled page from its own scheduler (a timer on Node, the Cron Trigger on Cloudflare) with
 nobody signed in, so the publish check cannot put the product on sale then. Instead:
 
-- The product-url plugin records each products-page schedule made through the admin or MCP (`pending_sales`: page,
-  product, who scheduled it and their role then). A direct publish, unschedule, unpublish or trash drops the record;
-  EmDash's own scheduled publish (origin `scheduler`) keeps it.
-- On the next request from someone holding the route's permission, at most once a minute per isolate, the store
-  checks the records. A page EmDash has published with the same product and no schedule left goes on sale as that
-  visitor, only if the person who scheduled it held the permission when scheduling and still does. The visitor is
-  read again before the write and the page is read back after it, as for every other on-sale write. Anything else
-  (an Author's schedule, a page gone or linked to another product) drops the record without selling.
+- The product-url plugin keeps a record per products page (`pending_sales`). A schedule made through the admin or MCP
+  is first proposed (who, their role then, the product, the time); it becomes the page's grant only once EmDash has
+  stored that schedule (`content:afterSchedule`, same time), so a schedule that failed grants nothing. A
+  schedule from no person grants nothing. EmDash's own scheduled publish marks the grant publishing, and published once
+  it succeeded. A person's own publish, an unschedule, unpublish or trash removes the record.
+- On the next request from someone holding the route's permission, at most once a minute per isolate, the store checks
+  the records a batch at a time, resuming where the last sweep stopped. A published grant sells the page's product as
+  that visitor when the page is published with the granted product and not scheduled again, and the person who
+  scheduled it held the permission then and still does. Right before the write, the visitor is read again and the
+  record must still be the one read; after it, the page and the record are read again, and if either changed the
+  product goes off sale again. Anything else (an Author's grant, a page gone, unpublished or linked to another product)
+  drops the record without selling; a record still in progress is kept until it is ten minutes old.
 
 The same paired run proves it, on desktop and phone, with EmDash's real scheduler:
 
 | Step | Who | Action | Result |
 | --- | --- | --- | --- |
-| 13 | Admin | Schedules the page 3 seconds ahead; no request is made until EmDash publishes it | Page published with the product still a Draft; on the admin's next visit (within a minute) the product goes on sale, the panel says On sale and the record is gone |
-| 14 | Author (same person, role lowered) | After an admin unpublish, schedules their own page; EmDash publishes it; the admin visits | The admin's visit drops the Author's record; the product stays a Draft; catalog empty |
+| 13 | Admin | Tries to schedule a live page whose product is a Draft (an Author published it) in the past: EmDash refuses after the plugin saw the proposal. Schedules another page 3 seconds ahead; no request is made until EmDash publishes it | Failed schedule: no grant, its product stays a Draft. Stored schedule: granted; published with the product still a Draft; on the admin's next visit (within a minute) the product goes on sale, the panel says On sale and the record is gone |
+| 14 | Author (same person, role lowered) | After an admin unpublish, schedules their own page; EmDash publishes it; the admin visits | The admin's visit drops the Author's grant; the product stays a Draft; catalog empty |
+| 15 | Admin | Schedules again; EmDash publishes; the grant is removed at the moment Commerce puts the product on sale (as a person's own publish removes it) | The store sees the grant gone and takes the product off sale again; catalog empty |
 
-Unit tests in `tests/unit/product-on-sale.test.ts` and `tests/unit/product-url-plugin.test.ts` cover the record's
-lifecycle, a schedule still pending, schedules by an Author or by someone who lost the permission (or gained it only
-later), a visitor without the permission, an older Commerce, stale and relinked records, a refused write retried
-later, a schedule made during the sale surviving it, the read-back, and the once-a-minute limit.
+Unit tests in `tests/unit/product-on-sale.test.ts` and `tests/unit/product-url-plugin.test.ts` cover proposal and
+confirmation (including a failed admin reschedule over an Author's stored schedule, a schedule from no person, and a
+stored time that differs), the scheduler's publish, every removal, schedules by an Author or by someone who lost the
+permission or gained it only later, a visitor without it, an older Commerce, a record removed or replaced before the
+write and after it, gone, unpublished, relinked and stale records, a refused write kept for later, progress across
+batches, and the once-a-minute limit.
 
 ## Known limit (accepted by the owner, Ronald, 25 Oct 2026 00:20 UTC)
 

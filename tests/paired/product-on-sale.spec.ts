@@ -261,12 +261,11 @@ test("publishing a product page sells its Commerce product, only for someone who
   }
 });
 
-test("a page EmDash publishes on schedule sells its product on the next admin visit, only if an admin scheduled it", async ({ page }, testInfo) => {
-  test.setTimeout(480_000);
+test("a page EmDash publishes on schedule sells its product on the next admin visit, only on an admin's confirmed schedule", async ({ page }, testInfo) => {
+  test.setTimeout(900_000);
   expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
   const { request } = page;
-  const sku = testInfo.project.name === "phone" ? "PAIRED-SCHEDULED-PHONE" : "PAIRED-SCHEDULED";
-  const { pageId, itemId } = await draftProduct(page, sku, "Scheduled hat");
+  const phone = testInfo.project.name === "phone";
   const read = <T>(sql: string, ...params: string[]) => {
     const database = db();
     try {
@@ -275,62 +274,116 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
       database.close();
     }
   };
-  const stored = () => read<{ status: string; scheduled_at: string | null }>("SELECT status, scheduled_at FROM ec_products WHERE id = ?", pageId);
-  const pending = () => read<{ data: string }>("SELECT data FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id = ?", pageId);
-  const schedule = async () => {
-    const response = await request.post(`/_emdash/api/content/products/${pageId}/schedule`, { headers, data: { scheduledAt: new Date(Date.now() + 3_000).toISOString() } });
-    expect(response.ok(), await response.text()).toBe(true);
-    expect(stored()?.status).toBe("scheduled");
+  const onDb = (sql: string) => {
+    const database = db();
+    try {
+      database.exec(sql);
+    } finally {
+      database.close();
+    }
   };
+  const stored = (id: string) => read<{ status: string; scheduled_at: string | null }>("SELECT status, scheduled_at FROM ec_products WHERE id = ?", id);
+  const pending = (id: string) => {
+    const row = read<{ data: string }>("SELECT data FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id = ?", id);
+    return row ? (JSON.parse(row.data) as Record<string, unknown>) : undefined;
+  };
+  const schedule = (id: string, inMs = 3_000) =>
+    request.post(`/_emdash/api/content/products/${id}/schedule`, { headers, data: { scheduledAt: new Date(Date.now() + inMs).toISOString() } });
   // EmDash's own scheduler publishes the page (every minute at most on Node, as the Cron Trigger on Cloudflare).
   // Nobody makes a request meanwhile, so the page goes live with nobody signed in.
-  const scheduledPublish = async () => {
+  const scheduledPublish = async (id: string) => {
     await page.goto("about:blank");
-    await expect.poll(() => stored(), { timeout: 120_000, intervals: [1_000] }).toEqual({ status: "published", scheduled_at: null });
+    await expect.poll(() => stored(id), { timeout: 120_000, intervals: [1_000] }).toEqual({ status: "published", scheduled_at: null });
+  };
+  // The admin's next visits; the store checks schedules at most once a minute, so this can take up to a minute.
+  const adminVisits = async (id: string, until: () => unknown, expected: unknown) => {
+    await page.goto("/_emdash/admin/content/products/" + id);
+    await expect.poll(async () => {
+      await request.get("/_emdash/api/content/products/" + id, { headers });
+      return until();
+    }, { timeout: 100_000, intervals: [5_000] }).toEqual(expected);
   };
 
-  // 13. The admin schedules the page. EmDash publishes it later with nobody signed in, so the product is still a Draft;
-  // the admin's next visit puts it on sale (checked at most once a minute, so it can take up to a minute).
-  await schedule();
-  expect(JSON.parse(pending()?.data ?? "{}")).toMatchObject({ entryId: pageId, itemId, role: ROLE.ADMIN });
-  await scheduledPublish();
+  const { pageId, itemId } = await draftProduct(page, phone ? "PAIRED-SCHEDULED-PHONE" : "PAIRED-SCHEDULED", "Scheduled hat");
+  // A second page an Author published, so its product is a Draft behind a live page.
+  const cap = await draftProduct(page, phone ? "PAIRED-RESCHEDULED-PHONE" : "PAIRED-RESCHEDULED", "Rescheduled cap");
+  setRole(ROLE.AUTHOR);
+  try {
+    expect((await request.post(`/_emdash/api/content/products/${cap.pageId}/publish`, { headers })).ok()).toBe(true);
+  } finally {
+    setRole(ROLE.ADMIN);
+  }
+  expect(product(cap.itemId).offSale).toBe(true);
+
+  // 13. The admin tries to schedule the live cap page in the past: EmDash refuses after the plugin saw the proposal, so
+  // nothing is granted. The admin schedules the hat page; EmDash stores it, which grants the sale.
+  expect((await schedule(cap.pageId, -60_000)).ok()).toBe(false);
+  expect(pending(cap.pageId)).toMatchObject({ confirmed: null });
+  const scheduled = await schedule(pageId);
+  expect(scheduled.ok(), await scheduled.text()).toBe(true);
+  expect(stored(pageId)?.status).toBe("scheduled");
+  await expect.poll(() => pending(pageId)).toMatchObject({ proposed: null, confirmed: { itemId, role: ROLE.ADMIN }, state: "scheduled" });
+  // EmDash publishes it with nobody signed in: the product is still a Draft, the grant now published.
+  await scheduledPublish(pageId);
   expect(product(itemId).offSale).toBe(true);
-  expect(pending()).toBeDefined();
-  await page.goto("/_emdash/admin/content/products/" + pageId);
-  await expect.poll(async () => {
-    await request.get("/_emdash/api/content/products/" + pageId, { headers });
-    return onShop(request);
-  }, { timeout: 90_000, intervals: [5_000] }).toEqual(["Scheduled hat"]);
+  await expect.poll(() => pending(pageId)?.state).toBe("published");
+  // The admin's next visit puts it on sale; the cap page's failed schedule sold nothing.
+  await adminVisits(pageId, () => onShop(request), ["Scheduled hat"]);
   expect(product(itemId)).toMatchObject({ pageId });
   expect(product(itemId)).not.toHaveProperty("offSale", true);
-  expect(pending()).toBeUndefined();
-  await page.reload();
-  await expect((await openPanel(page)).getByText("On sale · SKU " + sku, { exact: false })).toBeVisible();
+  expect(pending(pageId)).toBeUndefined();
+  expect(product(cap.itemId).offSale).toBe(true);
+  await page.goto("/_emdash/admin/content/products/" + pageId);
+  await expect((await openPanel(page)).getByText("On sale · SKU ", { exact: false })).toBeVisible();
   await capture(page, "13-scheduled-on-sale");
 
-  // 14. The admin unpublishes; as an Author they schedule their own page. EmDash publishes it, and the admin's visits
-  // drop the Author's schedule without selling: the product stays a Draft, as after an Author's own publish.
+  // 14. After an admin unpublish, the same person as an Author schedules their own page. EmDash publishes it, and the
+  // admin's visits drop the Author's grant without selling: the product stays a Draft, as after an Author's own publish.
   expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
   expect(product(itemId).offSale).toBe(true);
   setRole(ROLE.AUTHOR);
   try {
-    await schedule();
-    expect(JSON.parse(pending()?.data ?? "{}")).toMatchObject({ entryId: pageId, role: ROLE.AUTHOR });
+    expect((await schedule(pageId)).ok()).toBe(true);
   } finally {
     setRole(ROLE.ADMIN);
   }
-  await scheduledPublish();
-  await page.goto("/_emdash/admin/content/products/" + pageId);
-  await expect.poll(async () => {
-    await request.get("/_emdash/api/content/products/" + pageId, { headers });
-    return pending();
-  }, { timeout: 90_000, intervals: [5_000] }).toBeUndefined();
-  expect(stored()?.status).toBe("published");
+  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.AUTHOR } });
+  await scheduledPublish(pageId);
+  await adminVisits(pageId, () => pending(pageId), undefined);
+  expect(stored(pageId)?.status).toBe("published");
   expect(product(itemId).offSale).toBe(true);
   expect(await onShop(request)).toEqual([]);
   await expect((await openPanel(page)).getByText(/^Draft: publish to sell it/)).toBeVisible();
   await capture(page, "14-author-scheduled-still-draft");
 
-  // Leave the shop empty for the next run.
+  // 15. The admin schedules again and EmDash publishes it. At the moment Commerce puts the product on sale, the grant
+  // is removed (as a person's own publish of the page removes it). The store sees the grant gone and takes the product
+  // off sale again.
   expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  expect((await schedule(pageId)).ok()).toBe(true);
+  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
+  await scheduledPublish(pageId);
+  await expect.poll(() => pending(pageId)?.state).toBe("published");
+  onDb("CREATE TABLE IF NOT EXISTS proof_sale_writes (on_sale INTEGER)");
+  const productWrite = (event: string) => `AFTER ${event} ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id = '${itemId}'`;
+  const triggers = ["INSERT", "UPDATE"].map((event) => "proof_revoke_on_sale_" + event);
+  try {
+    for (const [index, event] of ["INSERT", "UPDATE"].entries()) {
+      onDb(`CREATE TRIGGER ${triggers[index]} ${productWrite(event)} BEGIN
+        INSERT INTO proof_sale_writes VALUES (COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1);
+        DELETE FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id = '${pageId}' AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1;
+      END`);
+    }
+    await adminVisits(pageId, () => read<{ n: number }>("SELECT count(*) AS n FROM proof_sale_writes WHERE on_sale = 0")?.n ?? 0, 1);
+    expect(read<{ n: number }>("SELECT count(*) AS n FROM proof_sale_writes WHERE on_sale = 1")?.n).toBe(1);
+    expect(product(itemId).offSale).toBe(true);
+    expect(pending(pageId)).toBeUndefined();
+    expect(await onShop(request)).toEqual([]);
+  } finally {
+    for (const name of triggers) onDb(`DROP TRIGGER IF EXISTS ${name}`);
+    onDb("DROP TABLE IF EXISTS proof_sale_writes");
+  }
+
+  // Leave the shop empty for the next run.
+  for (const id of [pageId, cap.pageId]) expect((await request.post(`/_emdash/api/content/products/${id}/unpublish`, { headers })).ok()).toBe(true);
 });
