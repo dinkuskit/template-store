@@ -1,29 +1,59 @@
 // Proves the store's publish check (src/features/product-on-sale) against a real Commerce Registry build:
-// fetches Commerce at DINKUS_PAIRED_COMMERCE_TAG (default v0.6.0-beta.1), builds its sandbox bundle, starts
-// this store on a fresh database with that bundle installed under the beta runtime id, and runs
-// tests/paired. DINKUS_PAIRED_COMMERCE_DIR skips the fetch and uses an already-built Commerce checkout.
-import { mkdirSync, rmSync, existsSync } from "node:fs";
+// fetches Commerce at the exact released commit below, builds its sandbox bundle, checks the built files
+// against the released digests, starts this store on a fresh database with that bundle installed under the
+// beta runtime id, and runs tests/paired. DINKUS_PAIRED_COMMERCE_DIR uses an already-built Commerce checkout,
+// which must hold the same commit and files.
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
+// Commerce v0.6.0-beta.1, the release carrying dinkuskit/commerce#180.
+const COMMERCE = Object.freeze({
+  tag: "v0.6.0-beta.1",
+  commit: "1015f67eef99f0027d2033aff6b8832392cb1318",
+  files: {
+    "dist/sandbox/plugin.mjs": "f292f09c1c360f828a0c96614fd69342327b23374150088c6c151ff1b61ed471",
+    "dist/sandbox/index.mjs": "c819be47393501fb38ed31e07251994db5fb9afb4c018467f5d9ef1c9890a665",
+  },
+});
+
 const root = resolve(import.meta.dirname, "..");
-const tag = process.env.DINKUS_PAIRED_COMMERCE_TAG ?? "v0.6.0-beta.1";
 const run = (command, args, cwd, env = process.env) => {
   const result = spawnSync(command, args, { cwd, env, stdio: "inherit" });
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed with status ${result.status ?? "unknown"}`);
 };
+const headOf = (dir) => spawnSync("git", ["rev-parse", "HEAD"], { cwd: dir, encoding: "utf8" }).stdout?.trim();
+const sha256 = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
+/** The checkout's commit and built files are exactly the release's, or why not. */
+function mismatch(dir) {
+  if (headOf(dir) !== COMMERCE.commit) return `Commerce checkout ${dir} is not at ${COMMERCE.commit}`;
+  for (const [file, digest] of Object.entries(COMMERCE.files)) {
+    const path = resolve(dir, file);
+    if (!existsSync(path)) return `${path} is missing`;
+    if (sha256(path) !== digest) return `${path} does not match the released ${COMMERCE.tag} build`;
+  }
+  return null;
+}
 
-let commerceDir = process.env.DINKUS_PAIRED_COMMERCE_DIR;
+let commerceDir = process.env.DINKUS_PAIRED_COMMERCE_DIR && resolve(process.env.DINKUS_PAIRED_COMMERCE_DIR);
 if (!commerceDir) {
-  commerceDir = resolve(root, ".artifacts/paired-commerce", tag);
-  if (!existsSync(resolve(commerceDir, "dist/sandbox/plugin.mjs"))) {
+  commerceDir = resolve(root, ".artifacts/paired-commerce", COMMERCE.commit);
+  if (mismatch(commerceDir)) {
     rmSync(commerceDir, { recursive: true, force: true });
     mkdirSync(commerceDir, { recursive: true });
-    run("git", ["clone", "--depth", "1", "--branch", tag, "https://github.com/dinkuskit/commerce.git", commerceDir], root);
+    run("git", ["init", "--quiet", commerceDir], root);
+    run("git", ["remote", "add", "origin", "https://github.com/dinkuskit/commerce.git"], commerceDir);
+    run("git", ["fetch", "--quiet", "--depth", "1", "origin", COMMERCE.commit], commerceDir);
+    run("git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"], commerceDir);
+    if (headOf(commerceDir) !== COMMERCE.commit) throw new Error(`Fetched Commerce did not resolve to ${COMMERCE.commit}`);
     run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], commerceDir);
     run("npm", ["run", "build"], commerceDir);
   }
 }
+const wrong = mismatch(commerceDir);
+if (wrong) throw new Error(wrong);
+console.log(`paired proof: Commerce ${COMMERCE.tag} ${COMMERCE.commit.slice(0, 12)}, plugin.mjs ${COMMERCE.files["dist/sandbox/plugin.mjs"].slice(0, 12)} verified`);
 
 const artifactDir = resolve(root, ".artifacts/paired");
 const evidence = resolve(root, "test-results/paired-product-on-sale");
@@ -33,7 +63,7 @@ mkdirSync(evidence, { recursive: true });
 const port = process.env.DINKUS_PAIRED_PORT ?? "4651";
 run("pnpm", ["exec", "playwright", "test", "-c", "tests/paired/playwright.config.ts"], root, {
   ...process.env,
-  DINKUS_PAIRED_COMMERCE_DIR: resolve(commerceDir),
+  DINKUS_PAIRED_COMMERCE_DIR: commerceDir,
   DINKUS_COMMERCE_PROFILE: "beta",
   DINKUS_PAIRED_DB: resolve(artifactDir, "content.db"),
   DINKUS_PAIRED_ARTIFACTS: evidence,

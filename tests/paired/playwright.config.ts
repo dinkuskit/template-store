@@ -9,7 +9,11 @@ export default defineConfig({
   retries: 0,
   expect: { timeout: 30_000 },
   reporter: [["line"]],
-  use: { ...devices["Desktop Chrome"], baseURL: `http://127.0.0.1:${port}`, trace: "retain-on-failure", screenshot: "only-on-failure",
+  projects: [
+    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    { name: "phone", use: { ...devices["Pixel 7"] } },
+  ],
+  use: { baseURL: `http://127.0.0.1:${port}`, trace: "retain-on-failure", screenshot: "only-on-failure",
     ...(process.env.DINKUS_CHROMIUM_PATH ? { launchOptions: { executablePath: process.env.DINKUS_CHROMIUM_PATH } } : {}) },
   webServer: {
     command: `pnpm exec astro dev --host 127.0.0.1 --port ${port} --ignore-lock`,

@@ -27,7 +27,7 @@ function setRole(role: number) {
     database.close();
   }
 }
-const capture = (page: Page, name: string) => page.screenshot({ path: resolve(artifacts, name + ".png"), animations: "disabled", fullPage: true });
+const capture = (page: Page, name: string) => page.screenshot({ path: resolve(artifacts, test.info().project.name + "-" + name + ".png"), animations: "disabled", fullPage: true });
 const onShop = async (request: APIRequestContext) =>
   ((await (await request.get(`/_emdash/api/plugins/${commerce}/catalog/public`)).json()).data.products as { name: string }[]).map((item) => item.name);
 const pageStatus = async (request: APIRequestContext, id: string) => {
@@ -37,14 +37,18 @@ const pageStatus = async (request: APIRequestContext, id: string) => {
 
 async function dismissWelcome(page: Page) {
   const start = page.getByRole("button", { name: "Get Started" });
-  await start.or(page.getByLabel("Settings", { exact: true })).first().waitFor({ state: "visible", timeout: 90_000 });
+  await start.or(page.getByText("Product title", { exact: true })).first().waitFor({ state: "visible", timeout: 90_000 });
   if (await start.isVisible()) await start.click();
   await expect(page.getByRole("dialog", { name: /Welcome to EmDash/ })).toHaveCount(0);
 }
 
 async function openPanel(page: Page) {
   const trigger = page.getByLabel("Settings", { exact: true }).getByRole("button", { name: "Dinkus Commerce", exact: true });
-  await expect(trigger).toBeVisible({ timeout: 60_000 });
+  // On a phone the editor's settings sidebar opens from its Settings button.
+  const settings = page.getByRole("main").getByRole("button", { name: "Settings", exact: true });
+  await expect(trigger.or(settings).first()).toBeVisible({ timeout: 60_000 });
+  if (!(await trigger.isVisible())) await settings.click();
+  await expect(trigger).toBeVisible();
   // EmDash remembers an open panel across visits.
   if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
   const panel = trigger.locator("xpath=..");
@@ -54,11 +58,13 @@ async function openPanel(page: Page) {
 
 test.afterAll(() => setRole(ROLE.ADMIN));
 
-test("publishing a product page sells its Commerce product, only for someone who may publish everything", async ({ page }) => {
+test("publishing a product page sells its Commerce product, only for someone who may publish everything", async ({ page }, testInfo) => {
   test.setTimeout(300_000);
   expect((await page.request.get("/_emdash/api/setup/dev-bypass")).status()).toBe(200);
   expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
   const { request } = page;
+  // Desktop and phone runs share one store, so each sells its own product.
+  const sku = testInfo.project.name === "phone" ? "PAIRED-HAT-PHONE" : "PAIRED-HAT";
   expect(await onShop(request)).toEqual([]);
   // A fresh install builds Commerce's unique indexes on its first requests; the panel refuses to sell until they exist.
   await expect.poll(() => {
@@ -72,38 +78,42 @@ test("publishing a product page sells its Commerce product, only for someone who
   }, { timeout: 90_000 }).toEqual({ n: 2 });
 
   // 1. A fresh product: the owner adds price and stock in the page's Commerce panel. It is a Draft.
-  const created = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: "paired-hat", data: { title: "Paired hat", visual_label: "Hat" } } })).json()).data;
+  const created = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: sku.toLowerCase(), data: { title: "Paired hat", visual_label: "Hat" } } })).json()).data;
   const pageId: string = (created.item ?? created).id;
   await page.goto("/_emdash/admin/content/products/" + pageId);
   await dismissWelcome(page);
   const panel = await openPanel(page);
-  await panel.getByRole("textbox", { name: "SKU (optional)", exact: true }).fill("PAIRED-HAT");
+  await panel.getByRole("textbox", { name: "SKU (optional)", exact: true }).fill(sku);
   await panel.getByRole("button", { name: "Add price and stock", exact: true }).click();
   await page.getByRole("dialog", { name: "Review proposed changes" }).getByRole("button", { name: "Apply changes", exact: true }).click();
-  await expect(panel.getByText(/^Draft: publish to sell it/)).toBeVisible({ timeout: 30_000 });
+  // On a phone, applying the change closes the settings drawer.
+  const linked = await openPanel(page);
+  await expect(linked.getByText(/^Draft: publish to sell it/)).toBeVisible({ timeout: 30_000 });
   // Wait for EmDash's autosave to keep the link, never pressing Save right after an edit.
   let itemId = "";
   await expect.poll(async () => {
     const body = (await (await request.get("/_emdash/api/content/products/" + pageId, { headers })).json()).data;
     return (itemId = (body.item ?? body).data?.commerce_item_id ?? "");
   }, { timeout: 30_000 }).toMatch(/\S/);
-  const priceForm = panel.locator("form").filter({ has: page.getByRole("textbox", { name: "Regular", exact: true }) });
+  const priceForm = linked.locator("form").filter({ has: page.getByRole("textbox", { name: "Regular", exact: true }) });
   await priceForm.getByRole("textbox", { name: "Regular", exact: true }).fill("12");
   await priceForm.getByRole("button", { name: /^Save/ }).click();
-  await expect(priceForm.getByRole("textbox", { name: "Regular", exact: true })).toHaveValue("12.00");
+  // A phone's drawer closes on the panel's answer too, so reopen it to read the saved price.
+  await expect((await openPanel(page)).getByRole("textbox", { name: "Regular", exact: true })).toHaveValue("12.00");
   expect(product(itemId).offSale).toBe(true);
   expect(await onShop(request)).toEqual([]);
   await capture(page, "1-draft");
 
   // 2. The admin publishes from the editor: the store's publish check puts the product on sale.
-  await page.getByRole("button", { name: "Publish now", exact: true }).click();
+  if (testInfo.project.name === "phone") await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: /^Publish( now)?$/ }).first().click();
   await page.getByRole("dialog").getByRole("button", { name: "Publish now", exact: true }).click();
   await expect.poll(() => pageStatus(request, pageId)).toBe("published");
   await expect.poll(() => onShop(request)).toEqual(["Paired hat"]);
   expect(product(itemId)).toMatchObject({ pageId });
   expect(product(itemId)).not.toHaveProperty("offSale", true);
   await page.reload();
-  await expect((await openPanel(page)).getByText(/^On sale · SKU PAIRED-HAT/)).toBeVisible();
+  await expect((await openPanel(page)).getByText("On sale · SKU " + sku, { exact: false })).toBeVisible();
   await capture(page, "2-published-on-sale");
 
   // 3. The same signed-in person is now an Author. EmDash would let them unpublish or trash their own page,

@@ -8,6 +8,9 @@ function runtime(fields: Record<string, unknown> | null, result = { success: tru
   const calls: Array<{ pluginId: string; path: string; body: unknown; user: unknown }> = [];
   return {
     calls,
+    // Commerce 0.6.0 declares the route and its permission, native and sandboxed alike.
+    getPluginRouteMeta: vi.fn((_pluginId: string, path: string): { public: boolean; permission?: string } | null =>
+      path === "catalog-items/set-on-sale" ? { public: false, permission: "content:publish_any" } : null),
     handleContentGet: vi.fn(async (_collection: string, id: string) =>
       fields ? { success: true, data: { item: { id: "01PAGE", slug: id, status, data: fields } } } : { success: false, error: { code: "NOT_FOUND", message: "not found" } }),
     handlePluginApiRoute: vi.fn(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
@@ -81,7 +84,7 @@ describe("product page publish check tells Commerce", () => {
     expect(cms).not.toHaveBeenCalled();
   });
 
-  it("lets a page that does not own its product, or a store without the publish check, change freely", async () => {
+  it("lets a page that does not own its product, or whose product or plugin is gone, change freely", async () => {
     for (const code of ["PRODUCT_PAGE_CONFLICT", "NOT_FOUND", "ROUTE_NOT_FOUND"]) {
       const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code, message: code } } as never);
       const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
@@ -195,6 +198,65 @@ describe("product page publish check tells Commerce", () => {
     expect(unpublished.status).toBe(403);
     expect(cms).not.toHaveBeenCalled();
     expect(rt.calls).toEqual([]);
+  });
+
+  it("leaves an older Commerce without the route alone, so Authors still unpublish and trash their own pages", async () => {
+    const author = { ...user, role: 30 };
+    // Native Commerce 0.5.0 has no such route (null); a sandboxed 0.5.0 answers only that the plugin exists.
+    for (const meta of [null, { public: false }]) {
+      const rt = runtime({ commerce_item_id: "item-1" });
+      rt.getPluginRouteMeta.mockReturnValue(meta);
+      for (const [method, path] of [["POST", "/_emdash/api/content/products/01PAGE/unpublish"], ["DELETE", "/_emdash/api/content/products/01PAGE"], ["POST", "/_emdash/api/content/products/01PAGE/publish"]]) {
+        const out = await withProductOnSale(input(method, path, rt, author), async () => new Response("done", { status: 200 }));
+        expect(await out.text()).toBe("done");
+      }
+      expect(rt.handlePluginApiRoute).not.toHaveBeenCalled();
+      expect(rt.handleContentGet).not.toHaveBeenCalled();
+    }
+  });
+
+  it("checks the person as stored now before every Commerce write, so authority lost mid-request writes nothing", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const author = { ...user, role: 30 };
+    // Admin when the publish starts, an Author by the time the product would go on sale.
+    const publish = runtime({ commerce_item_id: "item-1" });
+    const asPublished = [user, author];
+    const out = await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/publish", publish), currentUser: async () => asPublished.shift() ?? author },
+      async () => new Response(null, { status: 200 }));
+    expect(out.status).toBe(200);
+    expect(publish.calls).toEqual([]);
+    // Disabled or deleted (no stored person) before an unpublish: refused, nothing changes.
+    const unpublish = runtime({ commerce_item_id: "item-1" });
+    const cms = vi.fn(async () => new Response(null, { status: 200 }));
+    const refused = await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/unpublish", unpublish), currentUser: async () => null }, cms);
+    expect(refused.status).toBe(403);
+    expect(cms).not.toHaveBeenCalled();
+    expect(unpublish.calls).toEqual([]);
+    // Lost after the first off-sale write and a failed page change: the product is not put back on sale.
+    const undo = runtime({ commerce_item_id: "item-1" });
+    const asUndone = [user, user];
+    await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/unpublish", undo), currentUser: async () => asUndone.shift() ?? null },
+      async () => new Response(null, { status: 409 }));
+    expect(undo.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    // Every write that does run carries the person as stored at that moment.
+    const fresh = { ...user, name: "Stored now" };
+    const carried = runtime({ commerce_item_id: "item-1" });
+    await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/publish", carried), currentUser: async () => fresh }, async () => new Response(null, { status: 200 }));
+    expect(carried.calls.map((call) => call.user)).toEqual([fresh]);
+    warn.mockRestore();
+  });
+
+  it("takes the product off sale again when the page was linked to another product while it was being put on sale", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const relinked = runtime({ commerce_item_id: "item-1" });
+    relinked.handleContentGet.mockImplementationOnce(relinked.handleContentGet.getMockImplementation()!)
+      .mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "published", data: { commerce_item_id: "item-2" } } } }) as never);
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", relinked), async () => new Response(null, { status: 200 }));
+    expect(relinked.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+    ]);
+    warn.mockRestore();
   });
 
   it("leaves every other request alone", async () => {
