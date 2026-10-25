@@ -179,4 +179,77 @@ test("publishing a product page sells its Commerce product, only for someone who
   await expect(page.getByRole("heading", { name: "Products without a page" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Paired hat").first()).toBeVisible();
   await capture(page, "8-trashed-product-without-page");
+
+  // 9-12. Authority and links changed inside one request, through the same real routes. SQLite triggers land each
+  // change at an exact point between this request's own writes: when EmDash writes the page, or when Commerce
+  // writes the product. A new page sells the now unclaimed product.
+  const second = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: sku.toLowerCase() + "-again", data: { title: "Paired hat again", visual_label: "Hat", commerce_item_id: itemId } } })).json()).data;
+  const againId: string = (second.item ?? second).id;
+  const triggers: string[] = [];
+  const onDb = (sql: string) => {
+    const database = db();
+    try {
+      database.exec(sql);
+    } finally {
+      database.close();
+    }
+  };
+  const trigger = (name: string, when: string, body: string) => {
+    triggers.push(name);
+    onDb(`CREATE TRIGGER ${name} ${when} BEGIN ${body}; END`);
+  };
+  const dropTriggers = () => {
+    for (const name of triggers.splice(0)) onDb(`DROP TRIGGER IF EXISTS ${name}`);
+    setRole(ROLE.ADMIN);
+  };
+  const pageWrite = (status: string) => `AFTER UPDATE OF status ON ec_products WHEN NEW.id = '${againId}' AND NEW.status = '${status}'`;
+  const productWrite = (event: string) => `AFTER ${event} ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id = '${itemId}'`;
+  const demote = `UPDATE users SET role = ${ROLE.AUTHOR}`;
+  const page2 = () => pageStatus(request, againId);
+  try {
+    // 9. An admin publishes, and is lowered to Author the moment EmDash publishes the page: the page goes live,
+    // but the store reads the person again before the on-sale write, so Commerce never puts the product on sale.
+    trigger("proof_demote_on_publish", pageWrite("published"), demote);
+    expect((await request.post(`/_emdash/api/content/products/${againId}/publish`, { headers })).ok()).toBe(true);
+    expect(await page2()).toBe("published");
+    expect(product(itemId).offSale).toBe(true);
+    expect(product(itemId)).not.toHaveProperty("pageId");
+    expect(await onShop(request)).toEqual([]);
+    dropTriggers();
+    expect((await request.post(`/_emdash/api/content/products/${againId}/publish`, { headers })).ok()).toBe(true);
+    await expect.poll(() => onShop(request)).toEqual(["Paired hat"]);
+
+    // 10. An admin unpublishes; Commerce takes the product off sale, the person is lowered at that write, and the page
+    // change then fails. Putting the product back on sale would need the permission again, so it stays off sale.
+    for (const event of ["INSERT", "UPDATE"]) trigger("proof_demote_on_product_" + event, productWrite(event), demote);
+    trigger("proof_refuse_unpublish", `BEFORE UPDATE OF status ON ec_products WHEN OLD.id = '${againId}' AND NEW.status = 'draft'`, "SELECT RAISE(ABORT, 'proof page change refused')");
+    expect((await request.post(`/_emdash/api/content/products/${againId}/unpublish`, { headers })).ok()).toBe(false);
+    expect(await page2()).toBe("published");
+    expect(product(itemId).offSale).toBe(true);
+    expect(await onShop(request)).toEqual([]);
+    dropTriggers();
+
+    // 11. An admin publishes again; at the on-sale write the person is lowered and the page is unpublished from
+    // elsewhere. The store's read-back finds the page no longer published and takes the product off sale again,
+    // even though the person lost the permission meanwhile.
+    for (const event of ["INSERT", "UPDATE"]) {
+      trigger("proof_unpublish_on_sale_" + event, productWrite(event) + " AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1",
+        `${demote}; UPDATE ec_products SET status = 'draft' WHERE id = '${againId}'`);
+    }
+    expect((await request.post(`/_emdash/api/content/products/${againId}/publish`, { headers })).ok()).toBe(true);
+    expect(await page2()).toBe("draft");
+    expect(product(itemId).offSale).toBe(true);
+    expect(await onShop(request)).toEqual([]);
+    dropTriggers();
+
+    // 12. An admin publishes, and the page is linked to another product the moment it goes live: the store's read-back
+    // sees the new link and takes the first product off sale again.
+    trigger("proof_relink_on_publish", pageWrite("published"), `UPDATE ec_products SET commerce_item_id = '01PROOFRELINKED00000000000' WHERE id = '${againId}'`);
+    expect((await request.post(`/_emdash/api/content/products/${againId}/publish`, { headers })).ok()).toBe(true);
+    expect(await page2()).toBe("published");
+    expect(product(itemId).offSale).toBe(true);
+    expect(await onShop(request)).toEqual([]);
+  } finally {
+    dropTriggers();
+  }
 });

@@ -85,7 +85,8 @@ function refuse(status: number, code: string, message: string): Response {
  * - Only someone holding the route's own permission (`content:publish_any`)
  *   changes a product's sale state. EmDash's handlePluginApiRoute does not
  *   check route permissions, so it is checked here, against the person as
- *   stored at each Commerce write: one who loses it mid-request is refused.
+ *   stored right before each write that can make a product buyable: one who
+ *   loses it mid-request puts nothing (back) on sale.
  * - A Commerce without the route (0.5.0) has no publish check, so its pages
  *   change exactly as before, Authors' own pages included.
  * - Unpublish and trash take the product off sale first. If Commerce refuses
@@ -126,16 +127,26 @@ export async function withProductOnSale(
     return change.action === "publish" ? next() : refuse(503, "COMMERCE_UNAVAILABLE", "The page could not be checked for a product, so nothing was changed. Try again.");
   }
   if (!page) return next();
-  const allowed = may(await current());
+  // The person as last read; writes that only take a product off sale again after an allowed write carry them.
+  let authorized = await current();
+  const allowed = may(authorized);
   // The Commerce answer: null when it is done (or has nothing to do for this page), else why it failed.
   let changed = false;
   let withdrawn = false;
-  const tell = async (body: Record<string, unknown>) => {
-    const caller = await current();
-    if (!may(caller)) {
-      withdrawn = true;
-      return "the person may no longer change sale state";
+  // A write that can make a product buyable (on sale, or undoing an off-sale write) and the off-sale write that
+  // gates an unpublish or trash read the person again first and run only if they still hold the permission.
+  // Off-sale writes after that only take back what this allowed request started, so they always run: a person
+  // who lost the permission meanwhile never leaves a product buyable behind a page this request changed.
+  const tell = async (body: Record<string, unknown>, recheck = body.onSale === true) => {
+    if (recheck) {
+      const now = await current();
+      if (!may(now)) {
+        withdrawn = true;
+        return "the person may no longer change sale state";
+      }
+      authorized = now;
     }
+    const caller = authorized;
     try {
       const result = await runtime.handlePluginApiRoute(input.commercePluginId, "POST", SET_ON_SALE_ROUTE,
         new Request(new URL(`/_emdash/api/plugins/${input.commercePluginId}/${SET_ON_SALE_ROUTE}`, input.url), {
@@ -166,7 +177,7 @@ export async function withProductOnSale(
     return response;
   }
   if (!allowed) return refuse(403, "FORBIDDEN", "This page sells a product. Ask an editor or admin to unpublish or trash it.");
-  const failed = await tell({ onSale: false });
+  const failed = await tell({ onSale: false }, true);
   if (failed && withdrawn) return refuse(403, "FORBIDDEN", "This page sells a product. Ask an editor or admin to unpublish or trash it.");
   if (failed) return refuse(503, "COMMERCE_UNAVAILABLE", "Commerce could not take this page's product off sale, so nothing was changed. Try again.");
   const tookOff = changed;

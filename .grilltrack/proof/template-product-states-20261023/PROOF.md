@@ -41,17 +41,32 @@ refused on their next request.
 The Commerce panel itself needs `content:edit_any`, so an Author never sees it (EmDash answers 403); step 6 checks
 the panel as an admin.
 
-## Authority inside one request
+## Authority and links changed inside one request
 
-The middleware reads the person again from EmDash's user store right before every Commerce write (put on sale,
-take off sale, undo, trash release), and the write runs only if they still hold the route's own declared
-permission; the write carries that freshly read person. So a person disabled, deleted or lowered while their
-request is running writes nothing more: a publish leaves the product a Draft, an unpublish not yet started is
-refused 403, and a failed page change is not undone onto sale. A product whose page is relinked to another
-product while it is being put on sale is taken off sale again (the page is read back after the write), and
-Commerce itself refuses a page that lost the product (`PRODUCT_PAGE_CONFLICT`). These in-request orders are
-covered in `tests/unit/product-on-sale.test.ts` (18 tests); a real browser cannot land a role change between two
-writes inside one request.
+Before each write that can make a product buyable (putting it on sale, or undoing an off-sale write after a failed
+page change) and before the off-sale write that gates an unpublish or trash, the middleware reads the person again
+from EmDash's user store and writes only if they still hold the route's declared permission, carrying that freshly
+read person. Off-sale writes later in the same request only take back what this allowed request started, so they
+always run: a person who lost the permission meanwhile never leaves a product buyable behind a page this request
+changed. After every on-sale write the page is read back, and the product goes off sale again if the page is no
+longer published with it.
+
+Steps 9-12 of the same paired run prove this against the real runtime. SQLite triggers land each change at an exact
+point between the request's own writes (when EmDash writes the page row, or when Commerce writes the product row);
+a second page sells the product released in step 8:
+
+| Step | Change inside the request | Result |
+| --- | --- | --- |
+| 9 | Admin publishes; lowered to Author the moment EmDash publishes the page | Page live; Commerce never puts the product on sale (`offSale: true`, no page recorded); catalog empty |
+| 10 | Admin unpublishes; lowered to Author at Commerce's off-sale write, then the page change is refused | Request fails; page still published; product stays off sale (no undo without the permission); catalog empty |
+| 11 | Admin publishes; at the on-sale write lowered to Author and the page unpublished from elsewhere | Read-back sees the page unpublished; the product is taken off sale again; catalog empty |
+| 12 | Admin publishes; the page is linked to another product the moment it goes live | Read-back sees the new link; the first product is taken off sale again; catalog empty |
+
+Control: the same run against the previous head's middleware (9190def, which checked the person only once per
+request) fails at step 9: `expect(product(itemId).offSale).toBe(true)` received `undefined`, the product went on
+sale for a person who had already lost the permission.
+
+The same orders are covered in `tests/unit/product-on-sale.test.ts` (18 tests).
 
 ## Older Commerce
 

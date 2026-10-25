@@ -215,7 +215,7 @@ describe("product page publish check tells Commerce", () => {
     }
   });
 
-  it("checks the person as stored now before every Commerce write, so authority lost mid-request writes nothing", async () => {
+  it("checks the person as stored now before every write that can make a product buyable", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const author = { ...user, role: 30 };
     // Admin when the publish starts, an Author by the time the product would go on sale.
@@ -238,6 +238,17 @@ describe("product page publish check tells Commerce", () => {
     await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/unpublish", undo), currentUser: async () => asUndone.shift() ?? null },
       async () => new Response(null, { status: 409 }));
     expect(undo.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    // Lost right after the on-sale write while the page was unpublished: taking it off sale again still runs.
+    const corrective = runtime({ commerce_item_id: "item-1" });
+    corrective.handleContentGet.mockImplementationOnce(corrective.handleContentGet.getMockImplementation()!)
+      .mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { commerce_item_id: "item-1" } } } }) as never);
+    const asCorrected = [user, user];
+    await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/publish", corrective), currentUser: async () => asCorrected.shift() ?? null },
+      async () => new Response(null, { status: 200 }));
+    expect(corrective.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+    ]);
     // Every write that does run carries the person as stored at that moment.
     const fresh = { ...user, name: "Stored now" };
     const carried = runtime({ commerce_item_id: "item-1" });
