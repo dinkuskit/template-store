@@ -225,7 +225,11 @@ export interface PendingSales {
   query(options: { limit: number; cursor?: string }): Promise<{ items: Array<{ id: string }>; cursor?: string }>;
   getVersioned(id: string): Promise<{ value: unknown; revision: string } | null>;
   compareAndDelete(id: string, revision: string): Promise<{ applied: boolean }>;
+  put(id: string, value: unknown): Promise<void>;
 }
+
+// A product the sweep put on sale and must take off again; kept until Commerce confirms the off-sale write.
+const TAKEBACK = "takeback:";
 
 type Grant = { by: string; role: number; itemId: string };
 
@@ -262,9 +266,15 @@ const PENDING_BATCH = 50;
  *   one read (not removed or replaced meanwhile). After the write the page and
  *   the record are read again: if the page is no longer published with that
  *   product, or the record changed, the product goes off sale again.
- * - Records are checked a batch at a time, resuming from `cursor` (returned for
- *   the next sweep), so every record is reached however many wait.
- * - A write Commerce refuses keeps the record for a later sweep.
+ * - Records are read a batch at a time, all before the first write, resuming from
+ *   `cursor` (returned for the next sweep), so every record is reached however
+ *   many wait, and a change one write causes to another record is seen by that
+ *   record's check.
+ * - A sale write Commerce refuses keeps the record for a later sweep. Taking a
+ *   product off sale again is recorded (`takeback:<page>`) before it is tried and
+ *   retried on later sweeps until Commerce confirms it; it never sells. Like every
+ *   late off-sale write, it can at worst leave a published page's product a
+ *   Draft, and publishing again fixes it.
  */
 export async function sellScheduledPages(
   input: { url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales; userById?: (id: string) => Promise<unknown> },
@@ -280,9 +290,35 @@ export async function sellScheduledPages(
   if (!may(input.user) || !due()) return cursor;
   const current = async () => (input.currentUser ? await input.currentUser().catch(() => null) : input.user);
   const batch = await pendingSales.query({ limit: PENDING_BATCH, ...(cursor ? { cursor } : {}) });
+  const snapshot: Array<{ id: string; stored: { value: unknown; revision: string } }> = [];
   for (const { id } of batch.items) {
     const stored = await pendingSales.getVersioned(id);
-    if (!stored) continue;
+    if (stored) snapshot.push({ id, stored });
+  }
+  const offSale = async (visitor: unknown, entryId: string, catalogItemId: string) => {
+    const key = TAKEBACK + entryId;
+    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { catalogItemId, entryId, onSale: false });
+    if (failed) return failed;
+    const takeback = await pendingSales.getVersioned(key);
+    if (takeback) await pendingSales.compareAndDelete(key, takeback.revision);
+    return null;
+  };
+  for (const { id, stored } of snapshot) {
+    const visitorNow = async () => {
+      const visitor = await current();
+      return may(visitor) ? visitor : null;
+    };
+    if (id.startsWith(TAKEBACK)) {
+      const takeback = record(stored.value);
+      const visitor = await visitorNow();
+      if (!visitor) return cursor;
+      const failed = typeof takeback?.entryId === "string" && typeof takeback.catalogItemId === "string"
+        ? await offSale(visitor, takeback.entryId, takeback.catalogItemId)
+        : null;
+      if (failed) console.warn("[product-on-sale] a product to take off sale again stays on the list:", failed);
+      else await pendingSales.compareAndDelete(id, stored.revision);
+      continue;
+    }
     const unchanged = async () => (await pendingSales.getVersioned(id))?.revision === stored.revision;
     const drop = () => pendingSales.compareAndDelete(id, stored.revision);
     const sale = pendingSale(stored.value);
@@ -307,8 +343,8 @@ export async function sellScheduledPages(
       await drop();
       continue;
     }
-    const visitor = await current();
-    if (!may(visitor)) return cursor;
+    const visitor = await visitorNow();
+    if (!visitor) return cursor;
     if (!(await unchanged())) continue;
     const body = { catalogItemId: grant.itemId, entryId: page.id };
     const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true });
@@ -319,8 +355,9 @@ export async function sellScheduledPages(
     const after = await productPage(runtime, id);
     const stillGranted = await unchanged().catch(() => false);
     if (!(stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId)) {
-      const off = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: false });
-      if (off.failed) console.warn("[product-on-sale] the schedule or page changed meanwhile and the product could not be taken off sale:", off.failed);
+      await pendingSales.put(TAKEBACK + page.id, { takeback: true, ...body });
+      const off = await offSale(visitor, page.id, grant.itemId);
+      if (off) console.warn("[product-on-sale] the schedule or page changed meanwhile; taking the product off sale again is retried later:", off);
     }
     await drop();
   }

@@ -322,7 +322,7 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
   const scheduled = await schedule(pageId);
   expect(scheduled.ok(), await scheduled.text()).toBe(true);
   expect(stored(pageId)?.status).toBe("scheduled");
-  await expect.poll(() => pending(pageId)).toMatchObject({ proposed: null, confirmed: { itemId, role: ROLE.ADMIN }, state: "scheduled" });
+  await expect.poll(() => pending(pageId)).toMatchObject({ proposals: [], confirmed: { itemId, role: ROLE.ADMIN }, state: "scheduled" });
   // EmDash publishes it with nobody signed in: the product is still a Draft, the grant now published.
   await scheduledPublish(pageId);
   expect(product(itemId).offSale).toBe(true);
@@ -356,28 +356,56 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
   await expect((await openPanel(page)).getByText(/^Draft: publish to sell it/)).toBeVisible();
   await capture(page, "14-author-scheduled-still-draft");
 
-  // 15. The admin schedules again and EmDash publishes it. At the moment Commerce puts the product on sale, the grant
-  // is removed (as a person's own publish of the page removes it). The store sees the grant gone and takes the product
-  // off sale again.
-  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
-  expect((await schedule(pageId)).ok()).toBe(true);
-  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
-  await scheduledPublish(pageId);
-  await expect.poll(() => pending(pageId)?.state).toBe("published");
-  onDb("CREATE TABLE IF NOT EXISTS proof_sale_writes (on_sale INTEGER)");
-  const productWrite = (event: string) => `AFTER ${event} ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id = '${itemId}'`;
-  const triggers = ["INSERT", "UPDATE"].map((event) => "proof_revoke_on_sale_" + event);
+  // 15. Grants withdrawn mid-sweep, and an off-sale write Commerce refuses. The admin schedules both pages and EmDash
+  // publishes them, so one sweep reads both grants before writing. SQLite triggers then remove both grants at the
+  // moment Commerce writes either product on sale (as a person's own publish removes a grant), and refuse Commerce's
+  // off-sale writes. The first product goes on sale, its grant is gone, so the store must take it back: the refused
+  // write is kept on a list. The second grant was read before that write and removed after, so its product is never
+  // written on sale. Once Commerce accepts writes again, a later visit takes the first product off sale.
+  for (const id of [pageId, cap.pageId]) expect((await request.post(`/_emdash/api/content/products/${id}/unpublish`, { headers })).ok()).toBe(true);
+  for (const id of [pageId, cap.pageId]) expect((await schedule(id, 5_000)).ok()).toBe(true);
+  for (const id of [pageId, cap.pageId]) await expect.poll(() => pending(id)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
+  await page.goto("about:blank");
+  for (const id of [pageId, cap.pageId]) await expect.poll(() => stored(id), { timeout: 120_000, intervals: [1_000] }).toEqual({ status: "published", scheduled_at: null });
+  for (const id of [pageId, cap.pageId]) await expect.poll(() => pending(id)?.state).toBe("published");
+  const items = `'${itemId}', '${cap.itemId}'`;
+  const onSale = "COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1";
+  const triggers: string[] = [];
+  const trigger = (name: string, body: string) => {
+    triggers.push(name);
+    onDb(`CREATE TRIGGER ${name} ${body}`);
+  };
+  const takebacks = () => read<{ n: number }>("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id LIKE 'takeback:%'")?.n ?? 0;
+  onDb("CREATE TABLE IF NOT EXISTS proof_sale_writes (item TEXT, on_sale INTEGER)");
   try {
-    for (const [index, event] of ["INSERT", "UPDATE"].entries()) {
-      onDb(`CREATE TRIGGER ${triggers[index]} ${productWrite(event)} BEGIN
-        INSERT INTO proof_sale_writes VALUES (COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1);
-        DELETE FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id = '${pageId}' AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1;
+    for (const event of ["INSERT", "UPDATE"]) {
+      trigger(`proof_withdraw_on_sale_${event}`, `AFTER ${event} ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id IN (${items}) BEGIN
+        INSERT INTO proof_sale_writes VALUES (NEW.id, ${onSale});
+        DELETE FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id IN ('${pageId}', '${cap.pageId}') AND ${onSale};
       END`);
     }
-    await adminVisits(pageId, () => read<{ n: number }>("SELECT count(*) AS n FROM proof_sale_writes WHERE on_sale = 0")?.n ?? 0, 1);
-    expect(read<{ n: number }>("SELECT count(*) AS n FROM proof_sale_writes WHERE on_sale = 1")?.n).toBe(1);
-    expect(product(itemId).offSale).toBe(true);
-    expect(pending(pageId)).toBeUndefined();
+    trigger("proof_refuse_off_sale", `BEFORE UPDATE ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id IN (${items}) AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) = 1 BEGIN SELECT RAISE(ABORT, 'proof off-sale refused'); END`);
+    await adminVisits(pageId, takebacks, 1);
+    const writes = () => {
+      const database = db();
+      try {
+        return database.prepare("SELECT item, on_sale FROM proof_sale_writes").all() as Array<{ item: string; on_sale: number }>;
+      } finally {
+        database.close();
+      }
+    };
+    expect(writes()).toHaveLength(1);
+    const [{ item: sold, on_sale: wasOnSale }] = writes();
+    expect(wasOnSale).toBe(1);
+    const other = sold === itemId ? cap.itemId : itemId;
+    expect(product(other).offSale).toBe(true);
+    for (const id of [pageId, cap.pageId]) expect(pending(id)).toBeUndefined();
+    // Commerce accepts writes again: a later visit takes the product off sale and clears the list, selling nothing.
+    onDb("DROP TRIGGER IF EXISTS proof_refuse_off_sale");
+    await adminVisits(pageId, takebacks, 0);
+    expect(writes().map((write) => write.on_sale)).toEqual([1, 0]);
+    expect(product(sold).offSale).toBe(true);
+    expect(product(other).offSale).toBe(true);
     expect(await onShop(request)).toEqual([]);
   } finally {
     for (const name of triggers) onDb(`DROP TRIGGER IF EXISTS ${name}`);

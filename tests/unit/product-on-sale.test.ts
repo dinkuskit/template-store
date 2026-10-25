@@ -288,8 +288,9 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     rows = new Map<string, { value: Record<string, unknown>; revision: string }>();
     pageSize = 50;
     private next = 0;
-    put(id: string, value: Record<string, unknown>) {
+    put(id: string, value: Record<string, unknown>): Promise<void> {
       this.rows.set(id, { value, revision: `r${(this.next += 1)}` });
+      return Promise.resolve();
     }
     async query({ limit, cursor }: { limit: number; cursor?: string }) {
       const ids = [...this.rows.keys()];
@@ -437,6 +438,51 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
       { catalogItemId: "item-cap", entryId: "cap", onSale: true },
       { catalogItemId: "item-cap", entryId: "cap", onSale: false },
     ]);
+    expect(pending.rows.size).toBe(0);
+  });
+
+  it("sells nothing on a record that one write of the same sweep removed after it was read", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    pending.put("cap", sale("cap"));
+    const rt = site({ hat: { status: "published" }, cap: { status: "published" } });
+    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+      const body = await request.json() as { entryId: string; onSale: boolean };
+      rt.calls.push({ pluginId, path, body, user: caller });
+      if (body.onSale) pending.rows.delete("cap");
+      return { success: true, data: { changed: true } };
+    });
+    await sweep(rt, pending);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-hat", entryId: "hat", onSale: true }]);
+  });
+
+  it("keeps taking a product off sale again on later sweeps until Commerce confirms it, never selling it", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    const rt = site({ hat: { status: "published" } });
+    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+      const body = await request.json() as { onSale: boolean };
+      rt.calls.push({ pluginId, path, body, user: caller });
+      if (body.onSale) {
+        pending.rows.delete("hat");
+        return { success: true, data: { changed: true } };
+      }
+      return { success: false, error: { code: "INTERNAL_ERROR", message: "down" } } as never;
+    });
+    await sweep(rt, pending);
+    expect([...pending.rows.keys()]).toEqual(["takeback:hat"]);
+    // A later sweep retries only the off-sale write; it stays listed while Commerce refuses, then clears.
+    await sweep(rt, pending);
+    expect([...pending.rows.keys()]).toEqual(["takeback:hat"]);
+    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+      rt.calls.push({ pluginId, path, body: await request.json(), user: caller });
+      return { success: true, data: { changed: true } };
+    });
+    await sweep(rt, pending);
+    expect(pending.rows.size).toBe(0);
+    expect(rt.calls.map((call) => (call.body as { onSale: boolean }).onSale)).toEqual([true, false, false, false]);
+    warn.mockRestore();
   });
 
   it("keeps the record to retry when Commerce refuses", async () => {

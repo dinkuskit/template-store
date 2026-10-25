@@ -155,9 +155,9 @@ describe("schedules recorded for the store's admin-visit sale", () => {
     const claims = new Claims();
     const pending = new Pending();
     await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin), claims, pending);
-    expect(pending.value("one")).toMatchObject({ proposed: { by: "admin", role: 50, itemId: "item-1", scheduledAt: at }, confirmed: null, state: "scheduled" });
+    expect(pending.value("one")).toMatchObject({ proposals: [{ by: "admin", role: 50, itemId: "item-1", scheduledAt: at }], confirmed: null, state: "scheduled" });
     await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
-    expect(pending.value("one")).toMatchObject({ proposed: null, confirmed: { by: "admin", role: 50, itemId: "item-1" }, state: "scheduled" });
+    expect(pending.value("one")).toMatchObject({ proposals: [], confirmed: { by: "admin", role: 50, itemId: "item-1" }, state: "scheduled" });
   });
 
   it("grants nothing for a schedule that failed, came from no person, or does not match what EmDash stored", async () => {
@@ -177,6 +177,25 @@ describe("schedules recorded for the store's admin-visit sale", () => {
     await run(plugin, "content:beforeSchedule", scheduled("three", "item-3", admin), claims, pending);
     await run(plugin, "content:afterSchedule", stored("three", "item-3", "2031-01-01T00:00:00Z"), claims, pending);
     expect(pending.value("three")).toMatchObject({ confirmed: null });
+  });
+
+  it("never lends one request's authority to another's stored schedule", async () => {
+    const plugin = createPlugin();
+    const claims = new Claims();
+    const pending = new Pending();
+    // An Author and an admin schedule the same page for the same time at once; the Author's is stored first.
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", { id: "author", role: 30 }), claims, pending);
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin), claims, pending);
+    await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
+    expect(pending.value("one")).toMatchObject({ confirmed: { by: "author", role: 30 }, proposals: [] });
+    // The admin's own schedule then stored finds nothing proposed: it grants nothing rather than guess.
+    await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
+    expect(pending.value("one")).toMatchObject({ confirmed: null });
+    // A schedule from no person at the same time as an admin's grants nothing.
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1", admin), claims, pending);
+    await run(plugin, "content:beforeSchedule", scheduled("one", "item-1"), claims, pending);
+    await run(plugin, "content:afterSchedule", stored("one", "item-1"), claims, pending);
+    expect(pending.value("one")).toMatchObject({ confirmed: null });
   });
 
   it("records nothing for a schedule the claim refuses", async () => {
