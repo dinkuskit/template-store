@@ -76,10 +76,11 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
 }
 
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
-// page sells the product (a sandboxed route carries that only in its message).
-const NOT_THIS_PAGES = new Set(["NOT_FOUND", "ROUTE_NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
+// page sells the product (a sandboxed route carries those only in its message). Commerce 0.6.0 names a gone
+// product CATALOG_ITEM_NOT_FOUND.
+const NOT_THIS_PAGES = new Set(["NOT_FOUND", "CATALOG_ITEM_NOT_FOUND", "ROUTE_NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
 const notThisPages = (error?: { code?: string; message?: string }) =>
-  NOT_THIS_PAGES.has(error?.code ?? "") || /Another page sells this product/.test(error?.message ?? "");
+  NOT_THIS_PAGES.has(error?.code ?? "") || /Another page sells this product|^Product not found\./.test(error?.message ?? "");
 
 /** One `set-on-sale` write as `caller`: null when done (or Commerce has nothing to do for this page), else why it failed. */
 async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, caller: unknown, body: Record<string, unknown>): Promise<{ failed: string | null; changed?: boolean }> {
