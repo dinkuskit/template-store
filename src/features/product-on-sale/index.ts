@@ -46,6 +46,11 @@ export interface OnSaleRuntime {
 export async function storedUser(runtime: OnSaleRuntime, user: unknown): Promise<unknown> {
   const id = record(user)?.id;
   if (typeof id !== "string" || !runtime.db) return user;
+  return userById(runtime, id);
+}
+
+async function userById(runtime: OnSaleRuntime, id: string): Promise<unknown> {
+  if (!runtime.db) return null;
   const fresh = await createKyselyAdapter(runtime.db as Parameters<typeof createKyselyAdapter>[0]).getUserById(id);
   return fresh && !fresh.disabled ? fresh : null;
 }
@@ -58,7 +63,7 @@ function record(value: unknown): Record<string, unknown> | null {
  * The page's own id and the Commerce product it sells, read before the change;
  * null when the page sells nothing or does not exist, "unreadable" when the read failed.
  */
-async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean } | null | "unreadable"> {
+async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean; scheduled: boolean } | null | "unreadable"> {
   const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true }).catch(() => null);
   if (!found?.success) return found?.error?.code === "NOT_FOUND" ? null : "unreadable";
   const data = record(found.data);
@@ -66,7 +71,8 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
   const fields = record(item?.data) ?? item;
   const id = typeof item?.id === "string" ? item.id : entryId;
   const catalogItemId = typeof fields?.commerce_item_id === "string" ? fields.commerce_item_id.trim() : "";
-  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published: item?.status === "published" } : null;
+  const scheduled = typeof item?.scheduledAt === "string" && item.scheduledAt !== "";
+  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published: item?.status === "published", scheduled } : null;
 }
 
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
@@ -74,6 +80,22 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
 const NOT_THIS_PAGES = new Set(["NOT_FOUND", "ROUTE_NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
 const notThisPages = (error?: { code?: string; message?: string }) =>
   NOT_THIS_PAGES.has(error?.code ?? "") || /Another page sells this product/.test(error?.message ?? "");
+
+/** One `set-on-sale` write as `caller`: null when done (or Commerce has nothing to do for this page), else why it failed. */
+async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, caller: unknown, body: Record<string, unknown>): Promise<{ failed: string | null; changed?: boolean }> {
+  try {
+    const result = await runtime.handlePluginApiRoute(pluginId, "POST", SET_ON_SALE_ROUTE,
+      new Request(new URL(`/_emdash/api/plugins/${pluginId}/${SET_ON_SALE_ROUTE}`, url), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }), caller);
+    if (result.success) return { failed: null, changed: record(result.data)?.changed === true };
+    return { failed: notThisPages(result.error) ? null : result.error?.message ?? "Commerce refused" };
+  } catch (error) {
+    return { failed: error instanceof Error ? error.message : "Commerce unavailable" };
+  }
+}
 
 function refuse(status: number, code: string, message: string): Response {
   return new Response(JSON.stringify({ error: { code, message } }), { status, headers: { "Content-Type": "application/json" } });
@@ -146,19 +168,9 @@ export async function withProductOnSale(
       }
       authorized = now;
     }
-    const caller = authorized;
-    try {
-      const result = await runtime.handlePluginApiRoute(input.commercePluginId, "POST", SET_ON_SALE_ROUTE,
-        new Request(new URL(`/_emdash/api/plugins/${input.commercePluginId}/${SET_ON_SALE_ROUTE}`, input.url), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ catalogItemId: page.catalogItemId, entryId: page.id, ...body }),
-        }), caller);
-      if (result.success) changed = record(result.data)?.changed === true;
-      return result.success || notThisPages(result.error) ? null : result.error?.message ?? "Commerce refused";
-    } catch (error) {
-      return error instanceof Error ? error.message : "Commerce unavailable";
-    }
+    const result = await setOnSale(runtime, input.commercePluginId, input.url, authorized, { catalogItemId: page.catalogItemId, entryId: page.id, ...body });
+    if (result.changed !== undefined) changed = result.changed;
+    return result.failed;
   };
   // Put the product on sale, then read the page again: if it is no longer published with this product, take it off.
   const putOnSale = async () => {
@@ -206,4 +218,116 @@ export async function withProductOnSale(
     if (failed) console.warn("[product-on-sale] the product could not be taken off sale again after unpublish:", failed);
   }
   return response;
+}
+
+/** The product-url plugin's records of schedules made through the admin or MCP (`PendingSale`). */
+export interface PendingSales {
+  query(options: { limit: number }): Promise<{ items: Array<{ id: string }> }>;
+  getVersioned(id: string): Promise<{ value: unknown; revision: string } | null>;
+  compareAndDelete(id: string, revision: string): Promise<{ applied: boolean }>;
+}
+
+type PendingSale = { entryId: string; itemId: string; by: string; role: number; recordedAt: string };
+
+function pendingSale(value: unknown): PendingSale | null {
+  const sale = record(value);
+  const text = (key: string) => (typeof sale?.[key] === "string" ? (sale[key] as string) : "");
+  const entryId = text("entryId");
+  const itemId = text("itemId");
+  const by = text("by");
+  const role = typeof sale?.role === "number" ? sale.role : NaN;
+  return entryId && itemId && by && Number.isFinite(role) ? { entryId, itemId, by, role, recordedAt: text("recordedAt") } : null;
+}
+
+// A record whose page is neither scheduled nor published is dropped once it is this old, so a schedule EmDash is
+// still storing when the sweep reads its page is not lost.
+const STALE_PENDING_MS = 10 * 60_000;
+const PENDING_BATCH = 50;
+
+/**
+ * EmDash publishes a scheduled page with nobody signed in, so the publish check
+ * cannot put its product on sale then. This puts it on sale on the next request
+ * from someone holding the route's permission, as that person:
+ *
+ * - Only schedules recorded by the product-url plugin count: ones made through
+ *   the admin or MCP by a person who held the permission when they scheduled
+ *   and still holds it when the sale is made. An Author's schedule is recorded
+ *   too, and dropped here, so their page goes live with its product still a
+ *   Draft, as their own publish does.
+ * - The page must be published with the same product and no longer scheduled
+ *   (EmDash clears the schedule when it publishes). A direct publish, unschedule,
+ *   unpublish or trash removes the record in the plugin, so only EmDash's own
+ *   scheduled publish is left to this sweep.
+ * - The visitor is read again before each write, and the page is read back after
+ *   it: if it is no longer published with that product, the product goes off
+ *   sale again, as after every other on-sale write.
+ * - Records are removed only at the revision read, so a schedule made meanwhile
+ *   stays; a write Commerce refuses is retried on a later sweep.
+ */
+export async function sellScheduledPages(
+  input: { url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales; userById?: (id: string) => Promise<unknown> },
+  now = Date.now(),
+  due: () => boolean = () => true,
+): Promise<void> {
+  const { runtime, pendingSales } = input;
+  if (!runtime || !input.user || !pendingSales) return;
+  const permission = runtime.getPluginRouteMeta(input.commercePluginId, SET_ON_SALE_ROUTE)?.permission;
+  if (typeof permission !== "string") return;
+  const may = (who: unknown) => !!who && hasPermission(who as Parameters<typeof hasPermission>[0], permission as Parameters<typeof hasPermission>[1]);
+  if (!may(input.user) || !due()) return;
+  const current = async () => (input.currentUser ? await input.currentUser().catch(() => null) : input.user);
+  const { items } = await pendingSales.query({ limit: PENDING_BATCH });
+  for (const { id } of items) {
+    const stored = await pendingSales.getVersioned(id);
+    if (!stored) continue;
+    const drop = () => pendingSales.compareAndDelete(id, stored.revision);
+    const sale = pendingSale(stored.value);
+    if (!sale) {
+      await drop();
+      continue;
+    }
+    const page = await productPage(runtime, sale.entryId);
+    if (page === "unreadable" || (page && page.scheduled)) continue;
+    if (!page || page.catalogItemId !== sale.itemId) {
+      await drop();
+      continue;
+    }
+    if (!page.published) {
+      const recordedAt = Date.parse(sale.recordedAt);
+      if (!(now - recordedAt < STALE_PENDING_MS)) await drop();
+      continue;
+    }
+    const scheduler = await (input.userById ?? ((by: string) => userById(runtime, by)))(sale.by).catch(() => null);
+    if (!may({ role: sale.role }) || !may(scheduler)) {
+      await drop();
+      continue;
+    }
+    const visitor = await current();
+    if (!may(visitor)) return;
+    const body = { catalogItemId: sale.itemId, entryId: page.id };
+    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true });
+    if (failed) {
+      console.warn("[product-on-sale] a scheduled page's product stays a Draft for now:", failed);
+      continue;
+    }
+    const after = await productPage(runtime, sale.entryId);
+    if (!(after && after !== "unreadable" && after.published && after.catalogItemId === sale.itemId)) {
+      const off = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: false });
+      if (off.failed) console.warn("[product-on-sale] the page changed meanwhile and the product could not be taken off sale:", off.failed);
+    }
+    await drop();
+  }
+}
+
+/** `sellScheduledPages` at most once per interval in this isolate, counting only allowed people's requests; it never fails the request. */
+export function scheduledSaleSweeper(everyMs = 60_000) {
+  let nextAt = 0;
+  const due = (now: number) => () => {
+    if (now < nextAt) return false;
+    nextAt = now + everyMs;
+    return true;
+  };
+  return async (input: Parameters<typeof sellScheduledPages>[0], now = Date.now()): Promise<void> => {
+    await sellScheduledPages(input, now, due(now)).catch((error) => console.warn("[product-on-sale] scheduled pages were not checked:", error));
+  };
 }

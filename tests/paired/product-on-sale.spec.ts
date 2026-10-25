@@ -58,27 +58,10 @@ async function openPanel(page: Page) {
 
 test.afterAll(() => setRole(ROLE.ADMIN));
 
-test("publishing a product page sells its Commerce product, only for someone who may publish everything", async ({ page }, testInfo) => {
-  test.setTimeout(300_000);
-  expect((await page.request.get("/_emdash/api/setup/dev-bypass")).status()).toBe(200);
-  expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
+/** A new Content > Products page whose owner adds price and stock in its Commerce panel: the product is a Draft. */
+async function draftProduct(page: Page, sku: string, title: string) {
   const { request } = page;
-  // Desktop and phone runs share one store, so each sells its own product.
-  const sku = testInfo.project.name === "phone" ? "PAIRED-HAT-PHONE" : "PAIRED-HAT";
-  expect(await onShop(request)).toEqual([]);
-  // A fresh install builds Commerce's unique indexes on its first requests; the panel refuses to sell until they exist.
-  await expect.poll(() => {
-    const database = db();
-    try {
-      return database.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'index' AND name IN (?, ?)")
-        .get(`uidx_plugin_${commerce}_catalog_items_commandId`, `uidx_plugin_${commerce}_catalog_items_skuKey`) as { n: number };
-    } finally {
-      database.close();
-    }
-  }, { timeout: 90_000 }).toEqual({ n: 2 });
-
-  // 1. A fresh product: the owner adds price and stock in the page's Commerce panel. It is a Draft.
-  const created = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: sku.toLowerCase(), data: { title: "Paired hat", visual_label: "Hat" } } })).json()).data;
+  const created = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: sku.toLowerCase(), data: { title, visual_label: "Hat" } } })).json()).data;
   const pageId: string = (created.item ?? created).id;
   await page.goto("/_emdash/admin/content/products/" + pageId);
   await dismissWelcome(page);
@@ -101,6 +84,30 @@ test("publishing a product page sells its Commerce product, only for someone who
   // A phone's drawer closes on the panel's answer too, so reopen it to read the saved price.
   await expect((await openPanel(page)).getByRole("textbox", { name: "Regular", exact: true })).toHaveValue("12.00");
   expect(product(itemId).offSale).toBe(true);
+  return { pageId, itemId };
+}
+
+test("publishing a product page sells its Commerce product, only for someone who may publish everything", async ({ page }, testInfo) => {
+  test.setTimeout(300_000);
+  expect((await page.request.get("/_emdash/api/setup/dev-bypass")).status()).toBe(200);
+  expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
+  const { request } = page;
+  // Desktop and phone runs share one store, so each sells its own product.
+  const sku = testInfo.project.name === "phone" ? "PAIRED-HAT-PHONE" : "PAIRED-HAT";
+  expect(await onShop(request)).toEqual([]);
+  // A fresh install builds Commerce's unique indexes on its first requests; the panel refuses to sell until they exist.
+  await expect.poll(() => {
+    const database = db();
+    try {
+      return database.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'index' AND name IN (?, ?)")
+        .get(`uidx_plugin_${commerce}_catalog_items_commandId`, `uidx_plugin_${commerce}_catalog_items_skuKey`) as { n: number };
+    } finally {
+      database.close();
+    }
+  }, { timeout: 90_000 }).toEqual({ n: 2 });
+
+  // 1. A fresh product: the owner adds price and stock in the page's Commerce panel. It is a Draft.
+  const { pageId, itemId } = await draftProduct(page, sku, "Paired hat");
   expect(await onShop(request)).toEqual([]);
   await capture(page, "1-draft");
 
@@ -252,4 +259,78 @@ test("publishing a product page sells its Commerce product, only for someone who
   } finally {
     dropTriggers();
   }
+});
+
+test("a page EmDash publishes on schedule sells its product on the next admin visit, only if an admin scheduled it", async ({ page }, testInfo) => {
+  test.setTimeout(480_000);
+  expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
+  const { request } = page;
+  const sku = testInfo.project.name === "phone" ? "PAIRED-SCHEDULED-PHONE" : "PAIRED-SCHEDULED";
+  const { pageId, itemId } = await draftProduct(page, sku, "Scheduled hat");
+  const read = <T>(sql: string, ...params: string[]) => {
+    const database = db();
+    try {
+      return database.prepare(sql).get(...params) as T | undefined;
+    } finally {
+      database.close();
+    }
+  };
+  const stored = () => read<{ status: string; scheduled_at: string | null }>("SELECT status, scheduled_at FROM ec_products WHERE id = ?", pageId);
+  const pending = () => read<{ data: string }>("SELECT data FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id = ?", pageId);
+  const schedule = async () => {
+    const response = await request.post(`/_emdash/api/content/products/${pageId}/schedule`, { headers, data: { scheduledAt: new Date(Date.now() + 3_000).toISOString() } });
+    expect(response.ok(), await response.text()).toBe(true);
+    expect(stored()?.status).toBe("scheduled");
+  };
+  // EmDash's own scheduler publishes the page (every minute at most on Node, as the Cron Trigger on Cloudflare).
+  // Nobody makes a request meanwhile, so the page goes live with nobody signed in.
+  const scheduledPublish = async () => {
+    await page.goto("about:blank");
+    await expect.poll(() => stored(), { timeout: 120_000, intervals: [1_000] }).toEqual({ status: "published", scheduled_at: null });
+  };
+
+  // 13. The admin schedules the page. EmDash publishes it later with nobody signed in, so the product is still a Draft;
+  // the admin's next visit puts it on sale (checked at most once a minute, so it can take up to a minute).
+  await schedule();
+  expect(JSON.parse(pending()?.data ?? "{}")).toMatchObject({ entryId: pageId, itemId, role: ROLE.ADMIN });
+  await scheduledPublish();
+  expect(product(itemId).offSale).toBe(true);
+  expect(pending()).toBeDefined();
+  await page.goto("/_emdash/admin/content/products/" + pageId);
+  await expect.poll(async () => {
+    await request.get("/_emdash/api/content/products/" + pageId, { headers });
+    return onShop(request);
+  }, { timeout: 90_000, intervals: [5_000] }).toEqual(["Scheduled hat"]);
+  expect(product(itemId)).toMatchObject({ pageId });
+  expect(product(itemId)).not.toHaveProperty("offSale", true);
+  expect(pending()).toBeUndefined();
+  await page.reload();
+  await expect((await openPanel(page)).getByText("On sale · SKU " + sku, { exact: false })).toBeVisible();
+  await capture(page, "13-scheduled-on-sale");
+
+  // 14. The admin unpublishes; as an Author they schedule their own page. EmDash publishes it, and the admin's visits
+  // drop the Author's schedule without selling: the product stays a Draft, as after an Author's own publish.
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  expect(product(itemId).offSale).toBe(true);
+  setRole(ROLE.AUTHOR);
+  try {
+    await schedule();
+    expect(JSON.parse(pending()?.data ?? "{}")).toMatchObject({ entryId: pageId, role: ROLE.AUTHOR });
+  } finally {
+    setRole(ROLE.ADMIN);
+  }
+  await scheduledPublish();
+  await page.goto("/_emdash/admin/content/products/" + pageId);
+  await expect.poll(async () => {
+    await request.get("/_emdash/api/content/products/" + pageId, { headers });
+    return pending();
+  }, { timeout: 90_000, intervals: [5_000] }).toBeUndefined();
+  expect(stored()?.status).toBe("published");
+  expect(product(itemId).offSale).toBe(true);
+  expect(await onShop(request)).toEqual([]);
+  await expect((await openPanel(page)).getByText(/^Draft: publish to sell it/)).toBeVisible();
+  await capture(page, "14-author-scheduled-still-draft");
+
+  // Leave the shop empty for the next run.
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
 });

@@ -8,6 +8,24 @@ type ProductClaim = {
   path: string;
 };
 
+/**
+ * A schedule someone made through the admin or MCP. EmDash publishes the page
+ * later with nobody signed in, so the store's publish check cannot put its
+ * product on sale then; the next allowed admin request does it from this record
+ * (src/features/product-on-sale), checking that `by` could sell with `role`
+ * when they scheduled it and still can.
+ */
+export type PendingSale = {
+  entryId: string;
+  itemId: string;
+  scheduledAt: string;
+  by: string;
+  role: number;
+  recordedAt: string;
+};
+export const PENDING_SALES = "pending_sales";
+export const PRODUCT_URL_PLUGIN_ID = "dinkus-template-product-urls";
+
 // EmDash 1.2.0 hands content-policy hooks the whole content item: id, slug and
 // status at the top level, the collection's fields under `data`.
 function itemIdOf(content: Record<string, unknown>): string {
@@ -30,13 +48,16 @@ function claimPath(content: Record<string, unknown>): string {
 
 export function createPlugin() {
   return definePlugin({
-  id: "dinkus-template-product-urls",
+  id: PRODUCT_URL_PLUGIN_ID,
   version: "1.0.0",
   capabilities: ["content:read", "content:publish", "hooks.content-policy:register"],
   storage: {
     claims: {
       indexes: [],
       uniqueIndexes: ["itemId"],
+    },
+    [PENDING_SALES]: {
+      indexes: [],
     },
   },
   hooks: {
@@ -70,6 +91,9 @@ export function createPlugin() {
           reason: `Commerce product is already published at ${(holder?.data as ProductClaim | undefined)?.path ?? `/products/${entryId}`}.`,
         };
       }
+      // A person's own publish goes through the store's publish check; only EmDash's scheduled publish leaves
+      // the sale to the pending record.
+      if (event.origin?.source !== "scheduler") await ctx.storage[PENDING_SALES].delete(entryId);
     },
     "content:beforeSchedule": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
@@ -93,15 +117,38 @@ export function createPlugin() {
           reason: "Commerce product is already claimed by another scheduled or published product.",
         };
       }
+      // Recorded before EmDash stores the schedule; a schedule that then fails leaves a record the store's sweep
+      // ignores (it only sells a page EmDash has since published with this product) and later drops.
+      if (event.actor?.id) {
+        await ctx.storage[PENDING_SALES].put(entryId, {
+          entryId,
+          itemId,
+          scheduledAt: event.scheduledAt,
+          by: event.actor.id,
+          role: event.actor.role,
+          recordedAt: new Date().toISOString(),
+        } satisfies PendingSale);
+      } else {
+        await ctx.storage[PENDING_SALES].delete(entryId);
+      }
+    },
+    "content:afterUnschedule": async (event, ctx) => {
+      if (event.collection !== PRODUCTS) return;
+      const entryId = entryIdOf(event.content);
+      if (entryId) await ctx.storage[PENDING_SALES].delete(entryId);
     },
     "content:afterUnpublish": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
       const entryId = entryIdOf(event.content);
-      if (entryId) await ctx.storage.claims.delete(entryId);
+      if (entryId) {
+        await ctx.storage.claims.delete(entryId);
+        await ctx.storage[PENDING_SALES].delete(entryId);
+      }
     },
     "content:afterDelete": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
       await ctx.storage.claims.delete(event.id);
+      await ctx.storage[PENDING_SALES].delete(event.id);
     },
   },
   });

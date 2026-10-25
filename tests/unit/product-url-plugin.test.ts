@@ -22,8 +22,20 @@ class Claims {
   }
 }
 
-function context(claims: Claims) {
-  return { storage: { claims } } as never;
+class Pending {
+  rows = new Map<string, Record<string, unknown>>();
+
+  async put(id: string, data: Record<string, unknown>): Promise<void> {
+    this.rows.set(id, data);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    return this.rows.delete(id);
+  }
+}
+
+function context(claims: Claims, pending = new Pending()) {
+  return { storage: { claims, pending_sales: pending } } as never;
 }
 
 function event(id: string, itemId: string, slug = id) {
@@ -102,5 +114,60 @@ describe("product URL publish claims", () => {
     await expect(
       handler({ collection: "products", content, origin: { source: "api" as const } }, context(new Claims())),
     ).resolves.toMatchObject({ cancel: true });
+  });
+});
+
+describe("schedules recorded for the store's admin-visit sale", () => {
+  const scheduled = (id: string, itemId: string, actor?: { id: string; role: number }) => ({
+    ...event(id, itemId),
+    scheduledAt: "2030-01-01T00:00:00Z",
+    ...(actor ? { actor: { ...actor, source: "api" as const } } : {}),
+  });
+
+  it("records who scheduled the page, and nothing for a schedule with no person", async () => {
+    const plugin = createPlugin();
+    const claims = new Claims();
+    const pending = new Pending();
+    const schedule = plugin.hooks["content:beforeSchedule"]!.handler;
+    await schedule(scheduled("one", "item-1", { id: "admin", role: 50 }), context(claims, pending));
+    expect(pending.rows.get("one")).toMatchObject({ entryId: "one", itemId: "item-1", scheduledAt: "2030-01-01T00:00:00Z", by: "admin", role: 50 });
+    await schedule(scheduled("one", "item-1"), context(claims, pending));
+    expect(pending.rows.has("one")).toBe(false);
+  });
+
+  it("records nothing for a schedule the claim refuses", async () => {
+    const plugin = createPlugin();
+    const claims = new Claims();
+    const pending = new Pending();
+    const schedule = plugin.hooks["content:beforeSchedule"]!.handler;
+    await schedule(scheduled("one", "item-1", { id: "admin", role: 50 }), context(claims, pending));
+    await schedule(scheduled("two", "item-1", { id: "admin", role: 50 }), context(claims, pending));
+    expect([...pending.rows.keys()]).toEqual(["one"]);
+  });
+
+  it("keeps the record through EmDash's scheduled publish and drops it on any other publish, unschedule, unpublish or trash", async () => {
+    const plugin = createPlugin();
+    const claims = new Claims();
+    const pending = new Pending();
+    const hooks = plugin.hooks;
+    const again = () => hooks["content:beforeSchedule"]!.handler(scheduled("one", "item-1", { id: "admin", role: 50 }), context(claims, pending));
+
+    await again();
+    await hooks["content:beforePublish"]!.handler({ ...event("one", "item-1"), origin: { source: "scheduler" as const } }, context(claims, pending));
+    expect(pending.rows.has("one")).toBe(true);
+    await hooks["content:beforePublish"]!.handler(event("one", "item-1"), context(claims, pending));
+    expect(pending.rows.has("one")).toBe(false);
+
+    await again();
+    await hooks["content:afterUnschedule"]!.handler({ content: { id: "one" }, collection: "products" }, context(claims, pending));
+    expect(pending.rows.has("one")).toBe(false);
+
+    await again();
+    await hooks["content:afterUnpublish"]!.handler({ content: { id: "one" }, collection: "products" }, context(claims, pending));
+    expect(pending.rows.has("one")).toBe(false);
+
+    await again();
+    await hooks["content:afterDelete"]!.handler({ id: "one", collection: "products" } as never, context(claims, pending));
+    expect(pending.rows.has("one")).toBe(false);
   });
 });

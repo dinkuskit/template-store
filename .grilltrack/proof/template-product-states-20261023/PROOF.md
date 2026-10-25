@@ -66,7 +66,7 @@ Control: the same run against the previous head's middleware (9190def, which che
 request) fails at step 9: `expect(product(itemId).offSale).toBe(true)` received `undefined`, the product went on
 sale for a person who had already lost the permission.
 
-The same orders are covered in `tests/unit/product-on-sale.test.ts` (18 tests).
+The same orders are covered in `tests/unit/product-on-sale.test.ts`.
 
 ## Older Commerce
 
@@ -78,16 +78,40 @@ and calls nothing, so pages change exactly as before, including an Author's own 
 ## Evidence
 
 Screenshots from the run are written to `test-results/paired-product-on-sale/` (not committed):
-`desktop-` and `phone-` versions of `1-draft.png`, `2-published-on-sale.png`, `6-author-published-still-draft.png`
-and `8-trashed-product-without-page.png`.
+`desktop-` and `phone-` versions of `1-draft.png`, `2-published-on-sale.png`, `6-author-published-still-draft.png`,
+`8-trashed-product-without-page.png`, `13-scheduled-on-sale.png` and `14-author-scheduled-still-draft.png`. The run with
+the schedule steps passed 4 of 4 (two tests on desktop and phone) in 5.9 minutes.
 
-## Known limits (accepted by the owner, Ronald, 25 Oct 2026 00:20 UTC: "Merge now, fix schedules next")
+## Scheduled publishes (follow-up the owner chose, 25 Oct 2026 00:20 UTC: "Merge now, fix schedules next")
 
-- A page published later by EmDash's Schedule goes live with nobody signed in, so its product stays a Draft until an
-  admin presses Publish again.
+EmDash publishes a scheduled page from its own scheduler (a timer on Node, the Cron Trigger on Cloudflare) with
+nobody signed in, so the publish check cannot put the product on sale then. Instead:
+
+- The product-url plugin records each products-page schedule made through the admin or MCP (`pending_sales`: page,
+  product, who scheduled it and their role then). A direct publish, unschedule, unpublish or trash drops the record;
+  EmDash's own scheduled publish (origin `scheduler`) keeps it.
+- On the next request from someone holding the route's permission, at most once a minute per isolate, the store
+  checks the records. A page EmDash has published with the same product and no schedule left goes on sale as that
+  visitor, only if the person who scheduled it held the permission when scheduling and still does. The visitor is
+  read again before the write and the page is read back after it, as for every other on-sale write. Anything else
+  (an Author's schedule, a page gone or linked to another product) drops the record without selling.
+
+The same paired run proves it, on desktop and phone, with EmDash's real scheduler:
+
+| Step | Who | Action | Result |
+| --- | --- | --- | --- |
+| 13 | Admin | Schedules the page 3 seconds ahead; no request is made until EmDash publishes it | Page published with the product still a Draft; on the admin's next visit (within a minute) the product goes on sale, the panel says On sale and the record is gone |
+| 14 | Author (same person, role lowered) | After an admin unpublish, schedules their own page; EmDash publishes it; the admin visits | The admin's visit drops the Author's record; the product stays a Draft; catalog empty |
+
+Unit tests in `tests/unit/product-on-sale.test.ts` and `tests/unit/product-url-plugin.test.ts` cover the record's
+lifecycle, a schedule still pending, schedules by an Author or by someone who lost the permission (or gained it only
+later), a visitor without the permission, an older Commerce, stale and relinked records, a refused write retried
+later, a schedule made during the sale surviving it, the read-back, and the once-a-minute limit.
+
+## Known limit (accepted by the owner, Ronald, 25 Oct 2026 00:20 UTC)
+
 - Two people publishing and unpublishing the same page at the same moment can leave the product a Draft behind a live
-  page; publishing again fixes it. Neither limit can leave a product buyable behind an unpublished page.
-- Next: a follow-up lets the next signed-in admin request put a scheduled page's product on sale.
+  page; publishing again fixes it. It can never leave a product buyable behind an unpublished page.
 
 ## Not changed
 

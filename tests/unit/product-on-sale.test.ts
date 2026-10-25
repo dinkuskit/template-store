@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { productPageChange, withProductOnSale } from "../../src/features/product-on-sale/index.js";
+import { productPageChange, scheduledSaleSweeper, sellScheduledPages, withProductOnSale } from "../../src/features/product-on-sale/index.js";
 
 const user = { id: "u1", email: "owner@example.test", name: null, role: 50, createdAt: "2026-10-23T00:00:00.000Z" };
 
@@ -276,5 +276,149 @@ describe("product page publish check tells Commerce", () => {
     await withProductOnSale(input("GET", "/products/hat", rt), next);
     expect(next).toHaveBeenCalledOnce();
     expect(rt.handleContentGet).not.toHaveBeenCalled();
+  });
+});
+
+describe("pages EmDash published on a schedule go on sale on an allowed person's next request", () => {
+  const author = { ...user, id: "u2", role: 30 };
+  const people: Record<string, unknown> = { u1: user, u2: author };
+  const now = Date.parse("2026-10-25T12:00:00.000Z");
+
+  class Pending {
+    rows = new Map<string, { value: Record<string, unknown>; revision: string }>();
+    put(id: string, value: Record<string, unknown>) {
+      this.rows.set(id, { value, revision: `${id}-${this.rows.size}-${Math.random()}` });
+    }
+    async query() {
+      return { items: [...this.rows.keys()].map((id) => ({ id })) };
+    }
+    async getVersioned(id: string) {
+      return this.rows.get(id) ?? null;
+    }
+    async compareAndDelete(id: string, revision: string) {
+      const applied = this.rows.get(id)?.revision === revision;
+      if (applied) this.rows.delete(id);
+      return { applied };
+    }
+  }
+
+  type Page = { status: string; scheduledAt?: string | null; item?: string };
+  function site(pages: Record<string, Page>, result: unknown = { success: true, data: { changed: true } }) {
+    const rt = runtime({ commerce_item_id: "item-1" }, result as never);
+    rt.handleContentGet.mockImplementation(async (_collection: string, id: string) => {
+      const page = pages[id];
+      return page
+        ? { success: true, data: { item: { id, slug: id, status: page.status, scheduledAt: page.scheduledAt ?? null, data: { commerce_item_id: page.item ?? `item-${id}` } } } }
+        : { success: false, error: { code: "NOT_FOUND", message: "not found" } };
+    });
+    return rt;
+  }
+  const sale = (id: string, by = "u1", recordedAt = "2026-10-25T11:59:00.000Z", role = 50) => ({ entryId: id, itemId: `item-${id}`, scheduledAt: "2026-10-25T11:59:30.000Z", by, role, recordedAt });
+  const sweep = (rt: ReturnType<typeof runtime>, pending: Pending, extra: Record<string, unknown> = {}) =>
+    sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: pending, userById: async (id: string) => people[id] ?? null, ...extra }, now);
+
+  it("puts a page an admin scheduled on sale once EmDash has published it, as the visiting admin", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    const rt = site({ hat: { status: "published" } });
+    await sweep(rt, pending);
+    expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { catalogItemId: "item-hat", entryId: "hat", onSale: true }, user }]);
+    expect(pending.rows.size).toBe(0);
+  });
+
+  it("leaves a page that is still scheduled, and keeps its record", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    pending.put("cap", sale("cap"));
+    // Scheduled for later, and a published page scheduled to republish its draft.
+    const rt = site({ hat: { status: "scheduled", scheduledAt: "2026-10-26T00:00:00.000Z" }, cap: { status: "published", scheduledAt: "2026-10-26T00:00:00.000Z" } });
+    await sweep(rt, pending);
+    expect(rt.calls).toEqual([]);
+    expect(pending.rows.size).toBe(2);
+  });
+
+  it("drops an Author's schedule, or one by someone who has since lost the permission: the product stays a Draft", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat", "u2"));
+    pending.put("cap", sale("cap", "gone"));
+    // Scheduled while an Author, an admin now.
+    pending.put("tee", sale("tee", "u1", "2026-10-25T11:59:00.000Z", 30));
+    const rt = site({ hat: { status: "published" }, cap: { status: "published" }, tee: { status: "published" } });
+    await sweep(rt, pending);
+    expect(rt.calls).toEqual([]);
+    expect(pending.rows.size).toBe(0);
+  });
+
+  it("does nothing for a visitor without the permission, or with a Commerce that has no publish check", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    const rt = site({ hat: { status: "published" } });
+    await sweep(rt, pending, { user: author });
+    // The session says admin, but the person as stored now is an Author.
+    await sweep(rt, pending, { currentUser: async () => author });
+    const older = site({ hat: { status: "published" } });
+    older.getPluginRouteMeta.mockReturnValue(null);
+    await sweep(older, pending);
+    expect([...rt.calls, ...older.calls]).toEqual([]);
+    expect(pending.rows.size).toBe(1);
+  });
+
+  it("drops records whose page is gone or sells another product, and stale ones for pages that never went live", async () => {
+    const pending = new Pending();
+    pending.put("gone", sale("gone"));
+    pending.put("relinked", sale("relinked"));
+    pending.put("old", sale("old", "u1", "2026-10-25T11:00:00.000Z"));
+    pending.put("fresh", sale("fresh"));
+    const rt = site({ relinked: { status: "published", item: "item-other" }, old: { status: "draft" }, fresh: { status: "draft" } });
+    await sweep(rt, pending);
+    expect(rt.calls).toEqual([]);
+    // A draft recorded a minute ago may be a schedule EmDash is still storing.
+    expect([...pending.rows.keys()]).toEqual(["fresh"]);
+  });
+
+  it("keeps the record to retry when Commerce refuses, and a schedule made meanwhile survives the sale", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    const refused = site({ hat: { status: "published" } }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } });
+    await sweep(refused, pending);
+    expect(pending.rows.size).toBe(1);
+    const rt = site({ hat: { status: "published" } });
+    rt.handlePluginApiRoute.mockImplementationOnce(async () => {
+      pending.put("hat", sale("hat"));
+      return { success: true, data: { changed: true } };
+    });
+    await sweep(rt, pending);
+    expect(pending.rows.size).toBe(1);
+    warn.mockRestore();
+  });
+
+  it("takes the product off sale again when the page is unpublished while it goes on sale", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    const pages: Record<string, Page> = { hat: { status: "published" } };
+    const rt = site(pages);
+    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+      rt.calls.push({ pluginId, path, body: await request.json(), user: caller });
+      pages.hat = { status: "draft" };
+      return { success: true, data: { changed: true } };
+    });
+    await sweep(rt, pending);
+    expect(rt.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-hat", entryId: "hat", onSale: true },
+      { catalogItemId: "item-hat", entryId: "hat", onSale: false },
+    ]);
+  });
+
+  it("checks at most once a minute, counting only allowed people's requests", async () => {
+    const pending = new Pending();
+    const query = vi.spyOn(pending, "query");
+    const sweeper = scheduledSaleSweeper(60_000);
+    const base = { url: new URL("https://shop.example.test/"), runtime: site({}), commercePluginId: "r_commerce", pendingSales: pending };
+    await sweeper({ ...base, user: author }, now);
+    await sweeper({ ...base, user }, now + 1);
+    await sweeper({ ...base, user }, now + 30_000);
+    await sweeper({ ...base, user }, now + 60_002);
+    expect(query).toHaveBeenCalledTimes(2);
   });
 });
