@@ -1,0 +1,299 @@
+---
+import {
+  getMenuWithCacheHint,
+  getSiteSettingsWithCacheHint,
+  getWidgetAreaWithCacheHint,
+  sanitizeHref,
+} from "emdash";
+import { WidgetArea } from "emdash/ui";
+import { PROOF_DEMONSTRATIONS_PATH, STORE_DESCRIPTION, STORE_TITLE } from "./index.js";
+import {
+  FALLBACK_FOOTER_POLICIES_LINKS,
+  FALLBACK_FOOTER_SHOP_LINKS,
+  FOOTER_POLICIES_MENU_NAME,
+  FOOTER_SHOP_MENU_NAME,
+  PRESET_COOKIE_NAME,
+  THEME_COOKIE_NAME,
+  isCurrentMenuItem,
+  isStorePresetName,
+  isStoreThemeMode,
+  type StoreMenuItem,
+  type StorePresetName,
+  type StoreThemeMode,
+} from "./store-menu.js";
+
+interface Props {
+  profile: string;
+  currentPath?: string;
+  note?: string;
+}
+
+const { profile, currentPath, note } = Astro.props;
+const path = currentPath ?? Astro.url.pathname;
+const isProofRoute = profile === "proof" && (path.replace(/\/+$/u, "") || "/") === PROOF_DEMONSTRATIONS_PATH;
+
+const settingsResult = await getSiteSettingsWithCacheHint().catch(() => null);
+if (settingsResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(settingsResult.cacheHint);
+}
+const siteSettings = settingsResult?.data ?? null;
+const brandTitle = siteSettings?.title?.trim() || STORE_TITLE;
+const brandTagline = siteSettings?.tagline?.trim() || STORE_DESCRIPTION;
+
+const shopMenuResult = await getMenuWithCacheHint(FOOTER_SHOP_MENU_NAME).catch(() => null);
+if (shopMenuResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(shopMenuResult.cacheHint);
+}
+const shopMenuData = shopMenuResult?.data ?? null;
+const hasCmsShopMenu = shopMenuData !== null;
+const shopMenuItems: readonly Pick<StoreMenuItem, "label" | "url">[] = shopMenuData
+  ? shopMenuData.items
+  : FALLBACK_FOOTER_SHOP_LINKS;
+const shopNavSource = hasCmsShopMenu ? "cms" : "fallback";
+
+const policiesMenuResult = await getMenuWithCacheHint(FOOTER_POLICIES_MENU_NAME).catch(() => null);
+if (policiesMenuResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(policiesMenuResult.cacheHint);
+}
+const policiesMenuData = policiesMenuResult?.data ?? null;
+const hasCmsPoliciesMenu = policiesMenuData !== null;
+const policiesMenuItems: readonly Pick<StoreMenuItem, "label" | "url">[] = policiesMenuData
+  ? policiesMenuData.items
+  : FALLBACK_FOOTER_POLICIES_LINKS;
+const policiesNavSource = hasCmsPoliciesMenu ? "cms" : "fallback";
+
+const footerAreaResult = await getWidgetAreaWithCacheHint("footer").catch(() => null);
+if (footerAreaResult?.cacheHint && Astro.cache?.enabled) {
+  Astro.cache.set(footerAreaResult.cacheHint);
+}
+const hasSeededFooterWidgets = Boolean(footerAreaResult?.data?.widgets?.length);
+
+const cookieTheme = Astro.cookies.get(THEME_COOKIE_NAME)?.value;
+const activeTheme: StoreThemeMode = isStoreThemeMode(cookieTheme) ? cookieTheme : "light";
+
+const cookiePreset = Astro.cookies.get(PRESET_COOKIE_NAME)?.value;
+const activePreset: StorePresetName = isStorePresetName(cookiePreset) ? cookiePreset : "aizome";
+const defaultProvenance = `Transactional facts remain in Commerce${isProofRoute ? " and Inventory" : ""}; EmDash owns the surrounding composition.`;
+---
+<footer class="store-footer" data-store-footer>
+  <svg
+    class="store-footer__pigment-wash"
+    data-pigment-drift="footer"
+    viewBox="0 0 1440 420"
+    preserveAspectRatio="none"
+    aria-hidden="true"
+  >
+    <defs>
+      <filter id="footer-pigment-bleed" x="-8%" y="-12%" width="116%" height="124%" color-interpolation-filters="sRGB">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.011 0.022"
+          numOctaves="2"
+          seed="19"
+          result="pigment-noise"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="pigment-noise"
+          scale="26"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+      <linearGradient id="footer-chromatic-tide" x1="0%" y1="15%" x2="100%" y2="85%">
+        <stop offset="0%" stop-color="var(--pigment-stop-1, #1f3b82)" stop-opacity="0.92" />
+        <stop offset="34%" stop-color="var(--pigment-stop-2, #6b2d7a)" stop-opacity="0.88" />
+        <stop offset="68%" stop-color="var(--pigment-stop-3, #d1492f)" stop-opacity="0.90" />
+        <stop offset="100%" stop-color="var(--pigment-stop-4, #d98a2b)" stop-opacity="0.86" />
+      </linearGradient>
+      <linearGradient id="footer-paper-feather" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="var(--store-bg)" stop-opacity="1" />
+        <stop offset="18%" stop-color="var(--store-bg)" stop-opacity="0.62" />
+        <stop offset="42%" stop-color="var(--store-vault-bg)" stop-opacity="0.18" />
+        <stop offset="100%" stop-color="var(--store-vault-bg)" stop-opacity="0.58" />
+      </linearGradient>
+      <pattern id="footer-coldpress-grain" width="14" height="14" patternUnits="userSpaceOnUse">
+        <circle cx="2.5" cy="3" r="0.8" fill="var(--store-vault-ink)" fill-opacity="0.08" />
+        <circle cx="9.5" cy="8.5" r="0.65" fill="var(--store-bg)" fill-opacity="0.07" />
+        <circle cx="6" cy="12" r="0.7" fill="var(--store-accent)" fill-opacity="0.09" />
+      </pattern>
+    </defs>
+    <rect width="1440" height="420" fill="var(--store-vault-bg)" />
+    <g filter="url(#footer-pigment-bleed)">
+      <rect x="-40" y="16" width="1520" height="420" fill="url(#footer-chromatic-tide)" opacity="0.78" />
+      <ellipse cx="240" cy="250" rx="390" ry="175" fill="var(--pigment-stop-1, #1f3b82)" opacity="0.62" />
+      <ellipse cx="640" cy="280" rx="360" ry="165" fill="var(--pigment-stop-2, #6b2d7a)" opacity="0.55" />
+      <ellipse cx="1020" cy="240" rx="380" ry="180" fill="var(--pigment-stop-3, #d1492f)" opacity="0.58" />
+      <ellipse cx="1310" cy="290" rx="310" ry="155" fill="var(--pigment-stop-4, #d98a2b)" opacity="0.52" />
+      <path
+        d="M-60,0 L1500,0 L1500,64 C1260,96 1050,34 790,72 C520,108 270,38 -60,82 Z"
+        fill="var(--store-bg)"
+      />
+    </g>
+    <rect width="1440" height="420" fill="url(#footer-paper-feather)" />
+    <rect width="1440" height="420" fill="url(#footer-coldpress-grain)" />
+  </svg>
+  <div class="store-footer__top">
+    <div class="store-footer__inner">
+      <div class="store-footer__grid">
+        <div class="store-footer__brand store-footer__stamp-card" data-footer-brand>
+          <span class="store-footer__eyebrow">Brand &amp; Provenance</span>
+          <a class="store-footer__brand-mark" href="/">{brandTitle}</a>
+          <p class="store-footer__tagline">{brandTagline}</p>
+          <p class="store-footer__provenance" data-footer-provenance>
+            {note ?? defaultProvenance}
+          </p>
+        </div>
+
+        <nav
+          class="store-footer__nav"
+          aria-label="Footer shop"
+          data-footer-shop-nav
+          data-nav-source={shopNavSource}
+        >
+          <h2 class="store-footer__heading">Shop</h2>
+          <ul class="store-footer__nav-list">
+            {shopMenuItems.map((item) => (
+              <li>
+                <a
+                  href={sanitizeHref(item.url)}
+                  aria-current={isCurrentMenuItem(item, path) ? "page" : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav
+          class="store-footer__nav"
+          aria-label="Policies & Care"
+          data-store-footer-policies
+          data-footer-policies-nav
+          data-nav-source={policiesNavSource}
+        >
+          <h2 class="store-footer__heading">Policies &amp; Care</h2>
+          <ul class="store-footer__nav-list">
+            {policiesMenuItems.map((item) => (
+              <li>
+                <a
+                  href={sanitizeHref(item.url)}
+                  aria-current={isCurrentMenuItem(item, path) ? "page" : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          {/* Default fallback routes: href="/shipping" and href="/returns" */}
+        </nav>
+
+        <div
+          class="store-footer__widgets"
+          data-footer-widget-column
+        >
+          {hasSeededFooterWidgets ? (
+            <WidgetArea name="footer" />
+          ) : (
+            <div class="store-footer__fallback-widgets">
+              <div class="store-footer__stamp-card">
+                <h2 class="store-footer__heading">Search catalog</h2>
+                <form class="widget-search" method="get" action="/search" role="search">
+                  <input
+                    class="widget-search__input"
+                    type="search"
+                    name="q"
+                    placeholder="Search products..."
+                    aria-label="Search"
+                  />
+                  <button class="widget-search__button" type="submit">GO</button>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="store-footer__colophon">
+    <div class="store-footer__inner store-footer__meta">
+      <div class="store-footer__copyright">
+        <p>&copy; {new Date().getUTCFullYear()} {brandTitle}. Powered by EmDash &amp; DinkusKit Commerce.</p>
+        <p>Theme tokens via <code>src/styles/tokens.css</code> &middot; Brand overrides in <code>src/styles/theme.css</code></p>
+      </div>
+
+      <div class="store-theme-dock" data-footer-theme-dock>
+        <div class="store-switcher-group" role="group" aria-label="Color theme" data-theme-switcher>
+          <span class="store-switcher-group__label">Theme</span>
+          <div class="store-switcher-pills">
+            <button
+              type="button"
+              class="store-switcher-pill"
+              data-theme-choice="light"
+              aria-pressed={activeTheme === "light" ? "true" : "false"}
+            >
+              Light
+            </button>
+            <button
+              type="button"
+              class="store-switcher-pill"
+              data-theme-choice="dark"
+              aria-pressed={activeTheme === "dark" ? "true" : "false"}
+            >
+              Dark
+            </button>
+            <button
+              type="button"
+              class="store-switcher-pill"
+              data-theme-choice="system"
+              aria-pressed={activeTheme === "system" ? "true" : "false"}
+            >
+              System
+            </button>
+          </div>
+        </div>
+
+        {profile === "proof" && (
+          <div class="store-switcher-group" role="group" aria-label="Stitch palette preset" data-preset-switcher>
+            <span class="store-switcher-group__label">Preset</span>
+            <div class="store-switcher-pills">
+              <button
+                type="button"
+                class="store-switcher-pill store-preset-pill store-preset-pill--aizome"
+                data-preset-choice="aizome"
+                aria-pressed={activePreset === "aizome" ? "true" : "false"}
+              >
+                <span class="store-preset-swatch" aria-hidden="true"></span>
+                Aizome
+              </button>
+              <button
+                type="button"
+                class="store-switcher-pill store-preset-pill store-preset-pill--forest"
+                data-preset-choice="forest"
+                aria-pressed={activePreset === "forest" ? "true" : "false"}
+              >
+                <span class="store-preset-swatch" aria-hidden="true"></span>
+                Forest
+              </button>
+              <button
+                type="button"
+                class="store-switcher-pill store-preset-pill store-preset-pill--cobalt"
+                data-preset-choice="cobalt"
+                aria-pressed={activePreset === "cobalt" ? "true" : "false"}
+              >
+                <span class="store-preset-swatch" aria-hidden="true"></span>
+                Cobalt
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</footer>
+<script>
+  import { hydrateStoreTheme } from "./theme-client.ts";
+  hydrateStoreTheme();
+</script>

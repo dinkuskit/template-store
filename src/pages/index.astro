@@ -1,6 +1,7 @@
 ---
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
-import { getEmDashEntry, getEmDashCollection, getMenu, getSiteSettings, type PortableTextBlock } from "emdash";
+import { getEmDashEntry, getEmDashCollection, getSiteSettings, type PortableTextBlock } from "emdash";
 import { Blocks, PortableText, type BlockValue } from "emdash/ui";
 import { pageLayoutComponents } from "../features/store-shell/blocks/index.js";
 import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
@@ -10,14 +11,10 @@ import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro"
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
-import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
-import { leftCommerceCatalog, withoutRemovedProducts } from "../features/store-shell/merch-catalog.js";
-import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
-import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
 import {
   STORE_DESCRIPTION,
   STORE_TITLE,
-  loadStorefrontRouteContext,
+  readStorefrontProfile,
 } from "../features/store-shell/index.js";
 import { catalogGuidanceCopy, storeBannerText } from "../features/store-shell/checkout-copy.js";
 import { canonicalProductPath, hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
@@ -30,26 +27,13 @@ const content = pageData?.content as PortableTextBlock[] | undefined;
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
-const storeMenu = await getMenu("store-primary");
 const productLinks = readProductEntries(products.entries, categoryEntries.entries);
 if (productLinks.errors.length > 0) {
   console.error(`[product-url] excluded published product entries: ${productLinks.errors.join("; ")}`);
 }
-const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
-  products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
-  categoryEntries.entries,
-);
+const profile = readStorefrontProfile();
 let catalogUnavailable = false;
 const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
-// On a shipping store, products whose Commerce product left the catalog
-// (archived) leave the category groups too, unless the catalog can't be read.
-const catalogIds = new Set(commerceProducts.map((product) => product.id));
-const removedEntryIds = new Set(profile === "shipping" && !catalogUnavailable
-  ? productLinks.products
-    .filter((product) => leftCommerceCatalog(product.commerceItemId, catalogIds.has(product.commerceItemId)))
-    .map((product) => product.id)
-  : []);
-const shownCollections = withoutRemovedProducts(collections, removedEntryIds);
 const productPaths = new Map(productLinks.products.map((product) => [product.commerceItemId, canonicalProductPath(product.slug)]));
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 // A configured playground admits its sandbox checkout, as the cart page does.
@@ -69,8 +53,6 @@ const siteTagline = siteSettings?.tagline?.trim() || null;
 if (!composed && import.meta.env.DEV) {
   console.warn('[storefront] No published page with slug "home"; showing the default storefront. Load the neutral EmDash seed or publish a home page.');
 }
-const availability = demonstrations?.managed;
-const unmanaged = demonstrations?.unmanaged;
 ---
 
 <!doctype html>
@@ -111,22 +93,10 @@ const unmanaged = demonstrations?.unmanaged;
         <p>{guidance.detail}</p>
       </section>
       <CommerceCatalog products={commerceProducts} unavailable={catalogUnavailable} productPaths={productPaths} checkoutAvailable={checkoutAvailable} />
-      {demonstrations && availability && unmanaged && (
-      <section aria-label="Separate integration demonstrations" data-integration-demos>
-      <h2 class="demo-heading">Integration demonstrations</h2>
-      <p class="demo-heading">These seeded examples are separate from the merchant catalog above.</p>
-      <MerchCatalog collections={shownCollections} menu={storeMenu ?? undefined} managed={availability} unmanaged={unmanaged} />
-      {availability.price.listable && <ManagedProductAvailability availability={availability} />}
-      {unmanaged.price.listable && <UnmanagedProductSellability availability={unmanaged} />}
-      </section>
-      )}
       {productLinks.errors.length > 0 && (
         <aside data-product-url-errors hidden>{productLinks.errors.join(" | ")}</aside>
       )}
     </main>
-    <footer class="store-footer">
-      Transactional facts remain in Commerce{profile === "proof" ? " and Inventory" : ""}; EmDash owns the
-      surrounding composition.
-    </footer>
+    <StoreFooter profile={profile} />
   </body>
 </html>

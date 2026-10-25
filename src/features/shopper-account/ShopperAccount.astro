@@ -1,0 +1,482 @@
+---
+interface Props {
+  playgroundMode?: boolean;
+  /** Set on a Playground PR preview, where Commerce refuses account calls. */
+  previewUnavailableOrigin?: string;
+}
+
+const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
+---
+<section class="shopper-account" aria-labelledby="shopper-account-title" data-shopper-account data-playground-mode={playgroundMode ? "true" : "false"} data-account-preview-unavailable={previewUnavailableOrigin ? "true" : "false"}>
+  <h1 id="shopper-account-title">Account</h1>
+  {previewUnavailableOrigin ? (
+  <div class="account-card account-card--stamp account-card--unavailable" data-account-preview-notice role="status">
+    <h2>Accounts aren't available in a PR preview</h2>
+    <p>
+      Shopper sign-in only works on the main Playground. Try it at
+      <a href={`${previewUnavailableOrigin}/account`}>{new URL(previewUnavailableOrigin).host}/account</a>.
+    </p>
+  </div>
+  ) : (
+  <>
+  <p data-account-status role="status" hidden></p>
+
+  <div class="account-signed-out" data-account-signed-out>
+    <div class="account-card account-card--stamp" data-account-stamp-card>
+      <div class="account-card__eyebrow">Verified Access · Tactile Stamp</div>
+      <h2>{playgroundMode ? "Option 1: Verified Email Sign-In + Updates Opt-In" : "Sign in with a 6-digit email code"}</h2>
+      <p>
+        {playgroundMode
+          ? "Enter your email address and check the updates box to receive a real 6-digit verification PIN. Verified opt-in emails are saved so we can share DinkusKit project milestones."
+          : "Enter the email address you use at checkout. We will send a one-time 6-digit verification code to view your orders and manage your default shipping address."}
+      </p>
+      <form class="account-form" data-account-start-form novalidate>
+        <label for="account-email">Email address</label>
+        <input id="account-email" data-account-email type="email" maxlength="254" autocomplete="email" required />
+        {playgroundMode && (
+          <label class="account-checkbox" for="account-opt-in">
+            <input id="account-opt-in" data-account-opt-in type="checkbox" />
+            <span>Opt in to DinkusKit project updates and send a 6-digit verification PIN to my email</span>
+          </label>
+        )}
+        <button type="submit" data-account-start>Send 6-digit PIN</button>
+      </form>
+
+      <form class="account-form account-verify-form" data-account-verify-form hidden novalidate>
+        <label for="account-code">6-digit verification code</label>
+        <input id="account-code" data-account-code type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required />
+        <button type="submit" data-account-verify>Verify &amp; sign in</button>
+      </form>
+    </div>
+
+    {playgroundMode && (
+      <div class="account-card account-card--demo account-card--vault" data-account-demo-card data-account-vault-card>
+        <div class="account-card__eyebrow account-card__eyebrow--vault">Sandbox Vault · Instant Access</div>
+        <h2>Option 2: Opt-Out Instant Demo Account (No PIN Required)</h2>
+        <p>
+          Prefer to explore the store without entering an email or receiving marketing updates? Sign straight into the sandbox demo shopper account (<code>shopper@example.com</code>) with a pre-seeded order and saved shipping address. Nothing is logged to the leads database.
+        </p>
+        <button type="button" data-account-demo-signin>Continue as demo shopper (no PIN required)</button>
+      </div>
+    )}
+  </div>
+
+  <div class="account-signed-in" data-account-signed-in hidden>
+    <div class="account-session-bar account-card--vault" data-account-vault-card>
+      <div>
+        <p class="account-session-bar__eyebrow">You're signed in</p>
+        <h2 id="account-welcome-heading" data-account-welcome tabindex="-1">Welcome, <span data-account-current-email></span></h2>
+        <p>Your orders and saved shipping address are below.</p>
+      </div>
+      <button type="button" data-account-signout>Sign out</button>
+    </div>
+
+    <div class="account-grid">
+      <section class="account-card account-card--stamp" aria-labelledby="account-orders-heading" data-account-orders data-account-stamp-card>
+        <h2 id="account-orders-heading">Order history</h2>
+        <p data-account-orders-empty>No paid orders match this email address yet.</p>
+        <div class="account-orders-list" data-account-orders-list></div>
+      </section>
+
+      <section class="account-card account-card--stamp" aria-labelledby="account-profile-heading" data-account-stamp-card>
+        <h2 id="account-profile-heading">Default shipping address</h2>
+        <p>Saved details prefill checkout on this device and never alter historical orders.</p>
+        <form class="account-form" data-account-profile-form novalidate>
+          <label for="account-profile-phone">Phone <span>(optional)</span></label>
+          <input id="account-profile-phone" data-account-profile-phone type="tel" maxlength="40" autocomplete="tel" />
+
+          <label for="account-profile-name">Recipient</label>
+          <input id="account-profile-name" data-account-profile-name maxlength="200" autocomplete="shipping name" />
+
+          <label for="account-profile-line1">Address line 1</label>
+          <input id="account-profile-line1" data-account-profile-line1 maxlength="200" autocomplete="shipping address-line1" />
+
+          <label for="account-profile-line2">Address line 2 <span>(optional)</span></label>
+          <input id="account-profile-line2" data-account-profile-line2 maxlength="200" autocomplete="shipping address-line2" />
+
+          <label for="account-profile-city">City</label>
+          <input id="account-profile-city" data-account-profile-city maxlength="200" autocomplete="shipping address-level2" />
+
+          <label for="account-profile-region">State or region <span>(optional)</span></label>
+          <input id="account-profile-region" data-account-profile-region maxlength="200" autocomplete="shipping address-level1" />
+
+          <label for="account-profile-postal-code">Postal code</label>
+          <input id="account-profile-postal-code" data-account-profile-postal-code maxlength="200" autocomplete="shipping postal-code" />
+
+          <label for="account-profile-country">Country</label>
+          <select id="account-profile-country" data-account-profile-country autocomplete="shipping country">
+            <option value="US">United States</option>
+          </select>
+
+          <div class="account-form__actions">
+            <button type="submit" data-account-profile-save>Save shipping profile</button>
+            <button type="button" data-account-profile-clear>Clear saved address</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+  </>
+  )}
+</section>
+<style>
+  .shopper-account {
+    --account-chalk: #fcfbf8;
+    --account-chalk-border: #d6d0c4;
+    --account-chalk-shadow: #e6e0d4;
+    --account-indigo: #1b2a4a;
+    --account-indigo-border: #2c3e66;
+    --account-indigo-ink: #fcfbf8;
+    --account-indigo-muted: #d5deef;
+    --account-vermilion: #d9381e;
+    width: min(70rem, calc(100% - 2rem));
+    margin: 3rem auto;
+    min-height: 65vh;
+    overflow-wrap: anywhere;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    letter-spacing: -0.05em;
+    margin: 0 0 1.25rem;
+  }
+  [data-account-status] {
+    margin: 0 0 1.5rem;
+    padding: 0.8rem 1rem;
+    border-radius: 0.6rem;
+    background: var(--account-chalk, #fcfbf8);
+    border: 1px solid var(--store-line);
+    line-height: 1.5;
+  }
+  [data-account-status][role="alert"] {
+    color: var(--store-alert-ink);
+    background: var(--store-alert);
+    border-color: var(--store-alert-ink);
+  }
+  .account-card--unavailable {
+    max-width: 42rem;
+    border-color: var(--store-alert-ink);
+    border-left-width: 0.4rem;
+  }
+  .account-card--unavailable a {
+    color: inherit;
+    font-weight: 800;
+  }
+  .account-signed-out {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.85fr);
+    gap: 2.25rem;
+    align-items: start;
+  }
+  .account-signed-in[hidden],
+  .account-signed-out[hidden],
+  .account-verify-form[hidden],
+  [data-account-status][hidden],
+  [data-account-orders-empty][hidden] {
+    display: none;
+  }
+  .account-card {
+    padding: 1.5rem;
+    border: 1px solid var(--account-chalk-border, #d6d0c4);
+    border-radius: 0.85rem;
+    background: var(--account-chalk, #fcfbf8);
+    min-width: 0;
+  }
+  .account-card--stamp {
+    background: #fcfbf8;
+    border: 1.5px solid var(--account-chalk-border, #d6d0c4);
+    box-shadow: 0 4px 0 0 var(--account-chalk-shadow, #e6e0d4);
+    color: var(--store-ink, #181816);
+  }
+  .account-card--vault {
+    background: var(--account-indigo, #1b2a4a);
+    color: var(--account-indigo-ink, #fcfbf8);
+    border: 1.5px solid var(--account-indigo-border, #2c3e66);
+    box-shadow: 0 7px 0 0 var(--account-vermilion, #d9381e);
+    margin-bottom: 7px;
+  }
+  .account-card--demo {
+    align-self: start;
+  }
+  .account-card__eyebrow {
+    display: inline-block;
+    margin: 0 0 0.65rem;
+    padding: 0.22rem 0.6rem;
+    border-radius: 99rem;
+    background: #eae5d9;
+    color: #2c2a26;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .account-card__eyebrow--vault {
+    background: rgba(252, 251, 248, 0.14);
+    color: var(--account-indigo-ink, #fcfbf8);
+    border: 1px solid rgba(252, 251, 248, 0.28);
+  }
+  .account-session-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    margin: 0 0 calc(2.25rem + 7px);
+    padding: 1.25rem 1.5rem;
+    border-radius: 0.75rem;
+    max-width: 42rem;
+  }
+  .account-session-bar p {
+    margin: 0;
+    color: var(--account-indigo-muted, #d5deef);
+  }
+  .account-session-bar .account-session-bar__eyebrow {
+    color: var(--account-indigo-ink, #fcfbf8);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.78rem;
+  }
+  .account-session-bar h2 {
+    margin: 0.2rem 0 0.35rem;
+    font-size: clamp(1.35rem, 3vw, 1.8rem);
+    color: var(--account-indigo-ink, #fcfbf8);
+    outline: none;
+  }
+  .account-grid {
+    display: grid;
+    gap: 2.25rem;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .account-card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.35rem;
+  }
+  .account-card--vault h2 {
+    color: var(--account-indigo-ink, #fcfbf8);
+  }
+  .account-card p {
+    margin: 0 0 1rem;
+    color: var(--store-muted);
+    line-height: 1.5;
+  }
+  .account-card--vault p,
+  .account-card--vault code {
+    color: var(--account-indigo-muted, #d5deef);
+  }
+  .account-form {
+    display: grid;
+    gap: 0.55rem;
+  }
+  .account-verify-form {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--store-line);
+  }
+  .account-form label {
+    font-weight: 700;
+  }
+  .account-form label span {
+    color: var(--store-muted);
+    font-weight: 400;
+    font-size: 0.9em;
+  }
+  .account-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0.35rem 0;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .account-checkbox input {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+  }
+  .account-form input:not([type="checkbox"]),
+  .account-form select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem;
+    border: 1px solid var(--store-line);
+    border-radius: 0.35rem;
+    background: #ffffff;
+    font: inherit;
+  }
+  .shopper-account button {
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--store-line);
+    border-radius: 0.4rem;
+    background: var(--account-chalk, #fcfbf8);
+    color: var(--store-ink, #181816);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .account-card--vault button {
+    background: var(--account-chalk, #fcfbf8);
+    border-color: var(--account-chalk, #fcfbf8);
+    color: var(--account-indigo, #1b2a4a);
+  }
+  .account-form__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 0.5rem;
+  }
+  .account-orders-list {
+    display: grid;
+    gap: 1rem;
+  }
+  .shopper-account :global(.account-order-card) {
+    padding: 1.1rem;
+    border: 1px solid var(--account-chalk-border, #d6d0c4);
+    border-radius: 0.65rem;
+    background: #fcfbf8;
+  }
+  .shopper-account :global(.account-order-card__header) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .shopper-account :global(.account-order-card__header h3) {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .shopper-account :global(.account-order-card__badge) {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    background: var(--store-stock);
+    color: var(--store-stock-ink);
+  }
+  .shopper-account :global(.account-order-card__meta),
+  .shopper-account :global(.account-order-card__delivery) {
+    margin: 0.35rem 0;
+    font-size: 0.92rem;
+    color: var(--store-muted);
+  }
+  .shopper-account :global(.account-order-card__lines) {
+    margin: 0.75rem 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.65rem;
+  }
+  .shopper-account :global(.account-order-line) {
+    display: grid;
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    gap: 0.8rem;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #e2ddd2;
+    border-radius: 0.5rem;
+    background: #f6f3ea;
+  }
+  .shopper-account :global(.account-order-line__thumb) {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 0.4rem;
+    border: 1px solid var(--account-chalk-border, #d6d0c4);
+    background: #efece3;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+  .shopper-account :global(.account-order-line__thumb-img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .shopper-account :global(.account-order-line__thumb-fallback) {
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: var(--store-muted);
+    text-align: center;
+    line-height: 1.15;
+    padding: 0.2rem;
+  }
+  .shopper-account :global(.account-order-line__body) {
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .shopper-account :global(.account-order-line__main) {
+    font-size: 0.92rem;
+    line-height: 1.35;
+    color: var(--store-ink, #181816);
+    overflow-wrap: anywhere;
+  }
+  .shopper-account :global(.account-order-line__meta) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.38rem;
+  }
+  .shopper-account :global(.account-order-line__badge) {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.14rem 0.46rem;
+    border-radius: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .shopper-account :global(.account-order-line__badge--sku) {
+    background: var(--account-indigo, #1b2a4a);
+    color: var(--account-indigo-ink, #fcfbf8);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+  .shopper-account :global(.account-order-line__badge--variant) {
+    background: #eae5d9;
+    color: #2c2a26;
+    border: 1px solid #d6d0c4;
+  }
+  .shopper-account :global(.account-order-line__badge--fulfillment) {
+    background: #fcfbf8;
+    color: #524e46;
+    border: 1px solid #dfd9cc;
+  }
+  @media (max-width: 52rem) {
+    .account-signed-out,
+    .account-grid {
+      grid-template-columns: 1fr;
+      gap: 1.75rem;
+    }
+    .account-session-bar {
+      max-width: 100%;
+      margin-bottom: calc(1.75rem + 7px);
+    }
+  }
+  @media (max-width: 35rem) {
+    .account-card {
+      padding: 1.15rem;
+    }
+    .shopper-account :global(.account-order-line) {
+      grid-template-columns: 3rem minmax(0, 1fr);
+      gap: 0.6rem;
+      padding: 0.55rem;
+    }
+    .shopper-account :global(.account-order-line__thumb) {
+      width: 3rem;
+      height: 3rem;
+    }
+  }
+</style>
+<script>
+  import { hydrateShopperAccountPage } from "./shopper-account-client.ts";
+  hydrateShopperAccountPage();
+</script>

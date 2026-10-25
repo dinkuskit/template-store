@@ -24,10 +24,16 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public/item",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/policies/public",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/store-proof",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/readiness",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/start",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/verify",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-out",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/orders",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/profile",
   ]);
   assert.deepEqual(policy.payments.publicRoutes, []);
   assert.deepEqual(policy.undeclaredRoutes, []);
@@ -430,6 +436,20 @@ export default plugin;`;
     assert.equal(privateWrapper.routes[0].public, false);
     assert.deepEqual(privateWrapper.routes[0].methods, ["GET"]);
     await writeFile(file, declaration('unknown: guestRoute(handler)'));
+    assert.equal(extractCommerceRoutes(file).routes.length, 0);
+    assert.equal(extractCommerceRoutes(file).unsupported.length, 1);
+    const shopperHelper = 'function shopperRoute(methods, request, handler) { return pluginRoute({public:false, methods, request, cacheControl:"no-store", handler}); }';
+    await writeFile(file, declaration('private: shopperRoute(["GET", "POST"], request, handler)', shopperHelper));
+    const privateShopper = extractCommerceRoutes(file);
+    assert.equal(privateShopper.routes[0].public, false);
+    assert.deepEqual(privateShopper.routes[0].methods, ["GET", "POST"]);
+    await writeFile(file, declaration('dynamic: shopperRoute(methods, request, handler)', shopperHelper));
+    assert.equal(extractCommerceRoutes(file).routes.length, 0);
+    assert.match(extractCommerceRoutes(file).unsupported[0].diagnostic, /methods must be an array of string literals/);
+    await writeFile(file, declaration('fixed: shopperRoute(["GET"], request, handler)', 'function shopperRoute(methods, request, handler) { return pluginRoute({public:true, methods:["POST"], request, cacheControl:"no-store", handler}); }'));
+    assert.equal(extractCommerceRoutes(file).routes.length, 0);
+    assert.match(extractCommerceRoutes(file).unsupported[0].diagnostic, /shopperRoute methods must be its methods parameter/);
+    await writeFile(file, declaration('unknown: shopperRoute(["GET"], request, handler)'));
     assert.equal(extractCommerceRoutes(file).routes.length, 0);
     assert.equal(extractCommerceRoutes(file).unsupported.length, 1);
     await writeFile(file, declaration('same: pluginRoute({public:true, methods:["GET"]}), "same": {public:false, methods:["POST"]}'));

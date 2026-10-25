@@ -142,6 +142,17 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.getByRole("link", { name: /Cart/ }).click();
   await expect(shopper.locator("[data-guest-cart]")).toBeVisible();
   await expect(shopper.getByRole("heading", { name, exact: true })).toBeVisible();
+  const lineArticle = shopper.locator(`[data-guest-cart-line="${id}"]`);
+  const thumbnailFrame = lineArticle.locator("[data-guest-cart-line-thumbnail]");
+  const lineCopy = lineArticle.locator("[data-guest-cart-line-copy]");
+  await expect(thumbnailFrame).toBeVisible();
+  // The proof product has no Commerce media: a neutral placeholder, never artwork guessed from "hat".
+  await expect(thumbnailFrame.locator("[data-guest-cart-thumbnail-placeholder]")).toHaveText("No image");
+  await expect(thumbnailFrame.locator("img")).toHaveCount(0);
+  const [thumbBox, copyBox] = await Promise.all([thumbnailFrame.boundingBox(), lineCopy.boundingBox()]);
+  expect(thumbBox).not.toBeNull();
+  expect(copyBox).not.toBeNull();
+  expect(thumbBox!.x + thumbBox!.width).toBeLessThanOrEqual(copyBox!.x + 4);
   const qty = shopper.locator(`[data-guest-cart-qty="${id}"]`);
   const remove = shopper.locator(`[data-guest-cart-remove="${id}"]`);
   await expect(qty).toHaveValue("1");
@@ -213,10 +224,13 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.route("**/api/guest-cart/snapshot**", async (route) => {
     // Outlasts the cart's 15 s price-check limit.
     await new Promise((resolveHold) => setTimeout(resolveHold, 30_000));
+    // The reload below abandons this held request first, so the late answer has nowhere to go.
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ products: [] }),
+    }).catch((error: unknown) => {
+      if (!String(error).includes("Route is already handled")) throw error;
     });
   });
   await expect(shopper.locator("[data-guest-cart-retry]")).toBeVisible();
@@ -319,6 +333,109 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await shopper.reload();
   await expect(qty).toHaveValue(String(savedBeforeQtyFail.lines[0]?.quantity));
 
+  // Verify the PDP quantity stepper, one Add to cart per page, and an
+  // unavailable variant turning that button into "Sold out" on the live compiled storefront.
+  const variantSecondCreated = await adminPost(admin, CREATE_ROUTE, {
+    commandId: `guest-cart-xl-${crypto.randomUUID()}`,
+    name: `${name} XL`,
+    sku: `${sku}-XL`,
+    manageStock: false,
+  });
+  expect(variantSecondCreated.ok(), await variantSecondCreated.text()).toBe(true);
+  const xlId = unwrap<{ item: { itemId: string } }>(await variantSecondCreated.json()).item.itemId;
+  const xlPriced = await adminPost(admin, SAVE_ROUTE, { catalogItemId: xlId, regular: "28", sale: "" });
+  expect(xlPriced.ok(), await xlPriced.text()).toBe(true);
+
+  await shopper.goto("/");
+  await shopper.evaluate((key) => localStorage.removeItem(key), GUEST_CART_STORAGE_KEY);
+  await shopper.evaluate(
+    ({ smallId, secondId, unsellableId }) => {
+      const cardEl = document.querySelector<HTMLElement>(`[data-commerce-product="${smallId}"]`);
+      const container = cardEl?.querySelector<HTMLElement>(".guest-cart-add");
+      const single = container?.querySelector<HTMLElement>("[data-add-to-cart-single]");
+      const statusEl = container?.querySelector<HTMLElement>("[data-add-to-cart-status]");
+      if (!cardEl || !container || !single || !statusEl) {
+        throw new Error("Missing guest-cart-add container on storefront card");
+      }
+
+      const picker = document.createElement("fieldset");
+      picker.className = "product-variants";
+      picker.setAttribute("data-product-variants", "");
+      picker.innerHTML = `
+        <legend>Size</legend>
+        <label class="product-variant">
+          <input type="radio" name="variant" value="${smallId}" checked
+            data-variant-choice data-choice-price="$18.00"
+            data-variant-availability="in-stock" data-variant-status="In stock"
+            data-variant-sellable="true" />
+          <span>Small</span>
+        </label>
+        <label class="product-variant">
+          <input type="radio" name="variant" value="${secondId}"
+            data-variant-choice data-choice-price="$28.00"
+            data-variant-availability="in-stock" data-variant-status="In stock"
+            data-variant-sellable="true" />
+          <span>XL</span>
+        </label>
+        <label class="product-variant">
+          <input type="radio" name="variant" value="${unsellableId}"
+            data-variant-choice data-choice-price="$30.00"
+            data-variant-availability="out-of-stock" data-variant-status="Out of stock"
+            data-variant-sellable="false" />
+          <span>Medium</span>
+        </label>
+      `;
+      container.before(picker);
+
+      for (const input of picker.querySelectorAll<HTMLInputElement>("[data-variant-choice]")) {
+        input.addEventListener("change", () => {
+          const add = container.querySelector<HTMLElement>("[data-add-to-cart]");
+          if (add) {
+            add.dataset.addToCart = input.value;
+            const sellable = input.dataset.variantSellable === "true";
+            add.dataset.addToCartSellable = String(sellable);
+            if (add instanceof HTMLButtonElement) add.disabled = !sellable;
+            add.textContent = sellable ? "Add to cart" : "Sold out";
+          }
+        });
+      }
+
+      document.dispatchEvent(new CustomEvent("dinkus:guest-cart-hydrate"));
+    },
+    { smallId: id, secondId: xlId, unsellableId: `${id}-medium-oos` },
+  );
+
+  const singleWrapper = card.locator("[data-add-to-cart-single]");
+  const singleQtyInput = card.locator("[data-add-to-cart-qty]");
+  const singleAddButton = card.locator("[data-add-to-cart]");
+
+  await expect(singleWrapper).toBeVisible();
+  await expect(card.locator("[data-add-to-cart-batch]")).toHaveCount(0);
+  await card.getByLabel("XL", { exact: true }).check();
+  await card.getByRole("button", { name: "Increase quantity", exact: true }).click();
+  await card.getByRole("button", { name: "Increase quantity", exact: true }).click();
+  await expect(singleQtyInput).toHaveValue("3");
+  await singleAddButton.click();
+  await expect(card.locator("[data-add-to-cart-status]")).toHaveText("Added to cart.");
+  expect(
+    readStoredIntent(await shopper.evaluate((key) => localStorage.getItem(key), GUEST_CART_STORAGE_KEY)).lines,
+  ).toEqual([{ id: xlId, quantity: 3 }]);
+
+  // Selecting an unavailable variant keeps the button in place but disabled, labelled "Sold out".
+  await card.getByLabel("Medium", { exact: true }).check();
+  await expect(singleWrapper).toBeVisible();
+  await expect(singleAddButton).toBeDisabled();
+  await expect(singleAddButton).toHaveText("Sold out");
+  await singleAddButton.click({ force: true });
+  expect(
+    readStoredIntent(await shopper.evaluate((key) => localStorage.getItem(key), GUEST_CART_STORAGE_KEY)).lines,
+  ).toEqual([{ id: xlId, quantity: 3 }]);
+  await shopper.screenshot({ path: resolve(root, "pdp-variant-controls.png"), fullPage: true, animations: "disabled" });
+
+  await shopper.goto("/cart");
+  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("3");
+  await expect(subtotal).toHaveText("Subtotal $84.00");
+
   await shopperContext.addInitScript(() => {
     Storage.prototype.getItem = function getItem() {
       throw new Error("storage blocked");
@@ -343,6 +460,8 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
         linePaddingTop: lineStyles.paddingTop,
         quantityFontSize: qtyStyles.fontSize,
         inventoryRequests: inventoryRequests.length,
+        pdpOneAddToCart: true,
+        pdpUnavailableVariantSoldOut: true,
       },
       null,
       2,

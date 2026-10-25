@@ -1,18 +1,23 @@
 import {
+  GUEST_CART_PROCEED_LABEL,
   GUEST_CART_STORAGE_KEY,
   addGuestCartLine,
   emptyGuestCartIntent,
   guestCartItemCount,
   guestReturnQueryIsPresent,
   isSafeGuestCartProductId,
+  isSafeOrderLineImageUrl,
   loadGuestCartIntent,
   parseGuestCartQuantityInput,
   parseGuestCartSnapshotResponse,
   presentGuestCart,
+  presentGuestCheckoutBreakdown,
   readBrowserGuestCartStorage,
+  playgroundStoreStorage,
   removeGuestCartLine,
   saveGuestCartIntent,
   setGuestCartLineQuantity,
+  stepGuestCartQuantityInput,
   storageNoticeText,
   guestCartRetryControlState,
   checkoutCanConfirm,
@@ -28,9 +33,19 @@ import {
   type GuestCartReadNotice,
   type GuestCartView,
   type GuestCheckoutContact,
+  type GuestCheckoutDelivery,
+  type GuestCheckoutOrderLine,
+  type GuestCheckoutRetention,
+  type GuestCheckoutShippingPolicyInput,
   type GuestCheckoutTransport,
   type GuestCheckoutWireResult,
 } from "./index.js";
+import {
+  SHOPPER_ORDERS_ENDPOINT,
+  SHOPPER_SESSION_HEADER,
+  readStoredShopperSession,
+  unwrapPluginEnvelope,
+} from "../shopper-account/index.js";
 
 // A live store's price check took up to 4.7 s on beta; leave room above that.
 const SNAPSHOT_TIMEOUT_MS = 15_000;
@@ -140,7 +155,58 @@ function inputValue(root: Element, selector: string): string {
   return input instanceof HTMLInputElement || input instanceof HTMLSelectElement ? input.value.trim() : "";
 }
 
-function readCheckoutContact(
+function setEmptyFieldValue(root: Element, selector: string, value: string | undefined | null): void {
+  if (!value) return;
+  const field = root.querySelector(selector);
+  if (!(field instanceof HTMLInputElement || field instanceof HTMLSelectElement)) return;
+  if (field.value.trim().length > 0) return;
+  field.value = value;
+}
+
+async function prefillShopperContact(root: Element): Promise<void> {
+  const shopperSession = readStoredShopperSession();
+  if (!shopperSession) return;
+  setEmptyFieldValue(root, "[data-guest-cart-email]", shopperSession.email);
+  try {
+    const response = await fetch(SHOPPER_ORDERS_ENDPOINT, {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        [SHOPPER_SESSION_HEADER]: shopperSession.sessionToken,
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) return;
+    const body = unwrapPluginEnvelope(await response.json());
+    if (!body || body.ok !== true || typeof body.profile !== "object" || body.profile === null) return;
+    const profile = body.profile as {
+      email?: string;
+      delivery?: {
+        name?: string;
+        line1?: string;
+        line2?: string;
+        city?: string;
+        region?: string;
+        postalCode?: string;
+        country?: string;
+      } | null;
+    };
+    setEmptyFieldValue(root, "[data-guest-cart-email]", profile.email);
+    const delivery = profile.delivery;
+    if (!delivery) return;
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-name]", delivery.name);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-line1]", delivery.line1);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-line2]", delivery.line2);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-city]", delivery.city);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-region]", delivery.region);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-postal-code]", delivery.postalCode);
+    setEmptyFieldValue(root, "[data-guest-cart-delivery-country]", delivery.country);
+  } catch {
+    // Best-effort shopper profile prefill; checkout fields remain editable.
+  }
+}
+
+export function readCheckoutContact(
   root: Element,
   needsDelivery: boolean,
 ): { contact: GuestCheckoutContact | null; error: string | null } {
@@ -171,6 +237,9 @@ function readCheckoutContact(
   if (!/^[A-Z]{2}$/u.test(fields.country)) {
     return { contact: null, error: "Choose a country this store ships to." };
   }
+  if (fields.country === "US" && !fields.region) {
+    return { contact: null, error: "Enter a state for United States delivery." };
+  }
   const delivery = {
     name: fields.name,
     line1: fields.line1,
@@ -181,6 +250,11 @@ function readCheckoutContact(
     country: fields.country,
   };
   return { contact: { email, delivery }, error: null };
+}
+
+function lineThumbnailMarkup(line: GuestCartView["lines"][number]): string {
+  if (!line.thumbnail) return `<p data-guest-cart-thumbnail-placeholder>No image</p>`;
+  return `<img data-guest-cart-thumbnail-img src="${escapeText(line.thumbnail.src)}" alt="${escapeText(line.thumbnail.alt)}" width="160" height="120" loading="lazy" />`;
 }
 
 function lineCopyMarkup(line: GuestCartView["lines"][number]): string {
@@ -195,6 +269,7 @@ function lineCopyMarkup(line: GuestCartView["lines"][number]): string {
 function lineMarkup(line: GuestCartView["lines"][number], current: GuestCartView): string {
   const pendingAttr = current.pending ? " aria-busy=\"true\"" : "";
   return `<article data-guest-cart-line="${escapeText(line.id)}"${pendingAttr}>
+  <div class="guest-cart-line-media" data-guest-cart-line-thumbnail data-guest-cart-line-media>${lineThumbnailMarkup(line)}</div>
   <div data-guest-cart-line-copy>${lineCopyMarkup(line)}</div>
   <div class="guest-cart-qty">
     <label for="guest-cart-qty-${escapeText(line.id)}">Quantity</label>
@@ -211,6 +286,18 @@ function lineSelector(id: string): string {
 function patchLine(article: HTMLElement, line: GuestCartView["lines"][number], current: GuestCartView): void {
   if (current.pending) article.setAttribute("aria-busy", "true");
   else article.removeAttribute("aria-busy");
+  const thumbnail = article.querySelector("[data-guest-cart-line-thumbnail]");
+  if (thumbnail instanceof HTMLElement) {
+    const img = thumbnail.querySelector("img");
+    const stale = line.thumbnail
+      ? !(img instanceof HTMLImageElement) ||
+        img.getAttribute("src") !== line.thumbnail.src ||
+        img.getAttribute("alt") !== line.thumbnail.alt
+      : img !== null || !thumbnail.querySelector("[data-guest-cart-thumbnail-placeholder]");
+    if (stale) {
+      thumbnail.innerHTML = lineThumbnailMarkup(line);
+    }
+  }
   const copy = article.querySelector("[data-guest-cart-line-copy]");
   if (copy instanceof HTMLElement) copy.innerHTML = lineCopyMarkup(line);
   const input = article.querySelector("[data-guest-cart-qty]");
@@ -255,6 +342,7 @@ function focusAfterRemove(root: Element, removedId: string): void {
 
 function renderCart(root: Element): void {
   const current = view();
+  const isCheckoutPage = root.hasAttribute("data-guest-checkout-page");
   const empty = root.querySelector("[data-guest-cart-empty]");
   const lines = root.querySelector("[data-guest-cart-lines]");
   const checkout = root.querySelector("[data-guest-cart-checkout]");
@@ -264,6 +352,8 @@ function renderCart(root: Element): void {
   const retry = root.querySelector("[data-guest-cart-retry]");
   const checkoutRecoveryButton = root.querySelector("[data-guest-cart-recover]");
   const checkoutResume = root.querySelector("[data-guest-cart-resume]");
+  const manifest = root.querySelector("[data-checkout-manifest]");
+  const breakdown = root.querySelector("[data-checkout-breakdown]");
   if (empty instanceof HTMLElement) {
     empty.hidden = !current.empty || Boolean(current.snapshotError);
   }
@@ -277,9 +367,42 @@ function renderCart(root: Element): void {
     const amount = subtotal.querySelector("[data-guest-cart-subtotal-amount]");
     if (amount instanceof HTMLElement) amount.textContent = current.subtotalText ?? "";
   }
+  if (manifest instanceof HTMLElement) {
+    manifest.hidden = current.empty;
+  }
+  if (breakdown instanceof HTMLElement) {
+    breakdown.hidden = current.empty;
+    const shippingMode = root.getAttribute("data-checkout-shipping-mode");
+    const shippingMinor = root.getAttribute("data-checkout-shipping-minor");
+    const shippingPolicy: GuestCheckoutShippingPolicyInput | null =
+      shippingMode === "free" || shippingMode === "flat"
+        ? { mode: shippingMode, flatRateMinor: shippingMinor }
+        : null;
+    const breakdownView = presentGuestCheckoutBreakdown({
+      intent: session.intent,
+      snapshots,
+      snapshotFailed,
+      retrying,
+      shippingPolicy,
+    });
+    const shippingAmount = breakdown.querySelector("[data-checkout-shipping-amount]");
+    if (shippingAmount instanceof HTMLElement) {
+      shippingAmount.textContent = breakdownView.shippingText;
+    }
+    const taxAmount = breakdown.querySelector("[data-checkout-tax-amount]");
+    if (taxAmount instanceof HTMLElement) {
+      taxAmount.textContent = breakdownView.taxText;
+    }
+    const totalAmount = breakdown.querySelector("[data-checkout-total-amount]");
+    if (totalAmount instanceof HTMLElement) {
+      totalAmount.textContent = breakdownView.totalText;
+    }
+  }
   if (checkout instanceof HTMLButtonElement) {
     checkout.disabled = !current.checkoutEnabled || checkoutLocked();
-    checkout.textContent = current.checkoutLabel;
+    checkout.textContent = !isCheckoutPage && current.checkoutEnabled
+      ? GUEST_CART_PROCEED_LABEL
+      : current.checkoutLabel;
   }
   if (contact instanceof HTMLFieldSetElement) {
     contact.disabled = !(checkoutAdmitted || checkoutController?.canStart()) || checkoutLocked();
@@ -506,39 +629,89 @@ function persistFailed(): boolean {
   return session.notice === "storage-write-failed" || session.notice === "storage-unavailable";
 }
 
+function setAddToCartStatus(container: Element | null | undefined, message: string, isError: boolean): void {
+  const status = container?.querySelector("[data-add-to-cart-status]");
+  if (!(status instanceof HTMLElement)) return;
+  status.hidden = false;
+  status.textContent = message;
+  status.setAttribute("role", isError ? "alert" : "status");
+}
+
+function commitAddToCartMutation(
+  container: Element | null | undefined,
+  result: ReturnType<typeof addGuestCartLine>,
+): boolean {
+  if (!result.accepted) {
+    setAddToCartStatus(container, result.reason ?? "The product could not be added.", true);
+    return false;
+  }
+  applyIntent(result.intent, session.notice);
+  document.dispatchEvent(new CustomEvent("guest-cart-updated"));
+  if (persistFailed()) {
+    setAddToCartStatus(
+      container,
+      storageNoticeText(session.notice) ?? "The cart could not be saved.",
+      true,
+    );
+  } else {
+    setAddToCartStatus(container, "Added to cart.", false);
+  }
+  return true;
+}
+
+function isSingleAddBlocked(button: HTMLButtonElement, container: Element | null | undefined): boolean {
+  if (button.disabled || button.hidden) return true;
+  if (button.getAttribute("data-add-to-cart-sellable") === "false") return true;
+  const single = button.closest("[data-add-to-cart-single]");
+  if (single instanceof HTMLElement && single.hidden) return true;
+  if (container instanceof HTMLElement && container.hidden) return true;
+  if (button.closest("[hidden]") !== null) return true;
+  return false;
+}
+
+let hydrateListenerRegistered = false;
+
 export function hydrateGuestCartControls(): void {
   session = loadSession();
   renderNav();
+  if (!hydrateListenerRegistered && typeof document.addEventListener === "function") {
+    hydrateListenerRegistered = true;
+    document.addEventListener("dinkus:guest-cart-hydrate", () => {
+      hydrateGuestCartControls();
+    });
+  }
+  document.querySelectorAll("[data-add-to-cart-qty-step]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.guestCartStepReady === "1") return;
+    button.dataset.guestCartStepReady = "1";
+    button.addEventListener("click", () => {
+      const container = button.closest(".guest-cart-add") ?? button.parentElement;
+      const input = container?.querySelector("[data-add-to-cart-qty]");
+      if (!(input instanceof HTMLInputElement) || input.disabled) return;
+      const delta = button.getAttribute("data-add-to-cart-qty-step") === "-1" ? -1 : 1;
+      input.value = String(stepGuestCartQuantityInput(input.value, delta, 1));
+    });
+  });
   document.querySelectorAll("[data-add-to-cart]").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.guestCartReady === "1") return;
     button.dataset.guestCartReady = "1";
     button.addEventListener("click", () => {
+      const container = button.closest(".guest-cart-add") ?? button.parentElement;
+      if (isSingleAddBlocked(button, container)) return;
       const id = button.getAttribute("data-add-to-cart");
       if (!isSafeGuestCartProductId(id)) return;
       button.disabled = true;
-      const status = button.parentElement?.querySelector("[data-add-to-cart-status]");
-      const result = addGuestCartLine(session.intent, id, 1);
-      if (!result.accepted) {
-        if (status instanceof HTMLElement) {
-          status.hidden = false;
-          status.textContent = result.reason ?? "The product could not be added.";
-          status.setAttribute("role", "alert");
+      const qtyInput = container?.querySelector("[data-add-to-cart-qty]");
+      let quantity = 1;
+      if (qtyInput instanceof HTMLInputElement) {
+        const parsed = parseGuestCartQuantityInput(qtyInput.value.trim());
+        if (parsed === null) {
+          setAddToCartStatus(container, "Quantity must be a whole number from 1 to 99.", true);
+          button.disabled = false;
+          return;
         }
-        button.disabled = false;
-        return;
+        quantity = parsed;
       }
-      applyIntent(result.intent, session.notice);
-      document.dispatchEvent(new CustomEvent("guest-cart-updated"));
-      if (status instanceof HTMLElement) {
-        status.hidden = false;
-        if (persistFailed()) {
-          status.textContent = storageNoticeText(session.notice) ?? "The cart could not be saved.";
-          status.setAttribute("role", "alert");
-        } else {
-          status.textContent = "Added to cart.";
-          status.setAttribute("role", "status");
-        }
-      }
+      commitAddToCartMutation(container, addGuestCartLine(session.intent, id, quantity));
       button.disabled = false;
     });
   });
@@ -582,6 +755,10 @@ export function hydrateGuestCartPage(): void {
     if (!(target instanceof HTMLElement)) return;
     if (target.closest("[data-guest-cart-checkout]")) {
       if (!checkoutController || checkoutLocked() || !view().checkoutEnabled) return;
+      if (!root.hasAttribute("data-guest-checkout-page")) {
+        window.location.assign("/checkout");
+        return;
+      }
       const originalIntent = structuredClone(session.intent);
       const contactInput = readCheckoutContact(root, view().needsDelivery);
       if (contactInput.error || !contactInput.contact) {
@@ -677,6 +854,9 @@ export function hydrateGuestCartPage(): void {
   }
   renderCart(root);
   void refreshSnapshot(root);
+  if (root.querySelector("[data-guest-cart-email]")) {
+    void prefillShopperContact(root);
+  }
   void (async () => {
     if (readGuestCheckoutRetention(checkoutStorage())?.cartSettlement) {
       await recoverGuestCheckout(root);
@@ -691,20 +871,120 @@ function checkoutStorage() {
   try {
     if (typeof globalThis.localStorage === "undefined") return null;
     globalThis.localStorage.getItem("dinkus.guest-checkout.probe");
-    return globalThis.localStorage;
+    return playgroundStoreStorage(globalThis.localStorage);
   } catch {
     return null;
   }
 }
 
-function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult): void {
-  if (!result.ok || !checkoutCanConfirm(result)) return;
-  const order = result.checkout.order! as {
-    orderId: string;
-    lines: readonly { id: string; quantity: number; name?: string; variant?: string; unitPrice?: { currency: string; minor: string } }[];
-    total?: unknown;
-    test?: boolean;
+export function resolveOrderLineThumbnail(
+  line: Pick<GuestCheckoutOrderLine, "id" | "name" | "sku" | "imageUrl" | "imageAlt">,
+  snapshotById?: ReadonlyMap<string, GuestCartCatalogSnapshot>,
+): { src: string; alt: string } | null {
+  const defaultAlt = `${line.name ?? line.id} thumbnail`;
+  if (isSafeOrderLineImageUrl(line.imageUrl)) {
+    return {
+      src: line.imageUrl.trim(),
+      alt: line.imageAlt ?? defaultAlt,
+    };
+  }
+  const snapshot = snapshotById?.get(line.id);
+  const snapThumb = snapshot?.found ? snapshot.thumbnail : null;
+  if (snapThumb && isSafeOrderLineImageUrl(snapThumb.src)) {
+    return {
+      src: snapThumb.src.trim(),
+      alt: line.imageAlt ?? snapThumb.alt ?? defaultAlt,
+    };
+  }
+  return null;
+}
+
+export function formatConfirmedDeliveryAddress(delivery: GuestCheckoutDelivery): string {
+  const locality = [delivery.city, delivery.region, delivery.postalCode].filter(Boolean).join(" ");
+  return [delivery.line1, delivery.line2, locality, delivery.country].filter(Boolean).join(", ");
+}
+
+function formatCheckoutMoneyValue(value: { currency: string; minor: string }): string | null {
+  const minor = Number(value.minor);
+  if (!Number.isSafeInteger(minor)) return null;
+  const amount = minor / 100;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: value.currency,
+    }).format(amount);
+  } catch {
+    return `${value.currency} ${amount.toFixed(2)}`;
+  }
+}
+
+export type ConfirmedOrderDestination = Readonly<{
+  email: string | null;
+  recipient: string | null;
+  address: string | null;
+  delivery: GuestCheckoutDelivery | null;
+  shippingMethod: string | null;
+}>;
+
+export function resolveConfirmedOrderDestination(
+  result: GuestCheckoutWireResult,
+  retention?: GuestCheckoutRetention | null,
+): ConfirmedOrderDestination | null {
+  if (!result.ok || !checkoutCanConfirm(result) || !result.checkout.order) return null;
+  const order = result.checkout.order;
+  const email = order.contact?.email ?? result.checkout.contact?.email ?? retention?.contact?.email ?? null;
+  const delivery = order.delivery ??
+    order.contact?.delivery ??
+    result.checkout.delivery ??
+    result.checkout.contact?.delivery ??
+    retention?.contact?.delivery ??
+    null;
+  const recipient = delivery?.name ?? null;
+  const address = delivery ? formatConfirmedDeliveryAddress(delivery) : null;
+  const checkoutRecord = result.checkout as unknown as Record<string, unknown>;
+  const pricing = checkoutRecord.pricing && typeof checkoutRecord.pricing === "object"
+    ? checkoutRecord.pricing as Record<string, unknown>
+    : null;
+  const shippingObj = pricing?.shipping && typeof pricing.shipping === "object"
+    ? pricing.shipping as Record<string, unknown>
+    : null;
+  const chargeObj = shippingObj?.charge && typeof shippingObj.charge === "object"
+    ? shippingObj.charge as Record<string, unknown>
+    : null;
+  const shippingChargeText = chargeObj &&
+    typeof chargeObj.currency === "string" &&
+    typeof chargeObj.minor === "string" &&
+    /^-?\d+$/u.test(chargeObj.minor)
+    ? formatCheckoutMoneyValue({ currency: chargeObj.currency, minor: chargeObj.minor })
+    : null;
+  const shippingMode = typeof shippingObj?.mode === "string" ? shippingObj.mode : null;
+  const explicitShippingMethod = order.shippingMethod ?? result.checkout.shippingMethod ?? null;
+  const derivedShippingMethod = explicitShippingMethod ??
+    (shippingMode === "free"
+      ? "Free shipping"
+      : shippingMode === "flat"
+        ? (shippingChargeText ? `Flat rate (${shippingChargeText})` : "Flat rate shipping")
+        : (delivery && shippingChargeText
+          ? (chargeObj?.minor === "0" ? "Free shipping" : `Standard shipping (${shippingChargeText})`)
+          : null));
+  if (!email && !recipient && !address && !derivedShippingMethod) return null;
+  return {
+    email,
+    recipient,
+    address,
+    delivery,
+    shippingMethod: derivedShippingMethod,
   };
+}
+
+export function confirmedOrderMarkup(
+  root: HTMLElement,
+  result: GuestCheckoutWireResult,
+  retention?: GuestCheckoutRetention | null,
+  snapshotById?: ReadonlyMap<string, GuestCartCatalogSnapshot>,
+): void {
+  if (!result.ok || !checkoutCanConfirm(result)) return;
+  const order = result.checkout.order!;
   const orderNumber = root.querySelector("[data-guest-checkout-order-number]");
   if (orderNumber instanceof HTMLElement) {
     orderNumber.textContent = `Order ${order.orderId.replace(/^order:/u, "")}`;
@@ -717,15 +997,44 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
   if (items instanceof HTMLElement) {
     items.replaceChildren(...order.lines.map((line) => {
       const row = document.createElement("li");
+      row.className = "guest-checkout-item";
+      row.dataset.guestCheckoutItem = line.id;
+      if (line.sku) row.dataset.guestCheckoutItemSku = line.sku;
+      const resolvedThumb = resolveOrderLineThumbnail(line, snapshotById);
+      if (resolvedThumb) {
+        const thumb = document.createElement("img");
+        thumb.className = "guest-checkout-item-thumb";
+        thumb.setAttribute("data-guest-checkout-item-thumb", "");
+        thumb.setAttribute("data-guest-checkout-item-thumbnail", "");
+        thumb.src = resolvedThumb.src;
+        thumb.alt = resolvedThumb.alt;
+        thumb.width = 56;
+        thumb.height = 56;
+        thumb.loading = "lazy";
+        thumb.decoding = "async";
+        row.append(thumb);
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.className = "guest-checkout-item-thumb guest-checkout-item-thumb--placeholder";
+        placeholder.setAttribute("data-guest-checkout-item-thumb-placeholder", "");
+        placeholder.textContent = "No image";
+        row.append(placeholder);
+      }
       const label = document.createElement("span");
-      label.textContent = `${line.name ?? line.id} × ${line.quantity}`;
+      label.className = "guest-checkout-item-details";
+      label.setAttribute("data-guest-checkout-item-details", "");
+      label.textContent = `${line.name ?? line.id} \u00d7 ${line.quantity}`;
       if (line.variant) {
         const variant = document.createElement("small");
+        variant.className = "guest-checkout-item-variant";
+        variant.setAttribute("data-guest-checkout-item-variant", "");
         variant.textContent = line.variant;
         label.append(variant);
       }
       row.append(label);
       const amount = document.createElement("span");
+      amount.className = "guest-checkout-item-amount";
+      amount.setAttribute("data-guest-checkout-item-amount", "");
       const unitMinor = line.unitPrice && /^-?\d+$/u.test(line.unitPrice.minor)
         ? Number(line.unitPrice.minor)
         : NaN;
@@ -734,10 +1043,29 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
         : null;
       amount.textContent = minor === null || !line.unitPrice
         ? ""
-        : formatMoney({ currency: line.unitPrice.currency, minor: String(minor) }) ?? "";
+        : formatCheckoutMoneyValue({ currency: line.unitPrice.currency, minor: String(minor) }) ?? "";
       row.append(amount);
       return row;
     }));
+  }
+  const destinationSection = root.querySelector("[data-guest-checkout-destination]");
+  if (destinationSection instanceof HTMLElement) {
+    const destination = resolveConfirmedOrderDestination(result, retention);
+    destinationSection.hidden = !destination;
+    const bindField = (rowSelector: string, valueSelector: string, text: string | null) => {
+      const rowEl = destinationSection.querySelector(rowSelector);
+      const valEl = destinationSection.querySelector(valueSelector);
+      if (rowEl instanceof HTMLElement) rowEl.hidden = !text;
+      if (valEl instanceof HTMLElement) valEl.textContent = text ?? "";
+    };
+    bindField("[data-guest-checkout-email-row]", "[data-guest-checkout-email]", destination?.email ?? null);
+    bindField("[data-guest-checkout-recipient-row]", "[data-guest-checkout-recipient]", destination?.recipient ?? null);
+    bindField("[data-guest-checkout-address-row]", "[data-guest-checkout-address]", destination?.address ?? null);
+    bindField(
+      "[data-guest-checkout-shipping-method-row]",
+      "[data-guest-checkout-shipping-method]",
+      destination?.shippingMethod ?? null,
+    );
   }
   const totals = root.querySelector("[data-guest-checkout-order-totals]");
   if (!(totals instanceof HTMLElement)) return;
@@ -746,26 +1074,13 @@ function confirmedOrderMarkup(root: HTMLElement, result: GuestCheckoutWireResult
     ? checkout.pricing as Record<string, unknown>
     : null;
   const total = order.total ?? checkout.total;
-  function formatMoney(value: { currency: string; minor: string }): string | null {
-    const minor = Number(value.minor);
-    if (!Number.isSafeInteger(minor)) return null;
-    const amount = minor / 100;
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: value.currency,
-      }).format(amount);
-    } catch {
-      return `${value.currency} ${amount.toFixed(2)}`;
-    }
-  }
   const money = (value: unknown, freeShipping = false): string | null => {
     if (!value || typeof value !== "object") return null;
     const minor = (value as Record<string, unknown>).minor;
     const currency = (value as Record<string, unknown>).currency;
     if (typeof minor !== "string" || !/^-?\d+$/u.test(minor) || typeof currency !== "string") return null;
     if (freeShipping && minor === "0") return "Free";
-    return formatMoney({ currency, minor });
+    return formatCheckoutMoneyValue({ currency, minor });
   };
   const rows: Array<[string, unknown]> = [
     ["Subtotal", pricing?.merchandiseSubtotal],
@@ -875,7 +1190,32 @@ export function hydrateGuestCheckoutReturn(): void {
     if (result.ok && checkoutCanConfirm(result)) {
       if (order instanceof HTMLElement) {
         order.hidden = false;
-        confirmedOrderMarkup(root, result);
+        const currentRetention = readGuestCheckoutRetention(checkoutStorage()) ?? retention;
+        confirmedOrderMarkup(root, result, currentRetention);
+        const missingMediaIds = result.checkout.order
+          ? [...new Set(
+              result.checkout.order.lines
+                .filter((line) => !isSafeOrderLineImageUrl(line.imageUrl) && isSafeGuestCartProductId(line.id))
+                .map((line) => line.id),
+            )]
+          : [];
+        if (missingMediaIds.length > 0) {
+          void (async () => {
+            try {
+              const snapshotResponse = await fetch(
+                `/api/guest-cart/snapshot?ids=${encodeURIComponent(missingMediaIds.join(","))}`,
+                { headers: { accept: "application/json" }, signal: AbortSignal.timeout(SNAPSHOT_TIMEOUT_MS) },
+              );
+              if (!snapshotResponse.ok) return;
+              const parsedSnapshots = parseGuestCartSnapshotResponse(await snapshotResponse.json());
+              if (!parsedSnapshots) return;
+              const byId = new Map(parsedSnapshots.map((entry) => [entry.id, entry]));
+              confirmedOrderMarkup(root, result, currentRetention, byId);
+            } catch {
+              // Keep the neutral "No image" placeholder when catalog lookup fails.
+            }
+          })();
+        }
       }
       if (initialContact instanceof HTMLElement) initialContact.hidden = true;
       if (retry instanceof HTMLAnchorElement) retry.hidden = true;
@@ -907,6 +1247,11 @@ export function hydrateGuestCheckoutReturn(): void {
     }
     if (exhausted && result.ok && result.checkout.state === "pending") {
       setFailureState();
+      setMessage(
+        "Status checks are temporarily limited. Check your confirmation email or refresh later.",
+        true,
+      );
+      if (statusRetry instanceof HTMLButtonElement) statusRetry.hidden = false;
     }
     finishCheck();
   };

@@ -1,0 +1,225 @@
+{
+  "schema": "private.acceptance-plan-evaluation.v1",
+  "evaluator": "independent-manual",
+  "verdict": "A-better",
+  "confidence": "high",
+  "eligibility": {
+    "A": {
+      "eligible": true,
+      "hard_failures": []
+    },
+    "B": {
+      "eligible": true,
+      "hard_failures": []
+    },
+    "basis": "Neither plan claims an executed observation, fabricated identity, unauthorized action, or override of immutable policy. Future commands, fixtures, and expected outcomes are presented prospectively."
+  },
+  "criteria": {
+    "A": [
+      {
+        "id": "product_jsonld",
+        "weight": 20,
+        "rating": 2,
+        "weighted_points": 20,
+        "quote": "Emit exactly one safely serialized Commerce-built `Product` block per published canonical product page.",
+        "omissions": []
+      },
+      {
+        "id": "policy_single_source",
+        "weight": 17,
+        "rating": 2,
+        "weighted_points": 17,
+        "quote": "JSON-LD policy references and rendered facts must identify the same revision using the supported contract.",
+        "omissions": []
+      },
+      {
+        "id": "feed_boundary",
+        "weight": 15,
+        "rating": 2,
+        "weighted_points": 15,
+        "quote": "Expose Commerce’s feed at a stable slashless route ... preserve channel eligibility, and use canonical product links.",
+        "omissions": []
+      },
+      {
+        "id": "positive_and_negative_proof",
+        "weight": 16,
+        "rating": 2,
+        "weighted_points": 16,
+        "quote": "Populated cases below are planned fixtures, not observed records.",
+        "omissions": []
+      },
+      {
+        "id": "dependency_validation",
+        "weight": 12,
+        "rating": 2,
+        "weighted_points": 12,
+        "quote": "Determine whether the exact Commerce pin contains #59/#60. Record missing APIs as upstream dependencies.",
+        "omissions": []
+      },
+      {
+        "id": "execution_environment",
+        "weight": 12,
+        "rating": 2,
+        "weighted_points": 12,
+        "quote": "Preserve desktop/mobile shipping proof without native mount, Inventory configuration/network or adapter bootstrap.",
+        "omissions": []
+      },
+      {
+        "id": "scope_and_questions",
+        "weight": 8,
+        "rating": 2,
+        "weighted_points": 8,
+        "quote": "No channel connection, publication, deployment, production mutation, permission change or merge is authorized.",
+        "omissions": []
+      }
+    ],
+    "B": [
+      {
+        "id": "product_jsonld",
+        "weight": 20,
+        "rating": 2,
+        "weighted_points": 20,
+        "quote": "Every published `/products/{slug}` page must contain exactly one `application/ld+json` Product block.",
+        "omissions": []
+      },
+      {
+        "id": "policy_single_source",
+        "weight": 17,
+        "rating": 2,
+        "weighted_points": 17,
+        "quote": "Render policy facts and generate `shippingDetails`/`hasMerchantReturnPolicy` references from the same Commerce policy revision.",
+        "omissions": []
+      },
+      {
+        "id": "feed_boundary",
+        "weight": 15,
+        "rating": 2,
+        "weighted_points": 15,
+        "quote": "Verify that the installed public dispatcher and declared route boundary admit the feed.",
+        "omissions": []
+      },
+      {
+        "id": "positive_and_negative_proof",
+        "weight": 16,
+        "rating": 1,
+        "weighted_points": 8,
+        "quote": "Desktop Chromium and mobile browser tests must parse the rendered JSON-LD and compare it with visible product facts.",
+        "omissions": [
+          "Does not provide an independently sourced expected-facts oracle.",
+          "Does not specify a known-good populated passing case with an explicit expected observation on a capable integration surface; it specifies assertions and environments but not the populated case."
+        ]
+      },
+      {
+        "id": "dependency_validation",
+        "weight": 12,
+        "rating": 2,
+        "weighted_points": 12,
+        "quote": "Missing upstream capabilities require a precise dependency handoff, not template-owned substitutes.",
+        "omissions": []
+      },
+      {
+        "id": "execution_environment",
+        "weight": 12,
+        "rating": 2,
+        "weighted_points": 12,
+        "quote": "Prove shipping through installed Commerce with Inventory off, no native mount or proof-adapter bootstrap.",
+        "omissions": []
+      },
+      {
+        "id": "scope_and_questions",
+        "weight": 8,
+        "rating": 2,
+        "weighted_points": 8,
+        "quote": "No channel account connection, publication, deployment, production mutation, permissions change, or merge is authorized.",
+        "omissions": []
+      }
+    ]
+  },
+  "totals": {
+    "A": 100,
+    "B": 92,
+    "maximum": 100,
+    "method": "sum(weight * rating / 2)"
+  },
+  "independent_expected_facts_and_oracle": {
+    "A": {
+      "judgment": "passes",
+      "quote": "Expected values must come from independently specified fixtures and authoritative public records, never from the template output being tested.",
+      "supporting_citation": "A, acceptance-to-proof table preface"
+    },
+    "B": {
+      "judgment": "does_not_pass",
+      "quote": "Every published `/products/{slug}` page must contain exactly one `application/ld+json` Product block.",
+      "supporting_citation": "B, section 2",
+      "reason": "This states acceptance and planned assertions but does not define an independent expected-facts source or oracle."
+    }
+  },
+  "known_good_populated_passing_case": {
+    "A": {
+      "judgment": "passes",
+      "quote": "Linked published fixture with explicit name/SKU/GTIN, price/currency and availability ... compare fixture/public-record facts, visible page and parsed JSON-LD.",
+      "expected_observation": "On desktop Chromium and a mobile viewport against a populated supported runtime, the parsed Product and visible facts agree, including the canonical URL and truthful Offer fields.",
+      "capable_surface": "Desktop Chromium and mobile viewport against populated supported Commerce runtime."
+    },
+    "B": {
+      "judgment": "does_not_pass",
+      "reason": "No known-good populated product/policy/feed fixture is named with an explicit expected observation on a capable integration surface.",
+      "closest_quote": "Desktop Chromium and mobile browser tests must parse the rendered JSON-LD and compare it with visible product facts, including price and availability.",
+      "capable_surface": "A browser surface is named, but no populated passing case and expected observation are supplied."
+    }
+  },
+  "material_regressions": {
+    "A": [],
+    "B": [],
+    "comparison": "B has a material proof-design omission, not a scope, authority, environment, or mandatory-regression weakening. A's higher total reflects the required independent oracle and populated positive case."
+  },
+  "target_properties": {
+    "preserves_mandatory_checks": {
+      "A": true,
+      "B": true
+    },
+    "preserves_environment_distinction": {
+      "A": true,
+      "B": true
+    },
+    "preserves_scope_and_authority": {
+      "A": true,
+      "B": true
+    },
+    "independent_oracle": {
+      "A": true,
+      "B": false
+    },
+    "known_good_populated_case": {
+      "A": true,
+      "B": false
+    },
+    "prospective_not_executed": {
+      "A": true,
+      "B": true
+    }
+  },
+  "supporting_citations": [
+    {
+      "plan": "A",
+      "quote": "Populated cases below are planned fixtures, not observed records.",
+      "finding": "Explicitly separates prospective fixtures from observations."
+    },
+    {
+      "plan": "A",
+      "quote": "Supported channel fixture includes an eligible product and excludes an explicitly ineligible one ... included links equal canonicals.",
+      "finding": "Provides a populated feed case, negative case, expected observation, and capable installed public surface."
+    },
+    {
+      "plan": "B",
+      "quote": "Add deterministic checks for builder integration, canonical parity, safe script serialization, optional GTIN, preview/unlinked Offer suppression, policy revision consistency, unconfigured policies, and Commerce-defined channel eligibility.",
+      "finding": "Good planned coverage, but not an independent populated oracle."
+    },
+    {
+      "plan": "B",
+      "quote": "Retain explicit dependency skips for unfinished portions; skipped acceptance is not completion.",
+      "finding": "Correctly avoids treating skips as proof."
+    }
+  ],
+  "adoption_boundary": "This is a planning comparison only. The verdict does not approve source changes, deployment, publication, merge, or harness rollout."
+}

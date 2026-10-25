@@ -9,7 +9,44 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR cancels that PR's older run, which no one waits on any more.
+# Pushes to main each get their own group, so a main run (and its playground
+# deploy) is never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Pull requests that only touch records and docs (.github/scripts/browser-plan.mjs)
+  # skip the browser tests: desktop runs the quick checks, phone reports success.
+  # Pushes to main always run everything.
+  plan:
+    name: Test plan
+    # Closed PR events only run preview cleanup (cleanup-playground-preview).
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      browser: ${{ steps.plan.outputs.browser }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA" | node .github/scripts/browser-plan.mjs >> "$GITHUB_OUTPUT"
+          else
+            echo "browser=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
   workflows:
     name: Workflow validation
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
@@ -33,8 +70,13 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color -shellcheck='' -pyflakes=''
 
-  verify:
-    name: Store verification
+  # Desktop and phone browser tests run side by side on separate runners. Each
+  # runner starts its own disposable test stores (scripts/start-e2e-server.mjs
+  # wipes .artifacts on start), so the two jobs never share a store. Inside a
+  # job tests stay serial (playwright.config.ts workers: 1).
+  verify-desktop:
+    name: Store verification (desktop)
+    needs: plan
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
     runs-on: ubuntu-24.04
@@ -52,22 +94,93 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm verify
+      - if: needs.plan.outputs.browser == 'true'
+        uses: ./.github/actions/setup-chromium
+      # Every non-browser check, desktop browser tests and the built-site crawl.
+      - if: needs.plan.outputs.browser == 'true'
+        run: pnpm verify
+        env:
+          VERIFY_E2E_PROJECTS: chromium-desktop,shipping-chromium-desktop
+      # Records and docs only: every non-browser check, no browser.
+      - if: needs.plan.outputs.browser != 'true'
+        run: bin/verify-web quick
       - name: Capture browser failure context
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: store-browser-error-context-${{ github.run_id }}
+          name: store-browser-error-context-desktop-${{ github.run_id }}
           path: |
             test-results/playwright/**/error-context.md
             test-results/playwright/**/home-editor-fixture-state.json
           if-no-files-found: ignore
           retention-days: 3
 
+  verify-phone:
+    name: Store verification (phone)
+    needs: plan
+    # Closed PR events only run preview cleanup (cleanup-playground-preview).
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - if: needs.plan.outputs.browser != 'true'
+        run: echo "Only records and docs changed; the browser tests are skipped."
+      - if: needs.plan.outputs.browser == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - if: needs.plan.outputs.browser == 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          run_install: false
+      - if: needs.plan.outputs.browser == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+      - if: needs.plan.outputs.browser == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: needs.plan.outputs.browser == 'true'
+        uses: ./.github/actions/setup-chromium
+      - if: needs.plan.outputs.browser == 'true'
+        run: bin/verify-web browser
+        env:
+          VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile
+      - name: Capture browser failure context
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: store-browser-error-context-phone-${{ github.run_id }}
+          path: |
+            test-results/playwright/**/error-context.md
+            test-results/playwright/**/home-editor-fixture-state.json
+          if-no-files-found: ignore
+          retention-days: 3
+
+  # Keeps the single "Store verification" check that reviewers, ClawSweeper
+  # and playground deployment wait on. It runs even when a side fails, so a
+  # failed half shows as a failed check instead of a skipped (passing) one.
+  verify:
+    name: Store verification
+    needs: [verify-desktop, verify-phone]
+    if: ${{ !cancelled() && github.event.action != 'closed' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require desktop and phone verification
+        env:
+          DESKTOP: ${{ needs.verify-desktop.result }}
+          PHONE: ${{ needs.verify-phone.result }}
+        run: |
+          echo "desktop=${DESKTOP} phone=${PHONE}"
+          test "$DESKTOP" = success
+          test "$PHONE" = success
+
+  # A build check that starts beside verification. Playground deployment below
+  # still waits for Store verification to pass.
   build-playground:
     name: Playground build
-    needs: verify
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
     runs-on: ubuntu-24.04
@@ -125,7 +238,8 @@ jobs:
   # Cloudflare Worker Previews on pr-N.playground.dinkuskit.com.
   deploy-playground:
     name: Playground deployment
-    needs: build-playground
+    # Never deploy or preview code that has not passed Store verification.
+    needs: [verify, build-playground]
     if: >-
       vars.PLAYGROUND_DEPLOY_ENABLED == 'true' &&
       (github.event_name == 'push' ||
@@ -264,10 +378,35 @@ jobs:
             --retry-delay 5 --cookie-jar "$cookie_jar" --cookie "$cookie_jar" \
             "$PREVIEW_URL/" --output "$home_body"
           grep -Fq 'data-catalog-guidance-state="ready"' "$home_body"
+          # EmDash's toolbar button leads to a real DinkusKit store, not the EmDash repository.
+          grep -Fq 'Start your real store' "$home_body"
+          if grep -Fq 'Deploy your own' "$home_body"; then
+            echo "::error::Playground toolbar still shows EmDash's Deploy your own button."
+            exit 1
+          fi
           if grep -Fqi "catalog is unavailable" "$home_body"; then
             echo "::error::Playground preview shows 'The catalog is unavailable right now.'"
             exit 1
           fi
+          # Payments, Ship (released Registry bundles, under their Registry ids) and the tour card
+          # and page answer from the visitor's own admin.
+          curl --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
+            --cookie-jar "$cookie_jar" --cookie "$cookie_jar" \
+            --request POST "$PREVIEW_URL/_playground/init" --output /dev/null
+          for check in "r_ehdlg5cxkb3ffqvr|/shipping|Shipping" \
+            "r_3brsc2on3bu673rn|/status|Payment setup" \
+            "dinkus-playground-tour|widget:tour|Start your real store" \
+            "dinkus-playground-tour|/tour|Take me there"; do
+            IFS='|' read -r plugin page expected <<< "$check"
+            plugin_body="$(mktemp)"
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 \
+              --cookie-jar "$cookie_jar" --cookie "$cookie_jar" \
+              --header 'content-type: application/json' --header 'X-EmDash-Request: 1' \
+              --data "{\"type\":\"page_load\",\"page\":\"${page}\"}" \
+              "$PREVIEW_URL/_emdash/api/plugins/${plugin}/admin" --output "$plugin_body"
+            grep -Fq "$expected" "$plugin_body"
+            echo "| ${plugin} ${page} | answers \"${expected}\" |" >> "$GITHUB_STEP_SUMMARY"
+          done
       - name: Post playground preview comment
         if: github.event_name == 'pull_request' && github.event.action != 'closed'
         shell: bash
@@ -291,6 +430,7 @@ jobs:
           - [x] \`/\` redirects to \`/playground\` with HTTP 200
           - [x] \`X-Robots-Tag: noindex, nofollow\` and robots meta noindex
           - [x] Cart shows checkout as unavailable
+          - [x] Payments, Ship and the playground tour answer from the admin
 
           **Built from:** \`${SOURCE_SHA}\`
 

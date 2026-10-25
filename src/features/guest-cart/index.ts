@@ -14,6 +14,7 @@ export {
   parseGuestCartQuantityInput,
   removeGuestCartLine,
   setGuestCartLineQuantity,
+  stepGuestCartQuantityInput,
 } from "./intent.js";
 export type {
   GuestCartIntent,
@@ -22,9 +23,12 @@ export type {
   GuestCartReadNotice,
 } from "./intent.js";
 export {
+  PLAYGROUND_STORE_META,
   loadGuestCartIntent,
   readBrowserGuestCartStorage,
   saveGuestCartIntent,
+  admitPlaygroundStoreStorage,
+  playgroundStoreStorage,
 } from "./storage.js";
 export type {
   GuestCartLoadResult,
@@ -32,14 +36,18 @@ export type {
   GuestCartStoragePort,
 } from "./storage.js";
 export {
+  GUEST_CART_PROCEED_LABEL,
   GUEST_CHECKOUT_LABEL,
   GUEST_CHECKOUT_REASON,
+  GUEST_CHECKOUT_BLOCKED_REASON,
   GUEST_CHECKOUT_READY_LABEL,
   canAddCommerceProductToCart,
   guestReturnQueryIsPresent,
+  isSafeGuestCartThumbnailSrc,
   lineBlockReason,
   parseGuestCartSnapshotResponse,
   presentGuestCart,
+  presentGuestCheckoutBreakdown,
   projectGuestCartCatalogSnapshot,
   projectGuestCartCatalogSnapshots,
   snapshotErrorText,
@@ -52,7 +60,10 @@ export type {
   GuestCartLineView,
   GuestCartPublicAvailability,
   GuestCartPublicPrice,
+  GuestCartPublicThumbnail,
   GuestCartView,
+  GuestCheckoutBreakdownView,
+  GuestCheckoutShippingPolicyInput,
 } from "./present.js";
 export { parseGuestCartSnapshotIds } from "./snapshot-ids.js";
 export { settleGuestCheckoutCart } from "./checkout-cart-settlement.js";
@@ -70,6 +81,7 @@ export {
   checkoutCanConfirm,
   checkoutStartIntent,
   createGuestCheckoutController,
+  isSafeOrderLineImageUrl,
   parseGuestCheckoutWireResult,
   readGuestCheckoutRetention,
   retainGuestCheckoutCapability,
@@ -90,6 +102,7 @@ export type {
   GuestCheckoutCall,
   GuestCheckoutCallResult,
   GuestCheckoutController,
+  GuestCheckoutOrderLine,
   GuestCheckoutProjection,
   GuestCheckoutContact,
   GuestCheckoutError,

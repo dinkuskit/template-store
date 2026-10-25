@@ -23,6 +23,11 @@ export type GuestCartPublicAvailability = Readonly<{
   listable: boolean;
 }>;
 
+export type GuestCartPublicThumbnail = Readonly<{
+  src: string;
+  alt: string;
+}>;
+
 export type GuestCartCatalogSnapshot =
   | Readonly<{ id: string; found: false }>
   | Readonly<{
@@ -31,6 +36,7 @@ export type GuestCartCatalogSnapshot =
       name: string;
       sku: string;
       fulfillment?: "physical" | "digital";
+      thumbnail?: GuestCartPublicThumbnail | null;
       price: GuestCartPublicPrice;
       availability: GuestCartPublicAvailability;
     }>;
@@ -40,6 +46,22 @@ export const GUEST_CHECKOUT_REASON = "Checkout is not available yet.";
 /** Shown when checkout is admitted but there is nothing to buy yet. */
 export const GUEST_CHECKOUT_READY_LABEL = "Checkout";
 export const GUEST_CHECKOUT_EMPTY_REASON = "Add products to your cart to check out.";
+/** Shown when checkout is admitted but a cart line cannot be bought. */
+export const GUEST_CHECKOUT_BLOCKED_REASON = "Remove the products that can't be bought to check out.";
+/** Shown on /cart when checkout is ready to proceed to /checkout. */
+export const GUEST_CART_PROCEED_LABEL = "Proceed to Checkout";
+
+export type GuestCheckoutShippingPolicyInput = Readonly<{
+  mode: "free" | "flat";
+  flatRateMinor?: string | null;
+}>;
+
+export type GuestCheckoutBreakdownView = Readonly<{
+  subtotalText: string;
+  shippingText: string;
+  taxText: string;
+  totalText: string;
+}>;
 
 export type GuestCartLineReason =
   | "missing"
@@ -52,6 +74,9 @@ export type GuestCartLineView = Readonly<{
   quantity: number;
   name: string;
   sku: string | null;
+  fulfillment?: "physical" | "digital";
+  /** Real product media, or null for the neutral placeholder. */
+  thumbnail: GuestCartPublicThumbnail | null;
   regularText: string | null;
   saleText: string | null;
   /** Unit price times quantity, or null when the unit amount is unknown. */
@@ -77,6 +102,63 @@ export type GuestCartView = Readonly<{
   checkoutEnabled: boolean;
   needsDelivery: boolean;
 }>;
+
+const THUMBNAIL_SRC_MAX_LENGTH = 2048;
+
+function hasTraversalSegment(pathname: string): boolean {
+  let decoded = pathname;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return true;
+  }
+  return decoded.split(/[/\\]/u).some((segment) => segment === "..");
+}
+
+/**
+ * Mirrors the Commerce image resolver's public-URL contract
+ * (`resolveCommerceImage` in commerce-catalog/media.ts): a same-origin path,
+ * or an absolute http(s) URL the host's `getPublicMediaUrl` approved.
+ * Anything else (scripts, data URIs, protocol-relative, credentials,
+ * traversal) is dropped so the cart shows the neutral placeholder.
+ */
+export function isSafeGuestCartThumbnailSrc(src: string): boolean {
+  if (src.length === 0 || src.length > THUMBNAIL_SRC_MAX_LENGTH) return false;
+  if (/[\s\u0000-\u001f\u007f\\]/u.test(src)) return false;
+  if (src.startsWith("/")) {
+    if (src.startsWith("//")) return false;
+    const pathname = src.split(/[?#]/u, 1)[0] ?? "";
+    return !hasTraversalSegment(pathname);
+  }
+  try {
+    const url = new URL(src);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+    if (url.username || url.password) return false;
+    return !hasTraversalSegment(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A snapshot thumbnail when Commerce resolved real product media; otherwise
+ * null, and the cart renders a neutral "No image" placeholder. Never guess
+ * artwork from a product's name or SKU.
+ */
+function projectPublicThumbnail(
+  candidate: unknown,
+  name: string,
+  id: string,
+  listable: boolean,
+): GuestCartPublicThumbnail | null {
+  if (!listable || !isPlainObject(candidate) || typeof candidate.src !== "string") return null;
+  if (!isSafeGuestCartThumbnailSrc(candidate.src)) return null;
+  const label = name.trim() || id.trim() || "Product";
+  const alt = typeof candidate.alt === "string" && candidate.alt.trim() !== ""
+    ? candidate.alt.trim()
+    : label;
+  return { src: candidate.src, alt };
+}
 
 const STORAGE_NOTICES: Record<GuestCartReadNotice, string> = {
   "rejected-malformed":
@@ -175,12 +257,19 @@ export function presentGuestCart(options: {
           sellable: false,
         }
       : lineBlockReason(snapshot);
+    const name = snapshot?.found ? snapshot.name : line.id;
+    const sku = snapshot?.found ? snapshot.sku : null;
+    const listable = snapshot?.found ? snapshot.price.listable || snapshot.availability.listable : false;
+    const thumbnail = snapshot?.found
+      ? projectPublicThumbnail(snapshot.thumbnail, name, line.id, listable)
+      : null;
     return {
       id: line.id,
       quantity: line.quantity,
-      name: snapshot?.found ? snapshot.name : line.id,
-      sku: snapshot?.found ? snapshot.sku : null,
+      name,
+      sku,
       fulfillment: snapshot?.found ? snapshot.fulfillment ?? "physical" : "physical",
+      thumbnail,
       regularText: snapshot?.found ? snapshot.price.regularText : null,
       saleText: snapshot?.found ? snapshot.price.saleText : null,
       // A failed price check, and its retry, may leave older prices in place;
@@ -206,6 +295,9 @@ export function presentGuestCart(options: {
   // that checkout is off.
   const emptyAdmitted = options.checkoutAdmitted === true && lines.length === 0 &&
     !options.pending && !options.snapshotFailed;
+  // On a store that takes checkouts, say which lines are in the way, not that checkout is off.
+  const blockedAdmitted = options.checkoutAdmitted === true && lines.length > 0 &&
+    !options.pending && !options.snapshotFailed && lines.some((line) => !line.sellable);
   return {
     lines,
     subtotalText: totalsUnconfirmed ? null : cartSubtotalText(options.intent.lines, options.snapshots ?? null),
@@ -219,7 +311,8 @@ export function presentGuestCart(options: {
       : emptyAdmitted ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL,
     checkoutReason: checkoutEnabled
       ? "Commerce will confirm the final amount and availability."
-      : emptyAdmitted ? GUEST_CHECKOUT_EMPTY_REASON : GUEST_CHECKOUT_REASON,
+      : emptyAdmitted ? GUEST_CHECKOUT_EMPTY_REASON
+      : blockedAdmitted ? GUEST_CHECKOUT_BLOCKED_REASON : GUEST_CHECKOUT_REASON,
     checkoutEnabled,
     needsDelivery,
   };
@@ -272,11 +365,10 @@ function minorText(minor: bigint | null): string | null {
   return minor === null ? null : formatUsdMinor(minor.toString());
 }
 
-/** Display subtotal; null unless every line has a known amount. */
-function cartSubtotalText(
+function cartSubtotalMinor(
   lines: GuestCartIntent["lines"],
   snapshots: readonly GuestCartCatalogSnapshot[] | null,
-): string | null {
+): bigint | null {
   if (lines.length === 0 || !snapshots) return null;
   let total = 0n;
   for (const line of lines) {
@@ -284,7 +376,64 @@ function cartSubtotalText(
     if (minor === null) return null;
     total += minor;
   }
-  return minorText(total);
+  return total;
+}
+
+/** Display subtotal; null unless every line has a known amount. */
+function cartSubtotalText(
+  lines: GuestCartIntent["lines"],
+  snapshots: readonly GuestCartCatalogSnapshot[] | null,
+): string | null {
+  return minorText(cartSubtotalMinor(lines, snapshots));
+}
+
+export function presentGuestCheckoutBreakdown(options: {
+  intent: GuestCartIntent;
+  snapshots?: readonly GuestCartCatalogSnapshot[] | null;
+  snapshotFailed?: boolean;
+  retrying?: boolean;
+  shippingPolicy?: GuestCheckoutShippingPolicyInput | null;
+}): GuestCheckoutBreakdownView {
+  const totalsUnconfirmed = options.snapshotFailed === true || options.retrying === true;
+  const subtotalMinor = totalsUnconfirmed
+    ? null
+    : cartSubtotalMinor(options.intent.lines, options.snapshots ?? null);
+  const subtotalText = minorText(subtotalMinor) ?? "Calculated at checkout";
+  const byId = new Map((options.snapshots ?? []).map((snapshot) => [snapshot.id, snapshot]));
+  const needsDelivery = options.intent.lines.some((line) => {
+    const snapshot = options.snapshots ? byId.get(line.id) : undefined;
+    const fulfillment = snapshot?.found ? snapshot.fulfillment ?? "physical" : "physical";
+    return fulfillment === "physical";
+  });
+
+  let shippingMinor: bigint | null = null;
+  let shippingText = "Calculated at checkout";
+  if (options.intent.lines.length > 0 && !totalsUnconfirmed && options.snapshots) {
+    if (!needsDelivery || options.shippingPolicy?.mode === "free") {
+      shippingMinor = 0n;
+      shippingText = "Free";
+    } else if (
+      options.shippingPolicy?.mode === "flat" &&
+      typeof options.shippingPolicy.flatRateMinor === "string" &&
+      UNIT_MINOR.test(options.shippingPolicy.flatRateMinor)
+    ) {
+      shippingMinor = BigInt(options.shippingPolicy.flatRateMinor);
+      shippingText = shippingMinor === 0n ? "Free" : (minorText(shippingMinor) ?? "Calculated at checkout");
+    }
+  }
+
+  const taxText = "Calculated at checkout";
+  const totalMinor = subtotalMinor === null || (needsDelivery && shippingMinor === null)
+    ? null
+    : subtotalMinor + (shippingMinor ?? 0n);
+  const totalText = minorText(totalMinor) ?? "Calculated at checkout";
+
+  return {
+    subtotalText,
+    shippingText,
+    taxText,
+    totalText,
+  };
 }
 
 function projectPublicPrice(value: unknown): GuestCartPublicPrice | null {
@@ -326,14 +475,17 @@ export function projectGuestCartCatalogSnapshot(value: unknown): GuestCartCatalo
   const price = projectPublicPrice(value.price);
   const availability = projectPublicAvailability(value.availability);
   if (!price || !availability) return null;
-  const publicName = price.listable || availability.listable ? value.name : value.id;
-  const publicSku = price.listable || availability.listable ? value.sku : "";
+  const listable = price.listable || availability.listable;
+  const publicName = listable ? value.name : value.id;
+  const publicSku = listable ? value.sku : "";
+  const thumbnail = projectPublicThumbnail(value.thumbnail, publicName, value.id, listable);
   return {
     id: value.id,
     found: true,
     name: publicName,
     sku: publicSku,
     fulfillment: value.fulfillment === "digital" ? "digital" : "physical",
+    thumbnail,
     price,
     availability,
   };

@@ -11,6 +11,8 @@ import {
   type StorefrontAvailabilityResolverStorage,
 } from "@dinkuskit/commerce";
 
+import manifest from "../../../package.json" with { type: "json" };
+
 import { presentStorefrontPrice } from "../store-shell/index.js";
 import { UnmanagedProductSellabilityError } from "./errors.js";
 import {
@@ -34,7 +36,7 @@ import {
 } from "./types.js";
 
 const PROVENANCE = {
-  commerce: "288199275f61aec084c0e1e72b370ec74ea35369",
+  commerce: manifest.dinkuskit.sourcePins.commerce.commit,
   inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
 } as const;
 

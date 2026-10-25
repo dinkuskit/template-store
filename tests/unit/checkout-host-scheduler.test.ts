@@ -201,6 +201,7 @@ function createFixtureExecution(paymentLookupOutcome: "paid" | "open" | "unknown
         name: "Scheduler",
         line1: "1 Example Way",
         city: "Testville",
+        region: "NC",
         postalCode: "00000",
         country: "US",
       },

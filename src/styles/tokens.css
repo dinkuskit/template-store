@@ -1,0 +1,134 @@
+@layer base {
+  /*
+   * DinkusKit Store Starter — Upstream EmDash Design Tokens
+   *
+   * All core palette, typography, border, and surface tokens live inside
+   * `@layer base` using CSS `light-dark(<light>, <dark>)`.
+   *
+   * Ship 3 curated Stitch presets:
+   *   1. `aizome` (Default — Japanese Indigo & Hanko Vermilion)
+   *   2. `forest` (Alpine Forest & Terracotta Clay)
+   *   3. `cobalt` (Carbon Graphite & Bauhaus Cobalt)
+   *
+   * Template adopters override any token in unlayered `src/styles/theme.css`.
+   */
+
+  :root {
+    color-scheme: light;
+    --font-display:
+      "Space Grotesk", Inter, ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-sans:
+      "DM Sans", Inter, ui-sans-serif, system-ui, -apple-system,
+      BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono:
+      "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+
+    --store-radius-card: 0.625rem;
+    --store-radius-pill: 0.375rem;
+    --store-border-width: 1.5px;
+    --store-focus-ring: light-dark(#215cc8, #60a5fa);
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  :root[data-theme="system"] {
+    color-scheme: light dark;
+  }
+
+  /* Preset 1 (Default): Aizome Indigo & Hanko Vermilion */
+  :root,
+  :root[data-preset="aizome"] {
+    --store-bg: light-dark(#f4f1ea, #0b111d);
+    --store-surface: light-dark(#fcfbf8, #141e30);
+    --store-surface-subtle: light-dark(#ebe6dc, #1b2840);
+    --store-ink: light-dark(#101827, #f4f1ea);
+    --store-ink-border: light-dark(#101827, #334155);
+    --store-line: light-dark(#d8d4c8, #26354d);
+    --store-muted: light-dark(#525b6c, #9ca6b8);
+    --store-accent: light-dark(#d1492f, #e05a40);
+    --store-accent-ink: #fffefb;
+    --store-vault-bg: #101827;
+    --store-vault-surface: #172236;
+    --store-vault-line: #283752;
+    --store-vault-ink: #fcfbf8;
+    --store-vault-muted: #9ca6b8;
+    --store-shadow: light-dark(#101827, #05080f);
+    --store-stock: light-dark(#d8f2df, #133926);
+    --store-stock-ink: light-dark(#143a23, #86efac);
+    --store-alert: light-dark(#fde8e8, #3b181b);
+    --store-alert-ink: light-dark(#7f1d1d, #fca5a5);
+    --store-backorder: light-dark(#f8ecd3, #3b2a11);
+    --store-backorder-ink: light-dark(#6b3f08, #fcd34d);
+    --dinkus-action-background: light-dark(#172033, #d1492f);
+    --dinkus-action-color: light-dark(#fffefb, #fffefb);
+    --pigment-stop-1: light-dark(#1f3b82, #2b4fa8);
+    --pigment-stop-2: light-dark(#6b2d7a, #883ca0);
+    --pigment-stop-3: light-dark(#d1492f, #e85d3f);
+    --pigment-stop-4: light-dark(#d98a2b, #eba03f);
+    --emdash-search-bg: var(--store-surface);
+    --emdash-search-text: var(--store-ink);
+    --emdash-search-muted: var(--store-muted);
+    --emdash-search-border: var(--store-ink-border);
+    --emdash-search-border-focus: var(--store-accent);
+    --emdash-search-hover: var(--store-surface-subtle);
+    --emdash-search-highlight: var(--store-accent);
+  }
+
+  /* Preset 2: Alpine Forest & Terracotta Clay */
+  :root[data-preset="forest"] {
+    --store-bg: light-dark(#f4efe6, #09130e);
+    --store-surface: light-dark(#fcfbf7, #12221a);
+    --store-surface-subtle: light-dark(#eae3d5, #192f24);
+    --store-ink: light-dark(#0f1f18, #f4efe6);
+    --store-ink-border: light-dark(#0f1f18, #2d4a3e);
+    --store-line: light-dark(#d8d0c0, #233b30);
+    --store-muted: light-dark(#526058, #9bb0a5);
+    --store-accent: light-dark(#c85a32, #db6b42);
+    --store-accent-ink: #fffefb;
+    --store-vault-bg: #0f1f18;
+    --store-vault-surface: #162b22;
+    --store-vault-line: #264538;
+    --store-vault-ink: #fcfbf7;
+    --store-vault-muted: #9bb0a5;
+    --store-shadow: light-dark(#0f1f18, #040907);
+    --dinkus-action-background: light-dark(#172033, #c85a32);
+    --dinkus-action-color: light-dark(#fffefb, #fffefb);
+    --pigment-stop-1: light-dark(#184734, #24684d);
+    --pigment-stop-2: light-dark(#1f5c68, #2b7b8a);
+    --pigment-stop-3: light-dark(#c85a32, #db6b42);
+    --pigment-stop-4: light-dark(#d4943a, #e5a94c);
+  }
+
+  /* Preset 3: Carbon Graphite & Bauhaus Cobalt */
+  :root[data-preset="cobalt"] {
+    --store-bg: light-dark(#f3f4f6, #0b0d11);
+    --store-surface: light-dark(#ffffff, #161922);
+    --store-surface-subtle: light-dark(#e5e7eb, #1f2430);
+    --store-ink: light-dark(#111318, #f3f4f6);
+    --store-ink-border: light-dark(#111318, #374151);
+    --store-line: light-dark(#d1d5db, #262b38);
+    --store-muted: light-dark(#525866, #9ca3af);
+    --store-accent: light-dark(#2554d9, #4b7bf5);
+    --store-accent-ink: #fffefb;
+    --store-vault-bg: #111318;
+    --store-vault-surface: #191d28;
+    --store-vault-line: #2b3245;
+    --store-vault-ink: #ffffff;
+    --store-vault-muted: #9ca3af;
+    --store-shadow: light-dark(#111318, #050608);
+    --dinkus-action-background: light-dark(#172033, #2554d9);
+    --dinkus-action-color: light-dark(#fffefb, #fffefb);
+    --pigment-stop-1: light-dark(#1d44b8, #3461e0);
+    --pigment-stop-2: light-dark(#5835c4, #7350e0);
+    --pigment-stop-3: light-dark(#d9384a, #ed4c5e);
+    --pigment-stop-4: light-dark(#e09124, #f2a638);
+  }
+}

@@ -1,4 +1,5 @@
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
 import node from "@astrojs/node";
@@ -12,7 +13,7 @@ import { unstable_readConfig } from "wrangler";
 import { selectedRegistryAccessOptions } from "./scripts/registry-access.mjs";
 import { selectedRegistrySandboxRunner } from "./scripts/registry-sandbox.mjs";
 
-import { commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
+import { commerceProfile, commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
@@ -20,6 +21,9 @@ const isCloudflare =
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
+);
+const playgroundCommerceEntry = fileURLToPath(
+  new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
 );
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
@@ -31,6 +35,12 @@ const databaseUrl =
   process.env.DINKUS_TEMPLATE_DB_URL ?? "file:./.artifacts/dev/content.db";
 const uploadsDirectory =
   process.env.DINKUS_TEMPLATE_UPLOADS_DIR ?? "./.artifacts/dev/uploads";
+const artifactSlotMatch = databaseUrl.match(
+  /^\.?\/?(?:file:\.?\/?)?\.artifacts\/([a-z0-9_-]+)\//iu,
+);
+const viteCacheDir = artifactSlotMatch
+  ? `.artifacts/${artifactSlotMatch[1]}/vite-cache`
+  : "node_modules/.vite";
 
 const enableLocalStockManagement =
   !isCloudflare &&
@@ -38,6 +48,17 @@ const enableLocalStockManagement =
   process.env.DINKUS_STOREFRONT_PROFILE === "proof";
 
 const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
+
+// Proof only: a local store that installs a built Commerce Registry bundle the way a Registry store does,
+// under the selected profile's runtime id (scripts/verify-paired-product-on-sale.mjs).
+const pairedCommerceDir = !isCloudflare && process.env.DINKUS_PAIRED_COMMERCE_DIR;
+const pairedCommerce = pairedCommerceDir
+  ? {
+      ...(await import(pathToFileURL(resolve(pairedCommerceDir, "dist/sandbox/index.mjs")).href)).default,
+      id: commerceProfile(process.env.DINKUS_COMMERCE_PROFILE).runtimeId,
+      entrypoint: resolve(pairedCommerceDir, "dist/sandbox/plugin.mjs"),
+    }
+  : undefined;
 const accessOptions = selectedRegistryAccessOptions(process.env);
 
 // EmDash 1.2.0's sandbox() only reads the default Wrangler file. Keep a
@@ -80,6 +101,7 @@ export default defineConfig({
       ...(siteUrl ? { siteUrl } : {}),
       ...(accessOptions ? { auth: access(accessOptions) } : {}),
       ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : {}),
+      ...(pairedCommerce ? { sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox", sandboxed: [pairedCommerce] } : {}),
       plugins: [
         {
           id: "dinkus-template-product-urls",
@@ -87,21 +109,57 @@ export default defineConfig({
           entrypoint: productUrlEntry,
         },
         ...(process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
-          dinkusCommerce({
-            enableLocalStockManagement,
-            ...(siteUrl ? { siteUrl } : {}),
-          }),
+          {
+            ...dinkusCommerce({
+              enableLocalStockManagement,
+              ...(siteUrl ? { siteUrl } : {}),
+            }),
+            entrypoint: playgroundCommerceEntry,
+          },
         ] : []),
       ],
     }),
   ],
   vite: {
+    cacheDir: viteCacheDir,
     define: commerceProfileDefine(process.env),
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "react-dom/client",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+      ],
+    },
+    server: {
+      watch: {
+        ignored: [
+          "**/.artifacts/**",
+          "**/.astro/**",
+          "**/dist/**",
+          "**/runs/**",
+          "**/test-results/**",
+        ],
+      },
+    },
     resolve: {
       alias: {
         "@dinkuskit/commerce/features/checkout": fileURLToPath(
           new URL(
             "./.artifacts/source-deps/commerce/src/features/checkout/index.ts",
+            import.meta.url,
+          ),
+        ),
+        "@dinkuskit/commerce/features/customers": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/customers/index.ts",
+            import.meta.url,
+          ),
+        ),
+        "@dinkuskit/commerce/features/orders": fileURLToPath(
+          new URL(
+            "./.artifacts/source-deps/commerce/src/features/orders/index.ts",
             import.meta.url,
           ),
         ),

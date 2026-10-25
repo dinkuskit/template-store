@@ -5,6 +5,7 @@ import { playgroundDatabase } from "@emdash-cms/cloudflare";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
 import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
+import { playgroundRegistryPlugins } from "./src/features/playground-plugins/registry-plugins.mjs";
 
 // The playground always serves the synthetic native catalog; the playground
 // middleware seeds it into each per-visitor DB. Sandbox checkout stays closed
@@ -17,6 +18,9 @@ const commerceEntry = fileURLToPath(
 );
 const playgroundCommerceEntry = fileURLToPath(
   new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
+);
+const tourEntry = fileURLToPath(
+  new URL("./src/features/playground-tour/tour-plugin.ts", import.meta.url),
 );
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
@@ -50,6 +54,18 @@ export default defineConfig({
         // adds build-time checkout options (binding "playground", flat-rate
         // shipping, host-side Payments port). Commerce is unchanged.
         { ...dinkusCommerce({ enableLocalStockManagement: false }), entrypoint: playgroundCommerceEntry },
+        // Playground-only tour: a card on the admin dashboard and its own admin page.
+        {
+          id: "dinkus-playground-tour",
+          version: "1.0.0",
+          entrypoint: tourEntry,
+          adminWidgets: [{ id: "tour", size: "full", title: "Playground tour" }],
+          adminPages: [{ path: "/tour", label: "Playground tour", icon: "compass" }],
+        },
+        // Payments and Ship: their released Registry bundles, run inside the
+        // visitor's own store. EmDash's sandbox saves plugin data only to a
+        // regular store database, never to a playground visitor's store.
+        ...playgroundRegistryPlugins(),
       ],
     }),
   ],
@@ -58,6 +74,12 @@ export default defineConfig({
       alias: {
         "@dinkuskit/commerce/features/checkout": fileURLToPath(
           new URL("./.artifacts/source-deps/commerce/src/features/checkout/index.ts", import.meta.url),
+        ),
+        "@dinkuskit/commerce/features/customers": fileURLToPath(
+          new URL("./.artifacts/source-deps/commerce/src/features/customers/index.ts", import.meta.url),
+        ),
+        "@dinkuskit/commerce/features/orders": fileURLToPath(
+          new URL("./.artifacts/source-deps/commerce/src/features/orders/index.ts", import.meta.url),
         ),
         "@dinkuskit/commerce/features/structured-data": fileURLToPath(
           new URL("./.artifacts/source-deps/commerce/src/features/structured-data/index.ts", import.meta.url),

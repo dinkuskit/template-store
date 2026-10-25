@@ -30,6 +30,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
 
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
   expect((await request.post("/api/proof/stock", { data: { commandId: "shipping-blocked", delta: "-3", reason: "proof-change" } })).status()).toBe(404);
+  expect((await request.get("/proof")).status()).toBe(404);
 
   const installedCatalog = await request.get(
     `/_emdash/api/plugins/${COMMERCE_NATIVE_PLUGIN_ID}/catalog/public`,
@@ -80,10 +81,16 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator("[data-inventory-sku]")).toHaveCount(0);
   await expect(page.locator("[data-merch-item=everyday-tee]")).toHaveCount(0);
   await expect(page.locator("[data-merch-item=canvas-cap]")).toHaveCount(0);
+  const footerPolicies = page.getByRole("navigation", { name: "Policies & Care" });
+  await expect(footerPolicies).toContainText("Policies & Care");
+  await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("href", "/shipping");
+  await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("href", "/returns");
   await page.screenshot({ path: resolve(root, "public-home.png"), fullPage: true, animations: "disabled" });
 
   await page.goto("/cart");
   await expect(page.locator("[data-guest-cart-checkout]")).toHaveText("Checkout unavailable");
+  await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("href", "/shipping");
+  await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("href", "/returns");
 
   const tees = collectionPath("Tees");
   const collectionResponse = await page.goto(tees);
@@ -121,10 +128,14 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   expect((await request.get("/returns")).status()).toBe(200);
   await page.goto("/shipping");
   await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
+  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/);
+  await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
   await page.goto("/returns");
   await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
+  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\d+ days/);
+  await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
   const googleFeed = await request.get("/feeds/google-merchant.xml");
   const metaFeed = await request.get("/feeds/meta-catalog.csv");
   expect(googleFeed.status()).toBe(503);
@@ -135,6 +146,57 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   expect(googleSlash.status()).not.toBe(200);
   if (googleSlash.status() === 301 || googleSlash.status() === 302) {
     expect(new URL(googleSlash.headers().location ?? "", googleSlash.url()).pathname).toBe("/feeds/google-merchant.xml");
+  }
+
+  // Shipping search fails closed for Commerce-linked and demo products when the
+  // installed Commerce catalog is unavailable, while preserving editorial previews.
+  const csrfHeaders = { "X-EmDash-Request": "1" };
+  const outageSlug = `outage-parka-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
+  const createdOutage = await context.request.post("/_emdash/api/content/products", {
+    headers: csrfHeaders,
+    data: {
+      slug: outageSlug,
+      status: "draft",
+      data: {
+        title: "Outage Linked Parka",
+        description: "Commerce-linked shipping product hidden when catalog is unavailable",
+        visual_label: "hoodie",
+        commerce_item_id: "cat_shipping_outage_parka",
+      },
+    },
+  });
+  expect(createdOutage.status(), await createdOutage.text()).toBe(201);
+  const outageId = ((await createdOutage.json()) as { data: { item: { id: string } } }).data.item.id;
+  try {
+    const publishedOutage = await context.request.post(`/_emdash/api/content/products/${outageId}/publish`, {
+      headers: csrfHeaders,
+    });
+    expect(publishedOutage.ok(), await publishedOutage.text()).toBe(true);
+
+    await page.goto("/search?q=Outage");
+    await expect(page.locator(`[data-search-result="${outageSlug}"]`)).toHaveCount(0);
+
+    const outageApiResp = await request.get(
+      "/_emdash/api/search?q=Outage&collections=products,categories,pages",
+    );
+    expect(outageApiResp.ok()).toBe(true);
+    const outageApiBody = (await outageApiResp.json()) as { data?: { items?: Array<{ slug?: string }> } };
+    expect(outageApiBody.data?.items?.some((item) => item.slug === outageSlug) ?? false).toBe(false);
+
+    const outageSuggestResp = await request.get(
+      "/_emdash/api/search/suggest?q=Outage&collections=products,categories,pages",
+    );
+    expect(outageSuggestResp.ok()).toBe(true);
+    const outageSuggestBody = (await outageSuggestResp.json()) as { data?: { items?: Array<{ slug?: string }> } };
+    expect(outageSuggestBody.data?.items?.some((item) => item.slug === outageSlug) ?? false).toBe(false);
+
+    await page.goto("/search?q=Everyday");
+    await expect(page.locator('[data-search-result="everyday-tee"]')).toHaveCount(0);
+
+    await page.goto("/search?q=Boxy");
+    await expect(page.locator('[data-search-result="boxy-tee-preview"]')).toBeVisible();
+  } finally {
+    await context.request.delete(`/_emdash/api/content/products/${outageId}`, { headers: csrfHeaders });
   }
 
   await page.goto("/");
@@ -162,6 +224,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
         homeOpenerHref: "#commerce-catalog",
         catalogHeading: "commerce-catalog",
         staleDemoCopy: false,
+        searchOutageFailClosed: true,
       },
       null,
       2,

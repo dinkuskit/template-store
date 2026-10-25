@@ -54,14 +54,22 @@ describe("sandbox checkout notice", () => {
     expect(SANDBOX_RATE_LIMIT_NOTICE).toBe("Each visitor is limited to 3 checkouts per 10 minutes.");
   });
 
-  it("renders both notices on the cart and never pre-fills card fields", () => {
+  it("renders both notices on the cart and checkout and never pre-fills card fields", () => {
     const notice = readFileSync("src/features/playground-checkout/SandboxCheckoutNotice.astro", "utf8");
     expect(notice).toContain("{SANDBOX_TEST_CARD_NOTICE}");
     expect(notice).toContain("{SANDBOX_RATE_LIMIT_NOTICE}");
     expect(notice).not.toMatch(/<input|<form/);
     const cart = readFileSync("src/pages/cart.astro", "utf8");
     expect(cart).toContain("{sandboxCheckout && <SandboxCheckoutNotice />}");
-    for (const file of ["src/pages/cart.astro", "src/features/guest-cart/GuestCart.astro", "src/features/playground-checkout/index.ts"]) {
+    const checkout = readFileSync("src/pages/checkout/index.astro", "utf8");
+    expect(checkout).toContain("{sandboxCheckout && <SandboxCheckoutNotice />}");
+    for (const file of [
+      "src/pages/cart.astro",
+      "src/pages/checkout/index.astro",
+      "src/features/guest-cart/GuestCart.astro",
+      "src/features/guest-cart/GuestCheckout.astro",
+      "src/features/playground-checkout/index.ts",
+    ]) {
       expect(readFileSync(file, "utf8")).not.toMatch(/cc-number|card-number|value="4242/i);
     }
   });
@@ -121,7 +129,7 @@ describe("checkout body validation", () => {
   it("guards checkout routes in middleware before seeding the playground DB", () => {
     const middleware = readFileSync("src/middleware.ts", "utf8");
     expect(middleware.indexOf("guardSandboxCheckout(context.request"))
-      .toBeLessThan(middleware.indexOf("await ensurePlaygroundDemoCatalog(db)"));
+      .toBeLessThan(middleware.indexOf("await ensurePlaygroundDemoCatalog(db, { playground: true })"));
     expect(middleware.indexOf("guardSandboxCheckout(context.request"))
       .toBeLessThan(middleware.indexOf("withCheckoutVisitor("));
   });

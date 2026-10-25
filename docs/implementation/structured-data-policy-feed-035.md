@@ -17,12 +17,20 @@ the published `/products/{entry id}` path. 404, removed, and unavailable
 editorial pages truthful without requiring a fabricated Commerce identifier.
 
 `/shipping` and `/returns` render the same Commerce policy revision that
-JSON-LD embeds. Native development has no mounted `policies/public` route, so
-that profile reads `readPublicStorePoliciesFromStorage` from
+JSON-LD embeds. When a policy record is configured, `/shipping` and `/returns`
+pair the authoritative Commerce `<dl data-shipping-policy>` /
+`<dl data-return-policy>` summary box with the merchant-authored EmDash CMS
+`entry.data.content` (`PortableText`) policy body (`[data-policy-body]`).
+Both policy pages are exposed in the global Store Footer (`StoreFooter.astro`)
+under **Policies & Care** (`aria-label="Policies & Care"`). Native development
+has no mounted `policies/public` route, so that profile reads
+`readPublicStorePoliciesFromStorage` from
 `@dinkuskit/commerce/features/store-policies` after the public route is
 unavailable. An installed or shipping profile does not open policy storage. An
-invalid public payload still fails. With no policy records, both pages say the
-policy is not configured and JSON-LD omits `shippingDetails` and
+invalid public payload still fails. With no policy records, both pages fail
+closed—rendering only `[data-shipping-policy-unset]` /
+`[data-return-policy-unset]` without `[data-policy-body]` or fabricated dollar
+amounts, country codes, or day counts—and JSON-LD omits `shippingDetails` and
 `hasMerchantReturnPolicy`. Seeds stay neutral.
 
 The policy consumer validates amount/mode consistency, configured country

@@ -1,0 +1,31 @@
+name: Set up Chromium
+description: >-
+  Restores Playwright's Chromium from the cache (downloading it on a miss) and
+  installs Linux system packages only if Chromium cannot start. The runner
+  image already has them; --with-deps on every run only added fonts from an
+  Ubuntu mirror that is sometimes very slow.
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: bash
+      run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+    - id: cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm exec playwright install chromium
+    - name: Check that Chromium starts
+      shell: bash
+      run: |
+        starts() {
+          node --input-type=module -e "const { chromium } = await import('@playwright/test'); const browser = await chromium.launch(); await browser.close();"
+        }
+        if ! starts; then
+          echo "::warning::Chromium could not start; installing its Linux system packages."
+          pnpm exec playwright install-deps chromium
+          starts
+        fi

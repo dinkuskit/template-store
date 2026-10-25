@@ -18,6 +18,12 @@
       "@dinkuskit/commerce/features/store-policies": [
         "./.artifacts/source-deps/commerce/src/features/store-policies/index.ts"
       ],
+      "@dinkuskit/commerce/features/customers": [
+        "./.artifacts/source-deps/commerce/src/features/customers/index.ts"
+      ],
+      "@dinkuskit/commerce/features/orders": [
+        "./.artifacts/source-deps/commerce/src/features/orders/index.ts"
+      ],
       "@dinkuskit/inventory": [
         "./node_modules/@dinkuskit/inventory/src/index.ts"
       ],

@@ -128,7 +128,7 @@ await adapter.withCheckoutVisitor("203.0.113.7", "visitor-a", async () => {
   const started = await checkout.startGuestCheckout(runtime, {
     lines: [{ catalogItemId: "fixture", quantity: 1 }],
     contact: { email: "buyer@example.invalid", delivery: {
-      name: "Fixture Buyer", line1: "1 Test Road", city: "Testville", postalCode: "10001", country: "US",
+      name: "Fixture Buyer", line1: "1 Test Road", city: "Testville", region: "NY", postalCode: "10001", country: "US",
     } },
     },
     headers);

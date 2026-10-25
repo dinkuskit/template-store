@@ -30,8 +30,11 @@ import { createSettingsAccess, OptionsRepository, PluginStorageRepository } from
 import { applySeed, type SeedFile } from "emdash/seed";
 import { sql } from "kysely";
 
-import { DEMO_PRODUCTS, demoRegularMinorForSku, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
+import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
+import { ensureStorefrontSearchSupport } from "../store-shell/index.js";
 import { buildDemoProductEntries } from "./demo-products.js";
+import { ensurePlaygroundSampleOrders } from "./demo-orders.js";
+import { PLAYGROUND_TOUR_PAGE_ENTRY } from "../playground-tour/copy.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 interface StorageDeclaration {
@@ -131,15 +134,35 @@ async function createProduct(storage: Storage, product: DemoProductSeed): Promis
     if (product.saleMinor !== null) {
       await setCatalogItemSalePrice(storage, { catalogItemId, amount: { currency: "USD", minor: product.saleMinor } });
     }
-    await setCatalogItemManualAvailability(storage, { catalogItemId, status: product.availability });
+    await setCatalogItemManualAvailability(storage, { catalogItemId, status: demoAvailabilityForSku(product, sku) });
   }
 }
+
+const paragraph = (key: string, text: string) => ({
+  _type: "block", _key: key, style: "normal", markDefs: [],
+  children: [{ _type: "span", _key: `${key}-text`, text, marks: [] }],
+});
+
+/** The page Connect opens in the playground (GrillTrack playground-pretend-connected-20261022). */
+export const PLAYGROUND_CONNECT_PAGE_ENTRY = {
+  id: "connect-to-dinkuskit",
+  slug: "connect-to-dinkuskit",
+  status: "published",
+  data: {
+    title: "Connect to DinkusKit",
+    content: [
+      paragraph("connect-real", "On a real store, pressing Connect takes you to DinkusKit.com. You sign in, check the store's address and press Approve once, and the plugin is connected for good."),
+      paragraph("connect-pretend", "This is the playground, so that step is pretend: it's approved already. Go back and Payments shows Stripe test mode ready, and Shipping lists your orders so you can make practice labels."),
+      paragraph("connect-reset", "Nothing here reaches DinkusKit.com or costs anything, and it all resets when your playground session ends."),
+    ],
+  },
+};
 
 /** Every demo product, including the size-variant hoodie. */
 export const PLAYGROUND_DEMO_PRODUCTS = DEMO_PRODUCTS;
 
 /** Creates missing demo catalog items and product entries. Existing SKUs and entries are left untouched. */
-export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: string[] }> {
+export async function ensurePlaygroundDemoCatalog(db: Db, options: { playground?: boolean } = {}): Promise<{ created: string[] }> {
   await ensureCommerceStorageIndexes(db);
   const settings = createSettingsAccess(new OptionsRepository(db), COMMERCE_PLUGIN_ID);
   const currentSettings = await loadMerchantStoreSettings(settings);
@@ -173,6 +196,20 @@ export async function ensurePlaygroundDemoCatalog(db: Db): Promise<{ created: st
       includeContent: true, onConflict: "skip", skipMediaDownload: true,
     });
   }
+  await ensureStorefrontSearchSupport(db as never);
+  if (!options.playground) return { created };
+  await applySeed(db as Parameters<typeof applySeed>[0], { version: "1", content: { pages: [PLAYGROUND_CONNECT_PAGE_ENTRY, PLAYGROUND_TOUR_PAGE_ENTRY] } } as SeedFile, {
+    includeContent: true, onConflict: "skip", skipMediaDownload: true,
+  });
+  // Sizes are catalog items of their own, so read every item's SKU, not just listed products.
+  const skus = new Map<string, string>();
+  let cursor: string | undefined;
+  do {
+    const page = await storage.catalog.query({ limit: 100, ...(cursor ? { cursor } : {}) });
+    for (const row of page.items) skus.set(row.data.sku.toUpperCase(), row.data.itemId);
+    cursor = page.cursor;
+  } while (cursor);
+  await ensurePlaygroundSampleOrders(db, skus);
   return { created };
 }
 

@@ -7,50 +7,15 @@ interface Props {
 }
 
 const { checkoutAdmission = null } = Astro.props;
-// Shown disabled until Commerce publishes the store's allowed shipping countries.
-const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia", "Germany", "France", "Japan"];
 ---
-<section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"}>
+<section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart data-guest-cart-page="cart" data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"}>
   <h1 id="guest-cart-title">Cart</h1>
   <p data-guest-cart-status role="status" hidden></p>
   <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
   <div data-guest-cart-lines></div>
   <p class="guest-cart-subtotal" data-guest-cart-subtotal hidden>Subtotal <strong data-guest-cart-subtotal-amount></strong></p>
   <div class="guest-cart-checkout">
-    <fieldset class="guest-cart-contact" data-guest-cart-contact>
-      <legend>Checkout contact</legend>
-      <p>Commerce uses your email for checkout. A delivery address is required only when the basket contains a physical item.</p>
-      <label for="guest-cart-email">Email</label>
-      <input id="guest-cart-email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" />
-      <div class="guest-cart-delivery" data-guest-cart-delivery hidden>
-        <h2>Delivery address</h2>
-        <p>Complete these fields for a physical order. We do not collect a billing address.</p>
-        <label for="guest-cart-delivery-name">Recipient</label>
-        <input id="guest-cart-delivery-name" data-guest-cart-delivery-name maxlength="200" autocomplete="shipping name" />
-        <label for="guest-cart-delivery-line1">Address line 1</label>
-        <input id="guest-cart-delivery-line1" data-guest-cart-delivery-line1 maxlength="200" autocomplete="shipping address-line1" />
-        <label for="guest-cart-delivery-line2">Address line 2 <span>(optional)</span></label>
-        <input id="guest-cart-delivery-line2" data-guest-cart-delivery-line2 maxlength="200" autocomplete="shipping address-line2" />
-        <label for="guest-cart-delivery-city">City</label>
-        <input id="guest-cart-delivery-city" data-guest-cart-delivery-city maxlength="200" autocomplete="shipping address-level2" />
-        <label for="guest-cart-delivery-region">State or region <span>(optional)</span></label>
-        <input id="guest-cart-delivery-region" data-guest-cart-delivery-region maxlength="200" autocomplete="shipping address-level1" />
-        <label for="guest-cart-delivery-postal-code">Postal code</label>
-        <input id="guest-cart-delivery-postal-code" data-guest-cart-delivery-postal-code maxlength="200" autocomplete="shipping postal-code" />
-        <label for="guest-cart-delivery-country">Country</label>
-        <select id="guest-cart-delivery-country" data-guest-cart-delivery-country autocomplete="shipping country">
-          <option value="">Select a country</option>
-          <option value="US">United States</option>
-          {COMING_SOON_SHIPPING_COUNTRIES.map((name) => <option value="" disabled>{name} (coming soon)</option>)}
-        </select>
-      </div>
-    </fieldset>
-    <div class="guest-cart-coupon" data-guest-cart-coupon-box aria-disabled="true">
-      <label for="guest-cart-coupon">Coupon code</label>
-      <input id="guest-cart-coupon" data-guest-cart-coupon type="text" placeholder="Coupons coming soon" aria-describedby="guest-cart-coupon-note" autocomplete="off" disabled />
-      <p id="guest-cart-coupon-note">Discount codes can't be used yet.</p>
-    </div>
-    <button type="button" data-guest-cart-checkout disabled>{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
+    <button type="button" data-guest-cart-checkout data-guest-cart-proceed disabled>{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
     <p data-guest-cart-checkout-reason>{checkoutAdmission ? "" : GUEST_CHECKOUT_REASON}</p>
     <button type="button" data-guest-cart-retry hidden>Try again</button>
     <a data-guest-cart-resume hidden rel="noopener noreferrer">Return to secure checkout</a>
@@ -64,30 +29,27 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   [data-guest-cart-status][role="alert"]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
   [data-guest-cart-lines]{display:grid;gap:1rem;margin:1.5rem 0}
   .guest-cart-subtotal[hidden]{display:none}
-  .guest-cart-subtotal{display:flex;justify-content:space-between;gap:1rem;max-width:32rem;margin:1rem 0 0;padding-top:1rem;border-top:1px solid var(--store-line);font-size:1.25rem}
+  .guest-cart-subtotal{display:flex;justify-content:space-between;gap:1rem;max-width:32rem;margin:1rem 0 0;padding-top:1rem;border-top:1px solid var(--store-line);font-size:1.25rem;font-variant-numeric:tabular-nums}
+  .guest-cart-subtotal strong{font-family:var(--font-mono);font-variant-numeric:tabular-nums;transition:color .22s ease,transform .22s cubic-bezier(.22,1,.36,1);display:inline-block}
+  .guest-cart-subtotal strong[data-number-flow-ticking="true"]{color:var(--store-accent);transform:translateY(-1px)}
   .guest-cart-checkout{margin-top:2rem}
-  .guest-cart-contact{display:grid;gap:.5rem;max-width:34rem;margin:0 0 1rem;padding:1rem;border:1px solid var(--store-line);border-radius:.65rem}
-  .guest-cart-contact p{margin:0 0 .5rem}
-  .guest-cart-contact h2{font-size:1.15rem;margin:.75rem 0 0}
-  .guest-cart-contact span{color:var(--store-muted);font-size:.9em}
-  .guest-cart-contact input,.guest-cart-contact select{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid var(--store-line);border-radius:.35rem;background:var(--store-surface);font:inherit}
-  .guest-cart-contact input:focus-visible,.guest-cart-contact select:focus-visible{outline:3px solid #215cc8;outline-offset:2px}
-  .guest-cart-coupon{display:grid;gap:.5rem;max-width:34rem;margin:0 0 1rem;padding:1rem;border:1px dashed var(--store-line);border-radius:.65rem;color:var(--store-muted)}
-  .guest-cart-coupon input{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid var(--store-line);border-radius:.35rem;background:transparent;font:inherit;cursor:not-allowed}
-  .guest-cart-coupon p{margin:0;font-size:.9em}
-  .guest-cart-coupon input::placeholder{color:var(--store-muted);opacity:1}
-  .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800}
-  .guest-cart-checkout [data-guest-cart-resume]{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);color:inherit;font-weight:800;text-decoration:underline;text-underline-offset:.2em}
+  .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.75rem 1.1rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);color:inherit;font:inherit;font-weight:800;box-shadow:3px 3px 0 var(--store-shadow);cursor:pointer}
+  .guest-cart-checkout [data-guest-cart-checkout]:not(:disabled){background:var(--dinkus-action-background);color:var(--dinkus-action-color);border-color:var(--dinkus-action-background)}
+  .guest-cart-checkout [data-guest-cart-resume]{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);color:inherit;font-weight:800;text-decoration:underline;text-underline-offset:.2em}
   .guest-cart-checkout [data-guest-cart-resume][hidden]{display:none}
-  [data-guest-cart-checkout]:disabled{color:var(--store-muted);cursor:not-allowed}
-  .guest-cart :global([data-guest-cart-line]){padding:1.5rem;border:1px solid var(--store-line);border-radius:.85rem;background:var(--store-surface);min-width:0;overflow-wrap:anywhere}
+  [data-guest-cart-checkout]:disabled{color:var(--store-muted);box-shadow:none;cursor:not-allowed}
+  .guest-cart :global([data-guest-cart-line]){display:grid;grid-template-columns:auto minmax(0,1fr);gap:1rem 1.25rem;align-items:start;padding:1.5rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow);min-width:0;overflow-wrap:anywhere}
+  .guest-cart :global(.guest-cart-line-media){width:clamp(5.5rem,18vw,8.5rem);aspect-ratio:4/3;box-sizing:border-box;padding:.35rem;border:1.5px solid var(--store-ink-border);border-radius:.65rem;background:#f7f4ec;box-shadow:inset 0 0 0 1px rgba(25,25,22,.06);overflow:hidden}
+  .guest-cart :global(.guest-cart-line-media img){display:block;width:100%;height:100%;object-fit:cover;border-radius:.4rem;background:#e9e8df}
+  .guest-cart :global([data-guest-cart-thumbnail-placeholder]){display:grid;place-items:center;height:100%;margin:0;border-radius:.4rem;background:#e9e8df;color:var(--store-muted);font-size:.85rem;font-weight:700;text-align:center}
+  .guest-cart :global([data-guest-cart-line-copy]){min-width:0}
   .guest-cart :global([data-guest-cart-line] h2){font-size:1.5rem;margin:0 0 1rem}
   .guest-cart :global(.price){display:flex;gap:.65rem;flex-wrap:wrap;font-size:1.4rem}
   .guest-cart :global(s){color:var(--store-muted)}
   .guest-cart :global([data-guest-cart-line-reason]){color:var(--store-muted);line-height:1.5}
-  .guest-cart :global(.guest-cart-qty){display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:1rem 0;min-width:0}
+  .guest-cart :global(.guest-cart-qty){grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.25rem 0 0;min-width:0}
   .guest-cart :global([data-guest-cart-qty]){width:4.5rem;max-width:100%;padding:.45rem .55rem;border:1px solid var(--store-line);border-radius:.4rem;font:inherit;background:var(--store-surface)}
-  .guest-cart :global([data-guest-cart-remove]){padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
+  .guest-cart :global([data-guest-cart-remove]){grid-column:1/-1;justify-self:start;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
   .guest-cart :global([data-guest-cart-qty]:focus-visible),
   .guest-cart :global([data-guest-cart-remove]:focus-visible),
   .guest-cart :global([data-guest-cart-retry]:focus-visible),

@@ -1,0 +1,522 @@
+{
+  "$schema": "https://emdashcms.com/seed.schema.json",
+  "version": "1",
+  "meta": {
+    "name": "DinkusKit store starter",
+    "description": "Neutral Commerce shop starter with EmDash composition",
+    "author": "DinkusKit contributors"
+  },
+  "collections": [
+    {
+      "slug": "pages",
+      "label": "Pages",
+      "labelSingular": "Page",
+      "supports": [
+        "drafts",
+        "revisions"
+      ],
+      "fields": [
+        {
+          "slug": "title",
+          "label": "Title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "content",
+          "label": "Content",
+          "type": "portableText"
+        },
+        {
+          "slug": "layout",
+          "label": "Layout",
+          "type": "blocks",
+          "validation": {
+            "allowedTypes": [
+              "home_opener",
+              "rich_text",
+              "query_card"
+            ],
+            "maxItems": 50
+          }
+        }
+      ]
+    },
+    {
+      "slug": "products",
+      "label": "Products",
+      "labelSingular": "Product",
+      "urlPattern": "/products/{slug}",
+      "seo": true,
+      "supports": [
+        "drafts",
+        "revisions"
+      ],
+      "fields": [
+        {
+          "slug": "title",
+          "label": "Product title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "categories",
+          "label": "Categories",
+          "type": "reference",
+          "validation": {
+            "relation": "product_categories",
+            "relationSide": "child"
+          }
+        },
+        {
+          "slug": "commerce_item_id",
+          "label": "Commerce product",
+          "type": "string"
+        },
+        {
+          "slug": "description",
+          "label": "Short description",
+          "type": "string"
+        },
+        {
+          "slug": "visual_label",
+          "label": "Illustration style (TEE, HOODIE, CAP, or BEANIE)",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "categories",
+      "label": "Categories",
+      "labelSingular": "Category",
+      "urlPattern": "/categories/{slug}",
+      "seo": true,
+      "supports": [
+        "drafts",
+        "revisions"
+      ],
+      "fields": [
+        {
+          "slug": "title",
+          "label": "Category title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "slug": "description",
+          "label": "Description",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "slug": "product_categories",
+      "parentCollection": "categories",
+      "childCollection": "products",
+      "parentLabel": "Products",
+      "childLabel": "Categories",
+      "maxChildrenPerParent": null,
+      "maxParentsPerChild": null
+    }
+  ],
+  "menus": [
+    {
+      "name": "primary",
+      "label": "Main navigation",
+      "items": [
+        { "type": "custom", "label": "Home", "url": "/" },
+        {
+          "type": "custom",
+          "label": "Shop",
+          "url": "/#commerce-catalog",
+          "children": [
+            { "type": "custom", "label": "All products", "url": "/#commerce-catalog" },
+            { "type": "collection", "label": "Hats", "collection": "categories", "ref": "hats" },
+            { "type": "collection", "label": "Hoodies", "collection": "categories", "ref": "hoodies" },
+            { "type": "collection", "label": "Tees", "collection": "categories", "ref": "tees" }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "store-primary",
+      "label": "Store navigation",
+      "items": [
+        {
+          "type": "collection",
+          "label": "Hats",
+          "collection": "categories",
+          "ref": "hats"
+        },
+        {
+          "type": "collection",
+          "label": "Hoodies",
+          "collection": "categories",
+          "ref": "hoodies"
+        },
+        {
+          "type": "collection",
+          "label": "Tees",
+          "collection": "categories",
+          "ref": "tees"
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "slug": "home-opener",
+      "title": "Home opener",
+      "description": "Copied page opener: one hero, then a short fact rail. Later edits to this library section do not change copies already inserted.",
+      "keywords": [
+        "home",
+        "opener",
+        "homepage",
+        "hero",
+        "welcome",
+        "introduction",
+        "facts"
+      ],
+      "source": "theme",
+      "content": [
+        {
+          "_type": "dinkus.page-hero",
+          "_key": "home-opener-hero",
+          "eyebrow": "Start here",
+          "headline": "Welcome to the shop",
+          "deck": "Browse products published in Commerce.",
+          "primary_label": "Browse the shop",
+          "primary_href": "#commerce-catalog",
+          "secondary_label": "View products",
+          "secondary_href": "#commerce-catalog"
+        },
+        {
+          "_type": "dinkus.fact-rail",
+          "_key": "home-opener-facts",
+          "ariaLabel": "Shop opener facts",
+          "facts": [
+            {
+              "_key": "home-opener-fact-hours",
+              "label": "Hours",
+              "value": "Posted by the shop"
+            },
+            {
+              "_key": "home-opener-fact-visit",
+              "label": "Visit",
+              "value": "Come in or order ahead"
+            },
+            {
+              "_key": "home-opener-fact-notes",
+              "label": "Notes",
+              "value": "Rewrite this rail"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "content": {
+    "pages": [
+      {
+        "id": "home",
+        "slug": "home",
+        "status": "published",
+        "data": {
+          "title": "DinkusKit Store Starter",
+          "content": [
+            {
+              "_type": "dinkus.page-hero",
+              "_key": "store-hero",
+              "eyebrow": "A classic merch catalog",
+              "headline": "Everyday essentials, clearly presented",
+              "deck": "Browse products published in Commerce. Prices and availability come from there.",
+              "primaryLabel": "Shop the collection",
+              "primaryHref": "#commerce-catalog",
+              "secondaryLabel": "View products",
+              "secondaryHref": "#commerce-catalog"
+            },
+            {
+              "_type": "dinkus.fact-rail",
+              "_key": "store-facts",
+              "ariaLabel": "Shop opener facts",
+              "facts": [
+                {
+                  "_key": "fact-content",
+                  "label": "Composition",
+                  "value": "EmDash + Blocks"
+                },
+                {
+                  "_key": "fact-catalog",
+                  "label": "Catalog",
+                  "value": "Dinkus Commerce"
+                },
+                {
+                  "_key": "fact-checkout",
+                  "label": "Checkout",
+                  "value": "Dinkus Payments"
+                }
+              ]
+            }
+          ],
+          "layout": [
+            {
+              "_type": "home_opener",
+              "_version": 1,
+              "_key": "store-home-opener",
+              "eyebrow": "A classic merch catalog",
+              "headline": "Everyday essentials, clearly presented",
+              "deck": "Browse products published in Commerce. Prices and availability come from there.",
+              "primary_label": "Shop the collection",
+              "primary_href": "#commerce-catalog",
+              "secondary_label": "View products",
+              "secondary_href": "#commerce-catalog",
+              "facts": [
+                {
+                  "label": "Composition",
+                  "value": "EmDash + Blocks"
+                },
+                {
+                  "label": "Catalog",
+                  "value": "Dinkus Commerce"
+                },
+                {
+                  "label": "Checkout",
+                  "value": "Dinkus Payments"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "shipping",
+        "slug": "shipping",
+        "status": "published",
+        "data": {
+          "title": "Shipping"
+        }
+      },
+      {
+        "id": "returns",
+        "slug": "returns",
+        "status": "published",
+        "data": {
+          "title": "Returns"
+        }
+      }
+    ],
+    "categories": [
+      {
+        "id": "tees",
+        "slug": "tees",
+        "status": "published",
+        "data": {
+          "title": "Tees",
+          "description": "Everyday layers for the rotation."
+        }
+      },
+      {
+        "id": "hats",
+        "slug": "hats",
+        "status": "published",
+        "data": {
+          "title": "Hats",
+          "description": "Simple finishing touches for casual days."
+        }
+      },
+      {
+        "id": "hoodies",
+        "slug": "hoodies",
+        "status": "published",
+        "data": {
+          "title": "Hoodies",
+          "description": "Comfortable layers for cooler days."
+        }
+      }
+    ],
+    "products": [
+      {
+        "id": "everyday-tee",
+        "slug": "everyday-tee",
+        "status": "published",
+        "data": {
+          "title": "Everyday Tee",
+          "categories": ["tees"],
+          "commerce_item_id": "dinkus-template-managed-product",
+          "description": "A clean, versatile tee for the everyday rotation.",
+          "visual_label": "TEE"
+        }
+      },
+      {
+        "id": "boxy-tee-preview",
+        "slug": "boxy-tee-preview",
+        "status": "published",
+        "data": {
+          "title": "Boxy Tee",
+          "categories": ["tees"],
+          "commerce_item_id": "dinkus-template-preview-boxy-tee",
+          "description": "An easy silhouette with a relaxed feel.",
+          "visual_label": "TEE"
+        }
+      },
+      {
+        "id": "pullover-hoodie-preview",
+        "slug": "pullover-hoodie-preview",
+        "status": "published",
+        "data": {
+          "title": "Pullover Hoodie",
+          "categories": ["hoodies"],
+          "commerce_item_id": "dinkus-template-preview-hoodie",
+          "description": "A comfortable layer for cooler days.",
+          "visual_label": "HOODIE"
+        }
+      },
+      {
+        "id": "canvas-cap",
+        "slug": "canvas-cap",
+        "status": "published",
+        "data": {
+          "title": "Canvas Cap",
+          "categories": ["hats"],
+          "commerce_item_id": "dinkus-template-unmanaged-product",
+          "description": "A simple finishing touch for casual days.",
+          "visual_label": "CAP"
+        }
+      },
+      {
+        "id": "ribbed-beanie-preview",
+        "slug": "ribbed-beanie-preview",
+        "status": "published",
+        "data": {
+          "title": "Ribbed Beanie",
+          "categories": ["hats"],
+          "commerce_item_id": "dinkus-template-preview-beanie",
+          "description": "A soft, close-fitting cold-weather staple.",
+          "visual_label": "BEANIE"
+        }
+      }
+    ]
+  },
+  "blockTypes": [
+    {
+      "slug": "home_opener",
+      "label": "Home opener",
+      "category": "Layout",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "eyebrow",
+              "label": "Eyebrow",
+              "type": "string"
+            },
+            {
+              "slug": "headline",
+              "label": "Headline",
+              "type": "string",
+              "required": true
+            },
+            {
+              "slug": "deck",
+              "label": "Introduction",
+              "type": "text"
+            },
+            {
+              "slug": "primary_label",
+              "label": "Primary link label",
+              "type": "string"
+            },
+            {
+              "slug": "primary_href",
+              "label": "Primary link URL",
+              "type": "string"
+            },
+            {
+              "slug": "secondary_label",
+              "label": "Secondary link label",
+              "type": "string"
+            },
+            {
+              "slug": "secondary_href",
+              "label": "Secondary link URL",
+              "type": "string"
+            },
+            {
+              "slug": "facts",
+              "label": "Facts",
+              "type": "repeater",
+              "validation": {
+                "subFields": [
+                  {
+                    "slug": "label",
+                    "label": "Label",
+                    "type": "string",
+                    "required": true
+                  },
+                  {
+                    "slug": "value",
+                    "label": "Value",
+                    "type": "string",
+                    "required": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "rich_text",
+      "label": "Rich text",
+      "category": "Content",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "content",
+              "label": "Content",
+              "type": "portableText"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "query_card",
+      "label": "Query card",
+      "category": "Content",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "source",
+              "label": "Source collection slug",
+              "type": "string",
+              "required": true
+            },
+            {
+              "slug": "limit",
+              "label": "Maximum published records",
+              "type": "integer",
+              "required": true,
+              "validation": {
+                "min": 1,
+                "max": 24
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

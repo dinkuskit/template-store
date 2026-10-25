@@ -65,7 +65,10 @@ maintainer access and an immutable commit pin are supplied.
 
 ## Required checks
 
-Run `pnpm verify` before closeout. Browser proof must exercise desktop Chromium
+Establish a fast baseline and iterate with `bin/verify-web quick` (~15s) plus
+targeted Playwright specs (`pnpm exec playwright test <spec> --project=chromium-desktop`)
+before running the full suite. Run `pnpm verify` (`bin/verify-web full`, ~10m)
+once before closeout after targeted checks pass. Browser proof must exercise desktop Chromium
 and a mobile viewport. The explicit development integration profile observes the managed `8 -> 5 -> 8` Inventory sequence,
 and observe unmanaged manual availability cycle through in-stock, out-of-stock,
 and available-on-backorder without showing a quantity. The default shipping
@@ -99,3 +102,11 @@ scripts. A checkout last installed under Node 22 needs `pnpm rebuild` after swit
 to Node 24, because `pnpm install --frozen-lockfile` leaves better-sqlite3 built
 for Node 22; the session hook rebuilds it automatically. Attach `dinkuskit/inventory` to the session too: the cloud proxy
 serves `github:` dependency tarballs only for attached repositories.
+
+## Reusable proof method
+
+For implementation and verification work orders, produce a compact acceptance-to-proof TABLE in the task response without changing requested artifacts. Map every material requirement to the authoritative specification’s supporting passage, independently sourced expected facts, a known-good populated passing case, an adverse/refusal case with expected outcome, the exact capable environment, and planned evidence. Trace each expectation to its source; implementation behavior cannot establish its own correctness.
+
+Reconcile sources before selecting assertions. Explain why each case exercises its requirement, how it distinguishes success from failure, and how planned evidence will compare observed results against those expectations, including ownership, consistency across representations, and permitted effects where relevant. Empty or unreachable cases cannot prove populated behavior.
+
+Keep missing facts, cases, sources, and environment capabilities as explicit discovery dependencies, identifying what must establish them. Distinguish planned evidence from observed results; skips are not passes. Planning-only work claims no execution. Check complete coverage and resolve conflicts using existing source priority. Preserve all non-goals, mandatory checks, ownership, and authority. Continue already authorized work without routine permission questions.

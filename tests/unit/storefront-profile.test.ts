@@ -4,8 +4,11 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  PROOF_DEMONSTRATIONS_PATH,
+  PROOF_STORE_DESCRIPTION,
   STOREFRONT_PROFILE_PROOF,
   STOREFRONT_PROFILE_SHIPPING,
+  STORE_DESCRIPTION,
   isProofMutationEnabled,
   isProofStorefrontProfile,
   loadStorefrontRouteContext,
@@ -112,6 +115,24 @@ describe("storefront profile", () => {
       "everyday-tee",
       "boxy-tee-preview",
     ]);
+  });
+
+  it("isolates [data-integration-demos] and proof-only copy off / onto /proof", () => {
+    expect(PROOF_DEMONSTRATIONS_PATH).toBe("/proof");
+    expect(STORE_DESCRIPTION).toBe("A neutral storefront for EmDash and Commerce.");
+    expect(PROOF_STORE_DESCRIPTION).toBe(
+      "A neutral proof storefront for EmDash, Commerce, and Inventory.",
+    );
+    const home = readFileSync(resolve("src/pages/index.astro"), "utf8");
+    expect(home).not.toContain("data-integration-demos");
+    expect(home).not.toContain("ManagedProductAvailability");
+    expect(home).not.toContain("UnmanagedProductSellability");
+    expect(home).not.toContain("loadStorefrontRouteContext");
+    const proof = readFileSync(resolve("src/pages/proof.astro"), "utf8");
+    expect(proof).toContain("isProofStorefrontProfile()");
+    expect(proof).toContain("data-integration-demos");
+    expect(proof).toContain("<ManagedProductAvailability");
+    expect(proof).toContain("<UnmanagedProductSellability");
   });
 
   it("keeps the fresh seed Home opener on truthful Commerce shop copy and #commerce-catalog", () => {

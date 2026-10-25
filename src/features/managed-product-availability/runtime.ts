@@ -9,6 +9,8 @@ import {
   type ManagedStockManagement,
   type StoreInventoryConfigurationRecord,
 } from "@dinkuskit/commerce";
+
+import manifest from "../../../package.json" with { type: "json" };
 import {
   COMMAND_SCHEMA,
   CREATE_LOCATION_TYPE,
@@ -47,7 +49,7 @@ const INVENTORY_SKU_ID = "dinkus-inventory-sku-demo";
 const OPENING_QUANTITY = "8";
 
 const PROVENANCE = {
-  commerce: "288199275f61aec084c0e1e72b370ec74ea35369",
+  commerce: manifest.dinkuskit.sourcePins.commerce.commit,
   inventory: "5889c7d59398376da51ac400d5c1f1214aba2c6b",
 } as const;
 

@@ -9,7 +9,6 @@ const expectedPins = {
   "@dinkuskit/inventory":
     "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
 };
-const expectedCommerceCommit = "288199275f61aec084c0e1e72b370ec74ea35369";
 
 const failures = [];
 for (const feature of [
@@ -17,6 +16,7 @@ for (const feature of [
   "dinkus.managed-product-availability",
   "dinkus.unmanaged-product-sellability",
   "dinkus.guest-cart",
+  "dinkus.shopper-account",
   "dinkus.test-checkout-host",
   "dinkus.paired-checkout-consumer",
 ]) {
@@ -27,9 +27,10 @@ for (const feature of [
 if (
   manifest.dinkuskit?.sourcePins?.commerce?.repository !==
     "https://github.com/dinkuskit/commerce.git" ||
-  manifest.dinkuskit?.sourcePins?.commerce?.commit !== expectedCommerceCommit
+  !/^[0-9a-f]{40}$/u.test(manifest.dinkuskit?.sourcePins?.commerce?.commit ?? "") ||
+  !/^v\d+\.\d+\.\d+$/u.test(manifest.dinkuskit?.sourcePins?.commerce?.tag ?? "")
 ) {
-  failures.push("Commerce source preparation must retain its exact repository and commit");
+  failures.push("Commerce source preparation must retain its exact repository, release tag and commit");
 }
 
 const managedProductRuntime = readFileSync(
@@ -81,12 +82,24 @@ if (
   );
 }
 for (const path of [
+  "src/styles/tokens.css",
+  "src/styles/theme.css",
   "src/features/store-shell/index.ts",
+  "src/features/store-shell/StoreFooter.astro",
   "src/features/store-shell/price.ts",
+  "src/pages/proof.astro",
+  "src/pages/search.astro",
+  "scripts/upgrade-storefront-search.ts",
   "docs/implementation/unpriced-public-home.md",
   "src/features/managed-product-availability/index.ts",
   "src/features/unmanaged-product-sellability/index.ts",
   "src/features/guest-cart/index.ts",
+  "src/features/guest-cart/GuestCheckout.astro",
+  "src/pages/checkout/index.astro",
+  "src/features/shopper-account/index.ts",
+  "src/features/shopper-account/ui.ts",
+  "src/pages/account.astro",
+  "src/pages/api/account/demo-session.ts",
   "src/features/test-checkout-host/index.ts",
   "src/features/paired-checkout/index.ts",
   "scripts/verify-checkout-package.mjs",
@@ -133,12 +146,18 @@ for (const path of sourceFiles(resolve(root, "src"))) {
 
 for (const relative of [
   "src/pages/index.astro",
+  "src/pages/proof.astro",
+  "src/pages/search.astro",
   "src/pages/categories/[slug].astro",
   "src/pages/products/[id].astro",
   "src/pages/cart.astro",
+  "src/pages/checkout/index.astro",
+  "src/pages/account.astro",
   "src/pages/api/guest-cart/snapshot.ts",
+  "src/pages/api/account/demo-session.ts",
   "src/pages/api/proof/stock.ts",
   "src/pages/api/proof/unmanaged-availability.ts",
+  "src/pages/api/proof/shopper-account.ts",
 ]) {
   const source = readFileSync(resolve(root, relative), "utf8");
   if (

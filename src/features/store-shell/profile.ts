@@ -1,5 +1,6 @@
 export const STOREFRONT_PROFILE_SHIPPING = "shipping";
 export const STOREFRONT_PROFILE_PROOF = "proof";
+export const PROOF_DEMONSTRATIONS_PATH = "/proof";
 
 export type StorefrontProfile =
   | typeof STOREFRONT_PROFILE_SHIPPING

@@ -14,8 +14,65 @@ type HomeOpenerValue = BlockValue & {
 };
 const { value, index } = Astro.props as BlockComponentProps<HomeOpenerValue>;
 const HeadingTag = index === 0 ? "h1" : "h2";
+const filterId = `home-opener-pigment-drift-${index ?? 0}`;
+const patternId = `home-opener-riso-grain-${index ?? 0}`;
 ---
-<section class="home-opener" data-home-opener>
+<section class="home-opener" data-home-opener data-pigment-drift-hero>
+  <svg
+    class="home-opener__pigment-wash"
+    data-pigment-drift="hero"
+    viewBox="0 0 1120 420"
+    preserveAspectRatio="xMidYMid slice"
+    aria-hidden="true"
+  >
+    <defs>
+      <pattern id={patternId} width="10" height="10" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="0.85" fill="var(--store-ink)" fill-opacity="0.065" />
+        <circle cx="7" cy="7" r="0.75" fill="var(--store-accent)" fill-opacity="0.065" />
+      </pattern>
+      <filter id={filterId} x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.012 0.020"
+          numOctaves="3"
+          seed="17"
+          result="pigmentNoise"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="pigmentNoise"
+          scale="16"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </defs>
+
+    <rect width="1120" height="420" fill="var(--store-surface-subtle)" fill-opacity="0.52" />
+
+    <g class="home-opener__pigment-blobs" filter={`url(#${filterId})`}>
+      <ellipse cx="860" cy="145" rx="285" ry="165" fill="var(--store-accent)" fill-opacity="0.16" />
+      <ellipse cx="695" cy="240" rx="260" ry="150" fill="var(--store-ink)" fill-opacity="0.085" />
+      <path
+        d="M540 36 C710 -12, 980 28, 1088 148 C1145 235, 1015 385, 785 398 C565 410, 445 292, 540 36 Z"
+        fill="var(--store-accent)"
+        fill-opacity="0.11"
+      />
+      <circle cx="965" cy="105" r="118" fill="var(--store-ink)" fill-opacity="0.08" />
+      <ellipse cx="260" cy="110" rx="240" ry="120" fill="var(--store-bg)" fill-opacity="0.72" />
+    </g>
+
+    <rect width="1120" height="420" fill={`url(#${patternId})`} />
+
+    <g class="home-opener__studio-seal" transform="translate(996, 26)" opacity="0.34">
+      <rect x="0" y="0" width="92" height="66" rx="4" fill="var(--store-surface)" stroke="var(--store-accent)" stroke-width="2" />
+      <rect x="5" y="5" width="82" height="56" rx="2" fill="none" stroke="var(--store-accent)" stroke-width="1" stroke-opacity="0.6" />
+      <text x="46" y="27" text-anchor="middle" font-family="var(--font-mono)" font-size="10" font-weight="800" fill="var(--store-accent)" letter-spacing="1.5">DINKUS</text>
+      <line x1="16" y1="34" x2="76" y2="34" stroke="var(--store-accent)" stroke-width="1.2" />
+      <text x="46" y="49" text-anchor="middle" font-family="var(--font-mono)" font-size="9" font-weight="700" fill="var(--store-ink)" letter-spacing="1.5">PIGMENT WASH</text>
+    </g>
+  </svg>
+
   {value.eyebrow && <p class="home-opener__eyebrow">{value.eyebrow}</p>}
   <HeadingTag>{value.headline}</HeadingTag>
   {value.deck && <p class="home-opener__deck">{value.deck}</p>}
@@ -28,5 +85,119 @@ const HeadingTag = index === 0 ? "h1" : "h2";
   </dl> : null}
 </section>
 <style>
-  .home-opener{padding:clamp(2rem,7vw,5rem) 0 2rem}.home-opener__eyebrow{margin:0 0 .75rem;color:var(--store-muted);font-size:.76rem;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.home-opener h1,.home-opener h2{max-width:15ch;margin:0;font-size:clamp(2.5rem,7vw,5.5rem);line-height:.98;letter-spacing:-.055em}.home-opener__deck{max-width:48rem;color:var(--store-muted);font-size:1.1rem;line-height:1.65}.home-opener__actions{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin:1.5rem 0}.home-opener__actions a{color:inherit;font-weight:800;text-underline-offset:.25em}.home-opener__actions .home-opener__primary{padding:.8rem 1.1rem;border-radius:.4rem;background:var(--dinkus-action-background);color:var(--dinkus-action-color);text-decoration:none}.home-opener__facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:2rem 0 0}.home-opener__facts div{padding:1rem;border-top:1px solid var(--store-line)}.home-opener__facts dt{color:var(--store-muted);font-size:.8rem}.home-opener__facts dd{margin:.25rem 0 0;font-weight:800}@media(max-width:44rem){.home-opener__facts{grid-template-columns:1fr}}
+  .home-opener {
+    position: relative;
+    overflow: hidden;
+    margin: 1.5rem 0 0.5rem;
+    padding: clamp(2rem, 5.5vw, 4rem) clamp(1.35rem, 4vw, 3rem) clamp(1.75rem, 4vw, 2.5rem);
+    border: 1.5px solid var(--store-ink-border);
+    border-radius: var(--store-radius-card);
+    background: var(--store-surface);
+    box-shadow: 4px 4px 0 var(--store-shadow);
+    isolation: isolate;
+  }
+  .home-opener__pigment-wash {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .home-opener > :not(.home-opener__pigment-wash) {
+    position: relative;
+    z-index: 1;
+  }
+  .home-opener__pigment-blobs {
+    transform-origin: 75% 45%;
+    transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
+  }
+  .home-opener:hover .home-opener__pigment-blobs {
+    transform: scale(1.04) translate(-8px, 4px);
+  }
+  .home-opener__eyebrow {
+    margin: 0 0 0.75rem;
+    color: var(--store-accent);
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .home-opener h1,
+  .home-opener h2 {
+    max-width: 15ch;
+    margin: 0;
+    font-size: clamp(2.5rem, 7vw, 5.25rem);
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+  }
+  .home-opener__deck {
+    max-width: 48rem;
+    color: var(--store-muted);
+    font-size: 1.1rem;
+    line-height: 1.65;
+  }
+  .home-opener__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin: 1.5rem 0;
+  }
+  .home-opener__actions a {
+    color: inherit;
+    font-weight: 800;
+    text-underline-offset: 0.25em;
+  }
+  .home-opener__actions .home-opener__primary {
+    padding: 0.8rem 1.15rem;
+    border: 1.5px solid var(--store-ink-border);
+    border-radius: 0.4rem;
+    background: var(--dinkus-action-background);
+    color: var(--dinkus-action-color);
+    box-shadow: 3px 3px 0 var(--store-accent);
+    text-decoration: none;
+  }
+  .home-opener__facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 2rem 0 0;
+  }
+  .home-opener__facts div {
+    padding: 1rem;
+    border: 1.5px solid var(--store-ink-border);
+    border-radius: var(--store-radius-card);
+    background: var(--store-surface);
+    box-shadow: 3px 3px 0 var(--store-shadow);
+  }
+  .home-opener__facts dt {
+    color: var(--store-muted);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .home-opener__facts dd {
+    margin: 0.25rem 0 0;
+    font-weight: 800;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .home-opener__pigment-blobs,
+    .home-opener:hover .home-opener__pigment-blobs {
+      transition: none;
+      transform: none;
+    }
+  }
+  @media (max-width: 48rem) {
+    .home-opener__studio-seal {
+      display: none;
+    }
+  }
+  @media (max-width: 44rem) {
+    .home-opener__facts {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

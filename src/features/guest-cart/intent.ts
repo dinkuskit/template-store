@@ -86,6 +86,19 @@ export function parseGuestCartQuantityInput(value: string): number | null {
   return isSafeGuestCartQuantity(quantity) ? quantity : null;
 }
 
+export function stepGuestCartQuantityInput(
+  value: string,
+  delta: -1 | 1,
+  min: 0 | 1 = 1,
+): number {
+  const trimmed = value.trim();
+  const parsed = trimmed === "0" && min === 0 ? 0 : parseGuestCartQuantityInput(trimmed);
+  if (parsed === null) {
+    return min === 0 ? (delta > 0 ? 1 : 0) : 1;
+  }
+  return Math.min(GUEST_CART_MAX_QUANTITY, Math.max(min, parsed + delta));
+}
+
 export function addGuestCartLine(
   intent: GuestCartIntent,
   id: string,
