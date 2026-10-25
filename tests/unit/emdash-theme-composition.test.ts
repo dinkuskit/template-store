@@ -19,6 +19,7 @@ import {
   STORE_PRESETS,
   STORE_THEMES,
   ensureStorefrontSearchSupport,
+  filterPublicSearchApiResponse,
   filterStorefrontSearchHits,
   isSearchProductVisibleOnStorefront,
   isStorePresetName,
@@ -453,6 +454,45 @@ describe("EmDash composition primitives & seed contract", () => {
       ),
     ).toBe(false);
 
+    // When Commerce catalog read fails on shipping profile, Commerce-linked items fail closed
+    // (even if activeCommerceIds were stale/non-empty), while editorial previews stay visible:
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "archived-hoodie", slug: "archived-hoodie", commerceItemId: "cat_archived_hoodie" },
+        {
+          profile: "shipping",
+          catalogAvailable: false,
+          activeCommerceIds: new Set(),
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(false);
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "live-tee", slug: "live-tee", commerceItemId: "cat_live_tee" },
+        {
+          profile: "shipping",
+          catalogAvailable: false,
+          activeCommerceIds: activeIds,
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(false);
+    expect(
+      isSearchProductVisibleOnStorefront(
+        { id: "boxy-tee-preview", slug: "boxy-tee-preview", commerceItemId: "dinkus-template-preview-boxy-tee" },
+        {
+          profile: "shipping",
+          catalogAvailable: false,
+          activeCommerceIds: new Set(),
+          managedListable: false,
+          unmanagedListable: false,
+        },
+      ),
+    ).toBe(true);
+
     const visibleSlugs = new Set(["live-tee", "boxy-tee-preview"]);
     const rawHits = [
       { collection: "products", id: "live-tee", slug: "live-tee" },
@@ -466,6 +506,39 @@ describe("EmDash composition primitives & seed contract", () => {
       { collection: "pages", id: "shipping", slug: "shipping" },
       { collection: "categories", id: "tees", slug: "tees" },
     ]);
+  });
+
+  it("suppresses product hits on public search API responses when visibility resolution rejects", async () => {
+    const upstream = Response.json({
+      success: true,
+      data: {
+        items: [
+          { collection: "products", id: "live-tee", slug: "live-tee" },
+          { collection: "products", id: "archived-hoodie", slug: "archived-hoodie" },
+          { collection: "pages", id: "shipping", slug: "shipping" },
+          { collection: "categories", id: "tees", slug: "tees" },
+        ],
+        total: 4,
+      },
+    });
+    const filtered = await filterPublicSearchApiResponse(
+      upstream,
+      { runtime: null, request: new Request("http://127.0.0.1:4638/_emdash/api/search?q=tee") },
+      async () => {
+        throw new Error("visibility lookup failed");
+      },
+    );
+    expect(filtered.status).toBe(200);
+    await expect(filtered.json()).resolves.toEqual({
+      success: true,
+      data: {
+        items: [
+          { collection: "pages", id: "shipping", slug: "shipping" },
+          { collection: "categories", id: "tees", slug: "tees" },
+        ],
+        total: 2,
+      },
+    });
   });
 
   it("allows /search and EmDash public search API endpoints through the public boundary while rejecting non-storefront collections or draft status", () => {
