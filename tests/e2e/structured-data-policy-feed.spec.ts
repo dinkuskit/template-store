@@ -193,7 +193,7 @@ test("published Commerce products, policies, and feeds share one public revision
     await page.goto("/products/demo-hoodie");
     // Each picker value names an option value; the members list maps it to a Commerce item.
     const hoodieMembers = JSON.parse(await page.locator("[data-variant-members]").textContent() ?? "[]") as { id: string; values: Record<string, string> }[];
-    mediumHoodieId = hoodieMembers.find((member) => member.values.Size === "Medium")?.id ?? "";
+    mediumHoodieId = hoodieMembers.find((member) => member.values.Color === "Black" && member.values.Size === "Medium")?.id ?? "";
     expect(mediumHoodieId).not.toBe("");
     const mediumUnavailable = await adminPost(admin, AVAILABILITY_ROUTE, { catalogItemId: mediumHoodieId, status: "out-of-stock" });
     expect(mediumUnavailable.ok(), await mediumUnavailable.text()).toBe(true);

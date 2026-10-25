@@ -43,10 +43,11 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   await expect(page.locator("[data-product-status]")).toHaveText("Out of stock");
   await expect(page.locator("[data-add-to-cart]")).toHaveCount(0);
   await page.goto("/products/demo-hoodie");
-  // One Size picker and one Add to cart; the sold-out Large stays visible.
+  // One Color picker, one Size picker and one Add to cart; the sold-out Black Large stays visible.
   await expect(page.locator("[data-product-from-price]")).toHaveCount(0);
-  await expect(page.locator("[data-product-variants]")).toHaveCount(1);
-  await expect(page.locator("[data-product-variants] legend")).toHaveText("Size");
+  await expect(page.locator("[data-product-variants]")).toHaveCount(2);
+  await expect(page.locator("[data-product-variants] legend")).toHaveText(["Color", "Size"]);
+  await expect(page.getByLabel("Black")).toBeChecked();
   await expect(page.locator("[data-add-to-cart-batch]")).toHaveCount(0);
   await expect(page.getByLabel("Large")).toHaveAttribute("data-variant-sold-out", "true");
   await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
@@ -64,8 +65,17 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   await page.getByLabel("Small").check();
   await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
   expect(JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "")).toEqual(hoodieJsonLd);
+  // Large is only sold out in Black.
+  await page.getByLabel("Heather gray").check();
+  await expect(page.getByLabel("Large")).toHaveAttribute("data-variant-sold-out", "false");
+  await page.getByLabel("Large").check();
+  await expect(page.locator("[data-variant-price]")).toHaveText("$60.00");
+  await expect(page.locator("[data-product-status]")).toHaveText("In stock");
+  await page.getByLabel("Black").check();
+  await expect(page.locator("[data-product-status]")).toHaveText("Out of stock");
   await page.getByLabel("Medium").check();
   await page.reload();
+  await expect(page.getByLabel("Black")).toBeChecked();
   await expect(page.getByLabel("Small")).toBeChecked();
   expect(JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "")).toEqual(hoodieJsonLd);
 });

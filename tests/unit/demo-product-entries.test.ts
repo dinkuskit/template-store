@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku } from "../../scripts/demo-seed-policy.js";
+import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, demoVariantOptionInput } from "../../scripts/demo-seed-policy.js";
 import {
   buildDemoProductEntries,
   demoPlaceholderImage,
@@ -51,11 +51,62 @@ describe("demo EmDash product entries", () => {
 
   it("seeds the Large hoodie sold out so every demo store has an unavailable size", () => {
     const hoodie = DEMO_PRODUCTS.find((product) => product.variant)!;
-    expect(hoodie.variant!.values.map((value) => value.label)).toEqual(["Small", "Medium", "Large"]);
+    expect(hoodie.variant!.options.map((option) => option.optionLabel)).toEqual(["Color", "Size"]);
+    expect(hoodie.variant!.options[1]!.values.map((value) => value.label)).toEqual(["Small", "Medium", "Large"]);
     expect(demoAvailabilityForSku(hoodie, "DEMO-HOSTED-HOODIE-S")).toBe("in-stock");
     expect(demoAvailabilityForSku(hoodie, "DEMO-HOSTED-HOODIE-M")).toBe("in-stock");
     expect(demoAvailabilityForSku(hoodie, "demo-hosted-hoodie-l")).toBe("out-of-stock");
     expect(demoRegularMinorForSku(hoodie, "DEMO-HOSTED-HOODIE-L")).toBe("6000");
+  });
+
+  it("seeds the hoodie in Black and Heather gray, with only Black Large sold out", () => {
+    const hoodie = DEMO_PRODUCTS.find((product) => product.variant)!;
+    expect(hoodie.variant!.options[0]!.values.map((value) => value.label)).toEqual(["Black", "Heather gray"]);
+    expect(hoodie.variant!.members).toHaveLength(6);
+    expect(hoodie.variant!.members[0]!.sku).toBe(hoodie.sku);
+    expect(demoAvailabilityForSku(hoodie, "DEMO-HOSTED-HOODIE-HG-L")).toBe("in-stock");
+    expect(demoRegularMinorForSku(hoodie, "DEMO-HOSTED-HOODIE-HG-S")).toBe("5600");
+    expect(demoRegularMinorForSku(hoodie, "DEMO-HOSTED-HOODIE-HG-M")).toBe("6000");
+  });
+
+  it("adds the hoodie colors first, then sizes for every color", () => {
+    const hoodie = DEMO_PRODUCTS.find((product) => product.variant)!;
+    expect(demoVariantOptionInput(hoodie, 0, "parent", new Map())).toEqual({
+      productId: "parent",
+      optionId: "color",
+      optionLabel: "Color",
+      values: [
+        { valueId: "black", label: "Black", member: { catalogItemId: "parent", fulfillment: "physical" } },
+        {
+          valueId: "heather-gray",
+          label: "Heather gray",
+          member: {
+            commandId: "seed-demo-hoodie-heather-gray-small",
+            name: "Dinkus Demo Everyday Hoodie",
+            sku: "DEMO-HOSTED-HOODIE-HG-S",
+            fulfillment: "physical",
+            selections: [],
+          },
+        },
+      ],
+    });
+    const sizes = demoVariantOptionInput(hoodie, 1, "parent", new Map([["DEMO-HOSTED-HOODIE-HG-S", "hg-small"]]), 1);
+    expect(sizes.expectedRevision).toBe(1);
+    expect(sizes.values.map((value) => value.valueId)).toEqual(["small", "medium", "large"]);
+    expect(sizes.values[0]).toEqual({
+      valueId: "small",
+      label: "Small",
+      members: [
+        { catalogItemId: "parent", fulfillment: "physical" },
+        { catalogItemId: "hg-small", fulfillment: "physical" },
+      ],
+    });
+    expect(sizes.values[2]).toEqual(expect.objectContaining({
+      members: [
+        expect.objectContaining({ sku: "DEMO-HOSTED-HOODIE-L", selections: [{ optionId: "color", valueId: "black" }] }),
+        expect.objectContaining({ sku: "DEMO-HOSTED-HOODIE-HG-L", selections: [{ optionId: "color", valueId: "heather-gray" }] }),
+      ],
+    }));
   });
 
   it("runs only for the playground and demo profile, never a shipping store", () => {

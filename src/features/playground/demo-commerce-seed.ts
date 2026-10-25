@@ -30,7 +30,7 @@ import { createSettingsAccess, OptionsRepository, PluginStorageRepository } from
 import { applySeed, type SeedFile } from "emdash/seed";
 import { sql } from "kysely";
 
-import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
+import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, demoVariantOptionInput, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
 import { ensureStorefrontSearchSupport } from "../store-shell/index.js";
 import { buildDemoProductEntries } from "./demo-products.js";
 import { ensurePlaygroundSampleOrders } from "./demo-orders.js";
@@ -108,24 +108,28 @@ async function createProduct(storage: Storage, product: DemoProductSeed): Promis
   const parentId = created.item.itemId;
   const items = [{ catalogItemId: parentId, sku: product.sku }];
   if (variant) {
-    await addCatalogVariantOption({ catalog: storage.catalog }, {
-      productId: parentId,
-      optionId: variant.optionId,
-      optionLabel: variant.optionLabel,
-      values: variant.values.map((value, index) => ({
-        valueId: value.valueId,
-        label: value.label,
-        member: index === 0
-          ? { catalogItemId: parentId, fulfillment: "physical" as const }
-          : { commandId: value.commandId, name: value.name, sku: value.sku, fulfillment: "physical" as const },
-      })),
-    }, { collection: CATALOG_COLLECTION, pluginId: COMMERCE_PLUGIN_ID });
-    const parent = await storage.catalog.get(parentId) as { variantProduct?: { members: { catalogItemId: string }[] } } | null;
-    for (const member of parent?.variantProduct?.members ?? []) {
-      if (member.catalogItemId === parentId) continue;
-      const record = await storage.catalog.get(member.catalogItemId);
-      items.push({ catalogItemId: member.catalogItemId, sku: record?.sku ?? product.sku });
+    // Commerce adds one option at a time; each later option names the revision it read.
+    const readVariant = async () => {
+      const parent = await storage.catalog.get(parentId) as {
+        variantProduct?: { revision: number; members: { catalogItemId: string }[] };
+      } | null;
+      const members = new Map<string, string>();
+      for (const member of parent?.variantProduct?.members ?? []) {
+        if (member.catalogItemId === parentId) continue;
+        const record = await storage.catalog.get(member.catalogItemId);
+        if (record?.sku) members.set(record.sku.toUpperCase(), member.catalogItemId);
+      }
+      return { revision: parent?.variantProduct?.revision, members };
+    };
+    for (const [index] of variant.options.entries()) {
+      const read = await readVariant();
+      await addCatalogVariantOption(
+        { catalog: storage.catalog },
+        demoVariantOptionInput(product, index, parentId, read.members, index === 0 ? undefined : read.revision),
+        { collection: CATALOG_COLLECTION, pluginId: COMMERCE_PLUGIN_ID },
+      );
     }
+    for (const [sku, catalogItemId] of (await readVariant()).members) items.push({ catalogItemId, sku });
   }
   for (const { catalogItemId, sku } of items) {
     await setCatalogItemRegularPrice(storage, {
