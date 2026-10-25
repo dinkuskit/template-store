@@ -228,8 +228,14 @@ export interface PendingSales {
   put(id: string, value: unknown): Promise<void>;
 }
 
-// A product the sweep put on sale and must take off again; kept until Commerce confirms the off-sale write.
+// A product the sweep put on sale and must take off again (`takeback:<page>:<product digest>`, one per product, within
+// EmDash's 1,024-character key limit); kept until Commerce confirms the off-sale write, and then removed only at the
+// revision that write answered.
 const TAKEBACK = "takeback:";
+async function takebackKey(entryId: string, catalogItemId: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(catalogItemId));
+  return `${TAKEBACK}${entryId}:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
 
 type Grant = { by: string; role: number; itemId: string };
 
@@ -271,8 +277,9 @@ const PENDING_BATCH = 50;
  *   many wait, and a change one write causes to another record is seen by that
  *   record's check.
  * - A sale write Commerce refuses keeps the record for a later sweep. Taking a
- *   product off sale again is recorded (`takeback:<page>`) before it is tried and
- *   retried on later sweeps until Commerce confirms it; it never sells. Like every
+ *   product off sale again is recorded (one `takeback:` per product) before it is
+ *   tried and retried on later sweeps until Commerce confirms it, and only the
+ *   listing that write answered is removed; it never sells. Like every
  *   late off-sale write, it can at worst leave a published page's product a
  *   Draft, and publishing again fixes it.
  */
@@ -295,12 +302,12 @@ export async function sellScheduledPages(
     const stored = await pendingSales.getVersioned(id);
     if (stored) snapshot.push({ id, stored });
   }
-  const offSale = async (visitor: unknown, entryId: string, catalogItemId: string) => {
-    const key = TAKEBACK + entryId;
+  // The listed take-back at `revision` is removed only once Commerce confirms its off-sale write. A take-back listed
+  // again meanwhile has a new revision and stays for a later sweep (the write is safe to repeat).
+  const offSale = async (visitor: unknown, key: string, revision: string, entryId: string, catalogItemId: string) => {
     const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { catalogItemId, entryId, onSale: false });
     if (failed) return failed;
-    const takeback = await pendingSales.getVersioned(key);
-    if (takeback) await pendingSales.compareAndDelete(key, takeback.revision);
+    await pendingSales.compareAndDelete(key, revision);
     return null;
   };
   for (const { id, stored } of snapshot) {
@@ -313,10 +320,10 @@ export async function sellScheduledPages(
       const visitor = await visitorNow();
       if (!visitor) return cursor;
       const failed = typeof takeback?.entryId === "string" && typeof takeback.catalogItemId === "string"
-        ? await offSale(visitor, takeback.entryId, takeback.catalogItemId)
+        ? await offSale(visitor, id, stored.revision, takeback.entryId, takeback.catalogItemId)
         : null;
+      if (!takeback || typeof takeback.entryId !== "string" || typeof takeback.catalogItemId !== "string") await pendingSales.compareAndDelete(id, stored.revision);
       if (failed) console.warn("[product-on-sale] a product to take off sale again stays on the list:", failed);
-      else await pendingSales.compareAndDelete(id, stored.revision);
       continue;
     }
     const unchanged = async () => (await pendingSales.getVersioned(id))?.revision === stored.revision;
@@ -355,8 +362,12 @@ export async function sellScheduledPages(
     const after = await productPage(runtime, id);
     const stillGranted = await unchanged().catch(() => false);
     if (!(stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId)) {
-      await pendingSales.put(TAKEBACK + page.id, { takeback: true, ...body });
-      const off = await offSale(visitor, page.id, grant.itemId);
+      // Listed before it is tried. If another sweep lists the same product meanwhile, its on-sale write came before
+      // this listing, so this off-sale write still answers it.
+      const key = await takebackKey(page.id, grant.itemId);
+      await pendingSales.put(key, { takeback: true, ...body });
+      const listed = await pendingSales.getVersioned(key);
+      const off = listed ? await offSale(visitor, key, listed.revision, page.id, grant.itemId) : null;
       if (off) console.warn("[product-on-sale] the schedule or page changed meanwhile; taking the product off sale again is retried later:", off);
     }
     await drop();

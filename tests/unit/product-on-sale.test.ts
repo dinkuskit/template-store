@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { productPageChange, scheduledSaleSweeper, sellScheduledPages, withProductOnSale } from "../../src/features/product-on-sale/index.js";
@@ -312,6 +313,9 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     }
   }
 
+  // The take-back key the sweep lists: the page, then the product's SHA-256.
+  const takebackOf = async (entryId: string, itemId: string) =>
+    `takeback:${entryId}:${createHash("sha256").update(itemId).digest("hex")}`;
   type Page = { status: string; scheduledAt?: string | null; item?: string };
   function site(pages: Record<string, Page>, result: unknown = { success: true, data: { changed: true } }) {
     const rt = runtime({ commerce_item_id: "item-1" }, result as never);
@@ -471,10 +475,10 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
       return { success: false, error: { code: "INTERNAL_ERROR", message: "down" } } as never;
     });
     await sweep(rt, pending);
-    expect([...pending.rows.keys()]).toEqual(["takeback:hat"]);
+    expect([...pending.rows.keys()]).toEqual([await takebackOf("hat", "item-hat")]);
     // A later sweep retries only the off-sale write; it stays listed while Commerce refuses, then clears.
     await sweep(rt, pending);
-    expect([...pending.rows.keys()]).toEqual(["takeback:hat"]);
+    expect([...pending.rows.keys()]).toEqual([await takebackOf("hat", "item-hat")]);
     rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
       rt.calls.push({ pluginId, path, body: await request.json(), user: caller });
       return { success: true, data: { changed: true } };
@@ -482,6 +486,38 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     await sweep(rt, pending);
     expect(pending.rows.size).toBe(0);
     expect(rt.calls.map((call) => (call.body as { onSale: boolean }).onSale)).toEqual([true, false, false, false]);
+    warn.mockRestore();
+  });
+
+  it("removes only the take-back listing its own off-sale write answered", async () => {
+    const pending = new Pending();
+    // Two products to take off sale for one page (it was relinked meanwhile), listed separately.
+    const oldKey = await takebackOf("hat", "item-old");
+    const newKey = await takebackOf("hat", "item-new");
+    pending.put(oldKey, { takeback: true, catalogItemId: "item-old", entryId: "hat" });
+    pending.put(newKey, { takeback: true, catalogItemId: "item-new", entryId: "hat" });
+    const rt = site({});
+    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+      const body = await request.json() as { catalogItemId: string };
+      rt.calls.push({ pluginId, path, body, user: caller });
+      // While the old product's write is in flight, another sweep lists the old product again, and the new
+      // product's write fails.
+      if (body.catalogItemId === "item-old" && rt.calls.length === 1) pending.put(oldKey, { takeback: true, catalogItemId: "item-old", entryId: "hat" });
+      return body.catalogItemId === "item-new"
+        ? { success: false, error: { code: "INTERNAL_ERROR", message: "down" } } as never
+        : { success: true, data: { changed: true } };
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await sweep(rt, pending);
+    // The old write answered the first listing only; the newer listing and the refused one both stay.
+    expect([...pending.rows.keys()].sort()).toEqual([newKey, oldKey].sort());
+    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+      rt.calls.push({ pluginId, path, body: await request.json(), user: caller });
+      return { success: true, data: { changed: true } };
+    });
+    await sweep(rt, pending);
+    expect(pending.rows.size).toBe(0);
+    expect(rt.calls.every((call) => (call.body as { onSale: boolean }).onSale === false)).toBe(true);
     warn.mockRestore();
   });
 

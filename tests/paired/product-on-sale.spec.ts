@@ -287,8 +287,9 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
     const row = read<{ data: string }>("SELECT data FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id = ?", id);
     return row ? (JSON.parse(row.data) as Record<string, unknown>) : undefined;
   };
-  const schedule = (id: string, inMs = 3_000) =>
-    request.post(`/_emdash/api/content/products/${id}/schedule`, { headers, data: { scheduledAt: new Date(Date.now() + inMs).toISOString() } });
+  const scheduleAt = (id: string, scheduledAt: string) =>
+    request.post(`/_emdash/api/content/products/${id}/schedule`, { headers, data: { scheduledAt } });
+  const schedule = (id: string, inMs = 3_000) => scheduleAt(id, new Date(Date.now() + inMs).toISOString());
   // EmDash's own scheduler publishes the page (every minute at most on Node, as the Cron Trigger on Cloudflare).
   // Nobody makes a request meanwhile, so the page goes live with nobody signed in.
   const scheduledPublish = async (id: string) => {
@@ -322,7 +323,7 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
   const scheduled = await schedule(pageId);
   expect(scheduled.ok(), await scheduled.text()).toBe(true);
   expect(stored(pageId)?.status).toBe("scheduled");
-  await expect.poll(() => pending(pageId)).toMatchObject({ proposals: [], confirmed: { itemId, role: ROLE.ADMIN }, state: "scheduled" });
+  await expect.poll(() => pending(pageId)).toMatchObject({ proposals: [{ itemId, role: ROLE.ADMIN }], confirmed: { itemId, role: ROLE.ADMIN }, state: "scheduled" });
   // EmDash publishes it with nobody signed in: the product is still a Draft, the grant now published.
   await scheduledPublish(pageId);
   expect(product(itemId).offSale).toBe(true);
@@ -356,12 +357,36 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
   await expect((await openPanel(page)).getByText(/^Draft: publish to sell it/)).toBeVisible();
   await capture(page, "14-author-scheduled-still-draft");
 
-  // 15. Grants withdrawn mid-sweep, and an off-sale write Commerce refuses. The admin schedules both pages and EmDash
+  // 15. One request never lends its authority to another's stored schedule. After an admin unpublish, the admin
+  // schedules the page; then the same person, lowered to Author, schedules it again for the same moment, so the
+  // schedule EmDash holds is the Author's request. The admin's earlier proposal is withdrawn at once: the grant is the
+  // Author's. EmDash publishes it, and the admin's visits drop the grant without selling.
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  const moment = new Date(Date.now() + 15_000).toISOString();
+  expect((await scheduleAt(pageId, moment)).ok()).toBe(true);
+  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
+  setRole(ROLE.AUTHOR);
+  try {
+    const again = await scheduleAt(pageId, moment);
+    expect(again.ok(), await again.text()).toBe(true);
+  } finally {
+    setRole(ROLE.ADMIN);
+  }
+  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.AUTHOR } });
+  await scheduledPublish(pageId);
+  await adminVisits(pageId, () => pending(pageId), undefined);
+  expect(stored(pageId)?.status).toBe("published");
+  expect(product(itemId).offSale).toBe(true);
+  expect(await onShop(request)).toEqual([]);
+
+  // 16. Grants withdrawn mid-sweep, and an off-sale write Commerce refuses. The admin schedules both pages and EmDash
   // publishes them, so one sweep reads both grants before writing. SQLite triggers then remove both grants at the
   // moment Commerce writes either product on sale (as a person's own publish removes a grant), and refuse Commerce's
   // off-sale writes. The first product goes on sale, its grant is gone, so the store must take it back: the refused
   // write is kept on a list. The second grant was read before that write and removed after, so its product is never
-  // written on sale. Once Commerce accepts writes again, a later visit takes the first product off sale.
+  // written on sale. Once Commerce accepts writes again, another sweep lists the same product again while the store's
+  // off-sale write is in flight; that write answers only the listing it read, so the newer one stays until a later
+  // visit's own off-sale write clears it.
   for (const id of [pageId, cap.pageId]) expect((await request.post(`/_emdash/api/content/products/${id}/unpublish`, { headers })).ok()).toBe(true);
   for (const id of [pageId, cap.pageId]) expect((await schedule(id, 5_000)).ok()).toBe(true);
   for (const id of [pageId, cap.pageId]) await expect.poll(() => pending(id)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
@@ -400,16 +425,31 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
     const other = sold === itemId ? cap.itemId : itemId;
     expect(product(other).offSale).toBe(true);
     for (const id of [pageId, cap.pageId]) expect(pending(id)).toBeUndefined();
-    // Commerce accepts writes again: a later visit takes the product off sale and clears the list, selling nothing.
+    // Commerce accepts writes again. The first off-sale write that lands lists the product again (a new revision, as
+    // another sweep's listing would), once.
+    const listing = () => read<{ revision: string }>("SELECT revision FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id LIKE 'takeback:%'")?.revision;
+    const firstListing = listing();
     onDb("DROP TRIGGER IF EXISTS proof_refuse_off_sale");
+    onDb("CREATE TABLE IF NOT EXISTS proof_relisted (at TEXT)");
+    trigger("proof_relist_takeback", `AFTER UPDATE ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id IN (${items}) AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) = 1 AND NOT EXISTS (SELECT 1 FROM proof_relisted) BEGIN
+      INSERT INTO proof_relisted VALUES (datetime('now'));
+      UPDATE _plugin_storage SET revision = 'proof-relisted' WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id LIKE 'takeback:%';
+    END`);
+    await adminVisits(pageId, listing, "proof-relisted");
+    expect(firstListing).not.toBe("proof-relisted");
+    expect(product(sold).offSale).toBe(true);
+    // The newer listing stays after that write; a later visit's own off-sale write clears it, selling nothing.
     await adminVisits(pageId, takebacks, 0);
-    expect(writes().map((write) => write.on_sale)).toEqual([1, 0]);
+    const sequence = writes().map((write) => write.on_sale);
+    expect(sequence.slice(0, 2)).toEqual([1, 0]);
+    expect(sequence.slice(1).every((onSaleWrite) => onSaleWrite === 0)).toBe(true);
     expect(product(sold).offSale).toBe(true);
     expect(product(other).offSale).toBe(true);
     expect(await onShop(request)).toEqual([]);
   } finally {
     for (const name of triggers) onDb(`DROP TRIGGER IF EXISTS ${name}`);
     onDb("DROP TABLE IF EXISTS proof_sale_writes");
+    onDb("DROP TABLE IF EXISTS proof_relisted");
   }
 
   // Leave the shop empty for the next run.

@@ -80,7 +80,7 @@ and calls nothing, so pages change exactly as before, including an Author's own 
 Screenshots from the run are written to `test-results/paired-product-on-sale/` (not committed):
 `desktop-` and `phone-` versions of `1-draft.png`, `2-published-on-sale.png`, `6-author-published-still-draft.png`,
 `8-trashed-product-without-page.png`, `13-scheduled-on-sale.png` and `14-author-scheduled-still-draft.png`. The run with
-steps 13-15 passed 4 of 4 (two tests, desktop and phone) in 10.2 minutes.
+steps 13-16 passed 4 of 4 (two tests, desktop and phone) in 13.7 minutes.
 
 ## Scheduled publishes (follow-up the owner chose, 25 Oct 2026 00:20 UTC: "Merge now, fix schedules next")
 
@@ -88,19 +88,22 @@ EmDash publishes a scheduled page from its own scheduler (a timer on Node, the C
 nobody signed in, so the publish check cannot put the product on sale then. Instead:
 
 - The product-url plugin keeps a record per products page (`pending_sales`). Each schedule asked for through the admin
-  or MCP is first proposed (who, their role then, the product, the time; a schedule from no person proposes no one).
-  When EmDash has stored a schedule (`content:afterSchedule`), the proposal at that time becomes the page's grant; if
-  overlapping proposals share the time, the one with the least authority is taken, and each stored schedule clears the
-  proposals, so one request's proposal never lends its authority to another's schedule and a failed schedule grants
-  nothing. EmDash's own scheduled publish marks the grant publishing, and published once it succeeded. A person's own
-  publish, an unschedule, unpublish or trash removes the record.
+  or MCP is first proposed (who, their role then, the product, the time; a schedule from no person proposes no one), and
+  proposals are kept until the record is removed. When EmDash has stored a schedule (`content:afterSchedule`), the
+  plugin reads the time the page holds now and grants from the proposals at that time: they must all come from one
+  person, whose least role is taken. Proposals from different people at that time (one of whose requests may have
+  failed), one from no person, or more distinct proposals than are kept, grant nothing. A new proposal can only weaken
+  a grant, even if its confirmation never runs. So one request's proposal never lends its authority to another's
+  stored schedule, and a failed schedule grants nothing. EmDash's own scheduled publish marks the grant publishing,
+  and published once it succeeded. A person's own publish, an unschedule, unpublish or trash removes the record.
 - On the next request from someone holding the route's permission, at most once a minute per isolate, the store reads
   a batch of records (all before any write), resuming where the last sweep stopped. A published grant sells the page's
   product as that visitor when the page is published with the granted product and not scheduled again, and the person
   who scheduled it held the permission then and still does. Right before the write, the visitor is read again and the
   record must still be the one read; after it, the page and the record are read again, and if either changed the
-  product goes off sale again. That off-sale write is first recorded (`takeback:<page>`) and retried on later sweeps
-  until Commerce accepts it; it never sells. Anything else (an Author's grant, a page gone, unpublished or linked to
+  product goes off sale again. That off-sale write is first recorded (one `takeback:` per page and product) and retried
+  on later sweeps until Commerce accepts it; a successful write removes only the listing at the revision it read, so a
+  listing made again meanwhile stays for its own write. It never sells. Anything else (an Author's grant, a page gone, unpublished or linked to
   another product) drops the record without selling; a record still in progress is kept until it is ten minutes old.
 
 The same paired run proves it, on desktop and phone, with EmDash's real scheduler:
@@ -109,13 +112,16 @@ The same paired run proves it, on desktop and phone, with EmDash's real schedule
 | --- | --- | --- | --- |
 | 13 | Admin | Tries to schedule a live page whose product is a Draft (an Author published it) in the past: EmDash refuses after the plugin saw the proposal. Schedules another page 3 seconds ahead; no request is made until EmDash publishes it | Failed schedule: no grant, its product stays a Draft. Stored schedule: granted; published with the product still a Draft; on the admin's next visit (within a minute) the product goes on sale, the panel says On sale and the record is gone |
 | 14 | Author (same person, role lowered) | After an admin unpublish, schedules their own page; EmDash publishes it; the admin visits | The admin's visit drops the Author's grant; the product stays a Draft; catalog empty |
-| 15 | Admin | Schedules both pages; EmDash publishes both, so one sweep reads both grants. Triggers remove both grants the moment Commerce writes either product on sale, and refuse Commerce's off-sale writes | The first product is written on sale, its grant is gone, and the refused off-sale write is kept on the list; the second grant, read before and removed after that write, never reaches Commerce. Once Commerce accepts writes again, a later visit takes the first product off sale and clears the list: one on-sale write, one off-sale write, both products Drafts, catalog empty |
+| 15 | Admin, then the same person as Author | After an admin unpublish, the admin schedules the page; the same person, lowered to Author, schedules it again for the same moment, so the schedule EmDash holds is the Author's request | The admin's earlier proposal is withdrawn at once and the grant is the Author's; EmDash publishes the page; the admin's visits drop the grant; the product stays a Draft and the catalog is empty |
+| 16 | Admin | Schedules both pages; EmDash publishes both, so one sweep reads both grants. Triggers remove both grants the moment Commerce writes either product on sale, and refuse Commerce's off-sale writes. Then Commerce accepts writes again, and the first off-sale write that lands lists the product again (a new revision, as another sweep's listing would) | The first product is written on sale, its grant is gone, and the refused off-sale write is kept on the list; the second grant, read before and removed after that write, never reaches Commerce. The write that lands answers only the listing it read: the newer listing stays, and a later visit's own off-sale write clears it. On-sale writes: one; every later write takes it off sale; both products Drafts, catalog empty |
 
 Unit tests in `tests/unit/product-on-sale.test.ts` and `tests/unit/product-url-plugin.test.ts` cover proposal and
-confirmation (including a failed admin reschedule over an Author's stored schedule, a schedule from no person, and a
-stored time that differs), the scheduler's publish, every removal, schedules by an Author or by someone who lost the
+confirmation (including a failed admin reschedule over an Author's stored schedule, a schedule from no person, a
+stored time that differs, a page that cannot be read, interleaved proposals and confirmations from an Author and two
+admins, a late confirmation carrying an older time, a grant withdrawn by a later proposal, and too many proposals), the scheduler's publish, every removal, schedules by an Author or by someone who lost the
 permission or gained it only later, a visitor without it, an older Commerce, a record removed or replaced before the
-write and after it (including one removed by another write of the same sweep), overlapping proposals at the same time,
+write and after it (including one removed by another write of the same sweep), overlapping proposals at the same time, a take-back listed again while its write is in flight, separate take-backs
+for one page's old and new products,
 gone, unpublished, relinked and stale records, a refused sale kept for later, a refused off-sale write retried until
 accepted, progress across batches, and the once-a-minute limit.
 

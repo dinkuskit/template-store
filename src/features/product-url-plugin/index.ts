@@ -17,21 +17,23 @@ type ProductClaim = {
  */
 export type ScheduleGrant = { by: string; role: number; itemId: string; scheduledAt: string };
 /**
- * - `proposals`: schedules asked for and not yet stored, written before EmDash
- *   stores each (a schedule from no person proposes `by: ""`, role 0).
- * - `confirmed`: set once EmDash has stored a schedule (`content:afterSchedule`)
- *   from the proposal at that time, so a schedule that failed grants nothing.
- *   If several overlapping proposals share the time, the one with the least
- *   authority is taken, so another request's proposal never lends its authority
- *   to the schedule that was stored. Each stored schedule clears the proposals,
- *   so a later one with nothing proposed grants nothing. Null when it grants
- *   nothing.
+ * - `proposals`: every schedule asked for since the record was made, written
+ *   before EmDash stores each (a schedule from no person proposes `by: ""`,
+ *   role 0). They are kept until the record is removed, so a schedule's
+ *   proposal is never lost to another request's confirmation.
+ * - `overflowed`: more distinct proposals than are kept; nothing is granted
+ *   until the record is removed.
+ * - `confirmed`: the grant for the schedule EmDash has stored (`grantFor`), read
+ *   from the page itself once `content:afterSchedule` runs, so a schedule that
+ *   failed grants nothing. Every new proposal can only weaken it. Null when it
+ *   grants nothing.
  * - `state`: `publishing` once EmDash's scheduler starts publishing the page,
  *   `published` once that publish succeeded. Only a `published` record sells.
  */
 export type PendingSale = {
   entryId: string;
   proposals: ScheduleGrant[];
+  overflowed?: boolean;
   confirmed: ScheduleGrant | null;
   state: "scheduled" | "publishing" | "published";
   updatedAt: string;
@@ -86,8 +88,23 @@ async function changePending(store: PendingStore, entryId: string, next: (curren
 }
 
 const sameMoment = (a: string, b: unknown) => typeof b === "string" && Date.parse(a) === Date.parse(b);
-// Proposals kept per page; failed schedules leave theirs until the next stored schedule clears them.
-const MAX_PROPOSALS = 20;
+// Distinct proposals kept per page; past this the record grants nothing until it is removed.
+const MAX_PROPOSALS = 50;
+
+/**
+ * The grant for a schedule stored at `scheduledAt`: the proposals at that time must all come from one person, and the
+ * least role among them is taken. None, one from no person, or proposals from different people (one of whose requests
+ * may have failed, so whose schedule was stored is unknown) grant nothing. Adding proposals can only weaken it.
+ */
+export function grantFor(sale: Pick<PendingSale, "proposals" | "overflowed">, scheduledAt: unknown): ScheduleGrant | null {
+  if (sale.overflowed) return null;
+  const matching = sale.proposals.filter((proposal) => sameMoment(proposal.scheduledAt, scheduledAt));
+  if (!matching.length || matching.some((proposal) => !proposal.by || proposal.by !== matching[0].by)) return null;
+  return matching.reduce((low, proposal) => (proposal.role < low.role ? proposal : low));
+}
+
+const sameProposal = (a: ScheduleGrant, b: ScheduleGrant) =>
+  a.by === b.by && a.role === b.role && a.itemId === b.itemId && sameMoment(a.scheduledAt, b.scheduledAt);
 
 export function createPlugin() {
   return definePlugin({
@@ -162,27 +179,28 @@ export function createPlugin() {
           reason: "Commerce product is already claimed by another scheduled or published product.",
         };
       }
-      // Proposed before EmDash stores the schedule; content:afterSchedule confirms it only if that succeeded.
+      // Proposed before EmDash stores the schedule; content:afterSchedule grants from it only if that succeeded. A
+      // proposal at the confirmed time can only weaken the grant, even if afterSchedule never runs.
       const proposal = { by: event.actor?.id ?? "", role: event.actor?.id ? event.actor.role : 0, itemId, scheduledAt: event.scheduledAt };
-      await changePending(ctx.storage[PENDING_SALES], entryId, (current) => ({
-        entryId,
-        proposals: [...(current?.proposals ?? []), proposal].slice(-MAX_PROPOSALS),
-        confirmed: current?.confirmed ?? null,
-        state: current?.state ?? "scheduled",
-      }));
+      await changePending(ctx.storage[PENDING_SALES], entryId, (current) => {
+        const kept = current?.proposals ?? [];
+        const known = kept.some((existing) => sameProposal(existing, proposal));
+        const overflowed = !!current?.overflowed || (!known && kept.length >= MAX_PROPOSALS);
+        const proposals = known || overflowed ? kept : [...kept, proposal];
+        const confirmed = current?.confirmed ? grantFor({ proposals: [...proposals, proposal], overflowed }, current.confirmed.scheduledAt) : null;
+        return { entryId, proposals, overflowed, confirmed, state: current?.state ?? "scheduled" };
+      });
     },
     "content:afterSchedule": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
       const entryId = entryIdOf(event.content);
       if (!entryId) return;
-      await changePending(ctx.storage[PENDING_SALES], entryId, (current) => {
-        // The proposal at the stored time, the least authority among overlapping ones; anything else grants nothing.
-        // (The product lives in the page's draft, which this event does not carry; the store checks the published page
-        // names the granted product.)
-        const matching = (current?.proposals ?? []).filter((proposal) => sameMoment(proposal.scheduledAt, event.content.scheduledAt));
-        const least = matching.reduce<ScheduleGrant | null>((low, proposal) => (!low || proposal.role < low.role || !proposal.by ? proposal : low), null);
-        return { entryId, proposals: [], confirmed: least?.by ? least : null, state: "scheduled" };
-      });
+      // The schedule EmDash holds now, read from the page (this event's copy may be older than a later schedule's). If
+      // it cannot be read, nothing is granted. (The product lives in the page's draft; the store checks that the
+      // published page names the granted product.)
+      const page = await ctx.content?.get(PRODUCTS, entryId).catch(() => null);
+      await changePending(ctx.storage[PENDING_SALES], entryId, (current) =>
+        current ? { ...current, confirmed: page?.scheduledAt ? grantFor(current, page.scheduledAt) : null, state: "scheduled" } : undefined);
     },
     "content:afterPublish": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
