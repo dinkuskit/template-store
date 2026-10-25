@@ -173,12 +173,11 @@ describe("demo seed resource identity", () => {
     ]);
     expect(DEMO_SKUS.has("DEMO-HOSTED-HOODIE-M")).toBe(true);
     expect(DEMO_SKUS.has("DEMO-HOSTED-HOODIE-L")).toBe(true);
-    expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-HOODIE-S")?.variant).toEqual(
-      expect.objectContaining({
-        optionId: "size",
-        optionLabel: "Size",
-      }),
-    );
+    expect(DEMO_SKUS.has("DEMO-HOSTED-HOODIE-HG-L")).toBe(true);
+    expect(
+      DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-HOODIE-S")?.variant?.options
+        .map((option) => option.optionId),
+    ).toEqual(["color", "size"]);
     expect(DEMO_PRODUCTS.find((product) => product.sku === "DEMO-HOSTED-SOCKS")?.availability).toBe(
       "out-of-stock",
     );
