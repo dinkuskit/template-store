@@ -71,7 +71,8 @@ export async function draftProductPage(admin: Page, { title, sku, slug }: { titl
  */
 export async function publishProductPage(admin: Page, pageId: string) {
   // On a phone the settings drawer covers the editor's Publish button.
-  if (await admin.getByRole("button", { name: /^Publish( now)?$/ }).first().isHidden()) await admin.keyboard.press("Escape");
+  const close = admin.getByRole("button", { name: "Close settings", exact: true });
+  if (await close.isVisible()) await close.click();
   await admin.getByRole("button", { name: /^Publish( now)?$/ }).first().click();
   await admin.getByRole("dialog").getByRole("button", { name: "Publish now", exact: true }).click();
   await expect.poll(async () => {
