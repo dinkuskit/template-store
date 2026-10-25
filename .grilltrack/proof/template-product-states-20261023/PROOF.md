@@ -66,12 +66,13 @@ Screenshots from the run are written to `test-results/paired-product-on-sale/` (
 `desktop-` and `phone-` versions of `1-draft.png`, `2-published-on-sale.png`, `6-author-published-still-draft.png`
 and `8-trashed-product-without-page.png`.
 
-## Known limits (owner decision in the project thread)
+## Known limits (accepted by the owner, Ronald, 25 Oct 2026 00:20 UTC: "Merge now, fix schedules next")
 
 - A page published later by EmDash's Schedule goes live with nobody signed in, so its product stays a Draft until an
   admin presses Publish again.
 - Two people publishing and unpublishing the same page at the same moment can leave the product a Draft behind a live
   page; publishing again fixes it. Neither limit can leave a product buyable behind an unpublished page.
+- Next: a follow-up lets the next signed-in admin request put a scheduled page's product on sale.
 
 ## Not changed
 
