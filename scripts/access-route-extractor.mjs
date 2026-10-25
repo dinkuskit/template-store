@@ -242,6 +242,54 @@ function validateShopperRoute(file, source) {
   return { public: publicValue, diagnostic: null };
 }
 
+// Commerce 0.6.0 declares its storefront reads as publicRead(handler, headers?)
+// and its admin routes as privatePost(permission, handler): top-level const
+// arrows whose bodies are one fixed route, pluginRoute({...}) or a bare object,
+// with literal public and methods and the call's own handler.
+function validateFixedRoute(file, source, name, viaPluginRoute, keys) {
+  const declaration = source.statements.filter(ts.isVariableStatement)
+    .filter((statement) => statement.declarationList.flags & ts.NodeFlags.Const)
+    .flatMap((statement) => statement.declarationList.declarations)
+    .find((item) => ts.isIdentifier(item.name) && item.name.text === name);
+  if (!declaration) return null;
+  const arrow = declaration.initializer;
+  if (!arrow || !ts.isArrowFunction(arrow) || ts.isBlock(arrow.body) ||
+      arrow.parameters.some((parameter) => !ts.isIdentifier(parameter.name))) {
+    return { diagnostic: diagnostic(file, declaration, `${name} must be a const arrow returning one fixed route`) };
+  }
+  if (!arrow.parameters.some((parameter) => parameter.name.text === "handler")) {
+    return { diagnostic: diagnostic(file, declaration, `${name} must have a handler parameter`) };
+  }
+  let object = arrow.body;
+  while (ts.isParenthesizedExpression(object)) object = object.expression;
+  if (viaPluginRoute) {
+    if (!ts.isCallExpression(object) || !ts.isIdentifier(object.expression) ||
+        object.expression.text !== "pluginRoute" || object.arguments.length !== 1) {
+      return { diagnostic: diagnostic(file, arrow, `${name} must directly return pluginRoute(static metadata)`) };
+    }
+    object = object.arguments[0];
+  }
+  if (!ts.isObjectLiteralExpression(object)) {
+    return { diagnostic: diagnostic(file, object, `${name} metadata must be a static object literal`) };
+  }
+  const { properties, diagnostic: propertiesDiagnostic } = directProperties(file, object, keys);
+  if (propertiesDiagnostic) return { diagnostic: propertiesDiagnostic };
+  const handler = properties.get("handler");
+  if (!handler || !ts.isIdentifier(handler) || handler.text !== "handler") {
+    return { diagnostic: diagnostic(file, handler ?? object, `${name} handler must be its handler parameter`) };
+  }
+  const publicValue = literalBoolean(file, properties.get("public"), "public");
+  if (typeof publicValue === "object") return { diagnostic: publicValue.diagnostic };
+  const methods = literalMethods(file, properties.get("methods"));
+  if (methods.diagnostic) return { diagnostic: methods.diagnostic };
+  return { public: publicValue, methods: methods.methods, diagnostic: null };
+}
+
+const FIXED_ROUTES = [
+  ["publicRead", true, new Set(["public", "methods", "request", "cacheControl", "handler"])],
+  ["privatePost", false, new Set(["public", "permission", "methods", "handler"])],
+];
+
 export function extractCommerceRoutes(commercePlugin, { profile = process.env.DINKUS_COMMERCE_PROFILE } = {}) {
   const { runtimeId } = commerceProfile(profile);
   const source = parse(commercePlugin);
@@ -277,6 +325,13 @@ export function extractCommerceRoutes(commercePlugin, { profile = process.env.DI
   const shopperMetadata = validateShopperRoute(commercePlugin, source);
   const shopperDiagnostic = shopperMetadata?.diagnostic;
   if (shopperDiagnostic) unsupported.push({ name: "shopperRoute", path: null, diagnostic: shopperDiagnostic });
+  const fixedRoutes = new Map();
+  for (const [name, viaPluginRoute, keys] of FIXED_ROUTES) {
+    const fixed = validateFixedRoute(commercePlugin, source, name, viaPluginRoute, keys);
+    if (!fixed) continue;
+    fixedRoutes.set(name, { ...fixed, viaPluginRoute });
+    if (fixed.diagnostic) unsupported.push({ name, path: null, diagnostic: fixed.diagnostic });
+  }
   const result = [];
   const seenRoutes = new Set();
   for (const property of routes.properties) {
@@ -332,6 +387,13 @@ export function extractCommerceRoutes(commercePlugin, { profile = process.env.DI
       metadata = methods.diagnostic
         ? { public: null, methods: [], diagnostic: methods.diagnostic }
         : { public: shopperMetadata.public, methods: methods.methods, diagnostic: null };
+    } else if (ts.isCallExpression(initializer) && ts.isIdentifier(initializer.expression) && fixedRoutes.has(initializer.expression.text)) {
+      const fixed = fixedRoutes.get(initializer.expression.text);
+      if ((fixed.viaPluginRoute && !knownPluginRoute) || fixed.diagnostic) {
+        unsupported.push({ name: key.name, path, diagnostic: fixed.diagnostic ?? diagnostic(commercePlugin, initializer, "pluginRoute must be a named import from emdash/plugin") });
+        continue;
+      }
+      metadata = fixed;
     } else {
       metadata = validateMetadata(commercePlugin, initializer, "route");
     }
