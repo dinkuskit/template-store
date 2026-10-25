@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { expect, test, type APIResponse, type Page } from "@playwright/test";
 
 import { GUEST_CART_STORAGE_KEY } from "../../src/features/guest-cart/index.js";
+import { openProductsList } from "./helpers/product-page";
 
 const CREATE_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/create";
 const LIST_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/list";
@@ -58,14 +59,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
 
   const adminContext = await browser.newContext({ viewport: testInfo.project.use.viewport });
   const admin = await adminContext.newPage();
-  await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/plugins/dinkus-commerce/products");
-  try {
-    await expect(admin.getByRole("button", { name: "Get Started" })).toBeVisible({ timeout: 30_000 });
-    await admin.getByRole("button", { name: "Get Started" }).click();
-  } catch {
-    await expect(admin.getByRole("dialog", { name: /Welcome to EmDash/ })).toHaveCount(0);
-  }
-  await expect(admin.getByRole("heading", { name: "Products", exact: true })).toBeVisible();
+  await openProductsList(admin);
   expect(existsSync(".artifacts/e2e/content.db")).toBe(true);
   await expect.poll(
     () =>

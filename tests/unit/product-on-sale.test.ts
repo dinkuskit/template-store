@@ -86,17 +86,19 @@ describe("product page publish check tells Commerce", () => {
   });
 
   it("lets a page that does not own its product, or whose product or plugin is gone, change freely", async () => {
-    for (const code of ["PRODUCT_PAGE_CONFLICT", "NOT_FOUND", "ROUTE_NOT_FOUND"]) {
+    for (const code of ["PRODUCT_PAGE_CONFLICT", "NOT_FOUND", "CATALOG_ITEM_NOT_FOUND", "ROUTE_NOT_FOUND"]) {
       const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code, message: code } } as never);
       const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
       expect(await out.text()).toBe("done");
     }
   });
 
-  it("lets a sandboxed Commerce's conflict through by its reason", async () => {
-    const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "ROUTE_ERROR", message: "Another page sells this product" } } as never);
-    const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
-    expect(out.status).toBe(200);
+  it("lets a sandboxed Commerce's conflict or gone product through by its reason", async () => {
+    for (const message of ["Another page sells this product", "Product not found. Return to Products."]) {
+      const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "ROUTE_ERROR", message } } as never);
+      const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
+      expect(out.status).toBe(200);
+    }
   });
 
   it("puts the product back on sale when the page change fails after Commerce took it off", async () => {
