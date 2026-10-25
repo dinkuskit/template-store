@@ -46,6 +46,11 @@ export interface OnSaleRuntime {
 export async function storedUser(runtime: OnSaleRuntime, user: unknown): Promise<unknown> {
   const id = record(user)?.id;
   if (typeof id !== "string" || !runtime.db) return user;
+  return userById(runtime, id);
+}
+
+async function userById(runtime: OnSaleRuntime, id: string): Promise<unknown> {
+  if (!runtime.db) return null;
   const fresh = await createKyselyAdapter(runtime.db as Parameters<typeof createKyselyAdapter>[0]).getUserById(id);
   return fresh && !fresh.disabled ? fresh : null;
 }
@@ -58,7 +63,7 @@ function record(value: unknown): Record<string, unknown> | null {
  * The page's own id and the Commerce product it sells, read before the change;
  * null when the page sells nothing or does not exist, "unreadable" when the read failed.
  */
-async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean } | null | "unreadable"> {
+async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean; scheduled: boolean } | null | "unreadable"> {
   const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true }).catch(() => null);
   if (!found?.success) return found?.error?.code === "NOT_FOUND" ? null : "unreadable";
   const data = record(found.data);
@@ -66,7 +71,8 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
   const fields = record(item?.data) ?? item;
   const id = typeof item?.id === "string" ? item.id : entryId;
   const catalogItemId = typeof fields?.commerce_item_id === "string" ? fields.commerce_item_id.trim() : "";
-  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published: item?.status === "published" } : null;
+  const scheduled = typeof item?.scheduledAt === "string" && item.scheduledAt !== "";
+  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published: item?.status === "published", scheduled } : null;
 }
 
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
@@ -74,6 +80,22 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
 const NOT_THIS_PAGES = new Set(["NOT_FOUND", "ROUTE_NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
 const notThisPages = (error?: { code?: string; message?: string }) =>
   NOT_THIS_PAGES.has(error?.code ?? "") || /Another page sells this product/.test(error?.message ?? "");
+
+/** One `set-on-sale` write as `caller`: null when done (or Commerce has nothing to do for this page), else why it failed. */
+async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, caller: unknown, body: Record<string, unknown>): Promise<{ failed: string | null; changed?: boolean }> {
+  try {
+    const result = await runtime.handlePluginApiRoute(pluginId, "POST", SET_ON_SALE_ROUTE,
+      new Request(new URL(`/_emdash/api/plugins/${pluginId}/${SET_ON_SALE_ROUTE}`, url), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }), caller);
+    if (result.success) return { failed: null, changed: record(result.data)?.changed === true };
+    return { failed: notThisPages(result.error) ? null : result.error?.message ?? "Commerce refused" };
+  } catch (error) {
+    return { failed: error instanceof Error ? error.message : "Commerce unavailable" };
+  }
+}
 
 function refuse(status: number, code: string, message: string): Response {
   return new Response(JSON.stringify({ error: { code, message } }), { status, headers: { "Content-Type": "application/json" } });
@@ -146,19 +168,9 @@ export async function withProductOnSale(
       }
       authorized = now;
     }
-    const caller = authorized;
-    try {
-      const result = await runtime.handlePluginApiRoute(input.commercePluginId, "POST", SET_ON_SALE_ROUTE,
-        new Request(new URL(`/_emdash/api/plugins/${input.commercePluginId}/${SET_ON_SALE_ROUTE}`, input.url), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ catalogItemId: page.catalogItemId, entryId: page.id, ...body }),
-        }), caller);
-      if (result.success) changed = record(result.data)?.changed === true;
-      return result.success || notThisPages(result.error) ? null : result.error?.message ?? "Commerce refused";
-    } catch (error) {
-      return error instanceof Error ? error.message : "Commerce unavailable";
-    }
+    const result = await setOnSale(runtime, input.commercePluginId, input.url, authorized, { catalogItemId: page.catalogItemId, entryId: page.id, ...body });
+    if (result.changed !== undefined) changed = result.changed;
+    return result.failed;
   };
   // Put the product on sale, then read the page again: if it is no longer published with this product, take it off.
   const putOnSale = async () => {
@@ -206,4 +218,181 @@ export async function withProductOnSale(
     if (failed) console.warn("[product-on-sale] the product could not be taken off sale again after unpublish:", failed);
   }
   return response;
+}
+
+/** The product-url plugin's records of schedules made through the admin or MCP (`PendingSale`). */
+export interface PendingSales {
+  query(options: { limit: number; cursor?: string }): Promise<{ items: Array<{ id: string }>; cursor?: string }>;
+  getVersioned(id: string): Promise<{ value: unknown; revision: string } | null>;
+  compareAndDelete(id: string, revision: string): Promise<{ applied: boolean }>;
+  put(id: string, value: unknown): Promise<void>;
+}
+
+// A product the sweep put on sale and must take off again (`takeback:<page>:<product digest>`, one per product, within
+// EmDash's 1,024-character key limit); kept until Commerce confirms the off-sale write, and then removed only at the
+// revision that write answered.
+const TAKEBACK = "takeback:";
+async function takebackKey(entryId: string, catalogItemId: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(catalogItemId));
+  return `${TAKEBACK}${entryId}:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+type Grant = { by: string; role: number; itemId: string };
+
+/** The record's confirmed grant once EmDash's scheduled publish succeeded, else null; and when it last changed. */
+function pendingSale(value: unknown): { grant: Grant | null; published: boolean; updatedAt: number } {
+  const sale = record(value);
+  const confirmed = record(sale?.confirmed);
+  const by = typeof confirmed?.by === "string" ? confirmed.by : "";
+  const itemId = typeof confirmed?.itemId === "string" ? confirmed.itemId : "";
+  const role = typeof confirmed?.role === "number" ? confirmed.role : NaN;
+  const grant = by && itemId && Number.isFinite(role) ? { by, role, itemId } : null;
+  const updatedAt = typeof sale?.updatedAt === "string" ? Date.parse(sale.updatedAt) : NaN;
+  return { grant, published: sale?.state === "published", updatedAt };
+}
+
+// A record whose scheduled publish has not completed is dropped once its page is no longer scheduled and the record is
+// this old, so a schedule EmDash is still storing or publishing when the sweep reads it is not lost.
+const STALE_PENDING_MS = 10 * 60_000;
+const PENDING_BATCH = 50;
+
+/**
+ * EmDash publishes a scheduled page with nobody signed in, so the publish check
+ * cannot put its product on sale then. This puts it on sale on the next request
+ * from someone holding the route's permission, as that person:
+ *
+ * - Only schedules the product-url plugin recorded count, and only once EmDash
+ *   stored the schedule and its own scheduled publish of the page succeeded. The
+ *   grant names the person who scheduled it, their role then, and the product;
+ *   they must have held the permission then and still hold it. An Author's
+ *   schedule leaves the product a Draft, as their own publish does.
+ * - The page must be published with the granted product and not scheduled again.
+ *   A person's own publish, an unschedule, unpublish or trash removes the record.
+ * - Before the write, the visitor is read again and the record must still be the
+ *   one read (not removed or replaced meanwhile). After the write the page and
+ *   the record are read again: if the page is no longer published with that
+ *   product, or the record changed, the product goes off sale again.
+ * - Records are read a batch at a time, all before the first write, resuming from
+ *   `cursor` (returned for the next sweep), so every record is reached however
+ *   many wait, and a change one write causes to another record is seen by that
+ *   record's check.
+ * - A sale write Commerce refuses keeps the record for a later sweep. Taking a
+ *   product off sale again is recorded (one `takeback:` per product) before it is
+ *   tried and retried on later sweeps until Commerce confirms it, and only the
+ *   listing that write answered is removed; it never sells. Like every
+ *   late off-sale write, it can at worst leave a published page's product a
+ *   Draft, and publishing again fixes it.
+ */
+export async function sellScheduledPages(
+  input: { url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales; userById?: (id: string) => Promise<unknown> },
+  now = Date.now(),
+  due: () => boolean = () => true,
+  cursor?: string,
+): Promise<string | undefined> {
+  const { runtime, pendingSales } = input;
+  if (!runtime || !input.user || !pendingSales) return cursor;
+  const permission = runtime.getPluginRouteMeta(input.commercePluginId, SET_ON_SALE_ROUTE)?.permission;
+  if (typeof permission !== "string") return cursor;
+  const may = (who: unknown) => !!who && hasPermission(who as Parameters<typeof hasPermission>[0], permission as Parameters<typeof hasPermission>[1]);
+  if (!may(input.user) || !due()) return cursor;
+  const current = async () => (input.currentUser ? await input.currentUser().catch(() => null) : input.user);
+  const batch = await pendingSales.query({ limit: PENDING_BATCH, ...(cursor ? { cursor } : {}) });
+  const snapshot: Array<{ id: string; stored: { value: unknown; revision: string } }> = [];
+  for (const { id } of batch.items) {
+    const stored = await pendingSales.getVersioned(id);
+    if (stored) snapshot.push({ id, stored });
+  }
+  // The listed take-back at `revision` is removed only once Commerce confirms its off-sale write. A take-back listed
+  // again meanwhile has a new revision and stays for a later sweep (the write is safe to repeat).
+  const offSale = async (visitor: unknown, key: string, revision: string, entryId: string, catalogItemId: string) => {
+    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { catalogItemId, entryId, onSale: false });
+    if (failed) return failed;
+    await pendingSales.compareAndDelete(key, revision);
+    return null;
+  };
+  for (const { id, stored } of snapshot) {
+    const visitorNow = async () => {
+      const visitor = await current();
+      return may(visitor) ? visitor : null;
+    };
+    if (id.startsWith(TAKEBACK)) {
+      const takeback = record(stored.value);
+      const visitor = await visitorNow();
+      if (!visitor) return cursor;
+      const failed = typeof takeback?.entryId === "string" && typeof takeback.catalogItemId === "string"
+        ? await offSale(visitor, id, stored.revision, takeback.entryId, takeback.catalogItemId)
+        : null;
+      if (!takeback || typeof takeback.entryId !== "string" || typeof takeback.catalogItemId !== "string") await pendingSales.compareAndDelete(id, stored.revision);
+      if (failed) console.warn("[product-on-sale] a product to take off sale again stays on the list:", failed);
+      continue;
+    }
+    const unchanged = async () => (await pendingSales.getVersioned(id))?.revision === stored.revision;
+    const drop = () => pendingSales.compareAndDelete(id, stored.revision);
+    const sale = pendingSale(stored.value);
+    const page = await productPage(runtime, id);
+    if (page === "unreadable") continue;
+    if (!page) {
+      await drop();
+      continue;
+    }
+    if (page.scheduled) continue;
+    if (!sale.published) {
+      if (!(now - sale.updatedAt < STALE_PENDING_MS)) await drop();
+      continue;
+    }
+    const grant = sale.grant;
+    if (!grant || !page.published || page.catalogItemId !== grant.itemId || !may({ role: grant.role })) {
+      await drop();
+      continue;
+    }
+    const scheduler = await (input.userById ?? ((by: string) => userById(runtime, by)))(grant.by).catch(() => null);
+    if (!may(scheduler)) {
+      await drop();
+      continue;
+    }
+    const visitor = await visitorNow();
+    if (!visitor) return cursor;
+    if (!(await unchanged())) continue;
+    const body = { catalogItemId: grant.itemId, entryId: page.id };
+    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true });
+    if (failed) {
+      console.warn("[product-on-sale] a scheduled page's product stays a Draft for now:", failed);
+      continue;
+    }
+    const after = await productPage(runtime, id);
+    const stillGranted = await unchanged().catch(() => false);
+    if (!(stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId)) {
+      // Listed before it is tried. If another sweep lists the same product meanwhile, its on-sale write came before
+      // this listing, so this off-sale write still answers it.
+      const key = await takebackKey(page.id, grant.itemId);
+      await pendingSales.put(key, { takeback: true, ...body });
+      const listed = await pendingSales.getVersioned(key);
+      const off = listed ? await offSale(visitor, key, listed.revision, page.id, grant.itemId) : null;
+      if (off) console.warn("[product-on-sale] the schedule or page changed meanwhile; taking the product off sale again is retried later:", off);
+    }
+    await drop();
+  }
+  return batch.cursor;
+}
+
+/**
+ * `sellScheduledPages` at most once per interval in this isolate, counting only allowed people's requests and
+ * moving through the records a batch per sweep; it never fails the request.
+ */
+export function scheduledSaleSweeper(everyMs = 60_000) {
+  let nextAt = 0;
+  let cursor: string | undefined;
+  const due = (now: number) => () => {
+    if (now < nextAt) return false;
+    nextAt = now + everyMs;
+    return true;
+  };
+  return async (input: Parameters<typeof sellScheduledPages>[0], now = Date.now()): Promise<void> => {
+    try {
+      cursor = await sellScheduledPages(input, now, due(now), cursor);
+    } catch (error) {
+      cursor = undefined;
+      console.warn("[product-on-sale] scheduled pages were not checked:", error);
+    }
+  };
 }
