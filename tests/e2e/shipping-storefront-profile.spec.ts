@@ -148,6 +148,57 @@ test("shipping profile uses installed catalog and fail-closes without a native p
     expect(new URL(googleSlash.headers().location ?? "", googleSlash.url()).pathname).toBe("/feeds/google-merchant.xml");
   }
 
+  // Shipping search fails closed for Commerce-linked and demo products when the
+  // installed Commerce catalog is unavailable, while preserving editorial previews.
+  const csrfHeaders = { "X-EmDash-Request": "1" };
+  const outageSlug = `outage-parka-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
+  const createdOutage = await context.request.post("/_emdash/api/content/products", {
+    headers: csrfHeaders,
+    data: {
+      slug: outageSlug,
+      status: "draft",
+      data: {
+        title: "Outage Linked Parka",
+        description: "Commerce-linked shipping product hidden when catalog is unavailable",
+        visual_label: "hoodie",
+        commerce_item_id: "cat_shipping_outage_parka",
+      },
+    },
+  });
+  expect(createdOutage.status(), await createdOutage.text()).toBe(201);
+  const outageId = ((await createdOutage.json()) as { data: { item: { id: string } } }).data.item.id;
+  try {
+    const publishedOutage = await context.request.post(`/_emdash/api/content/products/${outageId}/publish`, {
+      headers: csrfHeaders,
+    });
+    expect(publishedOutage.ok(), await publishedOutage.text()).toBe(true);
+
+    await page.goto("/search?q=Outage");
+    await expect(page.locator(`[data-search-result="${outageSlug}"]`)).toHaveCount(0);
+
+    const outageApiResp = await request.get(
+      "/_emdash/api/search?q=Outage&collections=products,categories,pages",
+    );
+    expect(outageApiResp.ok()).toBe(true);
+    const outageApiBody = (await outageApiResp.json()) as { data?: { items?: Array<{ slug?: string }> } };
+    expect(outageApiBody.data?.items?.some((item) => item.slug === outageSlug) ?? false).toBe(false);
+
+    const outageSuggestResp = await request.get(
+      "/_emdash/api/search/suggest?q=Outage&collections=products,categories,pages",
+    );
+    expect(outageSuggestResp.ok()).toBe(true);
+    const outageSuggestBody = (await outageSuggestResp.json()) as { data?: { items?: Array<{ slug?: string }> } };
+    expect(outageSuggestBody.data?.items?.some((item) => item.slug === outageSlug) ?? false).toBe(false);
+
+    await page.goto("/search?q=Everyday");
+    await expect(page.locator('[data-search-result="everyday-tee"]')).toHaveCount(0);
+
+    await page.goto("/search?q=Boxy");
+    await expect(page.locator('[data-search-result="boxy-tee-preview"]')).toBeVisible();
+  } finally {
+    await context.request.delete(`/_emdash/api/content/products/${outageId}`, { headers: csrfHeaders });
+  }
+
   await page.goto("/");
   expect(
     await page.evaluate(
@@ -173,6 +224,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
         homeOpenerHref: "#commerce-catalog",
         catalogHeading: "commerce-catalog",
         staleDemoCopy: false,
+        searchOutageFailClosed: true,
       },
       null,
       2,
