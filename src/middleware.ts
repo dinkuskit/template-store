@@ -31,6 +31,7 @@ import {
 } from "./features/playground-checkout/payments-port.js";
 import { playgroundAttemptBelongsToVisitor } from "./features/playground-checkout/binding-auth.js";
 import { playgroundCheckoutBindingsFor } from "./features/playground-checkout/binding-store.js";
+import { storedUser, withProductOnSale, type OnSaleRuntime } from "./features/product-on-sale/index.js";
 import {
   checkoutJsonError,
   checkoutLimited,
@@ -134,6 +135,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Resolve (and publish on locals) the persistent binding store once, so the
   // /api/checkout/status route authorizes against the same store start wrote.
   const playgroundBindings = isPlayground ? playgroundCheckoutBindingsFor(context.locals) : undefined;
+
+  // Publishing a product page puts its Commerce product on sale; the playground runs native Commerce.
+  const productOnSale = () => {
+    const runtime = context.locals.emdash as unknown as OnSaleRuntime | undefined;
+    const user = (context.locals as { user?: unknown }).user;
+    return {
+      request: context.request,
+      url: context.url,
+      runtime,
+      user,
+      commercePluginId: isPlayground || isDemoCatalogProfile() ? NATIVE_COMMERCE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
+      currentUser: () => (runtime ? storedUser(runtime, user) : Promise.resolve(user)),
+    };
+  };
 
   async function checkoutRouteAdmitted(): Promise<boolean> {
     const installed = { runtime: context.locals.emdash, request: context.request };
@@ -307,7 +322,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
 
-    const rawResponse = await next();
+    const rawResponse = await withProductOnSale(productOnSale(), () => next());
     const response = isPublicSearchApi
       ? await filterPublicSearchApiResponse(rawResponse, {
           runtime: context.locals.emdash,
@@ -345,7 +360,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
-  const rawResponse = await next();
+  const rawResponse = await withProductOnSale(productOnSale(), () => next());
   const response = isPublicSearchApi
     ? await filterPublicSearchApiResponse(rawResponse, {
         runtime: context.locals.emdash,
