@@ -9,6 +9,7 @@ import {
   type StructuredReturnPolicy,
   type StructuredShippingPolicy,
 } from "../../.artifacts/source-deps/commerce/src/features/structured-data/index.ts";
+import { openProductsList } from "./helpers/product-page";
 
 const RETURN_CATEGORIES = ["MerchantReturnFiniteReturnWindow", "MerchantReturnNotPermitted", "MerchantReturnUnlimitedWindow"] as const;
 const RETURN_METHODS = ["ReturnByMail", "ReturnInStore", "ReturnAtKiosk"] as const;
@@ -119,13 +120,7 @@ test("published Commerce products, policies, and feeds share one public revision
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
   const adminContext = await browser.newContext({ viewport: testInfo.project.use.viewport });
   const admin = await adminContext.newPage();
-  await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/plugins/dinkus-commerce/products");
-  try {
-    await expect(admin.getByRole("button", { name: "Get Started" })).toBeVisible({ timeout: 30_000 });
-    await admin.getByRole("button", { name: "Get Started" }).click();
-  } catch {
-    await expect(admin.getByRole("dialog", { name: /Welcome to EmDash/ })).toHaveCount(0);
-  }
+  await openProductsList(admin);
 
   let shirtId = "";
   let mediumHoodieId = "";
