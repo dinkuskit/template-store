@@ -92,15 +92,17 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
 // page sells the product (a sandboxed route carries those only in its message). Commerce 0.6.0 names a gone
 // product CATALOG_ITEM_NOT_FOUND.
-// On-sale writes one request makes at most while the page's published title keeps changing under it.
+// Title-only writes one request makes at most while the page's published title keeps changing under it.
 const NAME_WRITES = 3;
 
 const NOT_THIS_PAGES = new Set(["NOT_FOUND", "CATALOG_ITEM_NOT_FOUND", "ROUTE_NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
 const notThisPages = (error?: { code?: string; message?: string }) =>
   NOT_THIS_PAGES.has(error?.code ?? "") || /Another page sells this product|^Product not found\./.test(error?.message ?? "");
 
+type Written = { failed: string | null; changed?: boolean; code?: string };
+
 /** One `set-on-sale` write as `caller`: null when done (or Commerce has nothing to do for this page), else why it failed. */
-async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, caller: unknown, body: Record<string, unknown>): Promise<{ failed: string | null; changed?: boolean }> {
+async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, caller: unknown, body: Record<string, unknown>): Promise<Written> {
   try {
     const result = await runtime.handlePluginApiRoute(pluginId, "POST", SET_ON_SALE_ROUTE,
       new Request(new URL(`/_emdash/api/plugins/${pluginId}/${SET_ON_SALE_ROUTE}`, url), {
@@ -109,10 +111,30 @@ async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, cal
         body: JSON.stringify(body),
       }), caller);
     if (result.success) return { failed: null, changed: record(result.data)?.changed === true };
-    return { failed: notThisPages(result.error) ? null : result.error?.message ?? "Commerce refused" };
+    return { failed: notThisPages(result.error) ? null : result.error?.message ?? "Commerce refused", code: result.error?.code };
   } catch (error) {
     return { failed: error instanceof Error ? error.message : "Commerce unavailable" };
   }
+}
+
+/**
+ * Title-only writes (`name` with no `onSale`: Commerce renames the product this page sells and never changes whether
+ * it is for sale) until Commerce has the page's newest published title. "retry" when the work is unfinished: Commerce
+ * could not be reached or the title kept changing; "done" when it has the title, the page no longer sells this
+ * product published, or this Commerce takes no title-only writes (0.6.0 refuses them as INVALID_INPUT).
+ */
+async function renameToTitle(name: string, catalogItemId: string, rename: (name: string) => Promise<Written>,
+  read: () => ReturnType<typeof productPage>): Promise<"done" | "retry"> {
+  for (let write = 1; write <= NAME_WRITES; write += 1) {
+    const { failed, code } = await rename(name);
+    // A sandboxed Commerce carries the reason only in its message.
+    if (failed) return code === "INVALID_INPUT" || /\bInvalid onSale\b/.test(failed) ? "done" : "retry";
+    const now = await read();
+    if (now === "unreadable") return "retry";
+    if (!now?.published || now.catalogItemId !== catalogItemId || !now.name || now.name === name) return "done";
+    name = now.name;
+  }
+  return "retry";
 }
 
 /** The title EmDash's publish answered with, the page as just published; undefined when it cannot be read. */
@@ -142,6 +164,9 @@ function refuse(status: number, code: string, message: string): Response {
  * - Publish puts the product on sale after the page is published. If that
  *   fails, the product stays a Draft (not buyable) and the page's Commerce
  *   panel shows it; publishing again retries.
+ * - Publish names the product from the published page title. A title that an
+ *   overlapping publish changed meanwhile is caught up with title-only writes,
+ *   which never change whether the product is for sale.
  * - Trash drops the page's link afterwards.
  * - If the page change fails after Commerce took the product off sale, the
  *   product goes back on sale; a page that cannot be read is not unpublished.
@@ -157,7 +182,7 @@ function refuse(status: number, code: string, message: string): Response {
  * which never sells anything it should not, and publishing again fixes it.
  */
 export async function withProductOnSale(
-  input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown> },
+  input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales },
   next: () => Promise<Response>,
 ): Promise<Response> {
   const change = productPageChange(input.request.method, input.url.pathname);
@@ -197,17 +222,28 @@ export async function withProductOnSale(
     if (result.changed !== undefined) changed = result.changed;
     return result.failed;
   };
+  // A title-only write, as the person read again, who must still hold the permission. It never changes sale state.
+  const rename = async (name: string): Promise<Written> => {
+    const now = await current();
+    if (!may(now)) return { failed: "the person may no longer change sale state" };
+    authorized = now;
+    return setOnSale(runtime, input.commercePluginId, input.url, now, { catalogItemId: page.catalogItemId, entryId: page.id, name });
+  };
   // Put the product on sale under the published title, then read the page again: if it is no longer published with
   // this product, take it off. If its published title is no longer the one just written (an overlapping publish
-  // named it meanwhile), write the title it has now, so whichever request reads last settles on the newest title.
+  // named it meanwhile), rename it to the title it has now with title-only writes, which never put anything on sale,
+  // so whichever request reads last settles on the newest title. Work left unfinished is listed for the sweep.
   const putOnSale = async (name?: string) => {
-    for (let write = 1; ; write += 1) {
-      const failed = await tell({ onSale: true, ...(name ? { name } : {}) });
-      if (failed) return failed;
-      const now = await productPage(runtime, change.entryId, locale);
-      if (!(now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId)) break;
-      if (!now.name || now.name === name || write === NAME_WRITES) return null;
-      name = now.name;
+    const failed = await tell({ onSale: true, ...(name ? { name } : {}) });
+    if (failed) return failed;
+    const now = await productPage(runtime, change.entryId, locale);
+    if (now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId) {
+      if (now.name && now.name !== name &&
+        (await renameToTitle(now.name, page.catalogItemId, rename, () => productPage(runtime, change.entryId, locale))) === "retry") {
+        if (input.pendingSales) await listRetitle(input.pendingSales, page.id, page.catalogItemId);
+        else console.warn("[product-on-sale] the page's newest title did not reach Commerce; publishing again sends it");
+      }
+      return null;
     }
     const off = await tell({ onSale: false });
     if (off) console.warn("[product-on-sale] the page changed meanwhile and the product could not be taken off sale:", off);
@@ -263,9 +299,16 @@ export interface PendingSales {
 // EmDash's 1,024-character key limit); kept until Commerce confirms the off-sale write, and then removed only at the
 // revision that write answered.
 const TAKEBACK = "takeback:";
-async function takebackKey(entryId: string, catalogItemId: string): Promise<string> {
+// A published page whose newest title Commerce does not have yet (`retitle:<page>:<product digest>`); the sweep
+// renames the product with title-only writes, which never change whether it is for sale.
+const RETITLE = "retitle:";
+async function listKey(prefix: string, entryId: string, catalogItemId: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(catalogItemId));
-  return `${TAKEBACK}${entryId}:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  return `${prefix}${entryId}:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+const takebackKey = (entryId: string, catalogItemId: string) => listKey(TAKEBACK, entryId, catalogItemId);
+async function listRetitle(pendingSales: PendingSales, entryId: string, catalogItemId: string): Promise<void> {
+  await pendingSales.put(await listKey(RETITLE, entryId, catalogItemId), { retitle: true, entryId, catalogItemId });
 }
 
 type Grant = { by: string; role: number; itemId: string };
@@ -313,6 +356,10 @@ const PENDING_BATCH = 50;
  *   listing that write answered is removed; it never sells. Like every
  *   late off-sale write, it can at worst leave a published page's product a
  *   Draft, and publishing again fixes it.
+ * - A page's newest published title that a request could not give its product
+ *   (`retitle:`, one per product) is written by later sweeps with title-only
+ *   writes, as the visitor read again, until Commerce has it. Those writes only
+ *   rename the product the page sells and never change whether it is for sale.
  */
 export async function sellScheduledPages(
   input: { url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales; userById?: (id: string) => Promise<unknown> },
@@ -359,6 +406,30 @@ export async function sellScheduledPages(
     }
     const unchanged = async () => (await pendingSales.getVersioned(id))?.revision === stored.revision;
     const drop = () => pendingSales.compareAndDelete(id, stored.revision);
+    // Renames only, so it needs no grant: an allowed visitor gives the product its page's live published title.
+    // Removed at the revision read once done, so a listing made meanwhile stays for the next sweep.
+    const rename = (catalogItemId: string, entryId: string) => async (name: string): Promise<Written> => {
+      const visitor = await visitorNow();
+      return visitor ? setOnSale(runtime, input.commercePluginId, input.url, visitor, { catalogItemId, entryId, name }) : { failed: "the visitor may no longer change sale state" };
+    };
+    if (id.startsWith(RETITLE)) {
+      const retitle = record(stored.value);
+      const entryId = typeof retitle?.entryId === "string" ? retitle.entryId : "";
+      const itemId = typeof retitle?.catalogItemId === "string" ? retitle.catalogItemId : "";
+      const page = entryId && itemId ? await productPage(runtime, entryId) : null;
+      if (page === "unreadable") continue;
+      if (!page?.published || page.catalogItemId !== itemId || !page.name) {
+        await drop();
+        continue;
+      }
+      if (!(await visitorNow())) return cursor;
+      if ((await renameToTitle(page.name, itemId, rename(itemId, page.id), () => productPage(runtime, entryId))) === "retry") {
+        console.warn("[product-on-sale] a page's newest title stays on the list for a later sweep");
+        continue;
+      }
+      await drop();
+      continue;
+    }
     const sale = pendingSale(stored.value);
     const page = await productPage(runtime, id);
     if (page === "unreadable") continue;
@@ -390,16 +461,16 @@ export async function sellScheduledPages(
       console.warn("[product-on-sale] a scheduled page's product stays a Draft for now:", failed);
       continue;
     }
-    let after = await productPage(runtime, id);
-    let stillGranted = await unchanged().catch(() => false);
-    // A publish that overlapped the sweep may have renamed the page: write the title it has now, then check again.
-    if (stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId && after.name && after.name !== page.name) {
-      const renamed = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true, name: after.name });
-      if (renamed.failed) console.warn("[product-on-sale] a scheduled page's newer title did not reach Commerce:", renamed.failed);
-      after = await productPage(runtime, id);
-      stillGranted = await unchanged().catch(() => false);
-    }
-    if (!(stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId)) {
+    const after = await productPage(runtime, id);
+    const stillGranted = await unchanged().catch(() => false);
+    if (stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId) {
+      // A publish that overlapped the sweep may have renamed the page: rename the product to the title it has now with
+      // title-only writes, which never change whether it is for sale; unfinished work is listed for a later sweep.
+      if (after.name && after.name !== page.name &&
+        (await renameToTitle(after.name, grant.itemId, rename(grant.itemId, page.id), () => productPage(runtime, id))) === "retry") {
+        await listRetitle(pendingSales, page.id, grant.itemId);
+      }
+    } else {
       // Listed before it is tried. If another sweep lists the same product meanwhile, its on-sale write came before
       // this listing, so this off-sale write still answers it.
       const key = await takebackKey(page.id, grant.itemId);

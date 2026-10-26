@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { resolve } from "node:path";
 
@@ -468,6 +469,47 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
     for (const name of triggers) onDb(`DROP TRIGGER IF EXISTS ${name}`);
     onDb("DROP TABLE IF EXISTS proof_sale_writes");
     onDb("DROP TABLE IF EXISTS proof_relisted");
+  }
+
+  // 17. A publish renames the scheduled page while the sweep sells it (template-page-title-is-name-20261026): an SQLite
+  // trigger changes the live title at the moment Commerce writes the product on sale. The sweep's read afterwards sees
+  // the newer title and renames the product with a title-only write, which never changes sale state, and only for a
+  // visitor who, read again, still holds the permission: when the same trigger also lowers the person to Author, the
+  // newer title is listed instead and nothing is written, and the admin's next sweep finishes it. A Commerce that
+  // ignores `name` keeps "Scheduled hat" throughout.
+  const names = process.env.DINKUS_PAIRED_COMMERCE_NAMES === "1";
+  const retitleKey = `retitle:${pageId}:${createHash("sha256").update(itemId).digest("hex")}`;
+  let expectedName = "Scheduled hat";
+  for (const [variant, demote] of [["kept", false], ["revoked", true]] as const) {
+    const retitled = `Scheduled hat ${variant} ${testInfo.project.name}`;
+    expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+    expect((await schedule(pageId, 5_000)).ok()).toBe(true);
+    await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
+    await scheduledPublish(pageId);
+    await expect.poll(() => pending(pageId)?.state).toBe("published");
+    const sentName = read<{ title: string }>("SELECT title FROM ec_products WHERE id = ?", pageId)?.title;
+    onDb(`CREATE TRIGGER proof_retitle_mid_sweep AFTER UPDATE ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id = '${itemId}' AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1 BEGIN
+      UPDATE ec_products SET title = '${retitled}' WHERE id = '${pageId}';${demote ? ` UPDATE users SET role = ${ROLE.AUTHOR};` : ""}
+    END`);
+    try {
+      await adminVisits(pageId, () => pending(pageId), undefined);
+    } finally {
+      onDb("DROP TRIGGER IF EXISTS proof_retitle_mid_sweep");
+      setRole(ROLE.ADMIN);
+    }
+    expect(product(itemId)).not.toHaveProperty("offSale", true);
+    if (names) expectedName = demote ? sentName ?? expectedName : retitled;
+    expect(product(itemId).name).toBe(expectedName);
+    await expect.poll(() => onShop(request)).toEqual([expectedName]);
+    expect(pending(retitleKey)).toEqual(demote ? { retitle: true, entryId: pageId, catalogItemId: itemId } : undefined);
+    if (demote) {
+      // The admin, an allowed person again, visits: a later sweep gives the product the page's newest title.
+      await adminVisits(pageId, () => pending(retitleKey), undefined);
+      if (names) expectedName = retitled;
+      expect(product(itemId).name).toBe(expectedName);
+      expect(product(itemId)).not.toHaveProperty("offSale", true);
+      await expect.poll(() => onShop(request)).toEqual([expectedName]);
+    }
   }
 
   // Leave the shop empty for the next run.
