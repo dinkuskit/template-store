@@ -99,12 +99,17 @@ for (const profile of ["stable", "beta"]) {
     // Commerce 0.5.0 adds Connect's public receipt route after the store policies route.
     const manifestRoutes = manifest.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic }));
     const connectReceiptAt = manifestRoutes.findIndex((route) => route.name === "policies/public") + 1;
+    // Commerce 0.6.0 adds the product panel and the publish check, both private, after admin.
+    const productScreenAt = manifestRoutes.findIndex((route) => route.name === "admin") + 1;
     assert.deepEqual(
       extracted.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
       [
         ...manifestRoutes.slice(0, connectReceiptAt),
         { name: "store-proof", methods: ["GET"], public: true },
-        ...manifestRoutes.slice(connectReceiptAt),
+        ...manifestRoutes.slice(connectReceiptAt, productScreenAt),
+        { name: "product-panel", methods: ["POST"], public: false },
+        { name: "catalog-items/set-on-sale", methods: ["POST"], public: false },
+        ...manifestRoutes.slice(productScreenAt),
         ...shopperAccountRoutes,
       ],
     );

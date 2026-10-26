@@ -57,6 +57,7 @@ import {
   SeedRefusal,
   demoAvailabilityForSku,
   demoRegularMinorForSku,
+  demoVariantOptionInput,
   type DemoProductSeed,
 } from "./demo-seed-policy.js";
 
@@ -372,36 +373,26 @@ async function ensureProduct(
   }
 
   // An existing demo store keeps the variant choices it was seeded with; adding a
-  // later size (for example the sold-out Large hoodie) is a fresh-store change.
+  // later option or value (for example the hoodie colors) is a fresh-store change.
   const seededParent = existing ? await storage.catalog.get(catalogItemId) : null;
   const hasVariantChoices = Boolean(seededParent && "variantProduct" in seededParent && seededParent.variantProduct);
-  if (variant && !hasVariantChoices) {
-    await addCatalogVariantOption(
-      { catalog: storage.catalog },
-      {
-        productId: catalogItemId,
-        optionId: variant.optionId,
-        optionLabel: variant.optionLabel,
-        values: [
-          {
-            valueId: variant.values[0]!.valueId,
-            label: variant.values[0]!.label,
-            member: { catalogItemId, fulfillment: "physical" },
-          },
-          ...variant.values.slice(1).map((value) => ({
-            valueId: value.valueId,
-            label: value.label,
-            member: {
-              commandId: value.commandId,
-              name: value.name,
-              sku: value.sku,
-              fulfillment: "physical" as const,
-            },
-          })),
-        ],
-      },
-      { collection: CATALOG_COLLECTION, pluginId: COMMERCE_PLUGIN_ID },
-    );
+  if (variant && "variant" in product && !hasVariantChoices) {
+    // Commerce adds one option at a time; each later option names the revision it read.
+    for (const [index] of variant.options.entries()) {
+      const parent = await storage.catalog.get(catalogItemId);
+      const variantProduct = parent && "variantProduct" in parent ? parent.variantProduct : undefined;
+      const members = new Map<string, string>();
+      for (const member of variantProduct?.members ?? []) {
+        if (member.catalogItemId === catalogItemId) continue;
+        const record = await storage.catalog.get(member.catalogItemId);
+        if (record?.sku) members.set(record.sku.toUpperCase(), member.catalogItemId);
+      }
+      await addCatalogVariantOption(
+        { catalog: storage.catalog },
+        demoVariantOptionInput(product, index, catalogItemId, members, index === 0 ? undefined : variantProduct?.revision),
+        { collection: CATALOG_COLLECTION, pluginId: COMMERCE_PLUGIN_ID },
+      );
+    }
   }
 
   const itemIds = [catalogItemId];

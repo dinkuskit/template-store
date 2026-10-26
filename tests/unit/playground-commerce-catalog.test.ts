@@ -11,7 +11,7 @@ describe("TemplateStore playground Commerce catalog", () => {
 
   it("seeds each per-visitor DB from the template's own demo products, including the variant hoodie", () => {
     expect(PLAYGROUND_DEMO_PRODUCTS.length).toBeGreaterThan(0);
-    expect(PLAYGROUND_DEMO_PRODUCTS.some((product) => product.variant?.optionId === "size")).toBe(true);
+    expect(PLAYGROUND_DEMO_PRODUCTS.some((product) => product.variant?.options.some((option) => option.optionId === "size"))).toBe(true);
     expect(PLAYGROUND_DEMO_PRODUCTS.every((product) => product.sku.startsWith("DEMO-HOSTED-"))).toBe(true);
     const middleware = readFileSync("src/middleware.ts", "utf8");
     expect(middleware).toContain("ensurePlaygroundDemoCatalog");
