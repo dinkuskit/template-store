@@ -92,6 +92,9 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
 // page sells the product (a sandboxed route carries those only in its message). Commerce 0.6.0 names a gone
 // product CATALOG_ITEM_NOT_FOUND.
+// On-sale writes one request makes at most while the page's published title keeps changing under it.
+const NAME_WRITES = 3;
+
 const NOT_THIS_PAGES = new Set(["NOT_FOUND", "CATALOG_ITEM_NOT_FOUND", "ROUTE_NOT_FOUND", "PRODUCT_PAGE_CONFLICT"]);
 const notThisPages = (error?: { code?: string; message?: string }) =>
   NOT_THIS_PAGES.has(error?.code ?? "") || /Another page sells this product|^Product not found\./.test(error?.message ?? "");
@@ -195,12 +198,17 @@ export async function withProductOnSale(
     return result.failed;
   };
   // Put the product on sale under the published title, then read the page again: if it is no longer published with
-  // this product, take it off.
+  // this product, take it off. If its published title is no longer the one just written (an overlapping publish
+  // named it meanwhile), write the title it has now, so whichever request reads last settles on the newest title.
   const putOnSale = async (name?: string) => {
-    const failed = await tell({ onSale: true, ...(name ? { name } : {}) });
-    if (failed) return failed;
-    const now = await productPage(runtime, change.entryId, locale);
-    if (now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId) return null;
+    for (let write = 1; ; write += 1) {
+      const failed = await tell({ onSale: true, ...(name ? { name } : {}) });
+      if (failed) return failed;
+      const now = await productPage(runtime, change.entryId, locale);
+      if (!(now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId)) break;
+      if (!now.name || now.name === name || write === NAME_WRITES) return null;
+      name = now.name;
+    }
     const off = await tell({ onSale: false });
     if (off) console.warn("[product-on-sale] the page changed meanwhile and the product could not be taken off sale:", off);
     return "the page is no longer published as it was";
@@ -382,8 +390,15 @@ export async function sellScheduledPages(
       console.warn("[product-on-sale] a scheduled page's product stays a Draft for now:", failed);
       continue;
     }
-    const after = await productPage(runtime, id);
-    const stillGranted = await unchanged().catch(() => false);
+    let after = await productPage(runtime, id);
+    let stillGranted = await unchanged().catch(() => false);
+    // A publish that overlapped the sweep may have renamed the page: write the title it has now, then check again.
+    if (stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId && after.name && after.name !== page.name) {
+      const renamed = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true, name: after.name });
+      if (renamed.failed) console.warn("[product-on-sale] a scheduled page's newer title did not reach Commerce:", renamed.failed);
+      after = await productPage(runtime, id);
+      stillGranted = await unchanged().catch(() => false);
+    }
     if (!(stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId)) {
       // Listed before it is tried. If another sweep lists the same product meanwhile, its on-sale write came before
       // this listing, so this off-sale write still answers it.

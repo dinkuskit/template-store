@@ -157,6 +157,23 @@ test("publishing a product page sells its Commerce product, only for someone who
   expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
   await expect.poll(() => onShop(request)).toEqual(["Paired hat"]);
 
+  // 6b. The page title is the product's one name (template-page-title-is-name-20261026): the admin renames the
+  // published page and publishes it, and a Commerce that saves `name` shows the new title on the shop; an older
+  // Commerce keeps its own name.
+  const renamed = "Paired hat renamed " + testInfo.project.name;
+  const current = (await (await request.get("/_emdash/api/content/products/" + pageId, { headers })).json()).data;
+  expect((await request.put("/_emdash/api/content/products/" + pageId, { headers, data: { data: { title: renamed }, _rev: current._rev } })).ok()).toBe(true);
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
+  const names = process.env.DINKUS_PAIRED_COMMERCE_NAMES === "1";
+  const shopName = names ? renamed : "Paired hat";
+  await expect.poll(() => onShop(request)).toEqual([shopName]);
+  expect(product(itemId).name).toBe(shopName);
+  if (names) {
+    await page.goto("/products/" + sku.toLowerCase());
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(renamed);
+    await capture(page, "6b-renamed-on-shop");
+  }
+
   // 7. An existing store: the page was published and its product on sale before the store had this check,
   // so the product has no page record and no Draft flag (the shape Commerce 0.5.0 stored). Unpublishing
   // still takes it off sale, and publishing claims it again.
@@ -170,12 +187,12 @@ test("publishing a product page sells its Commerce product, only for someone who
   } finally {
     database.close();
   }
-  expect(await onShop(request)).toEqual(["Paired hat"]);
+  expect(await onShop(request)).toEqual([shopName]);
   expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
   expect(product(itemId)).toMatchObject({ offSale: true, pageId });
   expect(await onShop(request)).toEqual([]);
   expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
-  await expect.poll(() => onShop(request)).toEqual(["Paired hat"]);
+  await expect.poll(() => onShop(request)).toEqual([shopName]);
 
   // 8. Trashing the page takes the product off sale and lets go of it, so another page can sell it.
   expect((await request.delete(`/_emdash/api/content/products/${pageId}`, { headers })).ok()).toBe(true);
@@ -184,7 +201,7 @@ test("publishing a product page sells its Commerce product, only for someone who
   expect(await onShop(request)).toEqual([]);
   await page.goto(`/_emdash/admin/plugins/${commerce}/settings`);
   await expect(page.getByRole("heading", { name: "Products without a page" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Paired hat").first()).toBeVisible();
+  await expect(page.getByText(shopName).first()).toBeVisible();
   await capture(page, "8-trashed-product-without-page");
 
   // 9-12. Authority and links changed inside one request, through the same real routes. SQLite triggers land each
@@ -224,7 +241,8 @@ test("publishing a product page sells its Commerce product, only for someone who
     expect(await onShop(request)).toEqual([]);
     dropTriggers();
     expect((await request.post(`/_emdash/api/content/products/${againId}/publish`, { headers })).ok()).toBe(true);
-    await expect.poll(() => onShop(request)).toEqual(["Paired hat"]);
+    // The page that now sells the product names it.
+    await expect.poll(() => onShop(request)).toEqual([names ? "Paired hat again" : shopName]);
 
     // 10. An admin unpublishes; Commerce takes the product off sale, the person is lowered at that write, and the page
     // change then fails. Putting the product back on sale would need the permission again, so it stays off sale.

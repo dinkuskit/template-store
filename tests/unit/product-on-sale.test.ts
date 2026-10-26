@@ -45,14 +45,39 @@ describe("product page publish check tells Commerce", () => {
   });
 
   it("names the product from the title EmDash just published (catalog-page-title-is-name-20261026)", async () => {
-    const rt = runtime({ commerce_item_id: "item-1", title: "Old mug" });
+    const rt = runtime({ commerce_item_id: "item-1", title: "Renamed mug" });
+    // Read before the publish, the page still shows its old title.
+    rt.handleContentGet.mockResolvedValueOnce({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { commerce_item_id: "item-1", title: "Old mug" } } } });
     const published = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: " Renamed\tmug ", commerce_item_id: "item-1" } } } });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(published, { status: 200, headers: { "Content-Type": "application/json" } }));
     expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Renamed mug" }]);
-    // An answer with no readable title sends no name, never the title read before the publish.
-    const quiet = runtime({ commerce_item_id: "item-1", title: "Old mug" });
+    // An answer with no readable title sends no name, never the title read before the publish; the read after
+    // the write supplies the published one.
+    const quiet = runtime({ commerce_item_id: "item-1", title: "Renamed mug" });
+    quiet.handleContentGet.mockResolvedValueOnce({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { commerce_item_id: "item-1", title: "Old mug" } } } });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", quiet), async () => new Response("not json", { status: 200 }));
-    expect(quiet.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: true }]);
+    expect(quiet.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Renamed mug" },
+    ]);
+  });
+
+  it("settles on the newest published title when an older publish's write lands last", async () => {
+    // Publish A answered "Title A", but publish B ("Title B") landed meanwhile: A's read after its write sees B and
+    // writes B again, so A's late write never leaves the older name.
+    const rt = runtime({ commerce_item_id: "item-1", title: "Title B" });
+    const answered = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: "Title A", commerce_item_id: "item-1" } } } });
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(answered, { status: 200 }));
+    expect(rt.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Title A" },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Title B" },
+    ]);
+    // A title that keeps changing gets at most three writes from one request.
+    let n = 0;
+    const churn = runtime({ commerce_item_id: "item-1" });
+    churn.handleContentGet.mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { commerce_item_id: "item-1", title: `T${n++}` } } } }));
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", churn), async () => new Response(answered, { status: 200 }));
+    expect(churn.calls).toHaveLength(3);
   });
 
   it("keeps a product name within Commerce's rules", () => {
@@ -382,6 +407,24 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     const rt = site({ hat: { status: "published", title: "Sun hat" } });
     await sweep(rt, pending);
     expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-hat", entryId: "hat", onSale: true, name: "Sun hat" }]);
+  });
+
+  it("writes a scheduled page's newer title when a publish renamed it during the sweep", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    const pages = { hat: { status: "published", title: "Sun hat" } };
+    const rt = site(pages);
+    const commerce = rt.handlePluginApiRoute.getMockImplementation()!;
+    rt.handlePluginApiRoute.mockImplementation(async (...args: Parameters<typeof commerce>) => {
+      const answer = await commerce(...args);
+      pages.hat.title = "Straw hat";
+      return answer;
+    });
+    await sweep(rt, pending);
+    expect(rt.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-hat", entryId: "hat", onSale: true, name: "Sun hat" },
+      { catalogItemId: "item-hat", entryId: "hat", onSale: true, name: "Straw hat" },
+    ]);
   });
 
   it("sells nothing before EmDash's scheduled publish has succeeded, or for a schedule that was never confirmed", async () => {
