@@ -12,13 +12,13 @@ function jobCondition(job) {
   return condition.trim().replaceAll("github.event.pull_request.labels.*.name", "labels");
 }
 
-function allowed(job, { event = "pull_request", action = "synchronize", labels = [], sameRepo = true, enabled = true } = {}) {
+function allowed(job, { event = "pull_request", action = "synchronize", labels = [], sameRepo = true, enabled = true, draft = false } = {}) {
   const github = {
     event_name: event,
     repository: "example/store",
     event: {
       action,
-      pull_request: { head: { repo: { full_name: sameRepo ? "example/store" : "fork/store" } } },
+      pull_request: { draft, head: { repo: { full_name: sameRepo ? "example/store" : "fork/store" } } },
     },
   };
   // Evaluate only the fixed, repository-owned condition with equivalent contains semantics.
@@ -38,6 +38,16 @@ test("verification-only PRs cannot deploy or delete previews", () => {
       }
     }
   }
+});
+
+test("draft opening cannot publish before the verification-only label is added", () => {
+  for (const action of ["opened", "synchronize", "reopened"]) {
+    assert.equal(allowed("deploy-playground", { action, draft: true }), false);
+    assert.equal(allowed("deploy-playground", { action, draft: true, labels: ["verification-only"] }), false);
+    assert.equal(allowed("deploy-playground", { action, draft: false, labels: ["verification-only"] }), false);
+    assert.equal(allowed("deploy-playground", { action, draft: false }), true);
+  }
+  assert.equal(allowed("deploy-playground", { event: "push", draft: true }), true);
 });
 
 test("verification-only guard preserves ordinary deployment and fork boundaries", () => {
