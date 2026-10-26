@@ -11,6 +11,8 @@ import { resolve } from "node:path";
 // Commerce v0.6.0-beta.1, the release carrying dinkuskit/commerce#180.
 const COMMERCE = Object.freeze({
   tag: "v0.6.0-beta.1",
+  // Whether this Commerce saves the page title sent as `name` (dinkuskit/commerce#188); 0.6.0 ignores it.
+  names: false,
   commit: "1015f67eef99f0027d2033aff6b8832392cb1318",
   files: {
     "dist/sandbox/plugin.mjs": "f292f09c1c360f828a0c96614fd69342327b23374150088c6c151ff1b61ed471",
@@ -68,6 +70,7 @@ run("pnpm", ["exec", "playwright", "test", "-c", "tests/paired/playwright.config
   DINKUS_PAIRED_DB: resolve(artifactDir, "content.db"),
   DINKUS_PAIRED_ARTIFACTS: evidence,
   DINKUS_PAIRED_PORT: port,
+  DINKUS_PAIRED_COMMERCE_NAMES: COMMERCE.names ? "1" : "0",
   DINKUS_TEMPLATE_DB_URL: "file:./.artifacts/paired/content.db",
   DINKUS_TEMPLATE_UPLOADS_DIR: "./.artifacts/paired/uploads",
   EMDASH_SITE_URL: `http://127.0.0.1:${port}`,

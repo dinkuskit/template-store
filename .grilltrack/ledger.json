@@ -4598,6 +4598,47 @@
       "superseded_by": null,
       "updated_at": "2026-10-23T19:34:45+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "The page title is the product's one name (Commerce catalog-page-title-is-name-20261026). The store's publish check sends the published title, cut to Commerce's name rules (NFKC, control characters and runs of spaces become one space, trimmed, at most 160 characters), as name with each catalog-items/set-on-sale write that puts a product on sale: from EmDash's publish answer on a person's publish, from the live title (never a newer unsaved draft) when an undo or a scheduled publish puts it back on sale. Off-sale writes never carry a name. The product page keeps showing Commerce's name, which now follows the title.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/157",
+      "created_at": "2026-10-26T17:02:08+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-10-26T17:02:08+00:00",
+          "choice": "The page title is the product's one name (Commerce catalog-page-title-is-name-20261026). The store's publish check sends the published title, cut to Commerce's name rules (NFKC, control characters and runs of spaces become one space, trimmed, at most 160 characters), as name with each catalog-items/set-on-sale write that puts a product on sale: from EmDash's publish answer on a person's publish, from the live title (never a newer unsaved draft) when an undo or a scheduled publish puts it back on sale. Off-sale writes never carry a name. The product page keeps showing Commerce's name, which now follows the title.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-page-title-is-name-20261026",
+      "implementation_ref": null,
+      "question": "How does a product page's title reach Commerce as the product's name?",
+      "rationale": "Ronald chose 'Page title is the one name' on a decision card, 16:54 UTC 26 Oct 2026, for template-store#157.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-26T17:02:08+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4620,5 +4661,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-24T23:55:51+00:00"
+  "updated_at": "2026-10-26T17:02:08+00:00"
 }

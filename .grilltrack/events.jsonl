@@ -138,3 +138,5 @@
 {"action": "decision_locked", "at": "2026-10-23T19:34:45+00:00", "data": {"decision_id": "playground-tour-step-one-content-products-20261023"}, "event_id": "e7746b95-dddf-4116-a655-60693132f532"}
 {"action": "decision_implemented", "at": "2026-10-23T21:38:44+00:00", "data": {"decision_id": "template-product-states-20261023"}, "event_id": "9c65a72f-678a-4811-b229-18a84d8852b9"}
 {"action": "decision_verified", "at": "2026-10-24T23:55:52+00:00", "data": {"decision_id": "template-product-states-20261023"}, "event_id": "b94a467d-9c5f-4f98-87c0-332fbcefd176"}
+{"action": "decision_proposed", "at": "2026-10-26T17:02:08+00:00", "data": {"decision_id": "template-page-title-is-name-20261026"}, "event_id": "bfbb17ac-86c2-4c81-93cd-2635b57f0f04"}
+{"action": "decision_locked", "at": "2026-10-26T17:02:08+00:00", "data": {"decision_id": "template-page-title-is-name-20261026"}, "event_id": "63294826-5b52-4f0a-95b0-da9f50e3f74c"}
