@@ -6,7 +6,8 @@ is not the current dependency list or a current release/live-install verdict.
 
 Current source pins are authoritative in [`package.json`](../package.json):
 Commerce `v0.6.0` / `7b9923d8dfd3bc83513efe5ac80cff0bd6656e12`,
-EmDash and its listed CMS packages `1.2.0`, playground Payments `v0.4.0` /
+`emdash`, `@emdash-cms/cloudflare`, `@emdash-cms/auth`, and
+`@emdash-cms/blocks` `1.2.0`; playground Payments `v0.4.0` /
 `82c19d0d347d2c78a8e44dd2a3b2f00e530beb84`, and playground Ship `v0.3.0` /
 `dab45d0df69a5f39158b603ff2b8236c6af6fe54`. The Inventory source remains
 `5889c7d59398376da51ac400d5c1f1214aba2c6b` for explicit development proof,
@@ -65,7 +66,7 @@ registry bundle or released tarball digest.
 | Cart / checkout / orders | Commerce public API, mounted runtime, persisted authority | Final mount and tested purchase/order path pending; no template copy of these models |
 | Payment transport | Payments exact test contract and approved timing semantics (1800..1860s window) | Approved window 1800..1860s; local default workerd/Payments bridge and durable wake settlement proven with synthetic identity; installed transport and scheduler activation pending |
 | Shipping story | Ship owner contract: fulfillment behavior and supported merchant path | Pending; shipping/contact/tax owner paths unqualified, physical demo fulfillment cannot be claimed |
-| Promotions | Coupons owner | Optional for v1; not a release blocker. Any later Coupons enablement needs its owner public interface and accepted checkout/usage evidence |
+| Promotions | Coupons owner | Current v1 policy supersedes the original required-coupons note: optional, not a release blocker. Any later Coupons enablement needs its owner public interface and accepted checkout/usage evidence |
 | Bundles | Commerce / relevant owner contract | Not a blocker for this bounded native qualification; unimplemented with no bundle affordance |
 | Registry pair | Commerce + Template release artifact owners | Exact qualified pre-release artifacts adopted locally; official Registry release/delivery/install proof pending |
 | Blocks runtime | Template composition / EmDash public native Blocks | Current candidate uses EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks; no `@dinkuskit/blocks` dependency or registration. The archived `dinkuskit/blocks` repository is not used anywhere |
