@@ -60,10 +60,21 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 
 /**
- * The page's own id and the Commerce product it sells, read before the change;
- * null when the page sells nothing or does not exist, "unreadable" when the read failed.
+ * The product's one name from a page title (catalog-page-title-is-name-20261026), within Commerce's name rules
+ * (1-160 characters, no control characters); undefined when nothing is left.
  */
-async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean; scheduled: boolean } | null | "unreadable"> {
+export function productName(title: unknown): string | undefined {
+  if (typeof title !== "string") return undefined;
+  // eslint-disable-next-line no-control-regex
+  const name = title.normalize("NFKC").replace(/[\u0000-\u001F\u007F\s]+/g, " ").trim().slice(0, 160).trim();
+  return name || undefined;
+}
+
+/**
+ * The page's own id, the Commerce product it sells and, when published, the published title as the product's
+ * name; null when the page sells nothing or does not exist, "unreadable" when the read failed.
+ */
+async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean; scheduled: boolean; name?: string } | null | "unreadable"> {
   const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true }).catch(() => null);
   if (!found?.success) return found?.error?.code === "NOT_FOUND" ? null : "unreadable";
   const data = record(found.data);
@@ -72,7 +83,10 @@ async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: str
   const id = typeof item?.id === "string" ? item.id : entryId;
   const catalogItemId = typeof fields?.commerce_item_id === "string" ? fields.commerce_item_id.trim() : "";
   const scheduled = typeof item?.scheduledAt === "string" && item.scheduledAt !== "";
-  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published: item?.status === "published", scheduled } : null;
+  const published = item?.status === "published";
+  // A newer unpublished draft keeps the published values in liveData; only a published title names the product.
+  const name = published ? productName((record(item?.liveData) ?? fields)?.title) : undefined;
+  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published, scheduled, ...(name ? { name } : {}) } : null;
 }
 
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
@@ -96,6 +110,13 @@ async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, cal
   } catch (error) {
     return { failed: error instanceof Error ? error.message : "Commerce unavailable" };
   }
+}
+
+/** The title EmDash's publish answered with, the page as just published; undefined when it cannot be read. */
+async function publishedName(response: Response): Promise<string | undefined> {
+  const body = record(await response.clone().json().catch(() => null));
+  const data = record(body?.data);
+  return productName(record(record(data?.item)?.data)?.title);
 }
 
 function refuse(status: number, code: string, message: string): Response {
@@ -173,9 +194,10 @@ export async function withProductOnSale(
     if (result.changed !== undefined) changed = result.changed;
     return result.failed;
   };
-  // Put the product on sale, then read the page again: if it is no longer published with this product, take it off.
-  const putOnSale = async () => {
-    const failed = await tell({ onSale: true });
+  // Put the product on sale under the published title, then read the page again: if it is no longer published with
+  // this product, take it off.
+  const putOnSale = async (name?: string) => {
+    const failed = await tell({ onSale: true, ...(name ? { name } : {}) });
     if (failed) return failed;
     const now = await productPage(runtime, change.entryId, locale);
     if (now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId) return null;
@@ -185,7 +207,7 @@ export async function withProductOnSale(
   };
   if (change.action === "publish") {
     const response = await next();
-    const failed = response.ok && allowed ? await putOnSale() : null;
+    const failed = response.ok && allowed ? await putOnSale(await publishedName(response)) : null;
     if (failed) console.warn("[product-on-sale] the product stays a Draft:", failed);
     return response;
   }
@@ -199,7 +221,7 @@ export async function withProductOnSale(
   const undo = async () => {
     if (!tookOff) return;
     const now = await productPage(runtime, change.entryId, locale);
-    const restored = now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId ? await putOnSale() : "the page is no longer published as it was";
+    const restored = now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId ? await putOnSale(now.name) : "the page is no longer published as it was";
     if (restored) console.warn("[product-on-sale] the product stays a Draft after a failed page change:", restored);
   };
   let response: Response;
@@ -355,7 +377,7 @@ export async function sellScheduledPages(
     if (!visitor) return cursor;
     if (!(await unchanged())) continue;
     const body = { catalogItemId: grant.itemId, entryId: page.id };
-    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true });
+    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true, ...(page.name ? { name: page.name } : {}) });
     if (failed) {
       console.warn("[product-on-sale] a scheduled page's product stays a Draft for now:", failed);
       continue;

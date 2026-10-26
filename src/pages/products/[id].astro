@@ -115,8 +115,9 @@ const purchasable = Boolean(cartProduct) && linkedProductPurchasable({
   checkoutAvailable,
   sellable: cartProduct ? canAddCommerceProductToCart(cartProduct) : false,
 });
-// Shoppers see the linked Commerce product's name, so a rename in Commerce
-// changes the heading too. The entry title stays the owner's admin label.
+// Shoppers see the linked Commerce product's name, which publishing the page
+// sets from its title (template-page-title-is-name-20261026), so the heading,
+// cart and orders agree.
 const productName = linkedProduct?.name.trim() || item?.title;
 const managed = item?.availabilitySource === "managed" ? demonstrations?.managed ?? null : null;
 const unmanaged = item?.availabilitySource === "unmanaged" ? demonstrations?.unmanaged ?? null : null;

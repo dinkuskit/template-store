@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
-import { productPageChange, scheduledSaleSweeper, sellScheduledPages, withProductOnSale } from "../../src/features/product-on-sale/index.js";
+import { productName, productPageChange, scheduledSaleSweeper, sellScheduledPages, withProductOnSale } from "../../src/features/product-on-sale/index.js";
 
 const user = { id: "u1", email: "owner@example.test", name: null, role: 50, createdAt: "2026-10-23T00:00:00.000Z" };
 
@@ -42,6 +42,38 @@ describe("product page publish check tells Commerce", () => {
     const response = await withProductOnSale(input("POST", "/_emdash/api/content/products/hat/publish", rt), async () => new Response("{}", { status: 200 }));
     expect(response.status).toBe(200);
     expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { catalogItemId: "item-1", entryId: "01PAGE", onSale: true }, user }]);
+  });
+
+  it("names the product from the title EmDash just published (catalog-page-title-is-name-20261026)", async () => {
+    const rt = runtime({ commerce_item_id: "item-1", title: "Old mug" });
+    const published = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: " Renamed\tmug ", commerce_item_id: "item-1" } } } });
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(published, { status: 200, headers: { "Content-Type": "application/json" } }));
+    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Renamed mug" }]);
+    // An answer with no readable title sends no name, never the title read before the publish.
+    const quiet = runtime({ commerce_item_id: "item-1", title: "Old mug" });
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", quiet), async () => new Response("not json", { status: 200 }));
+    expect(quiet.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: true }]);
+  });
+
+  it("keeps a product name within Commerce's rules", () => {
+    expect(productName("  Mug\u0007 one\n")).toBe("Mug one");
+    expect(productName("\uFF2D\uFF55\uFF47")).toBe("Mug");
+    expect(productName("x".repeat(200))).toHaveLength(160);
+    expect(productName(" \u0000 ")).toBeUndefined();
+    expect(productName(42)).toBeUndefined();
+  });
+
+  it("puts a product back on sale under its live title, not a newer unsaved draft's", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const rt = runtime({ commerce_item_id: "item-1" });
+    rt.handleContentGet.mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published",
+      data: { commerce_item_id: "item-1", title: "Draft title" }, liveData: { commerce_item_id: "item-1", title: "Live title" } } } }) as never);
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 409 }));
+    expect(rt.calls.map((call) => call.body)).toEqual([
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Live title" },
+    ]);
+    warn.mockRestore();
   });
 
   it("takes the product off sale before and after unpublish, and drops the link after trash", async () => {
@@ -318,13 +350,13 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
   // The take-back key the sweep lists: the page, then the product's SHA-256.
   const takebackOf = async (entryId: string, itemId: string) =>
     `takeback:${entryId}:${createHash("sha256").update(itemId).digest("hex")}`;
-  type Page = { status: string; scheduledAt?: string | null; item?: string };
+  type Page = { status: string; scheduledAt?: string | null; item?: string; title?: string };
   function site(pages: Record<string, Page>, result: unknown = { success: true, data: { changed: true } }) {
     const rt = runtime({ commerce_item_id: "item-1" }, result as never);
     rt.handleContentGet.mockImplementation(async (_collection: string, id: string) => {
       const page = pages[id];
       return page
-        ? { success: true, data: { item: { id, slug: id, status: page.status, scheduledAt: page.scheduledAt ?? null, data: { commerce_item_id: page.item ?? `item-${id}` } } } }
+        ? { success: true, data: { item: { id, slug: id, status: page.status, scheduledAt: page.scheduledAt ?? null, data: { commerce_item_id: page.item ?? `item-${id}`, ...(page.title ? { title: page.title } : {}) } } } }
         : { success: false, error: { code: "NOT_FOUND", message: "not found" } };
     });
     return rt;
@@ -342,6 +374,14 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     await sweep(rt, pending);
     expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { catalogItemId: "item-hat", entryId: "hat", onSale: true }, user }]);
     expect(pending.rows.size).toBe(0);
+  });
+
+  it("names a scheduled page's product from its published title", async () => {
+    const pending = new Pending();
+    pending.put("hat", sale("hat"));
+    const rt = site({ hat: { status: "published", title: "Sun hat" } });
+    await sweep(rt, pending);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-hat", entryId: "hat", onSale: true, name: "Sun hat" }]);
   });
 
   it("sells nothing before EmDash's scheduled publish has succeeded, or for a schedule that was never confirmed", async () => {
