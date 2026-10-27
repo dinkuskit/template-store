@@ -1,0 +1,17 @@
+---
+import type { BlockComponentProps, BlockValue } from "emdash/ui";
+const { value } = Astro.props as BlockComponentProps<BlockValue & { heading?: string; rows?: { label?: string; value?: string }[] }>;
+const heading = value.heading?.trim();
+// A row needs both halves; a half-filled row is left out rather than shown blank.
+const rows = (Array.isArray(value.rows) ? value.rows : [])
+  .map((row) => ({ label: row?.label?.trim() ?? "", value: row?.value?.trim() ?? "" }))
+  .filter((row) => row.label && row.value);
+---
+{rows.length ? (
+  <section class="product-specs" data-product-specs aria-label={heading || "Specifications"}>
+    {heading && <h2>{heading}</h2>}
+    <dl>
+      {rows.map((row) => <div><dt>{row.label}</dt><dd>{row.value}</dd></div>)}
+    </dl>
+  </section>
+) : null}

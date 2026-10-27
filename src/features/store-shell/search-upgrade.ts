@@ -3,7 +3,7 @@ import { sql, type Kysely } from "kysely";
 
 export const STOREFRONT_SEARCHABLE_COLLECTIONS: Readonly<Record<string, readonly string[]>> = {
   pages: ["title", "content"],
-  products: ["title", "description", "visual_label"],
+  products: ["title", "description", "summary"],
   categories: ["title", "description"],
 };
 

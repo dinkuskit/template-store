@@ -7,6 +7,7 @@ import {
   STOREFRONT_SEARCHABLE_COLLECTIONS,
   ensureStorefrontSearchSupport,
 } from "../src/features/store-shell/search-upgrade.ts";
+import { ensureStorefrontPageAddresses, ensureStorefrontProductFields } from "../src/features/store-shell/product-schema-upgrade.ts";
 
 function resolveDatabaseArgument(argv: readonly string[]): string {
   for (let i = 0; i < argv.length; i += 1) {
@@ -45,7 +46,11 @@ async function main(): Promise<void> {
   const db = new Kysely<never>({ dialect: createDialect({ url: databasePath }) });
   try {
     await runMigrations(db as never);
+    // Search first: it turns on the default searchable fields only for a collection
+    // with none, and a new searchable summary then joins the index EmDash keeps.
     await ensureStorefrontSearchSupport(db);
+    await ensureStorefrontProductFields(db);
+    await ensureStorefrontPageAddresses(db);
     console.log(
       JSON.stringify({
         action: "search-upgrade",

@@ -36,6 +36,9 @@ test("real Wrangler unknown-token return handles the expected 503", async ({ bro
       ["/cart/", 302, "/cart"],
       ["/checkout/success/", 301, "/checkout/success"],
       ["/products/everyday-tee/", 301, "/products/everyday-tee"],
+      // Old WooCommerce and CMS page addresses (template-cms-pages-and-redirects-20261027).
+      ["/product/everyday-tee/", 301, "/product/everyday-tee"],
+      ["/about-us/", 301, "/about-us"],
     ] as const) {
       const redirect = await fetch(`${workerUrl}${path}`, {
         redirect: "manual",

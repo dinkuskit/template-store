@@ -28,9 +28,6 @@ export interface StoreMenuItem {
 
 export const FALLBACK_FOOTER_SHOP_LINKS: readonly Pick<StoreMenuItem, "label" | "url">[] = [
   { label: "All products", url: "/#commerce-catalog" },
-  { label: "Hats", url: "/categories/hats" },
-  { label: "Hoodies", url: "/categories/hoodies" },
-  { label: "Tees", url: "/categories/tees" },
 ];
 
 export const FALLBACK_FOOTER_POLICIES_LINKS: readonly Pick<StoreMenuItem, "label" | "url">[] = [

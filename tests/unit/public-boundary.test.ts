@@ -31,7 +31,6 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/sitemap.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/sitemap-commerce.xml").allowed).toBe(true);
-    expect(evaluatePublicBoundary("GET", "/shop/DEMO-HOSTED-SHIRT").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/categories/apparel").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/products/hoodie-black").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/api/guest-cart/snapshot").allowed).toBe(true);
@@ -48,17 +47,15 @@ describe("public boundary access evaluation", () => {
   });
 
   it("identifies only scoped slash variants for 301 redirects", () => {
-    expect(slashlessRedirectPath("/cart/")).toBeUndefined();
     expect(slashlessRedirectPath("/checkout/")).toBe("/checkout");
     expect(slashlessRedirectPath("/checkout/success/")).toBe("/checkout/success");
-    expect(slashlessRedirectPath("/checkout/cancel/")).toBeUndefined();
     expect(slashlessRedirectPath("/products/hoodie-black/")).toBe("/products/hoodie-black");
     expect(slashlessRedirectPath("/shipping/")).toBe("/shipping");
     expect(slashlessRedirectPath("/returns/")).toBe("/returns");
     expect(slashlessRedirectPath("/feeds/google-merchant.xml/")).toBe("/feeds/google-merchant.xml");
     expect(slashlessRedirectPath("/feeds/meta-catalog.csv/")).toBe("/feeds/meta-catalog.csv");
-    expect(slashlessRedirectPath("/feeds/")).toBeUndefined();
-    expect(slashlessRedirectPath("/checkout/other/")).toBeUndefined();
+    expect(slashlessRedirectPath("/api/checkout/status/")).toBeUndefined();
+    expect(slashlessRedirectPath("/_emdash/admin/")).toBeUndefined();
     expect(evaluatePublicBoundary("GET", "/shipping").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/returns").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/feeds/google-merchant.xml").allowed).toBe(true);
@@ -66,23 +63,18 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/shipping/").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/feeds/google-merchant.xml/").allowed).toBe(false);
     expect(evaluatePublicBoundary("POST", "/feeds/google-merchant.xml").status).toBe(405);
-    expect(evaluatePublicBoundary("GET", "/feeds/other.xml").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/checkout/").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
-    expect(evaluatePublicBoundary("GET", "/checkout/cancel").allowed).toBe(false);
   });
 
-  it("allows only strict lowercase child sitemap names", () => {
+  it("allows child sitemap names", () => {
     expect(evaluatePublicBoundary("GET", "/sitemap-a1-collection.xml").allowed).toBe(true);
-    expect(evaluatePublicBoundary("GET", "/sitemap-Collection.xml").allowed).toBe(false);
-    expect(evaluatePublicBoundary("GET", "/sitemap-a_collection.xml").allowed).toBe(false);
-    expect(evaluatePublicBoundary("GET", "/sitemap-a.xml/extra").allowed).toBe(false);
+    expect(evaluatePublicBoundary("GET", "/sitemap-a_collection.xml/").allowed).toBe(false);
   });
 
   it("allows HEAD requests on public read endpoints", () => {
     expect(evaluatePublicBoundary("HEAD", "/").allowed).toBe(true);
-    expect(evaluatePublicBoundary("HEAD", "/shop/DEMO-HOSTED-SHIRT").allowed).toBe(false);
     expect(evaluatePublicBoundary("HEAD", "/cart").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/checkout").allowed).toBe(true);
   });
@@ -120,20 +112,31 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/_image", `?href=${href}&w=300&f=webp&q=1`, origin).status).toBe(404);
   });
 
-  it("denies unknown routes with 404", () => {
-    const unknownRoute = evaluatePublicBoundary("GET", "/nonexistent");
-    expect(unknownRoute.allowed).toBe(false);
-    expect(unknownRoute.status).toBe(404);
+  // template-cms-pages-and-redirects-20261027: plain storefront addresses reach
+  // the site, which serves CMS pages and EmDash redirects or answers not found.
+  it("lets plain storefront addresses reach the site", () => {
+    for (const path of ["/about-us", "/setup-guide", "/products/badminton-set", "/product/runtz", "/product-category/seeds", "/shop/DEMO-HOSTED-SHIRT", "/admin", "/admin/settings", "/blog/2024/01/post", "/sitemap-a.xml/extra"]) {
+      expect(evaluatePublicBoundary("GET", path), path).toEqual({ allowed: true, status: 200 });
+      expect(evaluatePublicBoundary("HEAD", path).allowed, path).toBe(true);
+    }
+    expect(evaluatePublicBoundary("GET", "/search", "?q=badminton%20setup").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/cart", "?next=admin").allowed).toBe(true);
+    expect(slashlessRedirectPath("/product/runtz/")).toBe("/product/runtz");
+    expect(slashlessRedirectPath("/about-us/")).toBe("/about-us");
+  });
 
+  it("keeps the API namespaces and odd addresses on the allowlist", () => {
+    for (const path of ["/_emdash/api/content/pages/home", "/_emdash/anything", "/_internal", "/.env", "/.well-known/security.txt", "/about us", "/about%20us", "/caf%C3%A9", "/api", "/api/unknown-handler", "/__scheduled"]) {
+      expect(evaluatePublicBoundary("GET", path).allowed, path).toBe(false);
+    }
+    expect(evaluatePublicBoundary("POST", "/about-us").status).toBe(405);
+    expect(evaluatePublicBoundary("PUT", "/product/runtz").status).toBe(405);
+  });
+
+  it("denies unknown API routes with 404", () => {
     const apiOther = evaluatePublicBoundary("GET", "/api/unknown-handler");
     expect(apiOther.allowed).toBe(false);
     expect(apiOther.status).toBe(404);
-  });
-
-  it("denies bare dynamic segment prefixes without resource identifier with 404", () => {
-    expect(evaluatePublicBoundary("GET", "/shop").status).toBe(404);
-    expect(evaluatePublicBoundary("GET", "/collections").status).toBe(404);
-    expect(evaluatePublicBoundary("GET", "/products").status).toBe(404);
   });
 
   it("denies mutations and POST requests on public read-only host with 405", () => {
@@ -165,13 +168,8 @@ describe("public boundary access evaluation", () => {
   });
 
   it("denies administrative endpoints with 403", () => {
-    const adminRoot = evaluatePublicBoundary("GET", "/admin");
-    expect(adminRoot.allowed).toBe(false);
-    expect(adminRoot.status).toBe(403);
-
-    const adminSub = evaluatePublicBoundary("GET", "/admin/settings");
-    expect(adminSub.allowed).toBe(false);
-    expect(adminSub.status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/_emdash/admin/settings").status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/_EMDASH/ADMIN").status).toBe(403);
 
     const emdashAdmin = evaluatePublicBoundary("GET", "/_emdash/admin");
     expect(emdashAdmin.allowed).toBe(false);
@@ -180,7 +178,8 @@ describe("public boundary access evaluation", () => {
 
   it("denies setup, auth, schema, and proof endpoints with 403", () => {
     expect(evaluatePublicBoundary("GET", "/_emdash/api/setup").status).toBe(403);
-    expect(evaluatePublicBoundary("GET", "/api/setup").status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/_emdash/api/setup/status").status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/api/setup").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/_emdash/api/auth").status).toBe(403);
     expect(evaluatePublicBoundary("GET", "/api/auth").status).toBe(403);
     expect(evaluatePublicBoundary("GET", "/_emdash/api/schema").status).toBe(403);
@@ -228,12 +227,11 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/shop/..").status).toBe(403);
     expect(evaluatePublicBoundary("GET", "/shop/../admin").status).toBe(403);
     expect(evaluatePublicBoundary("GET", "/shop/%2e%2e/admin").status).toBe(403);
-    expect(evaluatePublicBoundary("GET", "/%61dmin").status).toBe(403);
-    expect(evaluatePublicBoundary("GET", "/%41%64%6d%69%6e").status).toBe(403);
-    expect(evaluatePublicBoundary("GET", "/%2561dmin").status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/%5femdash/%61dmin").status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/%255f%2565mdash/admin").status).toBe(403);
+    expect(evaluatePublicBoundary("GET", "/%61dmin").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/products/test%00").status).toBe(403);
     expect(evaluatePublicBoundary("GET", "/cart", "?target=%2e%2e/admin").status).toBe(403);
-    expect(evaluatePublicBoundary("GET", "/cart", "?next=%2561dmin").status).toBe(403);
   });
 
   it("applies standard security headers", () => {
@@ -334,7 +332,7 @@ describe("worker boundary handler", () => {
       dummyCtx,
     );
     const unknown = await worker.fetch(
-      new Request("http://demo.dinkuskit.com/not-a-route", { headers }),
+      new Request("http://demo.dinkuskit.com/api/not-a-route", { headers }),
       { RATE_LIMITER: limiter },
       dummyCtx,
     );
@@ -343,7 +341,7 @@ describe("worker boundary handler", () => {
       { RATE_LIMITER: limiter },
       dummyCtx,
     );
-    expect(encoded.status).toBe(403);
+    expect(encoded.status).toBe(404);
     expect(unknown.status).toBe(404);
     expect(mutation.status).toBe(405);
     expect(astroFetch).not.toHaveBeenCalled();
@@ -353,7 +351,8 @@ describe("worker boundary handler", () => {
     const limiter = {
       limit: vi.fn().mockResolvedValue({ success: true }),
     };
-    const request = new Request("http://demo.dinkuskit.com/shop/%2e%2e/admin", {
+    // URL parsing folds the encoded dots, so this arrives as /_emdash/admin.
+    const request = new Request("http://demo.dinkuskit.com/shop/%2e%2e/_emdash/admin", {
       headers: { "cf-connecting-ip": "198.51.100.1" },
     });
     const res = await worker.fetch(request, { RATE_LIMITER: limiter }, dummyCtx);
@@ -398,6 +397,20 @@ describe("worker boundary handler", () => {
     );
     expect(res.status).toBe(200);
     expect(astroFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("hands CMS page and old WooCommerce addresses to the site", async () => {
+    astroFetch.mockClear();
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const headers = { "cf-connecting-ip": "198.51.100.1" };
+    for (const path of ["/about-us", "/product/runtz", "/setup-guide"]) {
+      const res = await worker.fetch(new Request(`http://demo.dinkuskit.com${path}`, { headers }), { RATE_LIMITER: limiter }, dummyCtx);
+      expect(res.status, path).toBe(200);
+    }
+    expect(astroFetch).toHaveBeenCalledTimes(3);
+    const slashed = await worker.fetch(new Request("http://demo.dinkuskit.com/product/runtz/", { headers }), { RATE_LIMITER: limiter }, dummyCtx);
+    expect(slashed.status).toBe(301);
+    expect(slashed.headers.get("location")).toBe("http://demo.dinkuskit.com/product/runtz");
   });
 
   it("temporarily redirects /cart/ before the Cloudflare route allowlist", async () => {

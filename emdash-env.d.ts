@@ -71,6 +71,38 @@ export interface Page {
   terms?: Record<string, TaxonomyTerm[]>;
 }
 
+export interface ProductDetailsCollapsibleSectionV1Block {
+  _type: "collapsible_section";
+  _version: 1;
+  _key: string;
+  "heading": string;
+  "content"?: PortableTextBlock[] | null;
+  "open_by_default"?: boolean | null;
+}
+
+export type ProductDetailsCollapsibleSectionBlock = ProductDetailsCollapsibleSectionV1Block;
+
+export interface ProductDetailsSpecTableV1Block {
+  _type: "spec_table";
+  _version: 1;
+  _key: string;
+  "heading"?: string | null;
+  "rows"?: { "label": string; "value": string }[] | null;
+}
+
+export type ProductDetailsSpecTableBlock = ProductDetailsSpecTableV1Block;
+
+export interface ProductDetailsRichTextV1Block {
+  _type: "rich_text";
+  _version: 1;
+  _key: string;
+  "content"?: PortableTextBlock[] | null;
+}
+
+export type ProductDetailsRichTextBlock = ProductDetailsRichTextV1Block;
+
+export type ProductDetailsBlock = ProductDetailsCollapsibleSectionBlock | ProductDetailsSpecTableBlock | ProductDetailsRichTextBlock;
+
 export interface Product {
   id: string;
   slug: string | null;
@@ -78,7 +110,9 @@ export interface Product {
   title: string;
   commerce_item_id?: string;
   description?: string;
-  visual_label: string;
+  summary?: PortableTextBlock[];
+  details?: ProductDetailsBlock[];
+  visual_label?: string;
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date | null;
