@@ -16,6 +16,7 @@
         "revisions",
         "search"
       ],
+      "urlPattern": "/{slug}",
       "fields": [
         {
           "slug": "title",
@@ -85,10 +86,28 @@
           "searchable": true
         },
         {
+          "slug": "summary",
+          "label": "Summary (shown beside the price)",
+          "type": "portableText",
+          "searchable": true
+        },
+        {
+          "slug": "details",
+          "label": "Product details (sections below the price)",
+          "type": "blocks",
+          "validation": {
+            "allowedTypes": [
+              "collapsible_section",
+              "spec_table",
+              "rich_text"
+            ],
+            "maxItems": 30
+          }
+        },
+        {
           "slug": "visual_label",
-          "label": "Illustration style (TEE, HOODIE, CAP, or BEANIE)",
-          "type": "string",
-          "required": true
+          "label": "Placeholder art (optional, used only when Commerce has no image)",
+          "type": "string"
         }
       ]
     },
@@ -219,6 +238,10 @@
       ]
     }
   ],
+  "redirects": [
+    { "source": "/product/[slug]", "destination": "/products/[slug]", "type": 301, "groupName": "Moving from WooCommerce" },
+    { "source": "/product-category/[slug]", "destination": "/categories/[slug]", "type": 301, "groupName": "Moving from WooCommerce" }
+  ],
   "widgetAreas": [
     {
       "name": "footer",
@@ -319,7 +342,6 @@
         "policy",
         "shipping",
         "returns",
-        "care",
         "support",
         "provenance"
       ],
@@ -334,21 +356,7 @@
             {
               "_type": "span",
               "_key": "policy-support-heading-span",
-              "text": "Garment care & policy provenance",
-              "marks": []
-            }
-          ]
-        },
-        {
-          "_type": "block",
-          "_key": "policy-support-care",
-          "style": "normal",
-          "markDefs": [],
-          "children": [
-            {
-              "_type": "span",
-              "_key": "policy-support-care-span",
-              "text": "Wash cold and hang dry to preserve fabric weight and collar structure across everyday wear.",
+              "text": "Policy provenance",
               "marks": []
             }
           ]
@@ -764,6 +772,74 @@
               "validation": {
                 "min": 1,
                 "max": 24
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "collapsible_section",
+      "label": "Collapsible section",
+      "category": "Content",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "heading",
+              "label": "Heading",
+              "type": "string",
+              "required": true
+            },
+            {
+              "slug": "content",
+              "label": "Content",
+              "type": "portableText"
+            },
+            {
+              "slug": "open_by_default",
+              "label": "Open by default",
+              "type": "boolean"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "spec_table",
+      "label": "Specification table",
+      "category": "Content",
+      "currentVersion": 1,
+      "versions": [
+        {
+          "version": 1,
+          "fields": [
+            {
+              "slug": "heading",
+              "label": "Heading",
+              "type": "string"
+            },
+            {
+              "slug": "rows",
+              "label": "Rows",
+              "type": "repeater",
+              "validation": {
+                "subFields": [
+                  {
+                    "slug": "label",
+                    "label": "Label",
+                    "type": "string",
+                    "required": true
+                  },
+                  {
+                    "slug": "value",
+                    "label": "Value",
+                    "type": "string",
+                    "required": true
+                  }
+                ]
               }
             }
           ]

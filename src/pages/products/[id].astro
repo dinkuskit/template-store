@@ -1,12 +1,16 @@
 ---
 import StoreFooter from "../../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../../features/store-shell/StoreHeader.astro";
-import { getEmDashCollection } from "emdash";
+import { getEmDashCollection, type PortableTextBlock } from "emdash";
+import { Blocks, PortableText, type BlockValue } from "emdash/ui";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
 import { canAddCommerceProductToCart } from "../../features/guest-cart/index.js";
 import { linkedProductPurchasable, storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { AddToCart } from "../../features/guest-cart/ui.ts";
-import ProductMedia from "../../features/commerce-catalog/ProductMedia.astro";
+import ProductGallery from "../../features/commerce-catalog/ProductGallery.astro";
+import { productDetailComponents } from "../../features/store-shell/blocks/index.js";
+import UnknownBlock from "../../features/store-shell/blocks/UnknownBlock.astro";
+import { legacyPortableTextComponents } from "../../features/store-shell/portable-text/index.js";
 import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
 import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
@@ -43,12 +47,17 @@ const item = collections.flatMap((group) => group.items).find((candidate) => pro
     ...linked,
     category: "",
     availabilitySource: linkedSource,
-    illustration: linked.visualLabel.toLowerCase() as "tee" | "hoodie" | "cap" | "beanie",
   });
 const category = linked?.categorySlugs[0]
   ? collections.find((group) => group.slug === linked.categorySlugs[0])
   : undefined;
 if (!item) Astro.response.status = 404;
+// The page's own words: a rich summary beside the price and optional sections
+// below it (template-rich-product-page-20261027). Price and stock stay Commerce's.
+const entryData = products.entries.find((entry) => entry.id === item?.id)?.data ?? {};
+const summary = Array.isArray(entryData.summary) && entryData.summary.length ? entryData.summary as PortableTextBlock[] : null;
+const details = Array.isArray(entryData.details) && entryData.details.length ? entryData.details as BlockValue[] : null;
+const illustrationSrc = item?.illustration ? `/merch/${item.illustration}.svg` : null;
 let lookupUnavailable = false;
 let linkedProduct = null;
 // Shipping pages always resolve Commerce; other profiles resolve plain linked
@@ -172,7 +181,7 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
       url: productCanonical,
       name: productName,
       ...(item.description ? { description: item.description } : {}),
-      images: [new URL(`/merch/${item.illustration}.svg`, productCanonical).href],
+      ...(illustrationSrc ? { images: [new URL(illustrationSrc, productCanonical).href] } : {}),
     })
   : null;
 // A picked combination with no member shows Product facts without an Offer.
@@ -203,15 +212,17 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
     <StoreHeader profile={profile} />
     <main class="product-page">
     <nav class="browse-breadcrumb" aria-label="Breadcrumb"><a href="/">Catalog</a><span aria-hidden="true">/</span>{category && <><a href={categoryPath(category.slug)}>{category.name}</a><span aria-hidden="true">/</span></>}<span aria-current="page">{noLongerAvailable ? "No longer available" : productName ?? "Not found"}</span></nav>
-      {noLongerAvailable ? <section class="product-removed" data-product-removed><h1>This product is no longer available</h1><p>It has been removed from the shop.</p><a href="/">Browse the shop</a></section> : item ? (
+      {noLongerAvailable ? <section class="product-removed" data-product-removed><h1>This product is no longer available</h1><p>It has been removed from the shop.</p><a href="/">Browse the shop</a></section> : item ? (<>
         <article class="product-detail" data-product-page={item.id} data-product-source={item.availabilitySource} data-commerce-item={linkedProduct?.id}>
-            <div class={`product-detail__visual product-detail__visual--${item.illustration}`} data-product-stage-visual>
-              {linkedProduct ? <ProductMedia image={linkedProduct.image} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} /> : <img src={`/merch/${item.illustration}.svg`} alt={`${item.title} garment illustration`} width="640" height="480" />}
-            </div>
+            {linkedProduct ? <ProductGallery image={linkedProduct.image} gallery={linkedProduct.gallery} productId={linkedProduct.id} fallbackSrc={demoPlaceholderImage(linkedProduct.sku, item.id)} fallbackAlt={`${productName} placeholder image`} stageClass={["product-detail__visual", item.illustration && `product-detail__visual--${item.illustration}`].filter(Boolean).join(" ")} /> : (
+              <div class:list={["product-detail__visual", item.illustration && `product-detail__visual--${item.illustration}`]} data-product-stage-visual>
+                {illustrationSrc ? <img src={illustrationSrc} alt={`${item.title} illustration`} width="640" height="480" /> : <p class="product-detail__no-image" data-product-image-placeholder={item.id}>No image</p>}
+              </div>
+            )}
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
             <h1>{productName}</h1>
-            <p class="product-detail__description">{item.description}</p>
+            {summary ? <div class="product-detail__summary" data-product-summary><PortableText value={summary} components={legacyPortableTextComponents} /></div> : <p class="product-detail__description">{item.description}</p>}
             {linkedProduct && <p class="product-detail__identifier" data-product-sku={linkedProduct.sku}>SKU {linkedProduct.sku}</p>}
             {linkedProduct?.gtin && <p class="product-detail__identifier" data-product-gtin={linkedProduct.gtin}>GTIN {linkedProduct.gtin}</p>}
             {linkedProduct?.mpn && <p class="product-detail__identifier" data-product-mpn={linkedProduct.mpn}>MPN {linkedProduct.mpn}</p>}
@@ -235,7 +246,8 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>
-      ) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
+        {details && <section class="product-details" data-product-details aria-label="Product details"><Blocks value={details} components={productDetailComponents} fallback={UnknownBlock} /></section>}
+      </>) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
     <StoreFooter profile={profile} />
   </body>
@@ -343,6 +355,18 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
   .product-detail__eyebrow{color:var(--store-accent);font-family:var(--font-mono);font-size:.75rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
   h1{font-size:clamp(2.5rem,6vw,5.5rem);line-height:1;letter-spacing:-.05em;margin:.4rem 0 1.5rem}
   .product-detail__description{font-size:clamp(1.05rem,2vw,1.3rem);line-height:1.6}
+  .product-detail__summary{font-size:clamp(1.05rem,2vw,1.2rem);line-height:1.6}
+  .product-detail__summary :global(a){color:inherit;text-underline-offset:.2em}
+  .product-detail__no-image{display:grid;place-items:center;height:100%;margin:0;color:var(--store-muted);letter-spacing:.04em}
+  .product-details{display:grid;gap:1rem;max-width:48rem;margin:-2rem 0 5rem}
+  .product-details :global(.product-section){border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);padding:0 1.2rem}
+  .product-details :global(.product-section summary){padding:1rem 0;font-weight:800;font-size:1.15rem;cursor:pointer}
+  .product-details :global(.product-section__body){padding-bottom:1rem;line-height:1.6}
+  .product-details :global(.product-specs h2){font-size:1.15rem;margin:0 0 .5rem}
+  .product-details :global(.product-specs dl){display:grid;margin:0;border-top:1px solid var(--store-line)}
+  .product-details :global(.product-specs dl > div){display:grid;grid-template-columns:minmax(8rem,1fr) 2fr;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--store-line)}
+  .product-details :global(.product-specs dt){font-weight:800}
+  .product-details :global(.product-specs dd){margin:0}
   .product-detail__price{display:flex;gap:.7rem;align-items:baseline;font-size:1.5rem}.product-detail__price[hidden]{display:none}.product-detail__price s{color:var(--store-muted)}
   .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
   .product-detail__notice{line-height:1.5;color:var(--store-muted)}

@@ -7,6 +7,7 @@ import {
   STOREFRONT_SEARCHABLE_COLLECTIONS,
   ensureStorefrontSearchSupport,
 } from "../src/features/store-shell/search-upgrade.ts";
+import { ensureStorefrontPageAddresses, ensureStorefrontProductFields } from "../src/features/store-shell/product-schema-upgrade.ts";
 
 function resolveDatabaseArgument(argv: readonly string[]): string {
   for (let i = 0; i < argv.length; i += 1) {
@@ -45,6 +46,9 @@ async function main(): Promise<void> {
   const db = new Kysely<never>({ dialect: createDialect({ url: databasePath }) });
   try {
     await runMigrations(db as never);
+    // Product fields first, so a new searchable summary joins the search index.
+    await ensureStorefrontProductFields(db);
+    await ensureStorefrontPageAddresses(db);
     await ensureStorefrontSearchSupport(db);
     console.log(
       JSON.stringify({

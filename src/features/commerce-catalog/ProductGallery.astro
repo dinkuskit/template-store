@@ -1,0 +1,79 @@
+---
+import { handleMediaGet } from "emdash";
+import { getDb } from "emdash/runtime";
+import ProductMedia from "./ProductMedia.astro";
+import { resolveCommerceImage, type PublicCommerceImage, type ResolvedCommerceImage } from "./media.js";
+
+interface Props {
+  image: PublicCommerceImage | null;
+  /** Commerce's ordered gallery; the page keeps no second copy (template-rich-product-page-20261027). */
+  gallery: readonly PublicCommerceImage[];
+  productId: string;
+  fallbackSrc?: string | null;
+  fallbackAlt?: string;
+  /** Classes for the frame holding the main picture. */
+  stageClass?: string;
+}
+
+const { image, gallery, productId, fallbackSrc = null, fallbackAlt = "", stageClass = "" } = Astro.props;
+const emdash = Astro.locals.emdash as { getPublicMediaUrl?: (storageKey: string) => string } | undefined;
+const resolver = {
+  origin: Astro.url.origin,
+  getPublicMediaUrl: emdash?.getPublicMediaUrl,
+  async getMedia(id: string) {
+    const result = await handleMediaGet(await getDb(), id);
+    const item = result.success ? result.data?.item : null;
+    if (!item?.storageKey || !item.mimeType) return null;
+    return { mimeType: item.mimeType, storageKey: item.storageKey, status: item.status };
+  },
+};
+// The main image first, then the gallery, each once; a picture that cannot be served is left out.
+const pictures = (await Promise.all([image, ...gallery].filter((entry): entry is PublicCommerceImage => Boolean(entry))
+  .filter((entry, index, all) => all.findIndex((other) => other.id === entry.id) === index)
+  .map((entry) => resolveCommerceImage(entry, resolver))))
+  .filter((entry): entry is ResolvedCommerceImage => Boolean(entry));
+const first = pictures[0] ?? null;
+---
+<div class="product-gallery" data-product-gallery={productId}>
+  <div class={stageClass} data-product-stage-visual>
+    <ProductMedia image={first ?? image} productId={productId} fallbackSrc={fallbackSrc} fallbackAlt={fallbackAlt} />
+  </div>
+  {pictures.length > 1 && (
+    <ul class="product-gallery__thumbs" aria-label="Product pictures">
+      {pictures.map((picture, index) => (
+        <li>
+          <button type="button" class="product-gallery__thumb" aria-pressed={index === 0 ? "true" : "false"} aria-label={`Show picture ${index + 1} of ${pictures.length}${picture.alt ? `: ${picture.alt}` : ""}`}
+            data-gallery-thumb data-src={picture.src} data-srcset={picture.srcset} data-alt={picture.alt}
+            data-width={picture.width ?? ""} data-height={picture.height ?? ""}>
+            <img src={picture.src} srcset={picture.srcset} sizes="6rem" alt="" width={picture.width ?? undefined} height={picture.height ?? undefined} loading="lazy" decoding="async" />
+          </button>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+<script>
+  // A picked thumbnail becomes the main picture; nothing is fetched or recalculated.
+  for (const gallery of document.querySelectorAll<HTMLElement>("[data-product-gallery]")) {
+    const main = gallery.querySelector<HTMLImageElement>("[data-commerce-image]");
+    const thumbs = [...gallery.querySelectorAll<HTMLButtonElement>("[data-gallery-thumb]")];
+    for (const thumb of thumbs) {
+      thumb.addEventListener("click", () => {
+        if (!main) return;
+        main.src = thumb.dataset.src ?? main.src;
+        main.srcset = thumb.dataset.srcset ?? "";
+        main.alt = thumb.dataset.alt ?? "";
+        if (thumb.dataset.width) main.width = Number(thumb.dataset.width); else main.removeAttribute("width");
+        if (thumb.dataset.height) main.height = Number(thumb.dataset.height); else main.removeAttribute("height");
+        for (const other of thumbs) other.setAttribute("aria-pressed", String(other === thumb));
+      });
+    }
+  }
+</script>
+<style>
+  .product-gallery{display:grid;gap:.75rem;min-width:0}
+  .product-gallery__thumbs{display:flex;flex-wrap:wrap;gap:.5rem;margin:0;padding:0;list-style:none}
+  .product-gallery__thumb{display:block;width:4.5rem;aspect-ratio:1;padding:0;overflow:hidden;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);cursor:pointer}
+  .product-gallery__thumb[aria-pressed="true"]{outline:2px solid var(--store-accent);outline-offset:2px}
+  .product-gallery__thumb img{display:block;width:100%;height:100%;object-fit:cover}
+</style>

@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "frontier-batch",
     "confirmed": true,
-    "confirmed_at": "2026-10-23T19:34:44+00:00",
-    "domain": "One product screen, product states and plugin sidebar folders",
-    "started_at": "2026-10-23T19:34:44+00:00",
+    "confirmed_at": "2026-10-27T17:09:13+00:00",
+    "domain": "Template sells anything (Grow Funky Beans migration issues)",
+    "started_at": "2026-10-27T17:09:13+00:00",
     "status": "confirmed",
-    "summary": "Ronald said 'lock it' at 19:29 UTC 23 Oct 2026 in the playground thread."
+    "summary": "Ronald answered by number in the thread, 16:50-16:57 UTC 27 Oct 2026."
   },
   "decisions": [
     {
@@ -4639,6 +4639,133 @@
       "superseded_by": null,
       "updated_at": "2026-10-26T17:02:08+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Nothing. No required field, type, copy or code path assumes a product kind. visual_label becomes optional placeholder art for editorial previews that have no Commerce product; a product page needs a slug, a title and a Commerce product. A Commerce-linked product shows Commerce's image, a demo placeholder only for the playground's own SKUs, otherwise a neutral 'No image' (unchanged). Hard-coded apparel copy and links (Hats/Hoodies/Tees fallbacks, garment care text, 'Merchandise', 'styles') become neutral. The playground's apparel stays as seed content an owner can edit or delete. Existing stores drop the old required flag and gain new product fields through the storefront schema upgrade, since a skip re-seed never touches an existing collection's fields.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/161",
+      "created_at": "2026-10-27T17:09:14+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Template sells anything (Grow Funky Beans migration issues)",
+      "history": [
+        {
+          "at": "2026-10-27T17:09:14+00:00",
+          "choice": "Nothing. No required field, type, copy or code path assumes a product kind. visual_label becomes optional placeholder art for editorial previews that have no Commerce product; a product page needs a slug, a title and a Commerce product. A Commerce-linked product shows Commerce's image, a demo placeholder only for the playground's own SKUs, otherwise a neutral 'No image' (unchanged). Hard-coded apparel copy and links (Hats/Hoodies/Tees fallbacks, garment care text, 'Merchandise', 'styles') become neutral. The playground's apparel stays as seed content an owner can edit or delete. Existing stores drop the old required flag and gain new product fields through the storefront schema upgrade, since a skip re-seed never touches an existing collection's fields.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-sells-anything-20261027",
+      "implementation_ref": null,
+      "question": "What may the template assume about what a store sells?",
+      "rationale": "Ronald, 16:51 UTC 27 Oct 2026: 'we overfit the template store to the apparel website ... a basebones template that e-commerce store owners who sold pretty much anything can use. We're not here to decide what people can and cannot sell.'",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-27T17:09:14+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Three additions, each owned where it already lives. (1) Gallery: the page shows Commerce's image and ordered gallery as thumbnails under the main picture; picking one shows it large. No CMS gallery field. (2) Summary: a new optional rich-text products field 'summary' (paragraphs, bold, lists, links) shown in the buy box in place of the short description; the plain 'description' stays the short line for cards, search, meta description and Product JSON-LD, and shows in the buy box when there is no summary. (3) Details: a new optional products field 'details' (blocks, up to 30) shown below the buy box, with neutral versioned block types collapsible_section {heading, content, open_by_default} rendered as details/summary, spec_table {heading, rows of label and value}, and the existing rich_text. New fields are added, never retyped, so existing stores keep their data. Page composition never decides price or stock.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/163",
+      "created_at": "2026-10-27T17:09:14+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-sells-anything-20261027"
+      ],
+      "domain": "Template sells anything (Grow Funky Beans migration issues)",
+      "history": [
+        {
+          "at": "2026-10-27T17:09:14+00:00",
+          "choice": "Three additions, each owned where it already lives. (1) Gallery: the page shows Commerce's image and ordered gallery as thumbnails under the main picture; picking one shows it large. No CMS gallery field. (2) Summary: a new optional rich-text products field 'summary' (paragraphs, bold, lists, links) shown in the buy box in place of the short description; the plain 'description' stays the short line for cards, search, meta description and Product JSON-LD, and shows in the buy box when there is no summary. (3) Details: a new optional products field 'details' (blocks, up to 30) shown below the buy box, with neutral versioned block types collapsible_section {heading, content, open_by_default} rendered as details/summary, spec_table {heading, rows of label and value}, and the existing rich_text. New fields are added, never retyped, so existing stores keep their data. Page composition never decides price or stock.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-rich-product-page-20261027",
+      "implementation_ref": null,
+      "question": "What can a product page show beyond the name, price and one picture?",
+      "rationale": "Ronald, 16:51 UTC 27 Oct 2026, on template-store#163: 'I think we should do all of it now.'",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-27T17:09:14+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Open the store's front door to plain addresses and keep the real guards. (1) The Worker and middleware boundary lets any plain GET or HEAD address (letters, digits, dot, dash, underscore, tilde; not under /api, /_emdash or an underscore or dot prefix) reach the site, which answers not found for anything it does not have; the demo-era approved-address list no longer decides what exists. (2) The word bans on 'admin' and 'setup' anywhere in a path or query are dropped; only EmDash's real /_emdash/admin, /_emdash/api/setup, auth and schema paths are refused, along with dev-bypass, /api/proof, traversal, encoded-dot and null-byte checks, the strict /_emdash and /api allowlists, and the existing method rules. (3) A /[slug] storefront page shows any published Pages entry with the store header and footer, 404s with 'Page not found' otherwise, and Pages gets urlPattern /{slug} in the seed and through the storefront upgrade (an owner-set pattern is kept). (4) Addresses stay Shopify-shaped (/products/, /categories/); the starter seed adds EmDash pattern redirects /product/[slug] to /products/[slug] and /product-category/[slug] to /categories/[slug] (301, group 'Moving from WooCommerce'), and the Worker drops a trailing slash on plain addresses first.",
+      "context_ref": "https://github.com/dinkuskit/template-store/issues/162",
+      "created_at": "2026-10-27T17:39:18+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-sells-anything-20261027"
+      ],
+      "domain": "Template sells anything (Grow Funky Beans migration issues)",
+      "history": [
+        {
+          "at": "2026-10-27T17:39:19+00:00",
+          "choice": "Open the store's front door to plain addresses and keep the real guards. (1) The Worker and middleware boundary lets any plain GET or HEAD address (letters, digits, dot, dash, underscore, tilde; not under /api, /_emdash or an underscore or dot prefix) reach the site, which answers not found for anything it does not have; the demo-era approved-address list no longer decides what exists. (2) The word bans on 'admin' and 'setup' anywhere in a path or query are dropped; only EmDash's real /_emdash/admin, /_emdash/api/setup, auth and schema paths are refused, along with dev-bypass, /api/proof, traversal, encoded-dot and null-byte checks, the strict /_emdash and /api allowlists, and the existing method rules. (3) A /[slug] storefront page shows any published Pages entry with the store header and footer, 404s with 'Page not found' otherwise, and Pages gets urlPattern /{slug} in the seed and through the storefront upgrade (an owner-set pattern is kept). (4) Addresses stay Shopify-shaped (/products/, /categories/); the starter seed adds EmDash pattern redirects /product/[slug] to /products/[slug] and /product-category/[slug] to /categories/[slug] (301, group 'Moving from WooCommerce'), and the Worker drops a trailing slash on plain addresses first.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-cms-pages-and-redirects-20261027",
+      "implementation_ref": null,
+      "question": "Should a real store's CMS pages and old WooCommerce addresses reach the site, and what stays guarded?",
+      "rationale": "user accepted the scoped decision (17:16 'agreed', 17:17 'drop')",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-27T17:39:19+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4661,5 +4788,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-26T17:02:08+00:00"
+  "updated_at": "2026-10-27T17:39:19+00:00"
 }

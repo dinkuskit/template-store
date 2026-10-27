@@ -8,12 +8,16 @@ export type ProductEntry = Readonly<{
   slug: string;
   title: string;
   description: string;
-  visualLabel: string;
+  /** Optional placeholder art; most products have none and show Commerce's image. */
+  visualLabel: string | null;
   commerceItemId: string;
   categorySlugs: readonly string[];
   categoryTitles: readonly string[];
-  illustration: "tee" | "hoodie" | "cap" | "beanie";
+  illustration: Illustration | null;
 }>;
+
+/** The template's own placeholder art; a store may sell anything (template-sells-anything-20261027). */
+export type Illustration = "tee" | "hoodie" | "cap" | "beanie";
 
 export type ProductCollection = Readonly<{
   slug: string;
@@ -59,11 +63,12 @@ function text(data: Record<string, unknown>, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function illustration(value: string): ProductEntry["illustration"] {
-  const normalized = value.toLowerCase();
-  return normalized === "hoodie" || normalized === "cap" || normalized === "beanie"
+/** Placeholder art named by the optional field, or none for any other value. */
+export function illustration(value: string | null | undefined): Illustration | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "tee" || normalized === "hoodie" || normalized === "cap" || normalized === "beanie"
     ? normalized
-    : "tee";
+    : null;
 }
 
 export function readProductEntries(
@@ -97,7 +102,7 @@ export function readProductEntries(
       ? entry.data.categories
       : [])
       .filter(validProductSlug);
-    if (!validProductSlug(entry.id) || !title || !visualLabel || !commerceItemId ||
+    if (!validProductSlug(entry.id) || !title || !commerceItemId ||
         categorySlugs.some((slug) => !categoryMap.has(slug))) {
       errors.push(`invalid product entry: ${entry.id}`);
       continue;

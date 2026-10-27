@@ -140,3 +140,11 @@
 {"action": "decision_verified", "at": "2026-10-24T23:55:52+00:00", "data": {"decision_id": "template-product-states-20261023"}, "event_id": "b94a467d-9c5f-4f98-87c0-332fbcefd176"}
 {"action": "decision_proposed", "at": "2026-10-26T17:02:08+00:00", "data": {"decision_id": "template-page-title-is-name-20261026"}, "event_id": "bfbb17ac-86c2-4c81-93cd-2635b57f0f04"}
 {"action": "decision_locked", "at": "2026-10-26T17:02:08+00:00", "data": {"decision_id": "template-page-title-is-name-20261026"}, "event_id": "63294826-5b52-4f0a-95b0-da9f50e3f74c"}
+{"action": "focus_started", "at": "2026-10-27T17:09:13+00:00", "data": {"cadence": "frontier-batch", "domain": "Template sells anything (Grow Funky Beans migration issues)"}, "event_id": "669070e1-57dc-4cb8-817b-a0d7ed8f1b25"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-27T17:09:13+00:00", "data": {"summary": "Ronald answered by number in the thread, 16:50-16:57 UTC 27 Oct 2026."}, "event_id": "2e01f479-416b-4c25-bb38-b154503debe6"}
+{"action": "decision_proposed", "at": "2026-10-27T17:09:14+00:00", "data": {"decision_id": "template-sells-anything-20261027"}, "event_id": "9f7d2872-b3b2-481c-9928-6e808dd16cef"}
+{"action": "decision_locked", "at": "2026-10-27T17:09:14+00:00", "data": {"decision_id": "template-sells-anything-20261027"}, "event_id": "cc1404e2-f5dd-4d4a-9011-c0a82aaa1f0b"}
+{"action": "decision_proposed", "at": "2026-10-27T17:09:14+00:00", "data": {"decision_id": "template-rich-product-page-20261027"}, "event_id": "de59ef8c-d9d3-4771-898e-331c6eddf518"}
+{"action": "decision_locked", "at": "2026-10-27T17:09:14+00:00", "data": {"decision_id": "template-rich-product-page-20261027"}, "event_id": "0e6e7b2d-34ff-4ef1-b1a5-8a1d1713aa7f"}
+{"action": "decision_proposed", "at": "2026-10-27T17:39:18+00:00", "data": {"decision_id": "template-cms-pages-and-redirects-20261027"}, "event_id": "fa77f174-9444-48f3-b8c0-28bff1e0ead4"}
+{"action": "decision_locked", "at": "2026-10-27T17:39:19+00:00", "data": {"decision_id": "template-cms-pages-and-redirects-20261027"}, "event_id": "88c0a399-0db6-4748-9251-c8bae82c80c1"}

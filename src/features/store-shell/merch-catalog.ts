@@ -1,13 +1,14 @@
 import { UNPRICED_PRODUCT_ITEM_ID } from "../unmanaged-product-sellability/identity/index.js";
+import { illustration, type Illustration } from "./product-routes.js";
 
 export type MerchRecord = Readonly<{
   id: string;
   title: string;
   category: string;
   description: string;
-  visualLabel: string;
+  visualLabel: string | null;
   availabilitySource: "managed" | "unmanaged" | "preview";
-  illustration: "tee" | "hoodie" | "cap" | "beanie";
+  illustration: Illustration | null;
 }>;
 
 export type MerchCollection = Readonly<{
@@ -65,7 +66,6 @@ export function buildMerchCollections(
       typeof title !== "string" || !title.trim() ||
       // EmDash returns an empty optional field as null.
       (description != null && typeof description !== "string") ||
-      typeof visualLabel !== "string" || !visualLabel.trim() ||
       !productPath(entry.id)
     ) continue;
     const commerceItemId = typeof entry.data.commerce_item_id === "string"
@@ -76,14 +76,11 @@ export function buildMerchCollections(
       title: title.trim(),
       category: "",
       description: typeof description === "string" ? description.trim() : "",
-      visualLabel: visualLabel.trim(),
+      visualLabel: typeof visualLabel === "string" && visualLabel.trim() ? visualLabel.trim() : null,
       availabilitySource: commerceItemId === "dinkus-template-managed-product"
         ? "managed"
         : commerceItemId === "dinkus-template-unmanaged-product" ? "unmanaged" : "preview",
-      illustration: ((): MerchRecord["illustration"] => {
-        const style = visualLabel.trim().toLowerCase();
-        return style === "hoodie" || style === "cap" || style === "beanie" ? style : "tee";
-      })(),
+      illustration: illustration(typeof visualLabel === "string" ? visualLabel : null),
     };
     for (const slug of categorySlugs) {
       const name = collectionNames.get(slug);
