@@ -382,6 +382,64 @@ describe("EmDash composition primitives & seed contract", () => {
     }
   });
 
+  // template-sells-anything-20261027: the advertised command alone, with no re-seed.
+  it("upgrades an older store's product schema through scripts/upgrade-storefront-search.ts with no re-seed", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "dinkus-schema-upgrade-"));
+    const dbPath = join(tempDir, "content.db");
+    const open = () => new Kysely<never>({ dialect: createDialect({ url: dbPath }) });
+    const products = (db: Kysely<never>, columns: string) =>
+      sql.raw<Record<string, unknown>>(`select ${columns} from ec_products order by id`).execute(db);
+    let columns = "";
+    let before: Record<string, unknown>[] = [];
+    const setupDb = open();
+    try {
+      await runMigrations(setupDb as never);
+      const legacySeed = JSON.parse(
+        readFileSync(resolve("tests/fixtures/seed-before-product-categories.json"), "utf8"),
+      );
+      await applySeed(setupDb as never, legacySeed, {
+        includeContent: true,
+        onConflict: "skip",
+        skipMediaDownload: true,
+      });
+      await sql`update ec_products set description = 'Owner wording' where slug = 'everyday-tee'`.execute(setupDb);
+      columns = (await sql<{ name: string }>`select name from pragma_table_info('ec_products')`.execute(setupDb)).rows
+        .map((row) => `"${row.name}"`)
+        .join(", ");
+      before = (await products(setupDb, columns)).rows;
+    } finally {
+      await setupDb.destroy();
+    }
+
+    try {
+      execFileSync(process.execPath, [resolve("scripts/upgrade-storefront-search.ts"), `--database=${dbPath}`], {
+        encoding: "utf8",
+      });
+      const verifyDb = open();
+      try {
+        expect((await products(verifyDb, columns)).rows).toEqual(before);
+        const fields = (await sql<{ slug: string; required: number }>`
+          select f.slug, f.required from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
+          where c.slug = 'products'`.execute(verifyDb)).rows;
+        expect(fields.find((field) => field.slug === "visual_label")?.required).toBe(0);
+        expect(fields.map((field) => field.slug)).toEqual(expect.arrayContaining(["summary", "details"]));
+        const blockTypes = (await sql<{ slug: string }>`
+          select t.slug from _emdash_block_types t join _emdash_block_type_versions v on v.block_type_id = t.id and v.version = t.current_version
+          order by t.slug`.execute(verifyDb)).rows.map((row) => row.slug);
+        expect(blockTypes).toEqual(expect.arrayContaining(["collapsible_section", "rich_text", "spec_table"]));
+        const hit = await searchWithDb(verifyDb as never, "Owner wording", { collections: ["products"] });
+        expect(hit.items.some((item) => item.slug === "everyday-tee")).toBe(true);
+        // The new summary joins the same index.
+        await sql`update ec_products set summary = ${JSON.stringify([{ _type: "block", _key: "s", style: "normal", children: [{ _type: "span", _key: "t", text: "Heavyweight loopback", marks: [] }], markDefs: [] }])} where slug = 'everyday-tee'`.execute(verifyDb);
+        expect((await searchWithDb(verifyDb as never, "loopback", { collections: ["products"] })).items.map((item) => item.slug)).toEqual(["everyday-tee"]);
+      } finally {
+        await verifyDb.destroy();
+      }
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("escapes FTS5 snippet HTML and strips untrusted tags instead of using set:html on /search", () => {
     const searchPage = readFileSync(resolve("src/pages/search.astro"), "utf8");
     expect(searchPage).not.toContain("set:html");

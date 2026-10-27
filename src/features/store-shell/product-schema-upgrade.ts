@@ -1,4 +1,4 @@
-import { SchemaRegistry, type CreateFieldInput } from "emdash";
+import { BlockTypeRegistry, SchemaRegistry, type ApplySeedBlockTypeInput, type CreateFieldInput } from "emdash";
 import { sql, type Kysely } from "kysely";
 
 /** The seed's old label for the placeholder-art field, replaced only while a store still has it. */
@@ -16,18 +16,62 @@ export const ADDED_PRODUCT_FIELDS: readonly CreateFieldInput[] = [
   },
 ];
 
+/** Block types the details field allows that an older seed never made; they mirror seed/seed.json. */
+export const ADDED_PRODUCT_BLOCK_TYPES: readonly ApplySeedBlockTypeInput[] = [
+  {
+    slug: "collapsible_section",
+    label: "Collapsible section",
+    category: "Content",
+    currentVersion: 1,
+    versions: [{
+      version: 1,
+      fields: [
+        { slug: "heading", label: "Heading", type: "string", required: true },
+        { slug: "content", label: "Content", type: "portableText" },
+        { slug: "open_by_default", label: "Open by default", type: "boolean" },
+      ],
+    }],
+  },
+  {
+    slug: "spec_table",
+    label: "Specification table",
+    category: "Content",
+    currentVersion: 1,
+    versions: [{
+      version: 1,
+      fields: [
+        { slug: "heading", label: "Heading", type: "string" },
+        {
+          slug: "rows",
+          label: "Rows",
+          type: "repeater",
+          validation: {
+            subFields: [
+              { slug: "label", label: "Label", type: "string", required: true },
+              { slug: "value", label: "Value", type: "string", required: true },
+            ],
+          },
+        },
+      ],
+    }],
+  },
+];
+
 /**
  * Brings a store set up from an older seed to the current products schema.
  * A skip re-seed never touches an existing collection's fields, so without this
  * an older store would keep demanding apparel placeholder art and never gain
  * the summary and details fields (template-sells-anything-20261027).
- * Run it after the seed so the details field's block types exist. Merchant
- * label edits and content are left alone; re-running changes nothing.
+ * It makes the details field's missing block types first, so it needs no
+ * re-seed. Merchant label edits, block types and content are left alone;
+ * re-running changes nothing.
  */
 export async function ensureStorefrontProductFields(db: unknown): Promise<void> {
   const kyselyDb = db as Kysely<never>;
   const registry = new SchemaRegistry(kyselyDb as never);
   if (!(await registry.getCollection("products"))) return;
+  const blockTypes = new BlockTypeRegistry(kyselyDb as never);
+  for (const blockType of ADDED_PRODUCT_BLOCK_TYPES) await blockTypes.applySeedBlockType(blockType, "skip");
   // EmDash refuses to change `required` through its schema API without a content
   // migration; dropping it needs none, since no saved entry can become invalid.
   await sql`

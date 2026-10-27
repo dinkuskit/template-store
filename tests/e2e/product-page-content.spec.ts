@@ -140,6 +140,14 @@ test("a product of any kind shows its rich summary, sections and gallery", async
     await expect(thumbs).toHaveCount(3);
     await expect(thumbs.first()).toHaveAttribute("aria-pressed", "true");
     const main = page.locator(`[data-product-gallery="${itemId}"] img[data-commerce-image]`);
+    // The product page's frame reaches the gallery's stage: border, rounded clip and stamp shadow.
+    const frame = await page.locator(`[data-product-gallery="${itemId}"] [data-product-stage-visual]`).evaluate((stage) => {
+      const style = getComputedStyle(stage);
+      return { border: style.borderTopStyle, overflow: style.overflow, shadow: style.boxShadow };
+    });
+    expect(frame.border).toBe("solid");
+    expect(frame.overflow).toBe("hidden");
+    expect(frame.shadow).not.toBe("none");
     const firstSrc = await main.getAttribute("src");
     await thumbs.nth(2).click();
     await expect(thumbs.nth(2)).toHaveAttribute("aria-pressed", "true");

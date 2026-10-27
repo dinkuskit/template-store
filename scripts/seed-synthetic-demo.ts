@@ -506,9 +506,9 @@ async function seedCanonical(
       onConflict: "skip",
       skipMediaDownload: true,
     });
+    await ensureStorefrontSearchSupport(db as never);
     await ensureStorefrontProductFields(db as never);
     await ensureStorefrontPageAddresses(db as never);
-    await ensureStorefrontSearchSupport(db as never);
     emit("seed.cms.apply", {
       collectionsCreated: applied.collections.created,
       contentCreated: applied.content.created,

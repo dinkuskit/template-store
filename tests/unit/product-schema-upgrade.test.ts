@@ -5,6 +5,7 @@ import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
 import { applySeed } from "emdash/seed";
 import {
+  ADDED_PRODUCT_BLOCK_TYPES,
   ADDED_PRODUCT_FIELDS,
   PAGE_URL_PATTERN,
   VISUAL_LABEL_FIELD_LABEL,
@@ -35,30 +36,46 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
       expect(seeded.find((entry: { slug: string }) => entry.slug === field.slug)).toEqual(field);
     }
     expect(seeded.find((entry: { slug: string }) => entry.slug === "visual_label")).toEqual({ slug: "visual_label", label: VISUAL_LABEL_FIELD_LABEL, type: "string" });
+    const seededBlocks = seedNow().blockTypes;
+    for (const blockType of ADDED_PRODUCT_BLOCK_TYPES) {
+      expect(seededBlocks.find((entry: { slug: string }) => entry.slug === blockType.slug)).toEqual(blockType);
+    }
   });
 
-  it("drops the old required placeholder art and adds summary and details that a skip re-seed never would", async () => {
-    await applySeed(db as never, seedNow(), options);
+  // `pnpm search:upgrade` runs only the upgrade, with no re-seed, so these tests do too.
+  it("drops the old required placeholder art and adds summary, details and their block types with no re-seed", async () => {
+    const blockTypes = async () => (await sql<{ slug: string }>`select slug from _emdash_block_types order by slug`.execute(db)).rows.map((row) => row.slug);
     expect((await fields()).visual_label?.required).toBe(1);
     expect((await fields()).summary).toBeUndefined();
+    expect(await blockTypes()).toEqual(["home_opener", "query_card", "rich_text"]);
 
     await ensureStorefrontProductFields(db);
     const after = await fields();
     expect(after.visual_label).toMatchObject({ required: 0, label: VISUAL_LABEL_FIELD_LABEL });
     expect(after.summary?.type).toBe("portableText");
     expect(after.details?.type).toBe("blocks");
+    expect(await blockTypes()).toEqual(["collapsible_section", "home_opener", "query_card", "rich_text", "spec_table"]);
+    expect((await sql<{ slug: string }>`
+      select t.slug from _emdash_block_types t join _emdash_block_type_versions v on v.block_type_id = t.id and v.version = t.current_version
+      where t.slug in ('collapsible_section', 'spec_table') order by t.slug`.execute(db)).rows.map((row) => row.slug)).toEqual(["collapsible_section", "spec_table"]);
 
-    // Re-running changes nothing, and a merchant's own label survives.
+    // Re-running changes nothing, and a merchant's own labels survive.
     await sql`update _emdash_fields set label = 'Art' where slug = 'visual_label'`.execute(db);
+    await sql`update _emdash_block_types set label = 'Specs' where slug = 'spec_table'`.execute(db);
     await ensureStorefrontProductFields(db);
     expect((await fields()).visual_label).toMatchObject({ required: 0, label: "Art" });
+    expect((await sql<{ label: string }>`select label from _emdash_block_types where slug = 'spec_table'`.execute(db)).rows[0]?.label).toBe("Specs");
   });
 
-  it("keeps existing product content", async () => {
-    const before = (await sql<{ n: number }>`select count(*) as n from ec_products`.execute(db)).rows[0]?.n;
-    await applySeed(db as never, seedNow(), options);
+  it("keeps every existing product's saved values", async () => {
+    // Every column the older store already had, read before the upgrade adds any.
+    const columns = (await sql<{ name: string }>`select name from pragma_table_info('ec_products')`.execute(db)).rows.map((row) => `"${row.name}"`).join(", ");
+    const products = async () => (await sql.raw<Record<string, unknown>>(`select ${columns} from ec_products order by id`).execute(db)).rows;
+    const before = await products();
+    expect(before.length).toBeGreaterThan(0);
     await ensureStorefrontProductFields(db);
-    expect((await sql<{ n: number }>`select count(*) as n from ec_products`.execute(db)).rows[0]?.n).toBe(before);
+    await ensureStorefrontPageAddresses(db);
+    expect(await products()).toEqual(before);
   });
 
   // template-cms-pages-and-redirects-20261027

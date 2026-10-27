@@ -63,7 +63,7 @@ function text(data: Record<string, unknown>, key: string): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-/** Placeholder art named by the optional field, or none for any other value. */
+/** Placeholder art named by the optional field, or none for every other value. */
 export function illustration(value: string | null | undefined): Illustration | null {
   const normalized = value?.trim().toLowerCase();
   return normalized === "tee" || normalized === "hoodie" || normalized === "cap" || normalized === "beanie"

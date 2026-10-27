@@ -19,7 +19,11 @@ Covers three locked ledger entries from the 27 Oct 2026 grill with Ronald:
   `ensureStorefrontProductFields` drops `visual_label`'s required flag, swaps
   only the old label, and adds `summary` and `details`;
   `ensureStorefrontPageAddresses` gives Pages `/{slug}` unless the owner set
-  one. Both run after the demo seed and in `pnpm search:upgrade`.
+  one. The field upgrade first makes the missing `collapsible_section` and
+  `spec_table` block types (skip on conflict), so `pnpm search:upgrade` needs
+  no re-seed. Search support runs before the new fields, so a store that never
+  had search still gets its default searchable fields and the new `summary`
+  joins the index.
 - The public boundary lets plain GET/HEAD addresses reach the site and drops
   the "admin"/"setup" word bans; EmDash's real admin, setup, auth and schema
   paths, dev-bypass, /api/proof, traversal and encoding checks, the /_emdash
@@ -42,3 +46,16 @@ Covers three locked ledger entries from the 27 Oct 2026 grill with Ronald:
   `cloudflare-checkout-return.spec.ts`: passed, including the new
   `/product/everyday-tee/` and `/about-us/` 301s.
 - `./scripts/grilltrack validate`: valid.
+
+## Review fixes (second head)
+
+- `pnpm -s test`: 58 files, 536 tests passed. The upgrade tests now run on the
+  older fixture with no re-seed and compare every saved product column; a new
+  test runs `scripts/upgrade-storefront-search.ts` alone on an on-disk older
+  store and checks fields, block types, saved values and search, including a
+  new `summary`.
+- The product frame styles reach `ProductGallery`'s stage; the gallery
+  browser test checks its border, clipping and shadow (it fails on the old
+  scoped rules). `product-page-content.spec.ts` and
+  `cms-pages-and-redirects.spec.ts`, desktop and mobile: 10 passed.
+- `pnpm audit:features`: ok (CI's "explicit any" came from the word in a comment).

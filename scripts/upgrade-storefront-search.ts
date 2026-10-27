@@ -46,10 +46,11 @@ async function main(): Promise<void> {
   const db = new Kysely<never>({ dialect: createDialect({ url: databasePath }) });
   try {
     await runMigrations(db as never);
-    // Product fields first, so a new searchable summary joins the search index.
+    // Search first: it turns on the default searchable fields only for a collection
+    // with none, and a new searchable summary then joins the index EmDash keeps.
+    await ensureStorefrontSearchSupport(db);
     await ensureStorefrontProductFields(db);
     await ensureStorefrontPageAddresses(db);
-    await ensureStorefrontSearchSupport(db);
     console.log(
       JSON.stringify({
         action: "search-upgrade",
