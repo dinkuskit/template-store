@@ -9,14 +9,13 @@ import { demoPlaceholderImage } from "../playground/demo-products.js";
 
 interface Props {
   collections: readonly MerchCollection[];
-  menu?: { items: readonly { label: string; url: string }[] };
   managed?: ManagedProductAvailability;
   unmanaged?: UnmanagedProductSellability;
   collectionOnly?: boolean;
   /** EmDash product id -> its installed Commerce product, on shipping stores. */
   commerceProducts?: ReadonlyMap<string, PublicCommerceProduct>;
 }
-const { collections, menu, managed, unmanaged, collectionOnly = false, commerceProducts = new Map() } = Astro.props;
+const { collections, managed, unmanaged, collectionOnly = false, commerceProducts = new Map() } = Astro.props;
 const manualLabel: Record<string, string> = {
   "in-stock": "In stock",
   "out-of-stock": "Out of stock",
@@ -35,7 +34,7 @@ const manualLabel: Record<string, string> = {
     <span class="catalog-count">{collections.reduce((total, group) => total + group.items.length, 0)} products</span>
   </div>}
   {!collectionOnly && <nav class="collection-nav" aria-label="Product categories" data-collection-nav>
-    {(menu?.items ?? []).map((item) => <a href={item.url}>{item.label}</a>)}
+    {collections.map((collection) => <a href={categoryPath(collection.slug)}>{collection.name}</a>)}
   </nav>}
   {collections.length === 0 ? (
     <p class="catalog-empty" role="status">No products are published. Add products in EmDash admin to populate this catalog.</p>

@@ -313,3 +313,48 @@ test("without JavaScript the main menu still opens on hover and shows in full on
     await context.close();
   }
 });
+
+test("a published category added under Shop in Main navigation shows in the header", async ({ page, request }, testInfo) => {
+  test.setTimeout(90_000);
+  expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
+  const csrfHeaders = { "X-EmDash-Request": "1" };
+  const project = testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase();
+  const slug = `accessories-${project}`;
+  const label = `Accessories ${project}`;
+
+  const created = await request.post("/_emdash/api/content/categories", {
+    headers: csrfHeaders,
+    data: { slug, status: "draft", data: { title: label } },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const categoryId = ((await created.json()) as { data: { item: { id: string } } }).data.item.id;
+  let menuItemId: string | undefined;
+  try {
+    const published = await request.post(`/_emdash/api/content/categories/${categoryId}/publish`, { headers: csrfHeaders });
+    expect(published.ok(), await published.text()).toBe(true);
+
+    // Publishing the category alone leaves the header as the owner set it.
+    await page.goto("/");
+    const main = page.locator("[data-store-header]").getByRole("navigation", { name: "Main", includeHidden: true });
+    await expect(main.getByRole("link", { name: "Hats", includeHidden: true })).toHaveCount(1);
+    await expect(main.getByRole("link", { name: label, includeHidden: true })).toHaveCount(0);
+
+    const menu = await request.get("/_emdash/api/menus/primary");
+    expect(menu.ok(), await menu.text()).toBe(true);
+    const items = ((await menu.json()) as { data: { items: Array<{ id: string; label: string; parent_id: string | null }> } }).data.items;
+    const shop = items.find((item) => item.label === "Shop" && !item.parent_id);
+    expect(shop, JSON.stringify(items)).toBeDefined();
+    const added = await request.post("/_emdash/api/menus/primary/items", {
+      headers: csrfHeaders,
+      data: { type: "collection", label, referenceCollection: "categories", referenceId: categoryId, parentId: shop!.id },
+    });
+    expect(added.status(), await added.text()).toBe(201);
+    menuItemId = ((await added.json()) as { data: { id: string } }).data.id;
+
+    await page.reload();
+    await expect(main.getByRole("link", { name: label, includeHidden: true })).toHaveAttribute("href", `/categories/${slug}`);
+  } finally {
+    if (menuItemId) await request.delete(`/_emdash/api/menus/primary/items/${menuItemId}`, { headers: csrfHeaders });
+    await request.delete(`/_emdash/api/content/categories/${categoryId}`, { headers: csrfHeaders });
+  }
+});

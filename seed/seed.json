@@ -188,30 +188,6 @@
       ]
     },
     {
-      "name": "store-primary",
-      "label": "Store navigation",
-      "items": [
-        {
-          "type": "collection",
-          "label": "Hats",
-          "collection": "categories",
-          "ref": "hats"
-        },
-        {
-          "type": "collection",
-          "label": "Hoodies",
-          "collection": "categories",
-          "ref": "hoodies"
-        },
-        {
-          "type": "collection",
-          "label": "Tees",
-          "collection": "categories",
-          "ref": "tees"
-        }
-      ]
-    },
-    {
       "name": "footer_shop",
       "label": "Footer shop links",
       "items": [
