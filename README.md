@@ -101,7 +101,7 @@ pnpm search:upgrade --database=.artifacts/dev/content.db
 
 Restart and confirm Sections shows Home opener. `pnpm search:upgrade` enables FTS5 search on legacy `pages`, `products`, and `categories` collections without seeding synthetic demo products or overwriting merchant content and field search exclusions (`searchable = 0`). Do not use `update`.
 
-A running store does the `pnpm search:upgrade` part itself: on the first request after a deploy it runs the storefront upgrades its database (D1 on Cloudflare, SQLite locally) has not recorded, the way EmDash runs its own migrations. `pnpm search:upgrade` reruns every step on a local database, which also repairs one. See [Existing installations](docs/v1-setup.md#existing-installations).
+A running store does the `pnpm search:upgrade` part itself: on the first request after a deploy it runs the storefront upgrades its database (D1 on Cloudflare, SQLite locally) has not recorded, the way EmDash runs its own migrations. A brand-new store waits until EmDash has seeded it, so it keeps the seed's schema as is. `pnpm search:upgrade` reruns every step on a local database, which also repairs one. See [Existing installations](docs/v1-setup.md#existing-installations).
 
 ## Editorial query cards
 

@@ -56,10 +56,21 @@ export async function upgradeStorefront(
 }
 
 /**
+ * Whether EmDash has finished seeding the store or the owner has finished setting
+ * it up. EmDash seeds a store that has neither on its first request, so until then
+ * there is nothing to upgrade, and a seed still being written isn't touched.
+ */
+export async function storeIsSetUp(db: unknown): Promise<boolean> {
+  const options = await new OptionsRepository(db as never).getMany(["emdash:seed_complete", "emdash:setup_complete"]);
+  return options.get("emdash:seed_complete") === true || options.get("emdash:setup_complete") === true;
+}
+
+/**
  * Brings the store up to the template's schema on the first request this isolate
- * serves, after EmDash's own migrations, the way EmDash runs those. It follows
- * EMDASH_MIGRATIONS_MODE: "manual" or "check" leaves the store as it is. A
- * failure is logged and tried again after `retryMs`; it never fails the request.
+ * serves, after EmDash's own migrations and first seed, the way EmDash runs those.
+ * It follows EMDASH_MIGRATIONS_MODE: "manual" or "check" leaves the store as it is.
+ * A store not yet seeded or set up, or a failure, is tried again after `retryMs`; a
+ * failure is logged and never fails the request.
  */
 export function storefrontUpgrader(retryMs = 60_000) {
   let done = false;
@@ -69,7 +80,12 @@ export function storefrontUpgrader(retryMs = 60_000) {
     if (done || (mode ?? "auto") !== "auto" || now < retryAt) return;
     running ??= (async () => {
       try {
-        const ran = await upgradeStorefront(await db());
+        const store = await db();
+        if (!(await storeIsSetUp(store))) {
+          retryAt = now + retryMs;
+          return;
+        }
+        const ran = await upgradeStorefront(store);
         if (ran.length > 0) console.info("[storefront-upgrade] ran", ran.join(", "));
         done = true;
       } catch (error) {

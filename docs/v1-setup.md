@@ -79,8 +79,10 @@ template-store-self-upgrade-20261028). On the first request after a deploy, a
 store runs each storefront upgrade in
 `src/features/store-shell/storefront-upgrades.ts` that its database, D1 or
 SQLite, has not recorded, after EmDash's own migrations, and records it in the
-`dinkus:storefront-upgrades` option. A step only adds or relaxes and keeps owner
-edits; a failed step never fails the request and is retried a minute later.
+`dinkus:storefront-upgrades` option. It waits until EmDash has seeded the store
+or the owner has set it up, so a brand-new store gets the seed's schema
+untouched. A step only adds or relaxes and keeps owner edits; a failed step
+never fails the request and is retried a minute later.
 `EMDASH_MIGRATIONS_MODE=manual` or `check` turns it off with EmDash's own
 migrations. A template change to the schema in `seed/seed.json` adds its step to
 that list in the same change.

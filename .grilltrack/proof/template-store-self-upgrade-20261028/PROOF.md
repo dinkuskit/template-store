@@ -13,8 +13,11 @@ for the store to follow upstream EmDash and keep its data in D1.
   left unrecorded and the run stops there.
 - The middleware runs this on the first request each isolate serves, using EmDash's own
   database (`emdash/runtime` `getDb()`: D1 on Cloudflare, SQLite locally). It runs after
-  EmDash's runtime is up, so EmDash's migrations have already been applied. A failure is
-  logged and tried again a minute later, and the request carries on.
+  EmDash's runtime is up, so EmDash's migrations have already been applied. It also waits
+  until EmDash has seeded the store (`emdash:seed_complete`) or the owner has set it up
+  (`emdash:setup_complete`), the same two options EmDash checks before it seeds a new
+  store, so a seed still being written is never touched. A store with neither, or a
+  failure, is tried again a minute later, and the request carries on.
   `EMDASH_MIGRATIONS_MODE=manual` or `check` leaves the store alone. The playground's
   per-visitor databases are skipped, since each one is seeded fresh.
 - `pnpm search:upgrade` reruns every step on a local database and records them.
@@ -34,6 +37,8 @@ for the store to follow upstream EmDash and keep its data in D1.
   - The isolate runner never throws, waits a minute before trying again, shares one
     run between requests that arrive together, runs once per isolate, and stays off
     under `manual` and `check`.
+  - A store EmDash hasn't seeded and nobody has set up is left alone until
+    `emdash:seed_complete` appears, and then upgraded on the next try.
 - `tests/unit/emdash-theme-composition.test.ts` still runs `scripts/upgrade-storefront-search.ts`
   on an on-disk older store and passes.
 - Local D1 through the built Worker. This was a Cloudflare build of this source
@@ -50,6 +55,23 @@ for the store to follow upstream EmDash and keep its data in D1.
     all 14 products are kept, and `pages`, `products` and `categories` each have search
     on with an FTS table. The option lists all three steps.
   - A new Worker start answered 200 and logged no upgrade.
+- Fresh install on local D1 through the built Worker, the same build served the same way
+  from an empty persisted D1 (`fresh-install.mjs` beside this file, output in
+  `fresh-install.txt`):
+  - First requests: `/` answered 200, and the Worker logged `Auto-seeded default
+    collections` and then `[storefront-upgrade] ran 001_storefront_search,
+    002_product_fields, 003_page_addresses`.
+  - `/_emdash/api/setup/status` answered `needsSetup: true`, step `start`, so the
+    owner's setup wizard is still offered.
+  - Every collection and field (slug, type, required, label, searchable, supports,
+    address) is identical to a database where EmDash alone applied `seed/seed.json` with
+    no storefront upgrade. The upgrade changed nothing the seed made; it only recorded
+    the three steps. The 9 seed products are there, and `pages`, `products` and
+    `categories` have FTS tables.
+  - With `emdash:setup_complete` then set, as EmDash's `finalizeSetup` does, a new
+    Worker start answered 200 and ran nothing.
+- The older-store run above (`older-store.mjs`, output in `older-store.txt`) was repeated
+  on this head and gave the same result.
 
 ## Not proven here
 

@@ -1,0 +1,82 @@
+{
+  "d1File": ".artifacts/fresh-install-proof/v3/d1/miniflare-D1DatabaseObject/e7352547963de7050bd7d94658afc4fe78b61811b7815da12d90be8e863abf4d.sqlite",
+  "fresh": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/products/",
+      "status": 301
+    },
+    {
+      "path": "/_emdash/api/setup/status",
+      "status": 200,
+      "body": "{\"success\":true,\"data\":{\"needsSetup\":true,\"step\":\"start\",\"seedInfo\":{\"name\":\"DinkusKit store starter\",\"description\":\"Neutral Commerce shop starter with EmDash composition\",\"collections\":3,\"hasContent\":true},\"authMode\":\"passkey\"}}"
+    }
+  ],
+  "afterFresh": {
+    "options": {
+      "dinkus:storefront-upgrades": "[\"001_storefront_search\",\"002_product_fields\",\"003_page_addresses\"]",
+      "emdash:seed_complete": "true"
+    },
+    "counts": {
+      "ec_products": 9,
+      "ec_pages": 0,
+      "ec_categories": 0
+    },
+    "ftsTables": [
+      "_emdash_fts_categories",
+      "_emdash_fts_pages",
+      "_emdash_fts_products"
+    ]
+  },
+  "sameSchemaAsSeedAlone": true,
+  "diff": [],
+  "products": [
+    {
+      "collection": "products",
+      "slug": "details",
+      "type": "blocks",
+      "required": 0,
+      "label": "Product details (sections below the price)",
+      "searchable": 0
+    },
+    {
+      "collection": "products",
+      "slug": "summary",
+      "type": "portableText",
+      "required": 0,
+      "label": "Summary (shown beside the price)",
+      "searchable": 1
+    },
+    {
+      "collection": "products",
+      "slug": "visual_label",
+      "type": "string",
+      "required": 0,
+      "label": "Placeholder art (optional, used only when Commerce has no image)",
+      "searchable": 0
+    }
+  ],
+  "pagesAddress": "/{slug}",
+  "afterSetup": [
+    {
+      "path": "/",
+      "status": 200
+    },
+    {
+      "path": "/products/",
+      "status": 301
+    }
+  ],
+  "optionsAtEnd": {
+    "dinkus:storefront-upgrades": "[\"001_storefront_search\",\"002_product_fields\",\"003_page_addresses\"]",
+    "emdash:seed_complete": "true",
+    "emdash:setup_complete": "true"
+  }
+}
+--- fresh install
+Auto-seeded default collections
+[storefront-upgrade] ran 001_storefront_search, 002_product_fields, 003_page_addresses
+--- after the owner's setup

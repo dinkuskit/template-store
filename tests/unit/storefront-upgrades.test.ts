@@ -9,6 +9,7 @@ import { PAGE_URL_PATTERN, VISUAL_LABEL_FIELD_LABEL } from "../../src/features/s
 import {
   STOREFRONT_UPGRADES,
   STOREFRONT_UPGRADES_OPTION,
+  storeIsSetUp,
   storefrontUpgrader,
   upgradeStorefront,
 } from "../../src/features/store-shell/storefront-upgrades.js";
@@ -75,6 +76,7 @@ describe("storefront upgrades a store runs on its own", () => {
   it("upgrades once per isolate, never fails the request, waits before trying again, and stays off when EmDash migrations are manual", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(console, "info").mockImplementation(() => {});
+    await new OptionsRepository(db as never).set("emdash:setup_complete", true);
     const upgrade = storefrontUpgrader(60_000);
     let opened = 0;
     let broken = true;
@@ -100,5 +102,24 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await recorded()).toEqual(ALL);
     await upgrade(open, { now: 200_000 });
     expect(opened).toBe(2);
+  });
+
+  it("leaves a store EmDash hasn't seeded and nobody has set up until one of them has", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    const options = new OptionsRepository(db as never);
+    const upgrade = storefrontUpgrader(60_000);
+    const open = async () => db;
+
+    expect(await storeIsSetUp(db)).toBe(false);
+    await upgrade(open, { now: 0 });
+    expect(await recorded()).toBeNull();
+    expect((await products()).visual_label?.required).toBe(1);
+    // A store EmDash seeded on its first request is ready, even before its owner finishes setup.
+    await options.set("emdash:seed_complete", true);
+    await upgrade(open, { now: 30_000 });
+    expect(await recorded()).toBeNull();
+    expect(await storeIsSetUp(db)).toBe(true);
+    await upgrade(open, { now: 60_000 });
+    expect(await recorded()).toEqual(ALL);
   });
 });
