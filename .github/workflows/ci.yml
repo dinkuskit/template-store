@@ -233,7 +233,7 @@ jobs:
   # token lives only in the `playground` environment. By the owner's choice
   # (2026-10-10) that environment has no required reviewer: pushes to main
   # deploy on their own, same-repository pull requests get preview links on
-  # their own unless labeled verification-only; fork pull requests never run
+  # their own unless draft or labeled verification-only; fork pull requests never run
   # this job. Verification-only PRs also skip preview cleanup. Preview URLs use
   # Cloudflare Worker Previews on pr-N.playground.dinkuskit.com.
   deploy-playground:
@@ -244,6 +244,7 @@ jobs:
       vars.PLAYGROUND_DEPLOY_ENABLED == 'true' &&
       (github.event_name == 'push' ||
       (github.event.action != 'closed' &&
+      !github.event.pull_request.draft &&
       !contains(github.event.pull_request.labels.*.name, 'verification-only') &&
       github.event.pull_request.head.repo.full_name == github.repository))
     environment: playground

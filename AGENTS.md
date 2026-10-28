@@ -11,13 +11,30 @@ skills into ignored `.cursor/skills/`. Use
 The CLI-only ledger rule remains in force. SmokySkills is enabled only after
 maintainer access and an immutable commit pin are supplied.
 
+## Organization direction and research
+
+The [organization vision](https://github.com/dinkuskit/.github/blob/36aab690a7ef66dc119aab70e258ea979c54841a/VISION.md) and
+[planning boundaries](https://github.com/dinkuskit/.github/blob/36aab690a7ef66dc119aab70e258ea979c54841a/ROADMAP.md) describe the shared direction: independently
+useful connected tools for one accountable business operator, optional first-party
+or merchant-selected assistants, and adoption in useful stages. They do not
+replace this repository's current runtime contracts or establish new capability,
+release, deployment, or action authority.
+
+For a material product, architecture, implementation, or verification question,
+use the pinned `emdash-commerce` skill and its
+[selective REA guidance](https://github.com/saariuslystoned/SaariusSkills/blob/23f2bb1208b3baa7aedaa87faec00395f9bdd061/skills/emdash-commerce/SKILL.md). Research the actual question; routine fixes do
+not require a new research cycle. Keep research findings, accepted designs, and
+active work distinct, and reuse the owning issue or decision record. Public
+outputs must be original and public-safe.
+
 ## Source priority
 
 1. This file.
-2. `design.md` for the current product-wide visual contract.
-3. `FEATURE_MAP.md` for feature ownership and verification.
-4. `.grilltrack/ledger.json`, changed only through the GrillTrack CLI.
-5. Current source, tests, and committed proof.
+2. The linked organization vision and planning boundaries for shared direction.
+3. `design.md` for this repository's visual contract.
+4. `FEATURE_MAP.md` for feature ownership and verification.
+5. `.grilltrack/ledger.json`, changed only through the GrillTrack CLI.
+6. Current source, tests, and committed proof for implemented behavior.
 
 ## Product boundary
 
