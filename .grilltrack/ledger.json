@@ -4766,6 +4766,50 @@
       "superseded_by": null,
       "updated_at": "2026-10-27T17:39:19+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "The store upgrades itself, the way EmDash runs its own migrations. (1) The template keeps one ordered list of named storefront upgrades; today: search on Pages, Products and Categories; product fields with optional placeholder art; Pages addresses. Every step only adds or relaxes, never retypes or deletes, keeps owner edits, and is safe to run twice. (2) The first request a Worker isolate serves, after EmDash's own migrations and once EmDash has seeded the store or the owner has set it up (emdash:seed_complete or emdash:setup_complete, the options EmDash checks before it seeds), runs each step not yet recorded and records it in EmDash's options table under dinkus:storefront-upgrades, on whatever database the store runs: D1 on Cloudflare, SQLite locally. Later isolates read that one row and skip. A brand-new store keeps the seed's schema untouched. (3) A step that fails, or a store not yet seeded or set up, is retried after a short back-off; a failure is logged and never fails a shopper's or owner's request. Two isolates racing is harmless because each step checks before it writes. (4) EMDASH_MIGRATIONS_MODE=manual or check turns the self-upgrade off too, as it does EmDash's. (5) The playground is left alone: each visitor's database is seeded fresh from the current seed. (6) pnpm search:upgrade stays as the manual path for a local database and runs the same list. (7) Any future template schema change adds a step to the list in the same PR as its seed change; emdash seed stays first setup only.",
+      "context_ref": null,
+      "created_at": "2026-10-28T12:32:52+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-sells-anything-20261027",
+        "template-cms-pages-and-redirects-20261027"
+      ],
+      "domain": "Template sells anything (Grow Funky Beans migration issues)",
+      "history": [
+        {
+          "at": "2026-10-28T13:18:49+00:00",
+          "choice": "The store upgrades itself, the way EmDash runs its own migrations. (1) The template keeps one ordered list of named storefront upgrades; today: search on Pages, Products and Categories; product fields with optional placeholder art; Pages addresses. Every step only adds or relaxes, never retypes or deletes, keeps owner edits, and is safe to run twice. (2) The first request a Worker isolate serves, after EmDash's own migrations, runs each step not yet recorded and records it in EmDash's options table under dinkus:storefront-upgrades, on whatever database the store runs: D1 on Cloudflare, SQLite locally. Later isolates read that one row and skip. (3) A step that fails is logged, left unrecorded and retried after a short back-off; it never fails a shopper's or owner's request. Two isolates racing is harmless because each step checks before it writes. (4) EMDASH_MIGRATIONS_MODE=manual or check turns the self-upgrade off too, as it does EmDash's. (5) The playground is left alone: each visitor's database is seeded fresh from the current seed. (6) pnpm search:upgrade stays as the manual path for a local database and runs the same list. (7) Any future template schema change adds a step to the list in the same PR as its seed change; emdash seed stays first setup only.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-store-self-upgrade-20261028",
+      "implementation_ref": null,
+      "question": "How does a store that is already set up pick up the schema changes a newer template makes, on D1 or local SQLite?",
+      "rationale": "Ronald locked it 13:18 UTC 28 Oct 2026 (card 'Lock it'), after being told the upgrade now waits for EmDash's seed. His ask, 12:24 UTC: 'We should definitely align ourselves with upstream. I prefer to use D1 for storage. I'd prefer if we handled this now instead of putting it off and forgetting about it.' Template #164's product-field and Pages-address upgrades ran only through scripts/upgrade-storefront-search.ts on a local SQLite file, so a Cloudflare store on D1 (the beta store, every merchant store) had no way to take them. EmDash 1.2 runs its own pending migrations on the first database use per isolate (enforceRuntimeMigrationPolicy, default auto, EMDASH_MIGRATIONS_MODE override) and treats seeding as first setup only; this mirrors that.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-28T13:18:49+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4788,5 +4832,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-27T17:39:19+00:00"
+  "updated_at": "2026-10-28T13:18:49+00:00"
 }

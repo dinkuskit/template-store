@@ -1,0 +1,43 @@
+{
+  "d1File": ".artifacts/self-upgrade-proof/v3/d1/miniflare-D1DatabaseObject/e7352547963de7050bd7d94658afc4fe78b61811b7815da12d90be8e863abf4d.sqlite",
+  "before": {
+    "fields": [
+      {
+        "slug": "visual_label",
+        "required": 1,
+        "label": "Illustration style (TEE, HOODIE, CAP, or BEANIE)"
+      }
+    ],
+    "pages": null,
+    "recorded": null
+  },
+  "firstStatus": 200,
+  "after": {
+    "fields": [
+      {
+        "slug": "details",
+        "required": 0,
+        "label": "Product details (sections below the price)"
+      },
+      {
+        "slug": "summary",
+        "required": 0,
+        "label": "Summary (shown beside the price)"
+      },
+      {
+        "slug": "visual_label",
+        "required": 0,
+        "label": "Placeholder art (optional, used only when Commerce has no image)"
+      }
+    ],
+    "pages": "/{slug}",
+    "recorded": "[\"001_storefront_search\",\"002_product_fields\",\"003_page_addresses\"]"
+  },
+  "secondStatus": 200,
+  "again": "[\"001_storefront_search\",\"002_product_fields\",\"003_page_addresses\"]"
+}
+--- fresh
+[storefront-upgrade] ran 001_storefront_search, 002_product_fields, 003_page_addresses
+--- after deploy
+[storefront-upgrade] ran 001_storefront_search, 002_product_fields, 003_page_addresses
+--- next isolate
