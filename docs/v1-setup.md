@@ -74,5 +74,18 @@ site automatically. Existing sites accepting real orders do not exist.
 Source-pilot proof covers EmDash 0.41.0 only; EmDash 1.0 and the final artifact
 need a fresh clean-install and upgrade proof before release instructions exist.
 
+Later additive schema changes apply themselves (GrillTrack
+template-store-self-upgrade-20261028). On the first request after a deploy, a
+store runs each storefront upgrade in
+`src/features/store-shell/storefront-upgrades.ts` that its database, D1 or
+SQLite, has not recorded, after EmDash's own migrations, and records it in the
+`dinkus:storefront-upgrades` option. It waits until EmDash has seeded the store
+or the owner has set it up, so a brand-new store gets the seed's schema
+untouched. A step only adds or relaxes and keeps owner edits; a failed step
+never fails the request and is retried a minute later.
+`EMDASH_MIGRATIONS_MODE=manual` or `check` turns it off with EmDash's own
+migrations. A template change to the schema in `seed/seed.json` adds its step to
+that list in the same change.
+
 EmDash treats a template as a copied Astro project; its seed initializes a new
 site and is not a deployed-site migration system. [Official theme contract](https://docs.emdashcms.com/themes/overview/).
