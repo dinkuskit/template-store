@@ -105,7 +105,7 @@ test("the seeded main menu leads from every store page to the shop and its categ
   );
   await expect(
     page.locator('[data-policy-support-section="policy-support-note"] h3'),
-  ).toHaveText("Garment care & policy provenance");
+  ).toHaveText("Policy provenance");
 
   // /search route renders <LiveSearch> and SSR FTS5 results, while excluding draft content.
   await page.goto("/search?q=Everyday");
@@ -121,8 +121,7 @@ test("the seeded main menu leads from every store page to the shop and its categ
       status: "draft",
       data: {
         title: "Secret Prototype Parka",
-        description: "Unpublished prototype garment",
-        visual_label: "hoodie",
+        description: "Unpublished prototype product",
       },
     },
   });

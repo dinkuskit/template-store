@@ -37,6 +37,16 @@ const ALLOWED_PATH_PATTERNS = [
   /^\/products\/[a-zA-Z0-9_-]+$/,
 ];
 
+// Plain storefront addresses (CMS pages, EmDash redirects such as /product/x)
+// reach the site, which answers "not found" for anything it does not have
+// (template-cms-pages-and-redirects-20261027). EmDash's /_emdash namespace,
+// the store's /api routes, and underscore or dot prefixes stay on the lists above.
+const STOREFRONT_PAGE_PATH = /^\/(?!api(?:\/|$))[A-Za-z0-9][A-Za-z0-9._~-]*(?:\/[A-Za-z0-9][A-Za-z0-9._~-]*)*$/;
+
+export function isStorefrontPagePath(pathname: string): boolean {
+  return STOREFRONT_PAGE_PATH.test(pathname);
+}
+
 const GUEST_CHECKOUT_POST_PATH =
   new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/checkout/guest/(prepare|start|status)$`);
 const SHOPPER_ACCOUNT_POST_PATH =
@@ -100,6 +110,10 @@ function slashlessCollectionPath(pathname: string): string | undefined {
   ) {
     return pathname.slice(0, -1);
   }
+  // Old WooCommerce and WordPress addresses end in a slash.
+  if (isStorefrontPagePath(pathname.slice(0, -1))) {
+    return pathname.slice(0, -1);
+  }
   return undefined;
 }
 
@@ -157,14 +171,15 @@ function isDisallowedTraversalOrTarget(
     return true;
   }
 
-  // Check for administrative, bypass, or sensitive targets in path or query
+  // Check for administrative, bypass, or sensitive targets. Only EmDash's real
+  // admin and setup paths count, so a "Setup guide" page or a "Badminton set"
+  // product is an ordinary address.
   const lowerPath = pathname.toLowerCase();
   const lowerSearch = search.toLowerCase();
   const isSensitiveTarget =
-    lowerPath.includes("admin") ||
-    lowerSearch.includes("admin") ||
-    lowerPath.includes("setup") ||
-    lowerSearch.includes("setup") ||
+    lowerPath === "/_emdash/admin" ||
+    lowerPath.startsWith("/_emdash/admin/") ||
+    lowerPath.startsWith("/_emdash/api/setup") ||
     lowerPath.startsWith("/_emdash/api/auth") ||
     lowerPath.startsWith("/api/auth") ||
     lowerPath.startsWith("/_emdash/api/schema") ||
@@ -173,7 +188,6 @@ function isDisallowedTraversalOrTarget(
   if (
     lowerPath.includes("dev-bypass") ||
     lowerSearch.includes("dev-bypass") ||
-    lowerPath.includes("%61dmin") ||
     lowerPath.includes("%64ev-bypass") ||
     lowerPath.startsWith("/api/proof") ||
     ((!allowEmdashAdmin || !isEmdashAdminPath(lowerPath)) && isSensitiveTarget)
@@ -279,7 +293,7 @@ export function evaluatePublicBoundary(
     return {
       allowed: false,
       status: 405,
-      reason: "Mutations are not permitted on the public demo host.",
+      reason: "Mutations are not permitted on the public storefront.",
     };
   }
 
@@ -348,6 +362,10 @@ export function evaluatePublicBoundary(
     if (pattern.test(decodedPath)) {
       return { allowed: true, status: 200 };
     }
+  }
+
+  if (pathForms.every(isStorefrontPagePath)) {
+    return { allowed: true, status: 200 };
   }
 
   if (decodedPath === "/_image" && searchForms.some((form) => isSafeCommerceImageRequest(form, requestHref))) {
