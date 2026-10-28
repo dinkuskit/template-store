@@ -3,11 +3,8 @@ import { resolve } from "node:path";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
 import { Kysely } from "kysely";
-import {
-  STOREFRONT_SEARCHABLE_COLLECTIONS,
-  ensureStorefrontSearchSupport,
-} from "../src/features/store-shell/search-upgrade.ts";
-import { ensureStorefrontPageAddresses, ensureStorefrontProductFields } from "../src/features/store-shell/product-schema-upgrade.ts";
+import { STOREFRONT_SEARCHABLE_COLLECTIONS } from "../src/features/store-shell/search-upgrade.ts";
+import { upgradeStorefront } from "../src/features/store-shell/storefront-upgrades.ts";
 
 function resolveDatabaseArgument(argv: readonly string[]): string {
   for (let i = 0; i < argv.length; i += 1) {
@@ -46,16 +43,15 @@ async function main(): Promise<void> {
   const db = new Kysely<never>({ dialect: createDialect({ url: databasePath }) });
   try {
     await runMigrations(db as never);
-    // Search first: it turns on the default searchable fields only for a collection
-    // with none, and a new searchable summary then joins the index EmDash keeps.
-    await ensureStorefrontSearchSupport(db);
-    await ensureStorefrontProductFields(db);
-    await ensureStorefrontPageAddresses(db);
+    // A running store does this on its own (template-store-self-upgrade-20261028);
+    // here every step runs again, which also repairs a local database.
+    const upgrades = await upgradeStorefront(db, { all: true });
     console.log(
       JSON.stringify({
         action: "search-upgrade",
         database: databasePath,
         collections: Object.keys(STOREFRONT_SEARCHABLE_COLLECTIONS),
+        upgrades,
       }),
     );
   } finally {

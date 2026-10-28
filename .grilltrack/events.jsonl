@@ -148,3 +148,4 @@
 {"action": "decision_locked", "at": "2026-10-27T17:09:14+00:00", "data": {"decision_id": "template-rich-product-page-20261027"}, "event_id": "0e6e7b2d-34ff-4ef1-b1a5-8a1d1713aa7f"}
 {"action": "decision_proposed", "at": "2026-10-27T17:39:18+00:00", "data": {"decision_id": "template-cms-pages-and-redirects-20261027"}, "event_id": "fa77f174-9444-48f3-b8c0-28bff1e0ead4"}
 {"action": "decision_locked", "at": "2026-10-27T17:39:19+00:00", "data": {"decision_id": "template-cms-pages-and-redirects-20261027"}, "event_id": "88c0a399-0db6-4748-9251-c8bae82c80c1"}
+{"action": "decision_proposed", "at": "2026-10-28T12:32:52+00:00", "data": {"decision_id": "template-store-self-upgrade-20261028"}, "event_id": "5cf84d34-8655-48ae-b41b-2f558c19bd10"}

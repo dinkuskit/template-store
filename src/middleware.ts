@@ -17,6 +17,7 @@ import {
 import {
   filterPublicSearchApiResponse,
 } from "./features/store-shell/index.js";
+import { storefrontUpgrader } from "./features/store-shell/storefront-upgrades.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import {
   ensureDemoShopperOrder,
@@ -52,6 +53,8 @@ import {
 const seededPlaygroundSessions = new Set<string>();
 // Puts pages EmDash published on a schedule on sale, at most once a minute per isolate.
 const sweepScheduledSales = scheduledSaleSweeper();
+// Runs the template's storefront upgrades a store set up from an older seed hasn't run, once per isolate.
+const upgradeStorefrontSchema = storefrontUpgrader();
 let demoProfileSeeded = false;
 
 
@@ -223,7 +226,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
       await ensurePlaygroundDemoCatalog(db, { playground: true });
       seededPlaygroundSessions.add(session);
     }
-  } else if (isDemoCatalogProfile() && !demoProfileSeeded) {
+  } else if (context.locals.emdash) {
+    // An older store takes the template's newer schema on its own database, D1 or
+    // SQLite, as EmDash takes its migrations (template-store-self-upgrade-20261028).
+    // Each playground visitor's database is seeded fresh, so it needs none.
+    await upgradeStorefrontSchema(async () => (await import("emdash/runtime")).getDb(), {
+      mode: process.env.EMDASH_MIGRATIONS_MODE ?? import.meta.env.EMDASH_MIGRATIONS_MODE,
+    });
+  }
+  if (!isPlayground && isDemoCatalogProfile() && !demoProfileSeeded) {
     // The demo profile (native-development catalog + proof storefront) gets the
     // same create-only-if-missing demo catalog. Shipping stores never do.
     demoProfileSeeded = true;
