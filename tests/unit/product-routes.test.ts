@@ -62,4 +62,19 @@ describe("canonical product routes", () => {
     expect(result.products).toEqual([]);
     expect(result.errors).toEqual(["invalid product entry: everyday-tee"]);
   });
+
+  // template-sells-anything-20261027: a store may sell anything, so a migrated
+  // seed or nutrient product with no placeholder art is a product like any other.
+  it("keeps products of any kind, with or without placeholder art", () => {
+    const seeds = { id: "runtz-candy-kush", data: { title: "Runtz Candy Kush", description: "Fruity.", categories: ["hats"], commerce_item_id: "wc-var-1938" } };
+    const result = readProductEntries([seeds, product("everyday-tee", "item-1"), {
+      id: "mycrobes", data: { title: "Mycrobes", categories: [], commerce_item_id: "item-2", visual_label: "JAR" },
+    }], categories);
+    expect(result.errors).toEqual([]);
+    expect(result.products.map((entry) => [entry.id, entry.illustration])).toEqual([
+      ["runtz-candy-kush", null],
+      ["everyday-tee", "tee"],
+      ["mycrobes", null],
+    ]);
+  });
 });

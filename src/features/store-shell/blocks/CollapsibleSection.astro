@@ -1,0 +1,13 @@
+---
+import { PortableText, type BlockComponentProps, type BlockValue } from "emdash/ui";
+import type { PortableTextBlock } from "emdash";
+import { legacyPortableTextComponents } from "../portable-text/index.js";
+const { value } = Astro.props as BlockComponentProps<BlockValue & { heading?: string; content?: PortableTextBlock[]; open_by_default?: boolean }>;
+const heading = value.heading?.trim();
+---
+{heading ? (
+  <details class="product-section" open={value.open_by_default === true} data-product-section>
+    <summary>{heading}</summary>
+    {value.content?.length ? <div class="product-section__body"><PortableText value={value.content} components={legacyPortableTextComponents} /></div> : null}
+  </details>
+) : null}
