@@ -127,3 +127,11 @@ For implementation and verification work orders, produce a compact acceptance-to
 Reconcile sources before selecting assertions. Explain why each case exercises its requirement, how it distinguishes success from failure, and how planned evidence will compare observed results against those expectations, including ownership, consistency across representations, and permitted effects where relevant. Empty or unreachable cases cannot prove populated behavior.
 
 Keep missing facts, cases, sources, and environment capabilities as explicit discovery dependencies, identifying what must establish them. Distinguish planned evidence from observed results; skips are not passes. Planning-only work claims no execution. Check complete coverage and resolve conflicts using existing source priority. Preserve all non-goals, mandatory checks, ownership, and authority. Continue already authorized work without routine permission questions.
+
+## Delegated audits
+
+- `api-oracle` ([saari-co/api-oracle](https://github.com/saari-co/api-oracle)) runs
+  delegated background audits, CI triage, and architecture checkpoints on API
+  credits. Prefer `oracle ask <lane>` for work a brief can carry, and read and
+  rate the briefs it announces. It gates nothing and does not replace
+  ClawSweeper review.
