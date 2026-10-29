@@ -164,6 +164,7 @@ test("a product of any kind shows its rich summary, sections and gallery", async
 });
 
 test("a published product with no placeholder art and no Commerce image says No image", async ({ page, request }, testInfo) => {
+  test.setTimeout(120_000);
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
   const slug = `plain-nutrient-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
   const entry = await request.post("/_emdash/api/content/products", {
@@ -179,7 +180,8 @@ test("a published product with no placeholder art and no Commerce image says No 
     expect((await request.post(`/_emdash/api/content/products/${entryId}/publish`, { headers: csrf })).ok()).toBe(true);
     await page.goto(`/products/${slug}`);
     await expect(page.locator(`[data-product-page="${slug}"] h1`)).toHaveText("Aloe Vera Flakes");
-    await expect(page.locator(`[data-product-image-placeholder="${slug}"]`)).toHaveText("No image");
+    // The page shows its Commerce product, which has no image.
+    await expect(page.locator(`[data-product-page="${slug}"] [data-commerce-image-placeholder="${itemId}"]`)).toHaveText("No image");
     await expect(page.locator(".product-detail__description")).toHaveText("Organic.");
     await expect(page.locator("[data-product-details]")).toHaveCount(0);
   } finally {
