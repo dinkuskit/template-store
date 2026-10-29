@@ -93,6 +93,10 @@ describe("checkout body validation", () => {
       lines: [{ catalogItemId: "item_1", quantity: 1 }],
       contact: { email: "a@example.test", delivery: { name: "A", line1: "1 St", city: "X", postalCode: "1", country: "US" } },
     }))).toEqual({ ok: true });
+    expect(validateCheckoutBody("start", JSON.stringify({
+      lines: [{ catalogItemId: "item_1", quantity: 1 }],
+      contact: { email: "a@example.test", billing: { name: "B", line1: "2 St", city: "Y", postalCode: "2", country: "CA" } },
+    }))).toEqual({ ok: true });
     expect(validateCheckoutBody("prepare", "{}")).toEqual({ ok: true });
     expect(validateCheckoutBody("status", JSON.stringify({ attemptId: "att_1" }))).toEqual({ ok: true });
   });
@@ -108,6 +112,8 @@ describe("checkout body validation", () => {
       JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }, { catalogItemId: "a", quantity: 1 }] }),
       JSON.stringify({ lines: Array.from({ length: 41 }, (_, i) => ({ catalogItemId: `i${i}`, quantity: 1 })) }),
       JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }], contact: { email: "nope" } }),
+      JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }], contact: { email: "a@example.test", billing: { name: "B", cardNumber: "4242" } } }),
+      JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }], contact: { email: "a@example.test", billing: "same" } }),
       "not json",
       "[]",
       `{"lines":[${"x".repeat(5000)}]}`,

@@ -206,6 +206,33 @@ async function prefillShopperContact(root: Element): Promise<void> {
   }
 }
 
+/** Reads one address block; "missing" when a required field is blank. */
+function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckoutDelivery | "empty" | "missing" {
+  const field = (name: string) => inputValue(root, `[data-guest-cart-${kind}-${name}]`);
+  const fields = {
+    name: field("name"),
+    line1: field("line1"),
+    line2: field("line2"),
+    city: field("city"),
+    region: field("region"),
+    postalCode: field("postal-code"),
+    country: field("country").toUpperCase(),
+  };
+  if (!Object.values(fields).some(Boolean)) return "empty";
+  for (const [key, value] of Object.entries(fields)) {
+    if (!value && key !== "line2" && key !== "region") return "missing";
+  }
+  return {
+    name: fields.name,
+    line1: fields.line1,
+    ...(fields.line2 ? { line2: fields.line2 } : {}),
+    city: fields.city,
+    ...(fields.region ? { region: fields.region } : {}),
+    postalCode: fields.postalCode,
+    country: fields.country,
+  };
+}
+
 export function readCheckoutContact(
   root: Element,
   needsDelivery: boolean,
@@ -217,39 +244,31 @@ export function readCheckoutContact(
   }
   // A digital-only cart hides the delivery section; values left there from an
   // earlier physical cart must never reach Commerce or block checkout.
-  if (!needsDelivery) return { contact: { email }, error: null };
-  const fields = {
-    name: inputValue(root, "[data-guest-cart-delivery-name]"),
-    line1: inputValue(root, "[data-guest-cart-delivery-line1]"),
-    line2: inputValue(root, "[data-guest-cart-delivery-line2]"),
-    city: inputValue(root, "[data-guest-cart-delivery-city]"),
-    region: inputValue(root, "[data-guest-cart-delivery-region]"),
-    postalCode: inputValue(root, "[data-guest-cart-delivery-postal-code]"),
-    country: inputValue(root, "[data-guest-cart-delivery-country]").toUpperCase(),
-  };
-  const deliveryEntered = Object.values(fields).some(Boolean);
-  if (!deliveryEntered) return { contact: { email }, error: null };
-  for (const [key, value] of Object.entries(fields)) {
-    if (!value && key !== "line2" && key !== "region") {
+  let delivery: GuestCheckoutDelivery | undefined;
+  if (needsDelivery) {
+    const read = readAddress(root, "delivery");
+    if (read === "missing") {
       return { contact: null, error: "Complete the recipient, address, city, postal code, and country fields." };
     }
+    if (read !== "empty") {
+      if (!/^[A-Z]{2}$/u.test(read.country)) return { contact: null, error: "Choose a country this store ships to." };
+      if (read.country === "US" && !read.region) {
+        return { contact: null, error: "Enter a state for United States delivery." };
+      }
+      delivery = read;
+    }
   }
-  if (!/^[A-Z]{2}$/u.test(fields.country)) {
-    return { contact: null, error: "Choose a country this store ships to." };
+  // Commerce needs a full billing copy on every order; "same as delivery" sends the delivery address again.
+  const same = root.querySelector("[data-guest-cart-billing-same]");
+  if (needsDelivery && (!(same instanceof HTMLInputElement) || same.checked)) {
+    // With no delivery address, Commerce answers that one is required.
+    return { contact: delivery ? { email, delivery, billing: { ...delivery } } : { email }, error: null };
   }
-  if (fields.country === "US" && !fields.region) {
-    return { contact: null, error: "Enter a state for United States delivery." };
+  const billing = readAddress(root, "billing");
+  if (billing === "empty" || billing === "missing" || !/^[A-Z]{2}$/u.test(billing.country)) {
+    return { contact: null, error: "Complete the billing name, address, city, postal code, and country fields." };
   }
-  const delivery = {
-    name: fields.name,
-    line1: fields.line1,
-    ...(fields.line2 ? { line2: fields.line2 } : {}),
-    city: fields.city,
-    ...(fields.region ? { region: fields.region } : {}),
-    postalCode: fields.postalCode,
-    country: fields.country,
-  };
-  return { contact: { email, delivery }, error: null };
+  return { contact: { email, ...(delivery ? { delivery } : {}), billing }, error: null };
 }
 
 function lineThumbnailMarkup(line: GuestCartView["lines"][number]): string {
@@ -340,6 +359,20 @@ function focusAfterRemove(root: Element, removedId: string): void {
   void removedId;
 }
 
+/**
+ * Billing shows its own fields unless "same as delivery" applies: a physical basket with the box ticked.
+ * A digital-only basket has no delivery address, so its billing fields always show.
+ */
+export function renderBilling(root: Element, needsDelivery: boolean): void {
+  const sameRow = root.querySelector("[data-guest-cart-billing-same-row]");
+  const same = root.querySelector("[data-guest-cart-billing-same]");
+  const billing = root.querySelector("[data-guest-cart-billing]");
+  if (sameRow instanceof HTMLElement) sameRow.hidden = !needsDelivery;
+  if (billing instanceof HTMLElement) {
+    billing.hidden = needsDelivery && same instanceof HTMLInputElement && same.checked;
+  }
+}
+
 function renderCart(root: Element): void {
   const current = view();
   const isCheckoutPage = root.hasAttribute("data-guest-checkout-page");
@@ -413,6 +446,7 @@ function renderCart(root: Element): void {
   if (delivery instanceof HTMLElement) {
     delivery.hidden = !current.needsDelivery;
   }
+  renderBilling(root, current.needsDelivery);
   if (retry instanceof HTMLButtonElement) {
     const retryState = guestCartRetryControlState(current);
     retry.hidden = retryState.hidden;
@@ -830,6 +864,10 @@ export function hydrateGuestCartPage(): void {
   root.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
+    if (target.hasAttribute("data-guest-cart-billing-same")) {
+      renderBilling(root, view().needsDelivery);
+      return;
+    }
     if (checkoutLocked()) return;
     const id = target.getAttribute("data-guest-cart-qty");
     if (!id) return;

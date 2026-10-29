@@ -217,7 +217,7 @@ export function nativeCheckoutPath(kind: CheckoutRouteKind): string {
 export const MAX_CHECKOUT_BODY_BYTES = 4 * 1024;
 const MAX_ATTEMPT_ID_LENGTH = 256;
 const MAX_COUPON_LENGTH = 128;
-const CONTACT_FIELDS = new Set(["email", "delivery"]);
+const CONTACT_FIELDS = new Set(["email", "delivery", "billing"]);
 const DELIVERY_FIELDS = new Set(["name", "line1", "line2", "city", "region", "postalCode", "country"]);
 
 export type CheckoutRouteKind = "prepare" | "start" | "status";
@@ -252,9 +252,13 @@ function validContact(value: unknown): boolean {
   if (!isObject(value)) return false;
   if (!Object.keys(value).every((key) => CONTACT_FIELDS.has(key))) return false;
   if (!boundedString(value.email, 254) || !(value.email as string).includes("@")) return false;
-  if (value.delivery === undefined) return true;
-  if (!isObject(value.delivery)) return false;
-  return Object.entries(value.delivery).every(([key, field]) =>
+  return validAddress(value.delivery) && validAddress(value.billing);
+}
+
+function validAddress(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!isObject(value)) return false;
+  return Object.entries(value).every(([key, field]) =>
     DELIVERY_FIELDS.has(key) && (field === undefined || (typeof field === "string" && field.length <= 200)));
 }
 
