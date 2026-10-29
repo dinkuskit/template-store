@@ -184,6 +184,9 @@ const started = await request("/_emdash/api/plugins/dinkus-commerce/checkout/gue
     contact: { email: "proof@example.test", delivery: {
       name: "Proof Visitor", line1: "1 Test Way", city: "Testville",
       region: "NC", postalCode: "00000", country: "US",
+    }, billing: {
+      name: "Proof Visitor", line1: "1 Test Way", city: "Testville",
+      region: "NC", postalCode: "00000", country: "US",
     } } }, capability);
 const attemptId = started.body?.data?.checkout?.attemptId ?? started.body?.checkout?.attemptId ?? started.body?.data?.attemptId ?? started.body?.attemptId;
 if (typeof attemptId !== "string" || attemptId.length === 0) {

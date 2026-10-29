@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { freshOfflineContext, installOfflineCheckoutHarness } from "./helpers/offline-checkout";
+import { fillBilling, freshOfflineContext, installOfflineCheckoutHarness } from "./helpers/offline-checkout";
 
 test.use({ trace: "off", video: "off", serviceWorkers: "block" });
 
@@ -43,6 +43,7 @@ for (const awaitingStart of [false, true]) {
         await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled({ timeout: 5_000 });
         await expect(page.getByRole("button", { name: "Check checkout status" })).toBeHidden();
         await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
+        await fillBilling(page);
         await page.getByRole("button", { name: "Continue to secure checkout" }).click();
         await expect(page.locator("[data-guest-cart-status]")).toContainText("pending");
         expect(harness.counts()).toEqual({ prepareCalls: 0, startCalls: 1, statusCalls: 1 });

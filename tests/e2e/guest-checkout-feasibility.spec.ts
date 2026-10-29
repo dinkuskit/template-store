@@ -7,6 +7,8 @@ import { POST as storeCheckoutStatus } from "../../src/pages/api/checkout/status
 import {
   NATIVE_PREPARE,
   RUNTIME_PREPARE,
+  billingAddress,
+  fillBilling,
   freshOfflineContext,
   installOfflineCheckoutHarness,
 } from "./helpers/offline-checkout";
@@ -522,6 +524,8 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
     });
     await digital.goto("/checkout");
     await expect(digital.getByRole("heading", { name: "Delivery address" })).toBeHidden();
+    await expect(digital.getByRole("heading", { name: "Billing address" })).toBeVisible();
+    await expect(digital.getByLabel("Billing address same as delivery address")).toBeHidden();
     await expect(digital.locator("[data-checkout-shipping-amount]")).toHaveText("Free");
     await digital.screenshot({ path: resolve(root, "digital-only-no-address.png"), fullPage: true, animations: "disabled" });
   } finally {
@@ -581,7 +585,7 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     await expect.poll(() => harness.counts().startCalls).toBe(1);
     physicalBodies = harness.startBodies();
     expect(physicalBodies).toHaveLength(1);
-    expect((physicalBodies[0] as { contact: unknown }).contact).toEqual({ email: "proof@example.test", delivery: address });
+    expect((physicalBodies[0] as { contact: unknown }).contact).toEqual({ email: "proof@example.test", delivery: address, billing: address });
   } finally {
     await physicalContext.close();
   }
@@ -658,11 +662,14 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     await expect(page.getByRole("heading", { name: "Delivery address" })).toBeHidden();
     await expect(page.getByLabel("City", { exact: true })).toHaveValue(address.city);
     await page.screenshot({ path: resolve(root, "digital-after-physical-stale-fields.png"), fullPage: true, animations: "disabled" });
+    // A digital-only basket asks for the billing address directly.
+    await expect(page.getByLabel("Billing address same as delivery address")).toBeHidden();
+    await fillBilling(page, billingAddress);
     await page.getByRole("button", { name: "Continue to secure checkout" }).click();
     await expect.poll(() => harness.counts().startCalls).toBe(1);
     staleBodies = harness.startBodies();
     expect(staleBodies).toHaveLength(1);
-    expect((staleBodies[0] as { contact: unknown }).contact).toEqual({ email: "proof@example.test" });
+    expect((staleBodies[0] as { contact: unknown }).contact).toEqual({ email: "proof@example.test", billing: billingAddress });
   } finally {
     await staleContext.close();
   }
@@ -759,6 +766,7 @@ for (const scenario of ["prepared capability", "lost first-start response"] as c
       await expect(page.locator("[data-guest-cart-checkout]")).toBeEnabled();
       if (lostStart) {
         await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
+        await fillBilling(page);
         await page.getByRole("button", { name: "Continue to secure checkout" }).click();
         await expect(page.locator("[data-guest-cart-status]")).toContainText("may have reached Commerce");
       }
