@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { addPageProduct, catalogOp } from "./helpers/product-page";
 
 // template-sells-anything-20261027 and template-rich-product-page-20261027:
 // any kind of product gets a page, the page carries the owner's rich summary and
@@ -93,7 +94,6 @@ test("a product of any kind shows its rich summary, sections and gallery", async
       data: {
         title: `Runtz Candy Kush ${suffix}`,
         description: "Fruity and indisputably fun.",
-        commerce_item_id: itemId,
         summary: [
           block("intro", [span("intro-a", "Fruity and "), span("intro-b", "indisputably fun", ["strong"]), span("intro-c", ".")]),
           block("bulk", [span("bulk-a", "Need more? See the "), span("bulk-b", "10-count pack", ["bulk-link"])], [{ _type: "link", _key: "bulk-link", href: "/search?q=runtz" }]),
@@ -109,6 +109,8 @@ test("a product of any kind shows its rich summary, sections and gallery", async
   expect(entry.status(), await entry.text()).toBe(201);
   const entryId = unwrap<{ item: { id: string } }>(await entry.json()).item.id;
   try {
+    // Commerce holds which product the page sells (template-no-commerce-box-20261029).
+    await catalogOp(request, { op: "link", entryId, catalogItemId: itemId });
     expect((await request.post(`/_emdash/api/content/products/${entryId}/publish`, { headers: csrf })).ok()).toBe(true);
     await page.goto(`/products/${slug}`);
     const detail = page.locator(`[data-product-page="${slug}"]`);
@@ -166,11 +168,14 @@ test("a published product with no placeholder art and no Commerce image says No 
   const slug = `plain-nutrient-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
   const entry = await request.post("/_emdash/api/content/products", {
     headers: csrf,
-    data: { slug, status: "draft", data: { title: "Aloe Vera Flakes", description: "Organic.", commerce_item_id: `dinkus-template-preview-${slug}` } },
+    data: { slug, status: "draft", data: { title: "Aloe Vera Flakes", description: "Organic." } },
   });
   expect(entry.status(), await entry.text()).toBe(201);
   const entryId = unwrap<{ item: { id: string } }>(await entry.json()).item.id;
   try {
+    // A priced Commerce product with no image; the shop lists only priced products.
+    const itemId = await addPageProduct(request, entryId, { name: "Aloe Vera Flakes", sku: slug.toUpperCase() });
+    await catalogOp(request, { op: "prices", catalogItemId: itemId, regular: "9.00", sale: "", stockStatus: "in-stock" });
     expect((await request.post(`/_emdash/api/content/products/${entryId}/publish`, { headers: csrf })).ok()).toBe(true);
     await page.goto(`/products/${slug}`);
     await expect(page.locator(`[data-product-page="${slug}"] h1`)).toHaveText("Aloe Vera Flakes");

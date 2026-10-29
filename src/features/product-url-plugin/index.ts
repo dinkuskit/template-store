@@ -13,9 +13,11 @@ type ProductClaim = {
  * schedule. EmDash publishes it later with nobody signed in, so the store's
  * publish check cannot sell then; the next allowed admin request does it from
  * this record (src/features/product-on-sale), checking that `by` could sell
- * with `role` when they scheduled it and still can.
+ * with `role` when they scheduled it and still can. `itemId` is the product an
+ * older store's Commerce product field named; Commerce holds a page's link now
+ * (template-no-commerce-box-20261029), so a page without the field names none.
  */
-export type ScheduleGrant = { by: string; role: number; itemId: string; scheduledAt: string };
+export type ScheduleGrant = { by: string; role: number; itemId?: string; scheduledAt: string };
 /**
  * - `proposals`: every schedule asked for since the record was made, written
  *   before EmDash stores each (a schedule from no person proposes `by: ""`,
@@ -42,7 +44,8 @@ export const PENDING_SALES = "pending_sales";
 export const PRODUCT_URL_PLUGIN_ID = "dinkus-template-product-urls";
 
 // EmDash 1.2.0 hands content-policy hooks the whole content item: id, slug and
-// status at the top level, the collection's fields under `data`.
+// status at the top level, the collection's fields under `data`. Only an older
+// store's page still has the Commerce product field.
 function itemIdOf(content: Record<string, unknown>): string {
   const data = content.data;
   const value =
@@ -127,29 +130,35 @@ export function createPlugin() {
       const entryId = entryIdOf(event.content);
       const itemId = itemIdOf(event.content);
       if (!entryId) return { cancel: true, reason: "Product is missing its entry ID." };
-      if (!itemId || itemId.length > 1024) {
+      if (itemId.length > 1024) {
         return {
           cancel: true,
-          reason: "Publishing requires a non-empty Commerce product ID of at most 1,024 characters.",
+          reason: "The Commerce product ID can be at most 1,024 characters.",
         };
       }
 
-      // EmDash site hooks do not receive the installed plugin runtime. The
-      // installed catalog item lookup is therefore enforced at render time;
-      // this hook deliberately proves format plus the atomic claim only.
-      try {
-        await ctx.storage.claims.put(entryId, {
-          entryId,
-          itemId,
-          path: claimPath(event.content),
-        } satisfies ProductClaim);
-      } catch {
-        const claims = await ctx.storage.claims.query();
-        const holder = claims.items.find((claim) => (claim.data as ProductClaim).itemId === itemId);
-        return {
-          cancel: true,
-          reason: `Commerce product is already published at ${(holder?.data as ProductClaim | undefined)?.path ?? `/products/${entryId}`}.`,
-        };
+      // Commerce holds which product a page sells and refuses one another page
+      // sells; the store's publish check refuses a page with no product. Only an
+      // older store's field value is claimed here, one published page per value.
+      // EmDash site hooks do not receive the installed plugin runtime, so the
+      // catalog item lookup is enforced at render time.
+      if (!itemId) {
+        await ctx.storage.claims.delete(entryId);
+      } else {
+        try {
+          await ctx.storage.claims.put(entryId, {
+            entryId,
+            itemId,
+            path: claimPath(event.content),
+          } satisfies ProductClaim);
+        } catch {
+          const claims = await ctx.storage.claims.query();
+          const holder = claims.items.find((claim) => (claim.data as ProductClaim).itemId === itemId);
+          return {
+            cancel: true,
+            reason: `Commerce product is already published at ${(holder?.data as ProductClaim | undefined)?.path ?? `/products/${entryId}`}.`,
+          };
+        }
       }
       // A person's own publish goes through the store's publish check, so it ends a schedule's grant. EmDash's
       // scheduled publish marks a confirmed grant as publishing; content:afterPublish completes it.
@@ -161,27 +170,32 @@ export function createPlugin() {
       if (event.collection !== PRODUCTS) return;
       const entryId = entryIdOf(event.content);
       const itemId = itemIdOf(event.content);
-      if (!entryId || !itemId || itemId.length > 1024) {
+      if (!entryId) return { cancel: true, reason: "Product is missing its entry ID." };
+      if (itemId.length > 1024) {
         return {
           cancel: true,
-          reason: "Scheduling requires a non-empty Commerce product ID of at most 1,024 characters.",
+          reason: "The Commerce product ID can be at most 1,024 characters.",
         };
       }
-      try {
-        await ctx.storage.claims.put(entryId, {
-          entryId,
-          itemId,
-          path: claimPath(event.content),
-        } satisfies ProductClaim);
-      } catch {
-        return {
-          cancel: true,
-          reason: "Commerce product is already claimed by another scheduled or published product.",
-        };
+      if (!itemId) {
+        await ctx.storage.claims.delete(entryId);
+      } else {
+        try {
+          await ctx.storage.claims.put(entryId, {
+            entryId,
+            itemId,
+            path: claimPath(event.content),
+          } satisfies ProductClaim);
+        } catch {
+          return {
+            cancel: true,
+            reason: "Commerce product is already claimed by another scheduled or published product.",
+          };
+        }
       }
       // Proposed before EmDash stores the schedule; content:afterSchedule grants from it only if that succeeded. A
       // proposal at the confirmed time can only weaken the grant, even if afterSchedule never runs.
-      const proposal = { by: event.actor?.id ?? "", role: event.actor?.id ? event.actor.role : 0, itemId, scheduledAt: event.scheduledAt };
+      const proposal = { by: event.actor?.id ?? "", role: event.actor?.id ? event.actor.role : 0, ...(itemId ? { itemId } : {}), scheduledAt: event.scheduledAt };
       await changePending(ctx.storage[PENDING_SALES], entryId, (current) => {
         const kept = current?.proposals ?? [];
         const known = kept.some((existing) => sameProposal(existing, proposal));

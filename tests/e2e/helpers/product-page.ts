@@ -1,8 +1,31 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
-// Commerce 0.6.0 sells a product from its Content > Products page: the page's Dinkus Commerce panel adds
-// price and stock, and publishing the page puts the product on sale (the store's publish check).
+// Commerce sells a product from its Content > Products page: the page's Dinkus Commerce panel adds price and
+// stock, and publishing the page puts the product on sale (the store's publish check). Commerce holds which
+// product a page sells (template-no-commerce-box-20261029); the page has no field for it.
 const headers = { "X-EmDash-Request": "1" };
+const CATALOG = "/_emdash/api/plugins/dinkus-commerce/catalog";
+
+/** One `op` of Commerce's private catalog route, as the signed-in person (catalog-api-20261027). */
+export async function catalogOp<T>(request: APIRequestContext, body: Record<string, unknown>): Promise<T> {
+  const response = await request.post(CATALOG, { headers, data: body });
+  expect(response.ok(), await response.text()).toBe(true);
+  const json = await response.json();
+  return (json && typeof json === "object" && "data" in json ? json.data : json) as T;
+}
+
+/** The Commerce product a page sells, as Commerce links it, or "" when none. */
+export async function pageProductId(request: APIRequestContext, pageId: string): Promise<string> {
+  return (await catalogOp<{ product: { catalogItemId?: string } | null }>(request, { op: "get", entryId: pageId })).product?.catalogItemId ?? "";
+}
+
+/**
+ * Gives a page a new Commerce product, linked to it as the page's Add price and stock does. It stays a Draft
+ * until the page is published.
+ */
+export async function addPageProduct(request: APIRequestContext, pageId: string, { name, sku }: { name: string; sku: string }): Promise<string> {
+  return (await catalogOp<{ catalogItemId: string }>(request, { op: "create", commandId: `page-${pageId}`, entryId: pageId, name, sku })).catalogItemId;
+}
 
 /** Signs in through the dev bypass on the Content > Products list and clears EmDash's welcome dialog. */
 export async function openProductsList(admin: Page) {
@@ -53,15 +76,11 @@ export async function draftProductPage(admin: Page, { title, sku, slug }: { titl
   const panel = await openProductPage(admin, pageId);
   await panel.getByRole("textbox", { name: "SKU (optional)", exact: true }).fill(sku);
   await panel.getByRole("button", { name: "Add price and stock", exact: true }).click();
-  await admin.getByRole("dialog", { name: "Review proposed changes" }).getByRole("button", { name: "Apply changes", exact: true }).click();
-  // On a phone, applying the change closes the settings drawer.
+  // Commerce keeps the link itself; the editor is never asked to change the page.
   await expect((await openPanel(admin)).getByText(/^Draft: publish to sell it/)).toBeVisible({ timeout: 30_000 });
-  // Wait for EmDash's autosave to keep the link, never pressing Save right after an edit.
-  let itemId = "";
-  await expect.poll(async () => {
-    const body = (await (await request.get("/_emdash/api/content/products/" + pageId, { headers })).json()).data;
-    return (itemId = (body.item ?? body).data?.commerce_item_id ?? "");
-  }, { timeout: 30_000 }).toMatch(/\S/);
+  await expect(admin.getByRole("dialog", { name: "Review proposed changes" })).toHaveCount(0);
+  const itemId = await pageProductId(request, pageId);
+  expect(itemId).toMatch(/\S/);
   return { pageId, itemId };
 }
 
@@ -79,7 +98,8 @@ export async function publishProductPage(admin: Page, pageId: string) {
     const body = (await (await admin.request.get("/_emdash/api/content/products/" + pageId, { headers })).json()).data;
     return (body.item ?? body).status;
   }, { timeout: 30_000 }).toBe("published");
-  await expect((await openPanel(admin)).getByText(/^On sale · SKU /)).toBeVisible({ timeout: 30_000 });
+  // Commerce 0.7.0 says an unpriced product it put on sale is published but off the shop.
+  await expect((await openPanel(admin)).getByText(/^(?:On sale|Published: off the shop) · SKU /)).toBeVisible({ timeout: 30_000 });
 }
 
 /** Saves the panel's Regular and Sale prices and returns the panel as it answered. */

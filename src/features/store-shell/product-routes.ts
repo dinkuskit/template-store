@@ -2,6 +2,9 @@ import { getEmDashEntry } from "emdash";
 import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
 import { readInstalledCommerceProduct, type InstalledCatalogContext } from "../commerce-catalog/installed.js";
 import { offersCheckout, type CheckoutGateInput } from "../playground-checkout/index.js";
+import { SEEDED_PAGE_PRODUCTS } from "./seeded-page-products.js";
+
+export { SEEDED_PAGE_PRODUCTS };
 
 export type ProductEntry = Readonly<{
   id: string;
@@ -71,10 +74,35 @@ export function illustration(value: string | null | undefined): Illustration | n
     : null;
 }
 
+/** Each page's product as Commerce lists it: page entry id to Commerce product id. */
+export function commercePageLinks(products: readonly { id: string; page?: string }[]): Map<string, string> {
+  return new Map(products.flatMap((product) => (product.page ? [[product.page, product.id] as const] : [])));
+}
+
+/**
+ * The Commerce product a page sells: the one Commerce links to the page (keyed
+ * by the page's entry id, `data.id`), else, while an older store still has it,
+ * the page's own Commerce product field, else the seed's demonstration for
+ * that slug. Empty when none is known.
+ */
+export function pageCommerceItemId(
+  entry: { id: string; data: Record<string, unknown> },
+  links: ReadonlyMap<string, string> = new Map(),
+): string {
+  const pageId = typeof entry.data.id === "string" ? entry.data.id : "";
+  return (pageId && links.get(pageId)) || text(entry.data, "commerce_item_id") || SEEDED_PAGE_PRODUCTS[entry.id] || "";
+}
+
+/**
+ * The published product pages with the product each sells. A page whose
+ * product is not known (it sells nothing on the shop, or was never linked) is
+ * listed in `unlinked`, not in `errors`, and is left out like an invalid one.
+ */
 export function readProductEntries(
   entries: readonly { id: string; data: Record<string, unknown> }[],
   categories: readonly { id: string; data: Record<string, unknown> }[],
-): { products: ProductEntry[]; errors: string[] } {
+  links: ReadonlyMap<string, string> = new Map(),
+): { products: ProductEntry[]; errors: string[]; unlinked: string[] } {
   const categoryMap = new Map<string, { title: string; description: string }>();
   for (const entry of categories) {
     const title = text(entry.data, "title");
@@ -87,9 +115,10 @@ export function readProductEntries(
   }
 
   const errors: string[] = [];
+  const unlinked: string[] = [];
+  const itemIds = new Map(entries.map((entry) => [entry, pageCommerceItemId(entry, links)]));
   const linkCounts = new Map<string, number>();
-  for (const entry of entries) {
-    const link = text(entry.data, "commerce_item_id");
+  for (const link of itemIds.values()) {
     if (link) linkCounts.set(link, (linkCounts.get(link) ?? 0) + 1);
   }
   const products: ProductEntry[] = [];
@@ -97,14 +126,18 @@ export function readProductEntries(
     const title = text(entry.data, "title");
     const description = text(entry.data, "description") ?? "";
     const visualLabel = text(entry.data, "visual_label");
-    const commerceItemId = text(entry.data, "commerce_item_id");
+    const commerceItemId = itemIds.get(entry) ?? "";
     const categorySlugs = (Array.isArray(entry.data.categories)
       ? entry.data.categories
       : [])
       .filter(validProductSlug);
-    if (!validProductSlug(entry.id) || !title || !commerceItemId ||
+    if (!validProductSlug(entry.id) || !title ||
         categorySlugs.some((slug) => !categoryMap.has(slug))) {
       errors.push(`invalid product entry: ${entry.id}`);
+      continue;
+    }
+    if (!commerceItemId) {
+      unlinked.push(entry.id);
       continue;
     }
     if ((linkCounts.get(commerceItemId) ?? 0) > 1) {
@@ -124,7 +157,7 @@ export function readProductEntries(
       illustration: illustration(visualLabel),
     });
   }
-  return { products, errors };
+  return { products, errors, unlinked };
 }
 
 export function buildProductCategories(

@@ -131,13 +131,32 @@ describe("product URL publish claims", () => {
     });
   });
 
-  it("cancels a publish whose content carries no Commerce product ID", async () => {
+  // template-no-commerce-box-20261029: Commerce holds the link, and the store's publish check refuses a page with no
+  // product, so a page with no Commerce product field publishes here and claims nothing.
+  it("lets a page with no Commerce product field publish and schedule, and drops the claim it held", async () => {
     const plugin = createPlugin();
-    const handler = plugin.hooks["content:beforePublish"]!.handler;
+    const publish = plugin.hooks["content:beforePublish"]!.handler;
+    const schedule = plugin.hooks["content:beforeSchedule"]!.handler;
+    const claims = new Claims();
+    await publish(event("one", "item-1"), context(claims));
+    expect(claims.rows.get("one")?.itemId).toBe("item-1");
     const content = { id: "one", slug: "one", status: "draft", data: { title: "One" } };
     await expect(
-      handler({ collection: "products", content, origin: { source: "api" as const } }, context(new Claims())),
-    ).resolves.toMatchObject({ cancel: true });
+      publish({ collection: "products", content, origin: { source: "api" as const } }, context(claims)),
+    ).resolves.toBeUndefined();
+    expect(claims.rows.has("one")).toBe(false);
+    await expect(
+      schedule({ collection: "products", content, origin: { source: "api" as const }, scheduledAt: "2030-01-01T00:00:00Z" }, context(claims)),
+    ).resolves.toBeUndefined();
+    expect(claims.rows.size).toBe(0);
+    // The other page may now claim that value on an older store.
+    await expect(publish(event("two", "item-1"), context(claims))).resolves.toBeUndefined();
+  });
+
+  it("still refuses a field value over 1,024 characters", async () => {
+    const plugin = createPlugin();
+    const publish = plugin.hooks["content:beforePublish"]!.handler;
+    await expect(publish(event("one", "x".repeat(1025)), context(new Claims()))).resolves.toMatchObject({ cancel: true });
   });
 });
 

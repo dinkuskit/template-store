@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { resolve } from "node:path";
@@ -16,6 +17,16 @@ function product(id: string): Record<string, unknown> {
   try {
     const row = database.prepare("SELECT data FROM _plugin_storage WHERE plugin_id = ? AND collection = 'catalog_items' AND id = ?").get(commerce, id) as { data: string } | undefined;
     return row ? JSON.parse(row.data) : {};
+  } finally {
+    database.close();
+  }
+}
+/** The product the page's Commerce panel picked: Commerce holds the link (template-no-commerce-box-20261029). */
+function pickedProduct(pageId: string): string {
+  const database = db();
+  try {
+    const row = database.prepare("SELECT data FROM _plugin_storage WHERE plugin_id = ? AND collection = 'product_pages' AND id = ?").get(commerce, "e:" + pageId) as { data: string } | undefined;
+    return row ? (JSON.parse(row.data) as { catalogItemId?: string }).catalogItemId ?? "" : "";
   } finally {
     database.close();
   }
@@ -69,16 +80,12 @@ async function draftProduct(page: Page, sku: string, title: string) {
   const panel = await openPanel(page);
   await panel.getByRole("textbox", { name: "SKU (optional)", exact: true }).fill(sku);
   await panel.getByRole("button", { name: "Add price and stock", exact: true }).click();
-  await page.getByRole("dialog", { name: "Review proposed changes" }).getByRole("button", { name: "Apply changes", exact: true }).click();
-  // On a phone, applying the change closes the settings drawer.
+  // Commerce keeps the link itself; the editor is never asked to change the page.
   const linked = await openPanel(page);
   await expect(linked.getByText(/^Draft: publish to sell it/)).toBeVisible({ timeout: 30_000 });
-  // Wait for EmDash's autosave to keep the link, never pressing Save right after an edit.
-  let itemId = "";
-  await expect.poll(async () => {
-    const body = (await (await request.get("/_emdash/api/content/products/" + pageId, { headers })).json()).data;
-    return (itemId = (body.item ?? body).data?.commerce_item_id ?? "");
-  }, { timeout: 30_000 }).toMatch(/\S/);
+  await expect(page.getByRole("dialog", { name: "Review proposed changes" })).toHaveCount(0);
+  const itemId = pickedProduct(pageId);
+  expect(itemId).toMatch(/\S/);
   const priceForm = linked.locator("form").filter({ has: page.getByRole("textbox", { name: "Regular", exact: true }) });
   await priceForm.getByRole("textbox", { name: "Regular", exact: true }).fill("12");
   await priceForm.getByRole("button", { name: /^Save/ }).click();
@@ -176,15 +183,15 @@ test("publishing a product page sells its Commerce product, only for someone who
   }
 
   // 7. An existing store: the page was published and its product on sale before the store had this check,
-  // so the product has no page record and no Draft flag (the shape Commerce 0.5.0 stored). Unpublishing
-  // still takes it off sale, and publishing claims it again.
+  // so the product has no page record and no Draft flag (the shape Commerce 0.5.0 stored), and Commerce knows
+  // only the panel's pick. Unpublishing still takes it off sale, and publishing claims it again.
   const database = db();
   try {
     const row = { ...product(itemId) };
     delete row.pageId;
     delete row.offSale;
     database.prepare("UPDATE _plugin_storage SET data = ? WHERE plugin_id = ? AND collection = 'catalog_items' AND id = ?").run(JSON.stringify(row), commerce, itemId);
-    database.prepare("DELETE FROM _plugin_storage WHERE plugin_id = ? AND collection = 'product_pages'").run(commerce);
+    database.prepare("DELETE FROM _plugin_storage WHERE plugin_id = ? AND collection = 'product_pages' AND id LIKE 'p:%'").run(commerce);
   } finally {
     database.close();
   }
@@ -207,9 +214,10 @@ test("publishing a product page sells its Commerce product, only for someone who
 
   // 9-12. Authority and links changed inside one request, through the same real routes. SQLite triggers land each
   // change at an exact point between this request's own writes: when EmDash writes the page, or when Commerce
-  // writes the product. A new page sells the now unclaimed product.
-  const second = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: sku.toLowerCase() + "-again", data: { title: "Paired hat again", visual_label: "Hat", commerce_item_id: itemId } } })).json()).data;
+  // writes the product. A new page sells the now unclaimed product, picked through Commerce's catalog route.
+  const second = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: sku.toLowerCase() + "-again", data: { title: "Paired hat again", visual_label: "Hat" } } })).json()).data;
   const againId: string = (second.item ?? second).id;
+  expect((await request.post(`/_emdash/api/plugins/${commerce}/catalog`, { headers, data: { op: "link", entryId: againId, catalogItemId: itemId } })).ok()).toBe(true);
   const triggers: string[] = [];
   const onDb = (sql: string) => {
     const database = db();
@@ -268,9 +276,12 @@ test("publishing a product page sells its Commerce product, only for someone who
     expect(await onShop(request)).toEqual([]);
     dropTriggers();
 
-    // 12. An admin publishes, and the page is linked to another product the moment it goes live: the store's read-back
-    // sees the new link and takes the first product off sale again.
-    trigger("proof_relink_on_publish", pageWrite("published"), `UPDATE ec_products SET commerce_item_id = '01PROOFRELINKED00000000000' WHERE id = '${againId}'`);
+    // 12. An admin publishes, and the page's panel picks another product the moment Commerce puts the first on sale:
+    // the store's read-back sees the new link and takes the first product off sale again.
+    for (const event of ["INSERT", "UPDATE"]) {
+      trigger("proof_relink_on_sale_" + event, productWrite(event) + " AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1",
+        `UPDATE _plugin_storage SET data = json_set(data, '$.catalogItemId', '01PROOFRELINKED00000000000') WHERE plugin_id = '${commerce}' AND collection = 'product_pages' AND id = 'e:${againId}'`);
+    }
     expect((await request.post(`/_emdash/api/content/products/${againId}/publish`, { headers })).ok()).toBe(true);
     expect(await page2()).toBe("published");
     expect(product(itemId).offSale).toBe(true);
@@ -342,7 +353,9 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
   const scheduled = await schedule(pageId);
   expect(scheduled.ok(), await scheduled.text()).toBe(true);
   expect(stored(pageId)?.status).toBe("scheduled");
-  await expect.poll(() => pending(pageId)).toMatchObject({ proposals: [{ itemId, role: ROLE.ADMIN }], confirmed: { itemId, role: ROLE.ADMIN }, state: "scheduled" });
+  await expect.poll(() => pending(pageId)).toMatchObject({ proposals: [{ role: ROLE.ADMIN }], confirmed: { role: ROLE.ADMIN }, state: "scheduled" });
+  // Commerce holds the page's product, so the grant names none.
+  expect(pending(pageId)?.confirmed).not.toHaveProperty("itemId");
   // EmDash publishes it with nobody signed in: the product is still a Draft, the grant now published.
   await scheduledPublish(pageId);
   expect(product(itemId).offSale).toBe(true);
@@ -514,4 +527,105 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
 
   // Leave the shop empty for the next run.
   for (const id of [pageId, cap.pageId]) expect((await request.post(`/_emdash/api/content/products/${id}/unpublish`, { headers })).ok()).toBe(true);
+});
+
+// template-no-commerce-box-20261029: an older store's product pages name their product in the Commerce product box,
+// and Commerce may hold no link for them. They keep selling through this template, and its upgrade takes the box off
+// only once Commerce links every live page that needs it.
+test("an older store's product pages keep selling through the upgrade that takes the box off", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "phone", "The box is the store's own schema; one run proves the upgrade.");
+  test.setTimeout(300_000);
+  expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
+  const { request } = page;
+  const catalog = async (body: Record<string, unknown>) => {
+    const response = await request.post(`/_emdash/api/plugins/${commerce}/catalog`, { headers, data: body });
+    expect(response.ok(), await response.text()).toBe(true);
+    return (await response.json()).data;
+  };
+  const boxed = async () => ((await (await request.get("/_emdash/api/schema/collections/products/fields", { headers })).json()).data.items as { slug: string }[])
+    .some((field) => field.slug === "commerce_item_id");
+  const links = (pageId: string) => {
+    const database = db();
+    try {
+      return (database.prepare("SELECT id FROM _plugin_storage WHERE plugin_id = ? AND collection = 'product_pages' AND id IN (?, ?) ORDER BY id")
+        .all(commerce, "e:" + pageId, "p:" + pageId) as { id: string }[]).map((row) => row.id);
+    } finally {
+      database.close();
+    }
+  };
+  // What an owner runs, `pnpm search:upgrade`: every storefront upgrade on this store's database, as the store runs them.
+  const upgrade = () => {
+    const result = spawnSync("node", ["scripts/upgrade-storefront-search.ts"], { cwd: process.cwd(), encoding: "utf8", env: process.env });
+    expect(result.status, result.stderr).toBe(0);
+    return JSON.parse(result.stdout.trim().split("\n").at(-1)!) as { upgrades: string[]; waiting?: string[] };
+  };
+  const shows = async (path: string, price: string) => {
+    await page.goto(path);
+    await expect(page.locator("[data-product-price]").first()).toHaveText(price);
+  };
+
+  // 17. The store has the older seed's box, and a product an older Commerce panel linked by writing its id there.
+  const added = await request.post("/_emdash/api/schema/collections/products/fields", { headers, data: { slug: "commerce_item_id", label: "Commerce product", type: "string" } });
+  expect(added.status(), await added.text()).toBe(201);
+  const { catalogItemId: itemId } = await catalog({ op: "create", commandId: "paired-older-store-hat", name: "Older store hat", sku: "PAIRED-OLDER-HAT" });
+  await catalog({ op: "prices", catalogItemId: itemId, regular: "15.00", sale: "", stockStatus: "in-stock" });
+  const created = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: "older-store-hat", data: { title: "Older store hat", visual_label: "Hat", commerce_item_id: itemId } } })).json()).data;
+  const pageId: string = (created.item ?? created).id;
+  expect(links(pageId)).toEqual([]);
+  // Publishing sends the box's product, since Commerce links the page to nothing.
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
+  await expect.poll(() => onShop(request)).toContain("Older store hat");
+  expect(product(itemId)).toMatchObject({ pageId });
+  await shows("/products/older-store-hat", "$15.00");
+  await capture(page, "17-older-store-page-on-sale");
+
+  // 18. A page published before Commerce kept any links: only its box names its product.
+  {
+    const database = db();
+    try {
+      database.prepare("DELETE FROM _plugin_storage WHERE plugin_id = ? AND collection = 'product_pages' AND id IN (?, ?)").run(commerce, "e:" + pageId, "p:" + pageId);
+    } finally {
+      database.close();
+    }
+  }
+  expect(links(pageId)).toEqual([]);
+  await shows("/products/older-store-hat", "$15.00");
+  // The upgrade leaves the box while that page needs it, and the page still unpublishes and publishes by its box.
+  expect(upgrade().waiting).toEqual(["005_commerce_box_off"]);
+  expect(await boxed()).toBe(true);
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  expect(product(itemId).offSale).toBe(true);
+  expect(await onShop(request)).not.toContain("Older store hat");
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
+  await expect.poll(() => onShop(request)).toContain("Older store hat");
+  // That publish recorded Commerce's link for the page.
+  expect(links(pageId)).toEqual(["p:" + pageId]);
+
+  // 19. Now every live page's product is linked in Commerce, so the upgrade takes the box off.
+  const done = upgrade();
+  expect(done.waiting).toBeUndefined();
+  expect(done.upgrades).toContain("005_commerce_box_off");
+  expect(await boxed()).toBe(false);
+  {
+    const database = db();
+    try {
+      expect((database.prepare("SELECT name FROM pragma_table_info('ec_products')").all() as { name: string }[]).map((row) => row.name)).not.toContain("commerce_item_id");
+    } finally {
+      database.close();
+    }
+  }
+  // The page still sells its product, found through Commerce: the shop, its page, unpublish and publish.
+  await shows("/products/older-store-hat", "$15.00");
+  await capture(page, "19-box-off-page-still-on-sale");
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  expect(product(itemId).offSale).toBe(true);
+  expect(await onShop(request)).not.toContain("Older store hat");
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
+  await expect.poll(() => onShop(request)).toContain("Older store hat");
+  expect(product(itemId)).toMatchObject({ pageId });
+
+  // Trashing the page takes the product off the shop, so the phone run starts from an empty shop.
+  expect((await request.delete(`/_emdash/api/content/products/${pageId}`, { headers })).ok()).toBe(true);
+  expect(product(itemId).offSale).toBe(true);
+  expect(await onShop(request)).not.toContain("Older store hat");
 });
