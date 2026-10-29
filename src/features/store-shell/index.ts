@@ -57,7 +57,7 @@ export {
   STOREFRONT_SEARCHABLE_COLLECTIONS,
   ensureStorefrontSearchSupport,
 } from "./search-upgrade.js";
-export { ensureStorefrontPageAddresses, ensureStorefrontProductFields } from "./product-schema-upgrade.js";
+export { ensureStorefrontCategoryProducts, ensureStorefrontPageAddresses, ensureStorefrontProductFields } from "./product-schema-upgrade.js";
 export {
   renderHighlightedSnippetParts,
   isSearchProductVisibleOnStorefront,

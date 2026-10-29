@@ -7,8 +7,10 @@ import { applySeed } from "emdash/seed";
 import {
   ADDED_PRODUCT_BLOCK_TYPES,
   ADDED_PRODUCT_FIELDS,
+  CATEGORY_PRODUCTS_FIELD,
   PAGE_URL_PATTERN,
   VISUAL_LABEL_FIELD_LABEL,
+  ensureStorefrontCategoryProducts,
   ensureStorefrontPageAddresses,
   ensureStorefrontProductFields,
 } from "../../src/features/store-shell/product-schema-upgrade.js";
@@ -36,6 +38,8 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
       expect(seeded.find((entry: { slug: string }) => entry.slug === field.slug)).toEqual(field);
     }
     expect(seeded.find((entry: { slug: string }) => entry.slug === "visual_label")).toEqual({ slug: "visual_label", label: VISUAL_LABEL_FIELD_LABEL, type: "string" });
+    const categoryFields = seedNow().collections.find((collection: { slug: string }) => collection.slug === "categories").fields;
+    expect(categoryFields.find((entry: { slug: string }) => entry.slug === CATEGORY_PRODUCTS_FIELD.slug)).toEqual(CATEGORY_PRODUCTS_FIELD);
     const seededBlocks = seedNow().blockTypes;
     for (const blockType of ADDED_PRODUCT_BLOCK_TYPES) {
       expect(seededBlocks.find((entry: { slug: string }) => entry.slug === blockType.slug)).toEqual(blockType);
@@ -67,6 +71,36 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
     expect((await sql<{ label: string }>`select label from _emdash_block_types where slug = 'spec_table'`.execute(db)).rows[0]?.label).toBe("Specs");
   });
 
+  // A store set up before template-store#118, as the beta store was, has categories without their products list.
+  it("gives an older store's categories their products list, keeping the collection's label", async () => {
+    const categoryFields = async () => (await sql<{ slug: string; label: string; type: string; validation: string | null }>`
+      select f.slug, f.label, f.type, f.validation from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
+      where c.slug = 'categories' order by f.sort_order, f.slug`.execute(db)).rows;
+    const collectionLabel = async () => (await sql<{ label: string }>`
+      select label from _emdash_collections where slug = 'categories'`.execute(db)).rows[0]?.label;
+    expect((await categoryFields()).map((field) => field.slug)).toEqual(["title", "description"]);
+
+    await ensureStorefrontCategoryProducts(db);
+    const products = (await categoryFields()).find((field) => field.slug === "products");
+    expect(products).toMatchObject({ label: "Products in this category", type: "reference" });
+    expect(JSON.parse(products?.validation ?? "{}")).toEqual({ relation: "product_categories", relationSide: "parent" });
+    expect(await collectionLabel()).toBe("Categories");
+
+    // Re-running changes nothing, and a merchant's own label survives.
+    await sql`update _emdash_fields set label = 'In this aisle' where slug = 'products'
+      and collection_id = (select id from _emdash_collections where slug = 'categories')`.execute(db);
+    await ensureStorefrontCategoryProducts(db);
+    expect((await categoryFields()).filter((field) => field.slug === "products")).toMatchObject([{ label: "In this aisle" }]);
+  });
+
+  it("leaves a store without the product_categories relation as it is", async () => {
+    await sql`delete from _emdash_relations where slug = 'product_categories'`.execute(db);
+    await ensureStorefrontCategoryProducts(db);
+    expect((await sql<{ slug: string }>`
+      select f.slug from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
+      where c.slug = 'categories' and f.slug = 'products'`.execute(db)).rows).toEqual([]);
+  });
+
   it("keeps every existing product's saved values", async () => {
     // Every column the older store already had, read before the upgrade adds any.
     const columns = (await sql<{ name: string }>`select name from pragma_table_info('ec_products')`.execute(db)).rows.map((row) => `"${row.name}"`).join(", ");
@@ -75,6 +109,7 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
     expect(before.length).toBeGreaterThan(0);
     await ensureStorefrontProductFields(db);
     await ensureStorefrontPageAddresses(db);
+    await ensureStorefrontCategoryProducts(db);
     expect(await products()).toEqual(before);
   });
 

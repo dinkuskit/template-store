@@ -86,6 +86,32 @@ export async function ensureStorefrontProductFields(db: unknown): Promise<void> 
   }
 }
 
+/** The category field that lists its products; it mirrors seed/seed.json (template-store#118). */
+export const CATEGORY_PRODUCTS_FIELD: CreateFieldInput = {
+  slug: "products",
+  label: "Products in this category",
+  type: "reference",
+  validation: { relation: "product_categories", relationSide: "parent" },
+};
+
+/**
+ * Gives a store set up before template-store#118 its category editor's
+ * "Products in this category" list, through the product_categories relation
+ * the store already has, so existing product links show at once. A skip
+ * re-seed never adds it. The collection's own label is left alone, as #118
+ * left it; a store without the categories collection or the relation, or with
+ * the field already, is not changed.
+ */
+export async function ensureStorefrontCategoryProducts(db: unknown): Promise<void> {
+  const kyselyDb = db as Kysely<never>;
+  const registry = new SchemaRegistry(kyselyDb as never);
+  if (!(await registry.getCollection("categories")) || await registry.getField("categories", CATEGORY_PRODUCTS_FIELD.slug)) return;
+  const relation = await sql<{ id: string }>`
+    select id from _emdash_relations where slug = ${CATEGORY_PRODUCTS_FIELD.validation!.relation}`.execute(kyselyDb);
+  if (relation.rows.length === 0) return;
+  await registry.createField("categories", CATEGORY_PRODUCTS_FIELD);
+}
+
 /** The address of a published CMS page, matching src/pages/[slug].astro and seed/seed.json. */
 export const PAGE_URL_PATTERN = "/{slug}";
 
