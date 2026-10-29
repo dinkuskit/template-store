@@ -351,6 +351,7 @@ export function createManagedProductAvailabilityRuntime(): ManagedProductAvailab
       await resolveCatalogItemPrice(
         commerceStorage.prices,
         state.catalogItem.itemId,
+        commerceStorage.catalog,
       ),
     );
     return {

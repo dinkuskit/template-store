@@ -1,8 +1,10 @@
 import { handleMediaGet, PluginStorageRepository } from "emdash";
 import { getDb } from "emdash/runtime";
 import {
+  CATALOG_COLLECTION,
   COMMERCE_PLUGIN_ID,
   PRODUCT_FEED_ELIGIBILITY_COLLECTION,
+  type CatalogStorageRecord,
 } from "@dinkuskit/commerce";
 import {
   buildGoogleMerchantFeed,
@@ -48,7 +50,8 @@ async function nativeFeedEligibility(itemId: string): Promise<readonly ProductFe
     PRODUCT_FEED_ELIGIBILITY_COLLECTION,
     [],
   );
-  return loadProductFeedEligibility(storage, itemId);
+  const catalog = new PluginStorageRepository<CatalogStorageRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, []);
+  return loadProductFeedEligibility(storage, itemId, catalog);
 }
 
 function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["product"] {

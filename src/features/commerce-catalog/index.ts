@@ -74,7 +74,7 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
   for (const product of products) {
     const availability = await resolveStorefrontAvailability(storage, { catalogItemId: product.catalogItemId });
     if (!availability.listable) continue;
-    const price = presentStorefrontPrice(await resolveCatalogItemPrice(storage.prices, product.catalogItemId));
+    const price = presentStorefrontPrice(await resolveCatalogItemPrice(storage.prices, product.catalogItemId, storage.catalog));
     if (!price.listable) continue;
     visible.push({
       id: product.catalogItemId,
@@ -164,7 +164,7 @@ export async function readCommerceCatalogSnapshots(
     const availability = await resolveStorefrontAvailability(storage, {
       catalogItemId: product.catalogItemId,
     });
-    const resolved = await resolveCatalogItemPrice(storage.prices, product.catalogItemId);
+    const resolved = await resolveCatalogItemPrice(storage.prices, product.catalogItemId, storage.catalog);
     const shown = presentStorefrontPrice(resolved);
     // The cart totals use the amount the shopper pays for one unit.
     const unitMinor = shown.listable ? (resolved.sale ?? resolved.regular)?.minor : undefined;
