@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { productName, productPageChange, scheduledSaleSweeper, sellScheduledPages, withProductOnSale } from "../../src/features/product-on-sale/index.js";
+import { createPlugin } from "../../src/features/product-url-plugin/index.js";
 
 const user = { id: "u1", email: "owner@example.test", name: null, role: 50, createdAt: "2026-10-23T00:00:00.000Z" };
 
@@ -848,5 +849,63 @@ describe("a page whose product Commerce holds", () => {
       userById: async (id: string) => (id === "u1" ? user : null) }, Date.parse("2026-10-25T12:00:00.000Z"), () => true);
     expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true }, { entryId: "cup", onSale: false }]);
     expect(pending.size).toBe(0);
+  });
+
+  // While upgrade 005 waits, a page can keep an older field naming one product while Commerce links it to another.
+  it("sells a page scheduled under an older field by Commerce's link, and holds a grant to the field only while the field decides", async () => {
+    const pending = new Map<string, { value: unknown; revision: string }>();
+    let revision = 0;
+    const store = {
+      put: async (id: string, value: unknown) => void pending.set(id, { value, revision: `r${(revision += 1)}` }),
+      query: async () => ({ items: [...pending.keys()].map((id) => ({ id })) }),
+      getVersioned: async (id: string) => pending.get(id) ?? null,
+      compareAndDelete: async (id: string, at: string) => {
+        const applied = pending.get(id)?.revision === at;
+        if (applied) pending.delete(id);
+        return { applied };
+      },
+    };
+    const grant = (id: string) => ({ entryId: id, proposals: [], confirmed: { by: "u1", role: 50, itemId: "item-old", scheduledAt: "2026-10-25T11:59:30.000Z" }, state: "published", updatedAt: "2026-10-25T11:59:00.000Z" });
+    for (const id of ["hat", "cap", "mug"]) await store.put(id, grant(id));
+    const fields: Record<string, string> = { hat: "item-old", cap: "item-old", mug: "item-other" };
+    // Commerce links the hat page to a newer product; the cap and mug pages still sell by their field.
+    const rt = linked({ hat: "item-new", cap: null, mug: null });
+    rt.handleContentGet.mockImplementation(async (_collection: string, id: string) => ({ success: true, data: { item: { id, slug: id, status: "published", scheduledAt: null, data: { commerce_item_id: fields[id] } } } }) as never);
+    await sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: store as never,
+      userById: async (id: string) => (id === "u1" ? user : null) }, Date.parse("2026-10-25T12:00:00.000Z"), () => true);
+    // The mug's field changed after it was scheduled, so its grant sells nothing.
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true }, { catalogItemId: "item-old", entryId: "cap", onSale: true }]);
+    expect(pending.size).toBe(0);
+  });
+
+  it("lets the product URL plugin's hooks ask Commerce for a page's product as the person, only inside the request", async () => {
+    const hooks = createPlugin().hooks as Record<string, { handler: (event: never, ctx: never) => Promise<unknown> }>;
+    const claims = new Map<string, unknown>();
+    const records = new Map<string, { value: unknown; revision: string }>();
+    const ctx = {
+      storage: {
+        claims: { put: async (id: string, data: unknown) => void claims.set(id, data), delete: async (id: string) => claims.delete(id), query: async () => ({ items: [] }) },
+        pending_sales: {
+          getVersioned: async (id: string) => records.get(id) ?? null,
+          compareAndSet: async (id: string, _at: string | null, value: unknown) => (records.set(id, { value, revision: "r" }), { applied: true }),
+          compareAndDelete: async (id: string) => ({ applied: records.delete(id) }),
+        },
+      },
+    } as never;
+    const scheduled = { collection: "products", content: { id: "01PAGE", slug: "hat", status: "draft", data: { commerce_item_id: "item-old" } },
+      scheduledAt: "2030-01-01T00:00:00Z", actor: { id: "u1", role: 50, source: "api" }, origin: { source: "api" } } as never;
+    const rt = linked({ "01PAGE": "item-new" });
+    const cms = async () => {
+      await hooks["content:beforeSchedule"]!.handler(scheduled, ctx);
+      return new Response("{}", { status: 200 });
+    };
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/schedule", rt), cms)).status).toBe(200);
+    expect(rt.lookups).toEqual([{ body: { op: "get", entryId: "01PAGE" }, user }]);
+    expect(claims.size).toBe(0);
+    expect((records.get("01PAGE")?.value as { proposals: Array<Record<string, unknown>> }).proposals[0]).not.toHaveProperty("itemId");
+    // Outside a signed-in person's request nobody is asked, and the field counts.
+    await hooks["content:beforeSchedule"]!.handler(scheduled, ctx);
+    expect(rt.lookups).toHaveLength(1);
+    expect(claims.get("01PAGE")).toMatchObject({ itemId: "item-old" });
   });
 });

@@ -16,6 +16,7 @@
 import { hasPermission } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
+import { withCommerceLinks } from "../product-url-plugin/index.js";
 import { SEEDED_PAGE_PRODUCTS } from "../store-shell/seeded-page-products.js";
 
 export const SET_ON_SALE_ROUTE = "catalog-items/set-on-sale";
@@ -241,11 +242,20 @@ function refuse(status: number, code: string, message: string): Response {
  * last off-sale write, or its own read comes after the page change and sees
  * it. A late off-sale write can only leave a published page's product a Draft,
  * which never sells anything it should not, and publishing again fixes it.
+ *
+ * Any signed-in person's request also lets the product URL plugin's publish and
+ * schedule hooks ask Commerce, as that person, which product a page sells, so
+ * an older store's field never outranks Commerce's link there either.
  */
 export async function withProductOnSale(
   input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales },
   next: () => Promise<Response>,
 ): Promise<Response> {
+  if (input.runtime && input.user) {
+    const lookup = commercePageLink(input.runtime, input.commercePluginId, input.url, () => input.user);
+    const handle = next;
+    next = () => withCommerceLinks(lookup, handle);
+  }
   const change = productPageChange(input.request.method, input.url.pathname);
   if (!change || !input.runtime || !input.user) return next();
   const runtime = input.runtime;
@@ -379,7 +389,8 @@ async function listRetitle(pendingSales: PendingSales, entryId: string, catalogI
   await pendingSales.put(await listKey(RETITLE, entryId, catalogItemId), { retitle: true, entryId, catalogItemId });
 }
 
-// `itemId` is the product an older store's field named when the page was scheduled; a page Commerce links names none.
+// `itemId` is the product an older store's field named when the page was scheduled, while Commerce linked the page to
+// nothing; a page Commerce linked names none. It holds only while the page still sells by its field.
 type Grant = { by: string; role: number; itemId?: string };
 
 /** The record's confirmed grant once EmDash's scheduled publish succeeded, else null; and when it last changed. */
@@ -523,7 +534,8 @@ export async function sellScheduledPages(
       continue;
     }
     const grant = sale.grant;
-    if (!grant || !page.published || (grant.itemId !== undefined && page.catalogItemId !== grant.itemId) || !may({ role: grant.role })) {
+    // A page Commerce links sells Commerce's product, whatever its field said when it was scheduled.
+    if (!grant || !page.published || (grant.itemId !== undefined && page.fromField && page.catalogItemId !== grant.itemId) || !may({ role: grant.role })) {
       await drop();
       continue;
     }

@@ -78,6 +78,8 @@ if (item && !linkedProduct && (profile === "shipping" || item.availabilitySource
       (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
       { runtime: Astro.locals.emdash, request: Astro.request },
     );
+    // An older store's field can still name a product Commerce now sells on another page; it is not this page's.
+    if (linkedProduct?.page && linkedProduct.page !== pageEntryId) linkedProduct = null;
   } catch {
     lookupUnavailable = profile === "shipping";
   }

@@ -94,13 +94,21 @@ describe("canonical product routes", () => {
     expect(pageCommerceItemId(page("canvas-cap", "01CAP"), new Map([["01CAP", "cat_cap"]]))).toBe("cat_cap");
   });
 
-  it("refuses two pages that sell one product, whichever way each was found", () => {
-    const result = readProductEntries([
+  // While an older store keeps the field, a page's field can still name a product Commerce now links to another page
+  // (an owner picked a newer product in the panel, or copied the page). Commerce's link comes first.
+  it("gives a product to the page Commerce links it to, over another page's older field, and refuses two fields naming one", () => {
+    const pages = [
       { id: "a", data: { id: "01A", title: "A", categories: [] } },
       { id: "b", data: { id: "01B", title: "B", categories: [], commerce_item_id: "cat_one" } },
-    ], categories, new Map([["01A", "cat_one"]]));
-    expect(result.products).toEqual([]);
-    expect(result.errors).toEqual(["duplicate published Commerce itemId: cat_one", "duplicate published Commerce itemId: cat_one"]);
+      { id: "c", data: { id: "01C", title: "C", categories: [], commerce_item_id: "cat_two" } },
+      { id: "d", data: { id: "01D", title: "D", categories: [], commerce_item_id: "cat_two" } },
+    ];
+    const result = readProductEntries(pages, categories, new Map([["01A", "cat_one"]]));
+    expect(result.products.map((product) => [product.id, product.commerceItemId])).toEqual([["a", "cat_one"]]);
+    expect(result.unlinked).toEqual(["b"]);
+    expect(result.errors).toEqual(["duplicate published Commerce itemId: cat_two", "duplicate published Commerce itemId: cat_two"]);
+    expect(pageCommerceItemId(pages[1]!, new Map([["01A", "cat_one"]]))).toBe("");
+    expect(pageCommerceItemId(pages[1]!)).toBe("cat_one");
   });
 
   // template-sells-anything-20261027: a store may sell anything, so a migrated

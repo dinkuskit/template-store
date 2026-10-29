@@ -82,15 +82,18 @@ export function commercePageLinks(products: readonly { id: string; page?: string
 /**
  * The Commerce product a page sells: the one Commerce links to the page (keyed
  * by the page's entry id, `data.id`), else, while an older store still has it,
- * the page's own Commerce product field, else the seed's demonstration for
- * that slug. Empty when none is known.
+ * the page's own Commerce product field, unless Commerce links that product to
+ * another page (`sold`, the products `links` names), else the seed's
+ * demonstration for that slug. Empty when none is known.
  */
 export function pageCommerceItemId(
   entry: { id: string; data: Record<string, unknown> },
   links: ReadonlyMap<string, string> = new Map(),
+  sold: ReadonlySet<string> = new Set(links.values()),
 ): string {
   const pageId = typeof entry.data.id === "string" ? entry.data.id : "";
-  return (pageId && links.get(pageId)) || text(entry.data, "commerce_item_id") || SEEDED_PAGE_PRODUCTS[entry.id] || "";
+  const field = text(entry.data, "commerce_item_id");
+  return (pageId && links.get(pageId)) || (field && !sold.has(field) ? field : "") || SEEDED_PAGE_PRODUCTS[entry.id] || "";
 }
 
 /**
@@ -116,7 +119,8 @@ export function readProductEntries(
 
   const errors: string[] = [];
   const unlinked: string[] = [];
-  const itemIds = new Map(entries.map((entry) => [entry, pageCommerceItemId(entry, links)]));
+  const sold = new Set(links.values());
+  const itemIds = new Map(entries.map((entry) => [entry, pageCommerceItemId(entry, links, sold)]));
   const linkCounts = new Map<string, number>();
   for (const link of itemIds.values()) {
     if (link) linkCounts.set(link, (linkCounts.get(link) ?? 0) + 1);
