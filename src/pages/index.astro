@@ -17,7 +17,7 @@ import {
   readStorefrontProfile,
 } from "../features/store-shell/index.js";
 import { catalogGuidanceCopy, storeBannerText } from "../features/store-shell/checkout-copy.js";
-import { canonicalProductPath, hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
+import { canonicalProductPath, commercePageLinks, hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
 import "../features/store-shell/global.css";
 
 const { entry: page } = await getEmDashEntry("pages", "home");
@@ -27,13 +27,14 @@ const content = pageData?.content as PortableTextBlock[] | undefined;
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
-const productLinks = readProductEntries(products.entries, categoryEntries.entries);
-if (productLinks.errors.length > 0) {
-  console.error(`[product-url] excluded published product entries: ${productLinks.errors.join("; ")}`);
-}
 const profile = readStorefrontProfile();
 let catalogUnavailable = false;
 const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => { catalogUnavailable = true; return []; });
+// Commerce keeps which page sells each product (template-no-commerce-box-20261029).
+const productLinks = readProductEntries(products.entries, categoryEntries.entries, commercePageLinks(commerceProducts));
+if (productLinks.errors.length > 0) {
+  console.error(`[product-url] excluded published product entries: ${productLinks.errors.join("; ")}`);
+}
 const productPaths = new Map(productLinks.products.map((product) => [product.commerceItemId, canonicalProductPath(product.slug)]));
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 // A configured playground admits its sandbox checkout, as the cart page does.

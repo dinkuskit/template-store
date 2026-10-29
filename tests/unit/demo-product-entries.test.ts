@@ -6,6 +6,7 @@ import {
   buildDemoProductEntries,
   demoPlaceholderImage,
   demoProductKind,
+  demoProductPages,
   isDemoCatalogProfile,
 } from "../../src/features/playground/demo-products.js";
 import { productPageOffersCart, readProductEntries } from "../../src/features/store-shell/product-routes.js";
@@ -13,14 +14,19 @@ import { productPageOffersCart, readProductEntries } from "../../src/features/st
 const links = DEMO_PRODUCTS.map((product, index) => ({ sku: product.sku, catalogItemId: `item-${index}` }));
 
 describe("demo EmDash product entries", () => {
-  it("builds one published, valid product entry per seeded Commerce item", () => {
+  it("builds one published, valid product entry per seeded Commerce item, with no Commerce product field", () => {
     const entries = buildDemoProductEntries(links);
     expect(entries).toHaveLength(DEMO_PRODUCTS.length);
     expect(entries.every((entry) => entry.status === "published")).toBe(true);
-    expect(entries.find((entry) => entry.id === "demo-hoodie")?.data.commerce_item_id).toBe("item-3");
-    const read = readProductEntries(entries, []);
+    expect(entries.every((entry) => !("commerce_item_id" in entry.data))).toBe(true);
+    expect(demoProductPages(links).find((page) => page.slug === "demo-hoodie")?.catalogItemId).toBe("item-3");
+    // Commerce holds each page's link once the seed records its sale (template-no-commerce-box-20261029).
+    const pages = entries.map((entry) => ({ ...entry, data: { ...entry.data, id: `ulid-${entry.id}` } }));
+    const commerce = new Map(demoProductPages(links).map((page) => [`ulid-${page.slug}`, page.catalogItemId]));
+    const read = readProductEntries(pages, [], commerce);
     expect(read.errors).toEqual([]);
     expect(read.products.map((product) => product.commerceItemId)).toEqual(links.map((link) => link.catalogItemId));
+    expect(readProductEntries(pages, []).unlinked).toEqual(entries.map((entry) => entry.id));
   });
 
   it("links only Commerce items that exist", () => {

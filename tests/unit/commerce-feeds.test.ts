@@ -7,8 +7,13 @@ vi.mock("emdash", () => ({
   handleMediaGet: vi.fn(async (_db: unknown, id: string) => media.has(id)
     ? { success: true, data: { item: media.get(id) } }
     : { success: false }),
+  // Commerce 0.7.0 reads a product's feed channels from its catalog record first; these products have none saved there.
   PluginStorageRepository: class PluginStorageRepository {
+    constructor(_db: unknown, _plugin: string, private readonly collection: string) {}
     async get(id: string) {
+      if (this.collection !== "productFeedEligibility") {
+        return id.startsWith("commerce-") ? { recordKind: "catalog-item", itemId: id } : null;
+      }
       return eligibility.get(id) ?? null;
     }
   },

@@ -1,8 +1,10 @@
 import { handleMediaGet, PluginStorageRepository } from "emdash";
 import { getDb } from "emdash/runtime";
 import {
+  CATALOG_COLLECTION,
   COMMERCE_PLUGIN_ID,
   PRODUCT_FEED_ELIGIBILITY_COLLECTION,
+  type CatalogStorageRecord,
 } from "@dinkuskit/commerce";
 import {
   buildGoogleMerchantFeed,
@@ -18,7 +20,7 @@ import {
 } from "../commerce-catalog/installed.js";
 import type { PublicCommerceProduct } from "../commerce-catalog/index.js";
 import { resolveCommerceImage } from "../commerce-catalog/media.js";
-import { canonicalProductPath, readProductEntries } from "../store-shell/product-routes.js";
+import { canonicalProductPath, commercePageLinks, readProductEntries } from "../store-shell/product-routes.js";
 import { canonicalUrl } from "../store-shell/structured-data.js";
 
 export interface CommerceFeedContext extends InstalledCatalogContext {
@@ -26,12 +28,12 @@ export interface CommerceFeedContext extends InstalledCatalogContext {
   site?: URL | null;
 }
 
-async function publishedLinks() {
+async function publishedLinks(links: ReadonlyMap<string, string>) {
   const productsCollection = await import("emdash").then(({ getEmDashCollection }) =>
     getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" }));
   const categories = await import("emdash").then(({ getEmDashCollection }) =>
     getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" }));
-  return readProductEntries(productsCollection.entries, categories.entries).products;
+  return readProductEntries(productsCollection.entries, categories.entries, links).products;
 }
 
 /**
@@ -48,7 +50,8 @@ async function nativeFeedEligibility(itemId: string): Promise<readonly ProductFe
     PRODUCT_FEED_ELIGIBILITY_COLLECTION,
     [],
   );
-  return loadProductFeedEligibility(storage, itemId);
+  const catalog = new PluginStorageRepository<CatalogStorageRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, []);
+  return loadProductFeedEligibility(storage, itemId, catalog);
 }
 
 function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["product"] {
@@ -92,7 +95,8 @@ export async function buildInstalledCommerceFeedFacts(
   context: CommerceFeedContext,
 ): Promise<ProductFeedFacts[]> {
   const products = await readInstalledCommerceCatalog(context);
-  const links = await publishedLinks();
+  // Commerce keeps which page sells each product (template-no-commerce-box-20261029).
+  const links = await publishedLinks(commercePageLinks(products));
   const byCommerceId = new Map(links.map((entry) => [entry.commerceItemId, entry]));
   const nativeEligibility = process.env.DINKUS_CATALOG_PROFILE === "native-development";
   const facts: ProductFeedFacts[] = [];

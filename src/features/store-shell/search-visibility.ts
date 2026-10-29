@@ -2,7 +2,7 @@ import { getEmDashCollection } from "emdash";
 import { readCommerceCatalog } from "../commerce-catalog/index.js";
 import type { InstalledCatalogContext } from "../commerce-catalog/installed.js";
 import { leftCommerceCatalog } from "./merch-catalog.js";
-import { readProductEntries, type ProductEntry } from "./product-routes.js";
+import { commercePageLinks, readProductEntries, type ProductEntry } from "./product-routes.js";
 import { readStorefrontProfile, type StorefrontProfile } from "./profile.js";
 import { readProofDemonstrations } from "./proof-demonstrations.js";
 
@@ -151,10 +151,6 @@ export async function loadVisibleStorefrontProductSlugs(
     readProofDemonstrations(env).catch(() => null),
   ]);
 
-  const { products } = readProductEntries(
-    productCollection.entries,
-    categoryCollection.entries,
-  );
   const profile = readStorefrontProfile(env);
 
   let catalogAvailable = true;
@@ -162,6 +158,12 @@ export async function loadVisibleStorefrontProductSlugs(
     catalogAvailable = false;
     return [];
   });
+  // Commerce keeps which page sells each product (template-no-commerce-box-20261029).
+  const { products } = readProductEntries(
+    productCollection.entries,
+    categoryCollection.entries,
+    commercePageLinks(commerceProducts),
+  );
   const activeCommerceIds = new Set(commerceProducts.map((item) => item.id));
 
   const visible = new Set<string>();

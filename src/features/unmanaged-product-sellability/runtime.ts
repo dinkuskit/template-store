@@ -83,7 +83,7 @@ function rethrow(error: unknown): never {
 async function present(
   item: CatalogItemRecord,
   storefront: UnmanagedProductSellability["storefront"],
-  prices: StorefrontAvailabilityResolverStorage["prices"],
+  { prices, catalog }: Pick<StorefrontAvailabilityResolverStorage, "prices" | "catalog">,
 ): Promise<UnmanagedProductSellability> {
   if (item.stockManagement.mode !== "unmanaged") {
     throw new UnmanagedProductSellabilityError(
@@ -98,7 +98,7 @@ async function present(
     );
   }
   const price = presentStorefrontPrice(
-    await resolveCatalogItemPrice(prices, item.itemId),
+    await resolveCatalogItemPrice(prices, item.itemId, catalog),
   );
   return {
     product: {
@@ -203,7 +203,7 @@ export function createUnmanagedProductSellabilityRuntime(): UnmanagedProductSell
       const storefront = await resolveStorefrontAvailability(storage, {
         catalogItemId: item.itemId,
       });
-      return present(item, storefront, prices);
+      return present(item, storefront, storage);
     } catch (error) {
       rethrow(error);
     }

@@ -3,6 +3,8 @@ import {
   buildProductCollections,
   canonicalCollectionPath,
   canonicalProductPath,
+  commercePageLinks,
+  pageCommerceItemId,
   readProductEntries,
   validProductSlug,
 } from "../../src/features/store-shell/product-routes.js";
@@ -48,9 +50,9 @@ describe("canonical product routes", () => {
   it("fails closed on the pre-#34 merchandise schema", () => {
     const result = readProductEntries([
       {
-        id: "everyday-tee",
+        id: "old-tee",
         data: {
-          title: "Everyday Tee",
+          title: "Old Tee",
           description: "Description",
           visual_label: "TEE",
           collection: "tees",
@@ -60,7 +62,53 @@ describe("canonical product routes", () => {
     ], categories);
 
     expect(result.products).toEqual([]);
-    expect(result.errors).toEqual(["invalid product entry: everyday-tee"]);
+    expect(result.unlinked).toEqual(["old-tee"]);
+  });
+
+  // template-no-commerce-box-20261029: Commerce holds which page sells which product.
+  it("finds each page's product through Commerce, then an older store's field, then the seed's demonstration slug", () => {
+    const page = (slug: string, id: string, data: Record<string, unknown> = {}) =>
+      ({ id: slug, data: { id, title: slug, categories: ["hats"], ...data } });
+    const links = commercePageLinks([
+      { id: "cat_hat", page: "01HAT" },
+      { id: "cat_relinked", page: "01OLD" },
+      { id: "cat_no_page" },
+    ]);
+    expect([...links]).toEqual([["01HAT", "cat_hat"], ["01OLD", "cat_relinked"]]);
+    const result = readProductEntries([
+      page("hat", "01HAT"),
+      page("old", "01OLD", { commerce_item_id: "123" }),
+      page("legacy", "01LEG", { commerce_item_id: " cat_legacy " }),
+      page("everyday-tee", "01TEE"),
+      page("new-page", "01NEW"),
+    ], categories, links);
+    expect(result.products.map((product) => [product.id, product.commerceItemId])).toEqual([
+      ["hat", "cat_hat"],
+      ["old", "cat_relinked"],
+      ["legacy", "cat_legacy"],
+      ["everyday-tee", "dinkus-template-managed-product"],
+    ]);
+    expect(result.unlinked).toEqual(["new-page"]);
+    expect(result.errors).toEqual([]);
+    expect(pageCommerceItemId(page("canvas-cap", "01CAP"))).toBe("dinkus-template-unmanaged-product");
+    expect(pageCommerceItemId(page("canvas-cap", "01CAP"), new Map([["01CAP", "cat_cap"]]))).toBe("cat_cap");
+  });
+
+  // While an older store keeps the field, a page's field can still name a product Commerce now links to another page
+  // (an owner picked a newer product in the panel, or copied the page). Commerce's link comes first.
+  it("gives a product to the page Commerce links it to, over another page's older field, and refuses two fields naming one", () => {
+    const pages = [
+      { id: "a", data: { id: "01A", title: "A", categories: [] } },
+      { id: "b", data: { id: "01B", title: "B", categories: [], commerce_item_id: "cat_one" } },
+      { id: "c", data: { id: "01C", title: "C", categories: [], commerce_item_id: "cat_two" } },
+      { id: "d", data: { id: "01D", title: "D", categories: [], commerce_item_id: "cat_two" } },
+    ];
+    const result = readProductEntries(pages, categories, new Map([["01A", "cat_one"]]));
+    expect(result.products.map((product) => [product.id, product.commerceItemId])).toEqual([["a", "cat_one"]]);
+    expect(result.unlinked).toEqual(["b"]);
+    expect(result.errors).toEqual(["duplicate published Commerce itemId: cat_two", "duplicate published Commerce itemId: cat_two"]);
+    expect(pageCommerceItemId(pages[1]!, new Map([["01A", "cat_one"]]))).toBe("");
+    expect(pageCommerceItemId(pages[1]!)).toBe("cat_one");
   });
 
   // template-sells-anything-20261027: a store may sell anything, so a migrated

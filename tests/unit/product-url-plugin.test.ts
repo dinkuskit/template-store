@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createPlugin } from "../../src/features/product-url-plugin/index.js";
+import { createPlugin, withCommerceLinks } from "../../src/features/product-url-plugin/index.js";
 
 type Claim = { entryId: string; itemId: string; path: string };
 
@@ -131,13 +131,71 @@ describe("product URL publish claims", () => {
     });
   });
 
-  it("cancels a publish whose content carries no Commerce product ID", async () => {
+  // template-no-commerce-box-20261029: Commerce holds the link, and the store's publish check refuses a page with no
+  // product, so a page with no Commerce product field publishes here and claims nothing.
+  it("lets a page with no Commerce product field publish and schedule, and drops the claim it held", async () => {
     const plugin = createPlugin();
-    const handler = plugin.hooks["content:beforePublish"]!.handler;
+    const publish = plugin.hooks["content:beforePublish"]!.handler;
+    const schedule = plugin.hooks["content:beforeSchedule"]!.handler;
+    const claims = new Claims();
+    await publish(event("one", "item-1"), context(claims));
+    expect(claims.rows.get("one")?.itemId).toBe("item-1");
     const content = { id: "one", slug: "one", status: "draft", data: { title: "One" } };
     await expect(
-      handler({ collection: "products", content, origin: { source: "api" as const } }, context(new Claims())),
-    ).resolves.toMatchObject({ cancel: true });
+      publish({ collection: "products", content, origin: { source: "api" as const } }, context(claims)),
+    ).resolves.toBeUndefined();
+    expect(claims.rows.has("one")).toBe(false);
+    await expect(
+      schedule({ collection: "products", content, origin: { source: "api" as const }, scheduledAt: "2030-01-01T00:00:00Z" }, context(claims)),
+    ).resolves.toBeUndefined();
+    expect(claims.rows.size).toBe(0);
+    // The other page may now claim that value on an older store.
+    await expect(publish(event("two", "item-1"), context(claims))).resolves.toBeUndefined();
+  });
+
+  // While another page keeps upgrade 005 waiting, a page's field can still name one product while Commerce links it
+  // to another. Commerce's link comes first, so such a field claims nothing and refuses nobody.
+  it("follows Commerce's link over an older store's field, and claims the field only while Commerce links nothing", async () => {
+    const plugin = createPlugin();
+    const publish = plugin.hooks["content:beforePublish"]!.handler;
+    const schedule = plugin.hooks["content:beforeSchedule"]!.handler;
+    const claims = new Claims();
+    const pending = new Pending();
+    const asking = <T>(answer: string | null | "failed" | Error, fn: () => T) =>
+      withCommerceLinks(async () => {
+        if (answer instanceof Error) throw answer;
+        return answer;
+      }, fn);
+    await publish(event("one", "item-1"), context(claims));
+    expect(claims.rows.get("one")?.itemId).toBe("item-1");
+    // Commerce now links the page to another product: its field's claim is let go.
+    await expect(asking("item-9", () => publish(event("one", "item-1"), context(claims)))).resolves.toBeUndefined();
+    expect(claims.rows.has("one")).toBe(false);
+    await expect(publish(event("two", "item-1"), context(claims))).resolves.toBeUndefined();
+    // A page Commerce links publishes whatever its field says, without claiming it.
+    await expect(asking("item-3", () => publish(event("three", "item-1"), context(claims)))).resolves.toBeUndefined();
+    expect(claims.rows.has("three")).toBe(false);
+    // The field counts while Commerce links the page to nothing, cannot say, or cannot be asked.
+    for (const answer of [null, "failed" as const, new Error("down")]) {
+      await expect(asking(answer, () => publish(event("four", "item-1"), context(claims)))).resolves.toMatchObject({ cancel: true });
+    }
+    // A schedule of a page Commerce links names no product and claims nothing.
+    const at = "2030-01-01T00:00:00Z";
+    const scheduled = { ...event("five", "item-1"), scheduledAt: at, actor: { id: "admin", role: 50, source: "api" as const } };
+    await expect(asking("item-5", () => schedule(scheduled, context(claims, pending)))).resolves.toBeUndefined();
+    expect(claims.rows.has("five")).toBe(false);
+    expect(pending.value("five")).toMatchObject({ proposals: [{ by: "admin", role: 50, scheduledAt: at }] });
+    expect((pending.value("five")?.proposals as Array<Record<string, unknown>>)[0]).not.toHaveProperty("itemId");
+    // EmDash's scheduler publishes with nobody to ask Commerce as, so it keeps the claim the schedule made.
+    await expect(publish({ ...event("five", "item-1"), origin: { source: "scheduler" as const } }, context(claims, pending))).resolves.toBeUndefined();
+    expect(claims.rows.has("five")).toBe(false);
+    expect([...claims.rows.keys()]).toEqual(["two"]);
+  });
+
+  it("still refuses a field value over 1,024 characters", async () => {
+    const plugin = createPlugin();
+    const publish = plugin.hooks["content:beforePublish"]!.handler;
+    await expect(publish(event("one", "x".repeat(1025)), context(new Claims()))).resolves.toMatchObject({ cancel: true });
   });
 });
 

@@ -15,7 +15,8 @@ import {
   loadStorefrontRouteContext,
 } from "../features/store-shell/index.js";
 import { storeBannerText } from "../features/store-shell/checkout-copy.js";
-import { hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
+import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
+import { commercePageLinks, hydrateProductCollectionMembership, readProductEntries } from "../features/store-shell/product-routes.js";
 import "../features/store-shell/global.css";
 
 if (!isProofStorefrontProfile()) {
@@ -28,7 +29,8 @@ if (!isProofStorefrontProfile()) {
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
-const productLinks = readProductEntries(products.entries, categoryEntries.entries);
+const commerceProducts = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request }).catch(() => []);
+const productLinks = readProductEntries(products.entries, categoryEntries.entries, commercePageLinks(commerceProducts));
 if (productLinks.errors.length > 0) {
   console.error(`[product-url] excluded published product entries: ${productLinks.errors.join("; ")}`);
 }
