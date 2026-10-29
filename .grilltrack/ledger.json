@@ -4470,6 +4470,20 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-10-29T16:47:03+00:00",
+          "choice": "Content > Products is the one product screen. The products collection editor shows Commerce's editor panel (Commerce catalog-one-product-screen-20261023); Make this sellable fills commerce_item_id, so nobody pastes an id. The field and the one-published-page-per-item rule stay; only how the id gets there changes.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Ronald's B (29 Oct 2026): the commerce_item_id field leaves product pages; Commerce holds the page-to-product link.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
         }
       ],
       "id": "template-one-product-screen-20261023",
@@ -4482,9 +4496,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
-      "superseded_by": null,
-      "updated_at": "2026-10-23T19:34:45+00:00",
+      "status": "superseded",
+      "superseded_by": "template-no-commerce-box-20261029",
+      "updated_at": "2026-10-29T16:47:03+00:00",
       "verification_ref": null
     },
     {
@@ -4810,6 +4824,50 @@
       "superseded_by": null,
       "updated_at": "2026-10-28T13:18:49+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Commerce holds the link (Commerce catalog-page-link-in-commerce-20261029) and the products collection has no commerce_item_id field. (1) The publish check asks Commerce for the page's product (the private catalog route's get by entryId) and sends set-on-sale the page alone. A publish through the content API of a product page Commerce links to no product is refused with a pointer to the Dinkus Commerce panel, as the old rule refused a page with no product id. (2) The shop, categories, search, feeds and product pages read each page's product from Commerce: each public catalog product's page, or the public item route by pageId. On a shipping store a published product page whose product is not on the shop says it is no longer available. (3) While an older store still has the field, a page Commerce holds no link for falls back to the field's value, and the publish check sends that value as catalogItemId, as before. (4) The product-url plugin no longer requires a product id to publish or schedule; it claims a field value only while the field exists, and a schedule grant no longer names a product. (5) The seed drops commerce_item_id; the seeded demonstration pages are known by their slugs. (6) Storefront upgrade 005_commerce_box_off removes the field from an older store only once every published or scheduled product page whose field names a real Commerce product has its link in Commerce. Until then it leaves the field, logs those pages and is tried again later, without holding back later steps. This one step amends template-store-self-upgrade-20261028's 'only adds or relaxes, never deletes'. (7) The playground's Commerce source pin and the paired proof move to the Commerce beta that holds the link, so the playground never runs a Commerce that cannot link a page.",
+      "context_ref": "https://claude.ai/artifact/XQk8eJedD6MXhKR6wr6dAB",
+      "created_at": "2026-10-29T16:46:58+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-product-states-20261023",
+        "template-store-self-upgrade-20261028"
+      ],
+      "domain": "Template sells anything (Grow Funky Beans migration issues)",
+      "history": [
+        {
+          "at": "2026-10-29T16:47:03+00:00",
+          "choice": "Commerce holds the link (Commerce catalog-page-link-in-commerce-20261029) and the products collection has no commerce_item_id field. (1) The publish check asks Commerce for the page's product (the private catalog route's get by entryId) and sends set-on-sale the page alone. A publish through the content API of a product page Commerce links to no product is refused with a pointer to the Dinkus Commerce panel, as the old rule refused a page with no product id. (2) The shop, categories, search, feeds and product pages read each page's product from Commerce: each public catalog product's page, or the public item route by pageId. On a shipping store a published product page whose product is not on the shop says it is no longer available. (3) While an older store still has the field, a page Commerce holds no link for falls back to the field's value, and the publish check sends that value as catalogItemId, as before. (4) The product-url plugin no longer requires a product id to publish or schedule; it claims a field value only while the field exists, and a schedule grant no longer names a product. (5) The seed drops commerce_item_id; the seeded demonstration pages are known by their slugs. (6) Storefront upgrade 005_commerce_box_off removes the field from an older store only once every published or scheduled product page whose field names a real Commerce product has its link in Commerce. Until then it leaves the field, logs those pages and is tried again later, without holding back later steps. This one step amends template-store-self-upgrade-20261028's 'only adds or relaxes, never deletes'. (7) The playground's Commerce source pin and the paired proof move to the Commerce beta that holds the link, so the playground never runs a Commerce that cannot link a page.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-no-commerce-box-20261029",
+      "implementation_ref": null,
+      "question": "How does the store find the Commerce product a product page sells, once product pages have no Commerce product box?",
+      "rationale": "Ronald locked option B on the card at 16:01 UTC 29 Oct 2026 ('Lock B and start Commerce'), approving the plan's template step.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-29T16:47:03+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4832,5 +4890,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-28T13:18:49+00:00"
+  "updated_at": "2026-10-29T16:47:03+00:00"
 }
