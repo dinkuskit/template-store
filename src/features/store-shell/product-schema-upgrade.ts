@@ -100,16 +100,31 @@ export const CATEGORY_PRODUCTS_FIELD: CreateFieldInput = {
  * the store already has, so existing product links show at once. A skip
  * re-seed never adds it. The collection's own label is left alone, as #118
  * left it; a store without the categories collection or the relation, or with
- * the field already, is not changed.
+ * the field already, is not changed. Neither is one whose categories already
+ * have another field picking products through the relation, since EmDash lets
+ * only one field view a relation from each end.
+ *
+ * The field is stored with the collection it lists, which EmDash's seed and its
+ * schema API both work out from the relation. The editor's product list and the
+ * site's reference reads skip a reference field without it.
  */
 export async function ensureStorefrontCategoryProducts(db: unknown): Promise<void> {
   const kyselyDb = db as Kysely<never>;
   const registry = new SchemaRegistry(kyselyDb as never);
-  if (!(await registry.getCollection("categories")) || await registry.getField("categories", CATEGORY_PRODUCTS_FIELD.slug)) return;
-  const relation = await sql<{ id: string }>`
-    select id from _emdash_relations where slug = ${CATEGORY_PRODUCTS_FIELD.validation!.relation}`.execute(kyselyDb);
-  if (relation.rows.length === 0) return;
-  await registry.createField("categories", CATEGORY_PRODUCTS_FIELD);
+  const categories = await registry.getCollectionWithFields("categories");
+  if (!categories || categories.fields.some((field) => field.slug === CATEGORY_PRODUCTS_FIELD.slug)) return;
+  const relationSlug = CATEGORY_PRODUCTS_FIELD.validation!.relation;
+  const relation = (await sql<{ child_collection: string }>`
+    select child_collection from _emdash_relations
+    where slug = ${relationSlug} and parent_collection = 'categories'`.execute(kyselyDb)).rows[0];
+  if (!relation) return;
+  const picked = categories.fields.some((field) => field.type === "reference"
+    && field.validation?.relation === relationSlug && field.validation?.relationSide !== "child");
+  if (picked) return;
+  await registry.createField("categories", {
+    ...CATEGORY_PRODUCTS_FIELD,
+    validation: { ...CATEGORY_PRODUCTS_FIELD.validation, targetCollection: relation.child_collection },
+  });
 }
 
 /** The address of a published CMS page, matching src/pages/[slug].astro and seed/seed.json. */
