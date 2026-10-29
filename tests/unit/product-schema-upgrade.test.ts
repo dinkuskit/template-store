@@ -249,24 +249,49 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
       expect(olderVersion("latest", "0.7.0-beta.3")).toBe(true);
     });
 
-    it("counts only live pages, on any install of Commerce", async () => {
+    it("counts every page whose box is the only record of its product, drafts and the trash included, on any install of Commerce", async () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const tee = await pageId("everyday-tee");
+      const hoodie = await pageId("pullover-hoodie-preview");
+      const waiting = async () => (await pagesWithoutCommerceLink(db)).map((page) => page.slug);
       await sql`update ec_products set commerce_item_id = 'hat' where slug = 'everyday-tee'`.execute(db);
       await store("dinkus-commerce", "catalogItems", "hat");
       expect(await removeStorefrontCommerceBox(db)).toBe("wait");
       // A publish check's sale links it too.
-      await store("dinkus-commerce", "product_pages", `p:${tee}`);
+      await store("dinkus-commerce", "product_pages", `p:${tee}`, { entryId: tee, catalogItemId: "hat" });
       expect(await pagesWithoutCommerceLink(db)).toEqual([]);
-
-      // A draft, or a deleted page, never sells, so it never holds the box.
       await sql`delete from _plugin_storage where id = ${`p:${tee}`}`.execute(db);
+
+      // A draft, a scheduled page and a page in the trash still need their product to publish or be restored.
       await sql`update ec_products set status = 'draft', scheduled_at = null where slug = 'everyday-tee'`.execute(db);
-      expect(await pagesWithoutCommerceLink(db)).toEqual([]);
+      expect(await waiting()).toEqual(["everyday-tee"]);
       await sql`update ec_products set scheduled_at = '2030-01-01T00:00:00.000Z' where slug = 'everyday-tee'`.execute(db);
-      expect(await pagesWithoutCommerceLink(db)).toHaveLength(1);
+      expect(await waiting()).toEqual(["everyday-tee"]);
       await sql`update ec_products set deleted_at = '2026-10-29T00:00:00.000Z' where slug = 'everyday-tee'`.execute(db);
+      expect(await waiting()).toEqual(["everyday-tee"]);
+      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
+
+      // A copy of a page that sells the product can't sell it: Commerce records the other page as the product's
+      // page, or the other page's panel picked it.
+      await sql`update ec_products set commerce_item_id = 'hat' where slug = 'pullover-hoodie-preview'`.execute(db);
+      expect((await waiting()).sort()).toEqual(["everyday-tee", "pullover-hoodie-preview"]);
+      await sql`update _plugin_storage set data = ${JSON.stringify({ pageId: hoodie })} where id = 'hat'`.execute(db);
+      expect(await waiting()).toEqual(["pullover-hoodie-preview"]);
+      await sql`update _plugin_storage set data = '{}' where id = 'hat'`.execute(db);
+      await store("dinkus-commerce", "product_pages", `e:${hoodie}`, { entryId: hoodie, catalogItemId: "hat" });
+      expect(await waiting()).toEqual([]);
+      await sql`delete from _plugin_storage where id = ${`e:${hoodie}`}`.execute(db);
+      await sql`update ec_products set commerce_item_id = null where slug = 'pullover-hoodie-preview'`.execute(db);
+
+      // An archived product can be restored, and its page would need it again.
+      await sql`update _plugin_storage set data = ${JSON.stringify({ archivedAt: "2026-10-29T00:00:00.000Z" })} where id = 'hat'`.execute(db);
+      expect(await waiting()).toEqual(["everyday-tee"]);
+      await sql`update _plugin_storage set data = '{}' where id = 'hat'`.execute(db);
+
+      // Deleting the page for good lets its product go.
+      await sql`delete from ec_products where slug = 'everyday-tee'`.execute(db);
       expect(await removeStorefrontCommerceBox(db)).toBeUndefined();
+      expect(await hasBox()).toBe(false);
     });
   });
 });

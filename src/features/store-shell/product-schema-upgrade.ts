@@ -192,11 +192,16 @@ export async function commerceNeedingTheBox(db: unknown): Promise<string[]> {
 }
 
 /**
- * The live product pages whose Commerce product field names a real Commerce
- * product that Commerce does not link to the page: neither the panel's pick
- * (`e:`) nor a publish check's sale (`p:`) in Commerce's `product_pages`. A
- * value naming no Commerce product (a typed "123", the seed's demonstration
- * ids) sells nothing, so it does not count.
+ * The product pages whose Commerce product field is the only record of which
+ * product they sell: it names a Commerce product that Commerce links to no
+ * page, neither in its `product_pages` (the panel's pick `e:`, a publish
+ * check's sale `p:`) nor as the product's own `pageId`. Drafts, scheduled pages
+ * and pages in the trash count as well as published ones, since publishing or
+ * restoring one later still needs its product, and so does an archived
+ * product, which can be restored. A value naming no Commerce product (a typed
+ * "123", the seed's demonstration ids) sells nothing, and one naming a product
+ * another page sells (a duplicated page's copy) can't sell it, so neither
+ * counts.
  */
 export async function pagesWithoutCommerceLink(db: unknown): Promise<{ id: string; slug: string | null; itemId: string }[]> {
   const kyselyDb = db as Kysely<never>;
@@ -204,20 +209,20 @@ export async function pagesWithoutCommerceLink(db: unknown): Promise<{ id: strin
   const rows = await sql<{ id: string; slug: string | null; itemId: string }>`
     select page.id, page.slug, trim(page.commerce_item_id) as "itemId"
     from ec_products page
-    where page.deleted_at is null
-      and (page.status = 'published' or page.scheduled_at is not null)
-      and trim(coalesce(page.commerce_item_id, '')) != ''
+    where trim(coalesce(page.commerce_item_id, '')) != ''
       and exists (
         select 1 from _plugin_storage item
         where item.plugin_id in (${plugins})
           and item.collection in (${sql.join(COMMERCE_CATALOG_COLLECTIONS.map((name) => sql`${name}`))})
           and item.id = trim(page.commerce_item_id)
+          and coalesce(json_extract(item.data, '$.pageId'), page.id) = page.id
       )
       and not exists (
         select 1 from _plugin_storage link
         where link.plugin_id in (${plugins})
           and link.collection = 'product_pages'
-          and link.id in ('e:' || page.id, 'p:' || page.id)
+          and (link.id in ('e:' || page.id, 'p:' || page.id)
+            or json_extract(link.data, '$.catalogItemId') = trim(page.commerce_item_id))
       )
     order by page.id`.execute(kyselyDb);
   return rows.rows;
@@ -226,11 +231,12 @@ export async function pagesWithoutCommerceLink(db: unknown): Promise<{ id: strin
 /**
  * Takes the Commerce product box off an older store's product pages
  * (template-no-commerce-box-20261029). Commerce holds which page sells which
- * product, so the field is removed, but only once no live page needs it:
- * while a published or scheduled page's field names a Commerce product that
- * Commerce does not link to it, the field stays, those pages are logged, and
- * the step answers "wait" to be tried again later. Publishing such a page, or
- * picking its product in its Dinkus Commerce panel, records the link. It also
+ * product, so the field is removed, but only once no page needs it: while a
+ * page's field is the only record of its product (pagesWithoutCommerceLink),
+ * the field stays, those pages are logged, and the step answers "wait" to be
+ * tried again later. Publishing such a page, or picking its product in its
+ * Dinkus Commerce panel, records the link; clearing its field, or deleting it
+ * from the trash for good, lets the product go. It also
  * waits while the store runs a Registry Commerce older than the one that holds
  * links, which still links a page only through the field. A store without the
  * field is not changed.
@@ -245,7 +251,7 @@ export async function removeStorefrontCommerceBox(db: unknown): Promise<"wait" |
   }
   const waiting = await pagesWithoutCommerceLink(db);
   if (waiting.length > 0) {
-    console.warn(`[storefront-upgrade] the Commerce product box stays until Commerce links these pages to their products (publish each again, or pick its product in its Dinkus Commerce panel): ${waiting.map((page) => page.slug ?? page.id).join(", ")}`);
+    console.warn(`[storefront-upgrade] the Commerce product box stays until Commerce links these pages to their products (publish each, or pick its product in its Dinkus Commerce panel; or clear its box, or delete it from the trash for good): ${waiting.map((page) => page.slug ?? page.id).join(", ")}`);
     return "wait";
   }
   await registry.deleteField("products", COMMERCE_PRODUCT_FIELD);

@@ -27,9 +27,15 @@ isn't meant to be touched is bad UI/UX".
 - **Seed and schema**. The seed drops `commerce_item_id`. Storefront upgrade
   `005_commerce_box_off` (`src/features/store-shell/product-schema-upgrade.ts`)
   removes an older store's box only when both of these hold:
-  - every published or scheduled page whose box names a real Commerce product has
-    its link in Commerce (an `e:` or `p:` row in `product_pages`). A typed "123"
-    or a demonstration id names nothing and never holds it back;
+  - no page's box is the only record of its product. Every page counts, drafts,
+    scheduled pages and pages in the trash as well as published ones, since
+    publishing or restoring one later still needs its product. A box holds the
+    upgrade back while it names a Commerce product that Commerce links to no page
+    (no `e:` or `p:` row in `product_pages` for this page or naming that product,
+    and no other page as the product's `pageId`), archived products included,
+    since they can be restored. A typed "123" or a demonstration id sells
+    nothing, and a copied page's box naming a product another page sells can't
+    sell it, so neither holds it back;
   - no Registry install of Commerce is older than `0.7.0-beta.3`, the first
     Commerce that holds links. An older one still links pages only through the box.
 
@@ -45,7 +51,7 @@ isn't meant to be touched is bad UI/UX".
 
 ## Checks
 
-All on Node 24.22.0 and EmDash 1.2.0, on this branch stacked on #169's head `f2f1d3c`.
+All on Node 24.22.0 and EmDash 1.2.0, on this branch with main `414e5f3` (#169) merged in.
 
 - **Unit, types, feature audit** (`bin/verify-web quick`): astro check 0 errors, 562 unit tests pass, workflow tests and the feature audit pass.
 - **Browser** (`pnpm exec astro build && pnpm exec playwright test`): the full run
@@ -67,5 +73,8 @@ All on Node 24.22.0 and EmDash 1.2.0, on this branch stacked on #169's head `f2f
     the storefront. With its Commerce link rows removed, `pnpm search:upgrade`
     reports `waiting: ["005_commerce_box_off"]` and keeps the box; the page still
     unpublishes (off sale) and publishes (on sale) by its box, which records
-    the link in Commerce. The next upgrade removes the box and its column, and
-    the page still shows, unpublishes and publishes, now by Commerce's link.
+    the link in Commerce. A draft whose box is the only record of its product
+    still holds the upgrade back after that; publishing the draft sells its
+    product ($12.00) and records its link. The next upgrade removes the box and
+    its column, and both pages still show, the hat page unpublishing and
+    publishing, now by Commerce's link.

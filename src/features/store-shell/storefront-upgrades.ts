@@ -15,8 +15,8 @@ export interface StorefrontUpgrade {
  * The schema changes newer templates make to a store set up from an older seed,
  * oldest first, the way EmDash lists its own migrations. Each step only adds or
  * relaxes, keeps owner edits and is safe to run twice. The one exception is
- * 005, which removes the Commerce product field only once no live page needs
- * it (template-no-commerce-box-20261029). A template change to the schema in
+ * 005, which removes the Commerce product field only once no page, draft or
+ * trashed page included, needs it (template-no-commerce-box-20261029). A template change to the schema in
  * seed/seed.json adds its step here in the same change; a step's name never
  * changes once shipped.
  */

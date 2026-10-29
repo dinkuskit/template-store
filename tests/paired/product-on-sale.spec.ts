@@ -531,7 +531,7 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
 
 // template-no-commerce-box-20261029: an older store's product pages name their product in the Commerce product box,
 // and Commerce may hold no link for them. They keep selling through this template, and its upgrade takes the box off
-// only once Commerce links every live page that needs it.
+// only once Commerce links every page that needs it, a draft as well as a published page.
 test("an older store's product pages keep selling through the upgrade that takes the box off", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "phone", "The box is the store's own schema; one run proves the upgrade.");
   test.setTimeout(300_000);
@@ -572,6 +572,12 @@ test("an older store's product pages keep selling through the upgrade that takes
   const created = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: "older-store-hat", data: { title: "Older store hat", visual_label: "Hat", commerce_item_id: itemId } } })).json()).data;
   const pageId: string = (created.item ?? created).id;
   expect(links(pageId)).toEqual([]);
+  // A draft whose box is the only record of its product, as an older store's hand-filled box was.
+  const { catalogItemId: draftItemId } = await catalog({ op: "create", commandId: "paired-older-store-scarf", name: "Older store scarf", sku: "PAIRED-OLDER-SCARF" });
+  await catalog({ op: "prices", catalogItemId: draftItemId, regular: "12.00", sale: "", stockStatus: "in-stock" });
+  const drafted = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: "older-store-scarf", data: { title: "Older store scarf", visual_label: "Scarf", commerce_item_id: draftItemId } } })).json()).data;
+  const draftId: string = (drafted.item ?? drafted).id;
+  expect(links(draftId)).toEqual([]);
   // Publishing sends the box's product, since Commerce links the page to nothing.
   expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
   await expect.poll(() => onShop(request)).toContain("Older store hat");
@@ -601,7 +607,17 @@ test("an older store's product pages keep selling through the upgrade that takes
   // That publish recorded Commerce's link for the page.
   expect(links(pageId)).toEqual(["p:" + pageId]);
 
-  // 19. Now every live page's product is linked in Commerce, so the upgrade takes the box off.
+  // 19. The draft still needs its box: the upgrade waits, and publishing the draft sells the product its box names.
+  expect(upgrade().waiting).toEqual(["005_commerce_box_off"]);
+  expect(await boxed()).toBe(true);
+  expect(product(draftItemId).offSale).toBe(true);
+  expect((await request.post(`/_emdash/api/content/products/${draftId}/publish`, { headers })).ok()).toBe(true);
+  await expect.poll(() => onShop(request)).toContain("Older store scarf");
+  expect(product(draftItemId)).toMatchObject({ pageId: draftId });
+  await shows("/products/older-store-scarf", "$12.00");
+  expect(links(draftId)).toEqual(["p:" + draftId]);
+
+  // 20. Now every page's product is linked in Commerce, so the upgrade takes the box off.
   const done = upgrade();
   expect(done.waiting).toBeUndefined();
   expect(done.upgrades).toContain("005_commerce_box_off");
@@ -616,7 +632,7 @@ test("an older store's product pages keep selling through the upgrade that takes
   }
   // The page still sells its product, found through Commerce: the shop, its page, unpublish and publish.
   await shows("/products/older-store-hat", "$15.00");
-  await capture(page, "19-box-off-page-still-on-sale");
+  await capture(page, "20-box-off-page-still-on-sale");
   expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
   expect(product(itemId).offSale).toBe(true);
   expect(await onShop(request)).not.toContain("Older store hat");
@@ -624,8 +640,12 @@ test("an older store's product pages keep selling through the upgrade that takes
   await expect.poll(() => onShop(request)).toContain("Older store hat");
   expect(product(itemId)).toMatchObject({ pageId });
 
-  // Trashing the page takes the product off the shop, so the phone run starts from an empty shop.
-  expect((await request.delete(`/_emdash/api/content/products/${pageId}`, { headers })).ok()).toBe(true);
+  await shows("/products/older-store-scarf", "$12.00");
+
+  // Trashing the pages takes their products off the shop, so the phone run starts from an empty shop.
+  for (const id of [pageId, draftId]) expect((await request.delete(`/_emdash/api/content/products/${id}`, { headers })).ok()).toBe(true);
   expect(product(itemId).offSale).toBe(true);
+  expect(product(draftItemId).offSale).toBe(true);
   expect(await onShop(request)).not.toContain("Older store hat");
+  expect(await onShop(request)).not.toContain("Older store scarf");
 });
