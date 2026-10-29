@@ -14,9 +14,9 @@ const COMMERCE = Object.freeze({
   tag: "commerce#208",
   // Whether this Commerce saves the page title sent as `name` (dinkuskit/commerce#188); 0.6.0 ignores it.
   names: true,
-  commit: "11d24e49c0d5918222ea730f5387a92111ab6354",
+  commit: "8e788dd3fd74399b4da27c4a8ed03da7043a4d5d",
   files: {
-    "dist/sandbox/plugin.mjs": "0d8bb7709076e93f23ea8abb25db9beec8be7321a6ed417e8b26891a6cdc9c5f",
+    "dist/sandbox/plugin.mjs": "a1e51872fa08c3a7924b4c97de04647a475cacb42c92ed5e56c6c18ef5adfba6",
     "dist/sandbox/index.mjs": "fc9072aa4bc0d78949b45b8602e6be9b99ab3badd687d16a3257e2a73efb4a65",
   },
 });

@@ -16,7 +16,7 @@
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
         "tag": "v0.7.0-beta.3",
-        "commit": "11d24e49c0d5918222ea730f5387a92111ab6354"
+        "commit": "8e788dd3fd74399b4da27c4a8ed03da7043a4d5d"
       }
     },
     "playgroundPlugins": {
