@@ -531,10 +531,11 @@ test("a page EmDash publishes on schedule sells its product on the next admin vi
 
 // template-no-commerce-box-20261029: an older store's product pages name their product in the Commerce product box,
 // and Commerce may hold no link for them. They keep selling through this template, and its upgrade takes the box off
-// only once Commerce links every page that needs it, a draft as well as a published page.
+// only once Commerce links every page that needs it, a draft as well as a published page. While it waits, a page whose
+// box still names an older product follows Commerce's link.
 test("an older store's product pages keep selling through the upgrade that takes the box off", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "phone", "The box is the store's own schema; one run proves the upgrade.");
-  test.setTimeout(300_000);
+  test.setTimeout(600_000);
   expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
   const { request } = page;
   const catalog = async (body: Record<string, unknown>) => {
@@ -562,6 +563,14 @@ test("an older store's product pages keep selling through the upgrade that takes
   const shows = async (path: string, price: string) => {
     await page.goto(path);
     await expect(page.locator("[data-product-price]").first()).toHaveText(price);
+  };
+  const status = (id: string) => {
+    const database = db();
+    try {
+      return database.prepare("SELECT status, scheduled_at FROM ec_products WHERE id = ?").get(id) as { status: string; scheduled_at: string | null } | undefined;
+    } finally {
+      database.close();
+    }
   };
 
   // 17. The store has the older seed's box, and a product an older Commerce panel linked by writing its id there.
@@ -607,7 +616,40 @@ test("an older store's product pages keep selling through the upgrade that takes
   // That publish recorded Commerce's link for the page.
   expect(links(pageId)).toEqual(["p:" + pageId]);
 
-  // 19. The draft still needs its box: the upgrade waits, and publishing the draft sells the product its box names.
+  // 19. While the draft keeps the upgrade waiting, the owner picks a newer product in the hat page's Dinkus Commerce
+  // panel, which no longer writes the box: the box still names the older product and Commerce links the newer one.
+  const { catalogItemId: newItemId } = await catalog({ op: "create", commandId: "paired-older-store-hat-2", name: "Older store hat II", sku: "PAIRED-OLDER-HAT-2" });
+  await catalog({ op: "prices", catalogItemId: newItemId, regular: "16.00", sale: "", stockStatus: "in-stock" });
+  await catalog({ op: "link", entryId: pageId, catalogItemId: newItemId });
+  expect(pickedProduct(pageId)).toBe(newItemId);
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  expect(product(itemId).offSale).toBe(true);
+  // The admin schedules the page. Commerce's link comes first, so the schedule names no product and the box claims
+  // nothing; EmDash's scheduler publishes it with nobody signed in, and the admin's next visit sells the newer product.
+  const scheduled = await request.post(`/_emdash/api/content/products/${pageId}/schedule`, { headers, data: { scheduledAt: new Date(Date.now() + 3_000).toISOString() } });
+  expect(scheduled.ok(), await scheduled.text()).toBe(true);
+  await page.goto("about:blank");
+  await expect.poll(() => status(pageId), { timeout: 120_000, intervals: [1_000] }).toEqual({ status: "published", scheduled_at: null });
+  await page.goto("/_emdash/admin/content/products/" + pageId);
+  await expect.poll(async () => {
+    await request.get("/_emdash/api/content/products/" + pageId, { headers });
+    return product(newItemId).offSale ?? false;
+  }, { timeout: 100_000, intervals: [5_000] }).toBe(false);
+  expect(product(newItemId)).toMatchObject({ pageId });
+  expect(product(itemId).offSale).toBe(true);
+  await shows("/products/older-store-hat", "$16.00");
+  await capture(page, "19-scheduled-by-commerce-link");
+  // A copy of the page whose box names the older product publishes, and sells it by its box: the hat page's box no
+  // longer claims it.
+  const copied = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug: "older-store-hat-copy", data: { title: "Older store hat copy", visual_label: "Hat", commerce_item_id: itemId } } })).json()).data;
+  const copyId: string = (copied.item ?? copied).id;
+  const copyPublished = await request.post(`/_emdash/api/content/products/${copyId}/publish`, { headers });
+  expect(copyPublished.ok(), await copyPublished.text()).toBe(true);
+  await expect.poll(() => product(itemId).offSale ?? false).toBe(false);
+  expect(product(itemId)).toMatchObject({ pageId: copyId });
+  await shows("/products/older-store-hat-copy", "$15.00");
+
+  // 20. The draft still needs its box: the upgrade waits, and publishing the draft sells the product its box names.
   expect(upgrade().waiting).toEqual(["005_commerce_box_off"]);
   expect(await boxed()).toBe(true);
   expect(product(draftItemId).offSale).toBe(true);
@@ -617,7 +659,7 @@ test("an older store's product pages keep selling through the upgrade that takes
   await shows("/products/older-store-scarf", "$12.00");
   expect(links(draftId)).toEqual(["p:" + draftId]);
 
-  // 20. Now every page's product is linked in Commerce, so the upgrade takes the box off.
+  // 21. Now every page's product is linked in Commerce, so the upgrade takes the box off.
   const done = upgrade();
   expect(done.waiting).toBeUndefined();
   expect(done.upgrades).toContain("005_commerce_box_off");
@@ -631,21 +673,20 @@ test("an older store's product pages keep selling through the upgrade that takes
     }
   }
   // The page still sells its product, found through Commerce: the shop, its page, unpublish and publish.
-  await shows("/products/older-store-hat", "$15.00");
-  await capture(page, "20-box-off-page-still-on-sale");
+  await shows("/products/older-store-hat", "$16.00");
+  await capture(page, "21-box-off-page-still-on-sale");
   expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
-  expect(product(itemId).offSale).toBe(true);
-  expect(await onShop(request)).not.toContain("Older store hat");
+  expect(product(newItemId).offSale).toBe(true);
   expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
-  await expect.poll(() => onShop(request)).toContain("Older store hat");
-  expect(product(itemId)).toMatchObject({ pageId });
+  await expect.poll(() => product(newItemId).offSale ?? false).toBe(false);
+  expect(product(newItemId)).toMatchObject({ pageId });
 
+  await shows("/products/older-store-hat-copy", "$15.00");
   await shows("/products/older-store-scarf", "$12.00");
 
   // Trashing the pages takes their products off the shop, so the phone run starts from an empty shop.
-  for (const id of [pageId, draftId]) expect((await request.delete(`/_emdash/api/content/products/${id}`, { headers })).ok()).toBe(true);
-  expect(product(itemId).offSale).toBe(true);
-  expect(product(draftItemId).offSale).toBe(true);
+  for (const id of [pageId, copyId, draftId]) expect((await request.delete(`/_emdash/api/content/products/${id}`, { headers })).ok()).toBe(true);
+  for (const id of [itemId, newItemId, draftItemId]) expect(product(id).offSale).toBe(true);
   expect(await onShop(request)).not.toContain("Older store hat");
   expect(await onShop(request)).not.toContain("Older store scarf");
 });
