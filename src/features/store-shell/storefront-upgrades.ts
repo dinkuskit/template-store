@@ -1,5 +1,5 @@
 import { OptionsRepository, invalidateSchemaObjectCache } from "emdash";
-import { ensureStorefrontPageAddresses, ensureStorefrontProductFields } from "./product-schema-upgrade.ts";
+import { ensureStorefrontCategoryProducts, ensureStorefrontPageAddresses, ensureStorefrontProductFields } from "./product-schema-upgrade.ts";
 import { ensureStorefrontSearchSupport } from "./search-upgrade.ts";
 
 /** The EmDash option that lists the storefront upgrades a store has run (template-store-self-upgrade-20261028). */
@@ -21,6 +21,7 @@ export const STOREFRONT_UPGRADES: readonly StorefrontUpgrade[] = [
   { name: "001_storefront_search", run: ensureStorefrontSearchSupport },
   { name: "002_product_fields", run: ensureStorefrontProductFields },
   { name: "003_page_addresses", run: ensureStorefrontPageAddresses },
+  { name: "004_category_products", run: ensureStorefrontCategoryProducts },
 ];
 
 function recordedNames(value: unknown): string[] {

@@ -42,7 +42,7 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await recorded()).toBeNull();
     expect((await products()).visual_label?.required).toBe(1);
 
-    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses"]);
+    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products"]);
     expect(await recorded()).toEqual(ALL);
     const after = await products();
     expect(after.visual_label).toMatchObject({ required: 0, label: VISUAL_LABEL_FIELD_LABEL });

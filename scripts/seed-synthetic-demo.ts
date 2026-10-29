@@ -33,7 +33,7 @@ import {
 import { PluginStorageRepository } from "emdash";
 import { runMigrations } from "emdash/db";
 import { applySeed, validateSeed, type SeedFile } from "emdash/seed";
-import { ensureStorefrontPageAddresses, ensureStorefrontProductFields, ensureStorefrontSearchSupport } from "../src/features/store-shell/index.js";
+import { ensureStorefrontCategoryProducts, ensureStorefrontPageAddresses, ensureStorefrontProductFields, ensureStorefrontSearchSupport } from "../src/features/store-shell/index.js";
 import { getPlatformProxy } from "wrangler";
 
 import {
@@ -509,6 +509,7 @@ async function seedCanonical(
     await ensureStorefrontSearchSupport(db as never);
     await ensureStorefrontProductFields(db as never);
     await ensureStorefrontPageAddresses(db as never);
+    await ensureStorefrontCategoryProducts(db as never);
     emit("seed.cms.apply", {
       collectionsCreated: applied.collections.created,
       contentCreated: applied.content.created,
