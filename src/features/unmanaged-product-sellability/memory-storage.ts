@@ -9,6 +9,7 @@ import {
   type CatalogPriceStorage,
   type CatalogStorage,
   type CatalogStorageRecord,
+  type CatalogWriter,
   type StorefrontAvailabilitySettingsRecord,
   type StorefrontAvailabilitySettingsStorage,
   type StoreInventoryConfigurationStorage,
@@ -36,10 +37,22 @@ function primitiveMatches(
   return value === expected;
 }
 
-export type MemoryUnmanagedCatalogStorage = CatalogStorage & CatalogItemReadStorage;
+export type MemoryUnmanagedCatalogStorage = CatalogStorage & CatalogItemReadStorage & CatalogWriter;
 
 export function createMemoryCatalogStorage(): MemoryUnmanagedCatalogStorage {
   const records = new Map<string, CatalogStorageRecord>();
+  const revisions = new Map<string, string>();
+  const unique = (id: string, data: CatalogStorageRecord) => {
+    for (const [existingId, existing] of records) {
+      if (existingId === id) continue;
+      if (existing.commandId === data.commandId) {
+        throw uniqueViolation("commandId");
+      }
+      if (existing.skuKey === data.skuKey) {
+        throw uniqueViolation("skuKey");
+      }
+    }
+  };
 
   return {
     async get(id) {
@@ -47,20 +60,33 @@ export function createMemoryCatalogStorage(): MemoryUnmanagedCatalogStorage {
       return record === undefined ? null : structuredClone(record);
     },
 
-    async put(id, data) {
-      for (const [existingId, existing] of records) {
-        if (existingId === id) continue;
-        if (existing.commandId === data.commandId) {
-          throw uniqueViolation("commandId");
-        }
-        if (existing.skuKey === data.skuKey) {
-          throw uniqueViolation("skuKey");
-        }
+    async getVersioned(id) {
+      const record = records.get(id);
+      if (record === undefined) return null;
+      if (!revisions.has(id)) revisions.set(id, crypto.randomUUID());
+      return { value: structuredClone(record), revision: revisions.get(id)! };
+    },
+
+    async compareAndSet(id, expectedRevision, data) {
+      const current = records.get(id);
+      if (expectedRevision === null ? current !== undefined : current === undefined || revisions.get(id) !== expectedRevision) {
+        return { applied: false };
       }
+      unique(id, data);
       records.set(id, structuredClone(data));
+      const revision = crypto.randomUUID();
+      revisions.set(id, revision);
+      return { applied: true, revision };
+    },
+
+    async put(id, data) {
+      unique(id, data);
+      records.set(id, structuredClone(data));
+      revisions.set(id, crypto.randomUUID());
     },
 
     async delete(id) {
+      revisions.delete(id);
       return records.delete(id);
     },
 

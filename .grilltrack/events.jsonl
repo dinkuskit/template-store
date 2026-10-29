@@ -150,3 +150,6 @@
 {"action": "decision_locked", "at": "2026-10-27T17:39:19+00:00", "data": {"decision_id": "template-cms-pages-and-redirects-20261027"}, "event_id": "88c0a399-0db6-4748-9251-c8bae82c80c1"}
 {"action": "decision_proposed", "at": "2026-10-28T12:32:52+00:00", "data": {"decision_id": "template-store-self-upgrade-20261028"}, "event_id": "5cf84d34-8655-48ae-b41b-2f558c19bd10"}
 {"action": "decision_locked", "at": "2026-10-28T13:18:49+00:00", "data": {"decision_id": "template-store-self-upgrade-20261028"}, "event_id": "3f70456a-00ec-420e-9caf-e8cc205febf1"}
+{"action": "decision_proposed", "at": "2026-10-29T16:46:58+00:00", "data": {"decision_id": "template-no-commerce-box-20261029"}, "event_id": "965e1bef-bde6-4b6b-ba7a-816d99bd66aa"}
+{"action": "decision_locked", "at": "2026-10-29T16:47:03+00:00", "data": {"decision_id": "template-no-commerce-box-20261029"}, "event_id": "abad393b-6475-4f24-a244-04742f0ad7a4"}
+{"action": "decision_superseded", "at": "2026-10-29T16:47:03+00:00", "data": {"affected": [], "decision_id": "template-one-product-screen-20261023", "replacement_id": "template-no-commerce-box-20261029"}, "event_id": "6cef9a68-35aa-4a73-931d-fdefcf6cf49c"}

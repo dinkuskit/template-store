@@ -5,12 +5,22 @@
  * or trashes a Content > Products page, the store tells Commerce through its
  * private `catalog-items/set-on-sale` route, as that person, so the page's
  * product goes on sale or back to Draft with the page.
+ *
+ * Commerce holds which product a page sells (template-no-commerce-box-20261029):
+ * the store asks its private `catalog` route for the page's product and sends
+ * set-on-sale the page alone. Only while an older store's page still has a
+ * Commerce product field, and Commerce links that page to nothing, does the
+ * store read the field and send its value, as it did before.
  */
 
 import { hasPermission } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
+import { withCommerceLinks } from "../product-url-plugin/index.js";
+import { SEEDED_PAGE_PRODUCTS } from "../store-shell/seeded-page-products.js";
+
 export const SET_ON_SALE_ROUTE = "catalog-items/set-on-sale";
+export const CATALOG_ROUTE = "catalog";
 
 const PRODUCTS = "products";
 const CONTENT_PATH = /^\/_emdash\/api\/content\/([^/]+)\/([^/]+)(?:\/(publish|unpublish))?$/;
@@ -70,24 +80,73 @@ export function productName(title: unknown): string | undefined {
   return name || undefined;
 }
 
+/** The Commerce product a page sells, as this request knows it. */
+type ProductPage = {
+  id: string;
+  catalogItemId: string;
+  /** Read from an older store's Commerce product field because Commerce links the page to nothing. */
+  fromField: boolean;
+  published: boolean;
+  scheduled: boolean;
+  name?: string;
+};
+/** A page read: what it sells; null when it does not exist; "unlinked" when it sells nothing; "unreadable" when unknown. */
+type PageRead = ProductPage | null | "unlinked" | "unreadable";
+const sold = (read: PageRead): ProductPage | null => (typeof read === "object" ? read : null);
+/** The product Commerce links to a page: its id, null when none, "failed" when Commerce could not answer. */
+export type PageLink = (entryId: string) => Promise<string | null | "failed">;
+
 /**
- * The page's own id, the Commerce product it sells and, when published, the published title as the product's
- * name; null when the page sells nothing or does not exist, "unreadable" when the read failed.
+ * Asks Commerce's private `catalog` route, as `caller`, for the product a page sells: the one its panel picked, else
+ * the one it last sold. A Commerce without that route (0.6.0) keeps no links, so it answers null.
  */
-async function productPage(runtime: OnSaleRuntime, entryId: string, locale?: string): Promise<{ id: string; catalogItemId: string; published: boolean; scheduled: boolean; name?: string } | null | "unreadable"> {
+export function commercePageLink(runtime: OnSaleRuntime, pluginId: string, url: URL, caller: () => unknown): PageLink {
+  return async (entryId) => {
+    if (!runtime.getPluginRouteMeta(pluginId, CATALOG_ROUTE)) return null;
+    try {
+      const result = await runtime.handlePluginApiRoute(pluginId, "POST", CATALOG_ROUTE,
+        new Request(new URL(`/_emdash/api/plugins/${pluginId}/${CATALOG_ROUTE}`, url), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ op: "get", entryId }),
+        }), caller());
+      if (!result.success) return "failed";
+      const id = record(record(result.data)?.product)?.catalogItemId;
+      return typeof id === "string" && id && id.length <= 1024 ? id : null;
+    } catch {
+      return "failed";
+    }
+  };
+}
+
+/**
+ * The page's own id, the Commerce product it sells and, when published, the published title as the product's name.
+ * Commerce's link comes first; an older store's field counts only while Commerce links the page to nothing or cannot
+ * say. Null when the page does not exist, "unlinked" when it sells nothing, "unreadable" when that is unknown.
+ */
+async function productPage(runtime: OnSaleRuntime, link: PageLink, entryId: string, locale?: string): Promise<PageRead> {
   const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true }).catch(() => null);
   if (!found?.success) return found?.error?.code === "NOT_FOUND" ? null : "unreadable";
   const data = record(found.data);
   const item = record(data?.item) ?? data;
   const fields = record(item?.data) ?? item;
   const id = typeof item?.id === "string" ? item.id : entryId;
-  const catalogItemId = typeof fields?.commerce_item_id === "string" ? fields.commerce_item_id.trim() : "";
+  const slug = typeof item?.slug === "string" ? item.slug : "";
+  // The seed's demonstration pages name the template's own ids, which Commerce answers it does not have.
+  const field = (typeof fields?.commerce_item_id === "string" ? fields.commerce_item_id.trim() : "") || (SEEDED_PAGE_PRODUCTS[slug] ?? "");
+  const linked = await link(id);
   const scheduled = typeof item?.scheduledAt === "string" && item.scheduledAt !== "";
   const published = item?.status === "published";
   // A newer unpublished draft keeps the published values in liveData; only a published title names the product.
   const name = published ? productName((record(item?.liveData) ?? fields)?.title) : undefined;
-  return catalogItemId && catalogItemId.length <= 1024 ? { id, catalogItemId, published, scheduled, ...(name ? { name } : {}) } : null;
+  const page = { id, published, scheduled, ...(name ? { name } : {}) };
+  if (linked && linked !== "failed") return { ...page, catalogItemId: linked, fromField: false };
+  if (field && field.length <= 1024) return { ...page, catalogItemId: field, fromField: true };
+  return linked === "failed" ? "unreadable" : "unlinked";
 }
+
+/** What set-on-sale is told: the page alone, or with the product an older store's field names. */
+const target = (page: ProductPage) => (page.fromField ? { catalogItemId: page.catalogItemId, entryId: page.id } : { entryId: page.id });
 
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
 // page sells the product (a sandboxed route carries those only in its message). Commerce 0.6.0 names a gone
@@ -124,13 +183,14 @@ async function setOnSale(runtime: OnSaleRuntime, pluginId: string, url: URL, cal
  * product published, or this Commerce takes no title-only writes (0.6.0 refuses them as INVALID_INPUT).
  */
 async function renameToTitle(name: string, catalogItemId: string, rename: (name: string) => Promise<Written>,
-  read: () => ReturnType<typeof productPage>): Promise<"done" | "retry"> {
+  read: () => Promise<PageRead>): Promise<"done" | "retry"> {
   for (let write = 1; write <= NAME_WRITES; write += 1) {
     const { failed, code } = await rename(name);
     // A sandboxed Commerce carries the reason only in its message.
     if (failed) return code === "INVALID_INPUT" || /\bInvalid onSale\b/.test(failed) ? "done" : "retry";
-    const now = await read();
-    if (now === "unreadable") return "retry";
+    const found = await read();
+    if (found === "unreadable") return "retry";
+    const now = sold(found);
     if (!now?.published || now.catalogItemId !== catalogItemId || !now.name || now.name === name) return "done";
     name = now.name;
   }
@@ -158,6 +218,8 @@ function refuse(status: number, code: string, message: string): Response {
  *   loses it mid-request puts nothing (back) on sale.
  * - A Commerce without the route (0.5.0) has no publish check, so its pages
  *   change exactly as before, Authors' own pages included.
+ * - A publish of a page that sells nothing is refused and names the Dinkus
+ *   Commerce panel, as an older store refused a page with no product id.
  * - Unpublish and trash take the product off sale first. If Commerce refuses
  *   or cannot be reached, the page change is refused too, so a product is never
  *   left buyable behind an unpublished or trashed page.
@@ -180,11 +242,20 @@ function refuse(status: number, code: string, message: string): Response {
  * last off-sale write, or its own read comes after the page change and sees
  * it. A late off-sale write can only leave a published page's product a Draft,
  * which never sells anything it should not, and publishing again fixes it.
+ *
+ * Any signed-in person's request also lets the product URL plugin's publish and
+ * schedule hooks ask Commerce, as that person, which product a page sells, so
+ * an older store's field never outranks Commerce's link there either.
  */
 export async function withProductOnSale(
   input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales },
   next: () => Promise<Response>,
 ): Promise<Response> {
+  if (input.runtime && input.user) {
+    const lookup = commercePageLink(input.runtime, input.commercePluginId, input.url, () => input.user);
+    const handle = next;
+    next = () => withCommerceLinks(lookup, handle);
+  }
   const change = productPageChange(input.request.method, input.url.pathname);
   if (!change || !input.runtime || !input.user) return next();
   const runtime = input.runtime;
@@ -193,14 +264,21 @@ export async function withProductOnSale(
   const may = (who: unknown) => !!who && hasPermission(who as Parameters<typeof hasPermission>[0], permission as Parameters<typeof hasPermission>[1]);
   const current = async () => (input.currentUser ? await input.currentUser().catch(() => null) : input.user);
   const locale = input.url.searchParams.get("locale") ?? undefined;
-  const page = await productPage(runtime, change.entryId, locale);
-  if (page === "unreadable") {
+  // The person as last read; writes that only take a product off sale again after an allowed write carry them.
+  let authorized: unknown = input.user;
+  const link = commercePageLink(runtime, input.commercePluginId, input.url, () => authorized);
+  const read = () => productPage(runtime, link, change.entryId, locale);
+  const found = await read();
+  if (found === "unreadable") {
     // Unpublish and trash must not run blind: the page might sell a product that would stay buyable.
     return change.action === "publish" ? next() : refuse(503, "COMMERCE_UNAVAILABLE", "The page could not be checked for a product, so nothing was changed. Try again.");
   }
+  if (found === "unlinked" && change.action === "publish") {
+    return refuse(422, "PUBLISH_REJECTED", "This page has no product yet. Add price and stock in the Dinkus Commerce panel, then publish.");
+  }
+  const page = sold(found);
   if (!page) return next();
-  // The person as last read; writes that only take a product off sale again after an allowed write carry them.
-  let authorized = await current();
+  authorized = await current();
   const allowed = may(authorized);
   // The Commerce answer: null when it is done (or has nothing to do for this page), else why it failed.
   let changed = false;
@@ -218,7 +296,7 @@ export async function withProductOnSale(
       }
       authorized = now;
     }
-    const result = await setOnSale(runtime, input.commercePluginId, input.url, authorized, { catalogItemId: page.catalogItemId, entryId: page.id, ...body });
+    const result = await setOnSale(runtime, input.commercePluginId, input.url, authorized, { ...target(page), ...body });
     if (result.changed !== undefined) changed = result.changed;
     return result.failed;
   };
@@ -227,7 +305,7 @@ export async function withProductOnSale(
     const now = await current();
     if (!may(now)) return { failed: "the person may no longer change sale state" };
     authorized = now;
-    return setOnSale(runtime, input.commercePluginId, input.url, now, { catalogItemId: page.catalogItemId, entryId: page.id, name });
+    return setOnSale(runtime, input.commercePluginId, input.url, now, { ...target(page), name });
   };
   // Put the product on sale under the published title, then read the page again: if it is no longer published with
   // this product, take it off. If its published title is no longer the one just written (an overlapping publish
@@ -236,10 +314,10 @@ export async function withProductOnSale(
   const putOnSale = async (name?: string) => {
     const failed = await tell({ onSale: true, ...(name ? { name } : {}) });
     if (failed) return failed;
-    const now = await productPage(runtime, change.entryId, locale);
-    if (now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId) {
+    const now = sold(await read());
+    if (now?.published && now.catalogItemId === page.catalogItemId) {
       if (now.name && now.name !== name &&
-        (await renameToTitle(now.name, page.catalogItemId, rename, () => productPage(runtime, change.entryId, locale))) === "retry") {
+        (await renameToTitle(now.name, page.catalogItemId, rename, read)) === "retry") {
         if (input.pendingSales) await listRetitle(input.pendingSales, page.id, page.catalogItemId);
         else console.warn("[product-on-sale] the page's newest title did not reach Commerce; publishing again sends it");
       }
@@ -264,8 +342,8 @@ export async function withProductOnSale(
   // published with that product, read before and again after the write, so an undo never outlasts another unpublish.
   const undo = async () => {
     if (!tookOff) return;
-    const now = await productPage(runtime, change.entryId, locale);
-    const restored = now && now !== "unreadable" && now.published && now.catalogItemId === page.catalogItemId ? await putOnSale(now.name) : "the page is no longer published as it was";
+    const now = sold(await read());
+    const restored = now?.published && now.catalogItemId === page.catalogItemId ? await putOnSale(now.name) : "the page is no longer published as it was";
     if (restored) console.warn("[product-on-sale] the product stays a Draft after a failed page change:", restored);
   };
   let response: Response;
@@ -311,7 +389,9 @@ async function listRetitle(pendingSales: PendingSales, entryId: string, catalogI
   await pendingSales.put(await listKey(RETITLE, entryId, catalogItemId), { retitle: true, entryId, catalogItemId });
 }
 
-type Grant = { by: string; role: number; itemId: string };
+// `itemId` is the product an older store's field named when the page was scheduled, while Commerce linked the page to
+// nothing; a page Commerce linked names none. It holds only while the page still sells by its field.
+type Grant = { by: string; role: number; itemId?: string };
 
 /** The record's confirmed grant once EmDash's scheduled publish succeeded, else null; and when it last changed. */
 function pendingSale(value: unknown): { grant: Grant | null; published: boolean; updatedAt: number } {
@@ -320,7 +400,7 @@ function pendingSale(value: unknown): { grant: Grant | null; published: boolean;
   const by = typeof confirmed?.by === "string" ? confirmed.by : "";
   const itemId = typeof confirmed?.itemId === "string" ? confirmed.itemId : "";
   const role = typeof confirmed?.role === "number" ? confirmed.role : NaN;
-  const grant = by && itemId && Number.isFinite(role) ? { by, role, itemId } : null;
+  const grant = by && Number.isFinite(role) ? { by, role, ...(itemId ? { itemId } : {}) } : null;
   const updatedAt = typeof sale?.updatedAt === "string" ? Date.parse(sale.updatedAt) : NaN;
   return { grant, published: sale?.state === "published", updatedAt };
 }
@@ -337,10 +417,12 @@ const PENDING_BATCH = 50;
  *
  * - Only schedules the product-url plugin recorded count, and only once EmDash
  *   stored the schedule and its own scheduled publish of the page succeeded. The
- *   grant names the person who scheduled it, their role then, and the product;
+ *   grant names the person who scheduled it and their role then (and, on an
+ *   older store's page with a Commerce product field, the product it named);
  *   they must have held the permission then and still hold it. An Author's
  *   schedule leaves the product a Draft, as their own publish does.
- * - The page must be published with the granted product and not scheduled again.
+ * - The page must be published, sell a product (the granted one, if the grant
+ *   names one) and not be scheduled again.
  *   A person's own publish, an unschedule, unpublish or trash removes the record.
  * - Before the write, the visitor is read again and the record must still be the
  *   one read (not removed or replaced meanwhile). After the write the page and
@@ -374,6 +456,8 @@ export async function sellScheduledPages(
   const may = (who: unknown) => !!who && hasPermission(who as Parameters<typeof hasPermission>[0], permission as Parameters<typeof hasPermission>[1]);
   if (!may(input.user) || !due()) return cursor;
   const current = async () => (input.currentUser ? await input.currentUser().catch(() => null) : input.user);
+  const link = commercePageLink(runtime, input.commercePluginId, input.url, () => input.user);
+  const read = (entryId: string) => productPage(runtime, link, entryId);
   const batch = await pendingSales.query({ limit: PENDING_BATCH, ...(cursor ? { cursor } : {}) });
   const snapshot: Array<{ id: string; stored: { value: unknown; revision: string } }> = [];
   for (const { id } of batch.items) {
@@ -382,8 +466,8 @@ export async function sellScheduledPages(
   }
   // The listed take-back at `revision` is removed only once Commerce confirms its off-sale write. A take-back listed
   // again meanwhile has a new revision and stays for a later sweep (the write is safe to repeat).
-  const offSale = async (visitor: unknown, key: string, revision: string, entryId: string, catalogItemId: string) => {
-    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { catalogItemId, entryId, onSale: false });
+  const offSale = async (visitor: unknown, key: string, revision: string, body: { entryId: string; catalogItemId?: string }) => {
+    const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: false });
     if (failed) return failed;
     await pendingSales.compareAndDelete(key, revision);
     return null;
@@ -394,13 +478,18 @@ export async function sellScheduledPages(
       return may(visitor) ? visitor : null;
     };
     if (id.startsWith(TAKEBACK)) {
+      // A take-back names the product when an older store's field did; else Commerce takes off what the page last sold.
       const takeback = record(stored.value);
       const visitor = await visitorNow();
       if (!visitor) return cursor;
-      const failed = typeof takeback?.entryId === "string" && typeof takeback.catalogItemId === "string"
-        ? await offSale(visitor, id, stored.revision, takeback.entryId, takeback.catalogItemId)
+      const valid = typeof takeback?.entryId === "string" && (takeback.catalogItemId === undefined || typeof takeback.catalogItemId === "string");
+      const failed = valid
+        ? await offSale(visitor, id, stored.revision, {
+          entryId: takeback.entryId as string,
+          ...(typeof takeback.catalogItemId === "string" ? { catalogItemId: takeback.catalogItemId } : {}),
+        })
         : null;
-      if (!takeback || typeof takeback.entryId !== "string" || typeof takeback.catalogItemId !== "string") await pendingSales.compareAndDelete(id, stored.revision);
+      if (!valid) await pendingSales.compareAndDelete(id, stored.revision);
       if (failed) console.warn("[product-on-sale] a product to take off sale again stays on the list:", failed);
       continue;
     }
@@ -408,22 +497,23 @@ export async function sellScheduledPages(
     const drop = () => pendingSales.compareAndDelete(id, stored.revision);
     // Renames only, so it needs no grant: an allowed visitor gives the product its page's live published title.
     // Removed at the revision read once done, so a listing made meanwhile stays for the next sweep.
-    const rename = (catalogItemId: string, entryId: string) => async (name: string): Promise<Written> => {
+    const rename = (page: ProductPage) => async (name: string): Promise<Written> => {
       const visitor = await visitorNow();
-      return visitor ? setOnSale(runtime, input.commercePluginId, input.url, visitor, { catalogItemId, entryId, name }) : { failed: "the visitor may no longer change sale state" };
+      return visitor ? setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...target(page), name }) : { failed: "the visitor may no longer change sale state" };
     };
     if (id.startsWith(RETITLE)) {
       const retitle = record(stored.value);
       const entryId = typeof retitle?.entryId === "string" ? retitle.entryId : "";
       const itemId = typeof retitle?.catalogItemId === "string" ? retitle.catalogItemId : "";
-      const page = entryId && itemId ? await productPage(runtime, entryId) : null;
-      if (page === "unreadable") continue;
+      const found = entryId && itemId ? await read(entryId) : null;
+      if (found === "unreadable") continue;
+      const page = sold(found);
       if (!page?.published || page.catalogItemId !== itemId || !page.name) {
         await drop();
         continue;
       }
       if (!(await visitorNow())) return cursor;
-      if ((await renameToTitle(page.name, itemId, rename(itemId, page.id), () => productPage(runtime, entryId))) === "retry") {
+      if ((await renameToTitle(page.name, itemId, rename(page), () => read(entryId))) === "retry") {
         console.warn("[product-on-sale] a page's newest title stays on the list for a later sweep");
         continue;
       }
@@ -431,8 +521,9 @@ export async function sellScheduledPages(
       continue;
     }
     const sale = pendingSale(stored.value);
-    const page = await productPage(runtime, id);
-    if (page === "unreadable") continue;
+    const found = await read(id);
+    if (found === "unreadable") continue;
+    const page = sold(found);
     if (!page) {
       await drop();
       continue;
@@ -443,7 +534,8 @@ export async function sellScheduledPages(
       continue;
     }
     const grant = sale.grant;
-    if (!grant || !page.published || page.catalogItemId !== grant.itemId || !may({ role: grant.role })) {
+    // A page Commerce links sells Commerce's product, whatever its field said when it was scheduled.
+    if (!grant || !page.published || (grant.itemId !== undefined && page.fromField && page.catalogItemId !== grant.itemId) || !may({ role: grant.role })) {
       await drop();
       continue;
     }
@@ -455,28 +547,28 @@ export async function sellScheduledPages(
     const visitor = await visitorNow();
     if (!visitor) return cursor;
     if (!(await unchanged())) continue;
-    const body = { catalogItemId: grant.itemId, entryId: page.id };
+    const body = target(page);
     const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, visitor, { ...body, onSale: true, ...(page.name ? { name: page.name } : {}) });
     if (failed) {
       console.warn("[product-on-sale] a scheduled page's product stays a Draft for now:", failed);
       continue;
     }
-    const after = await productPage(runtime, id);
+    const after = sold(await read(id));
     const stillGranted = await unchanged().catch(() => false);
-    if (stillGranted && after && after !== "unreadable" && after.published && after.catalogItemId === grant.itemId) {
+    if (stillGranted && after?.published && after.catalogItemId === page.catalogItemId) {
       // A publish that overlapped the sweep may have renamed the page: rename the product to the title it has now with
       // title-only writes, which never change whether it is for sale; unfinished work is listed for a later sweep.
       if (after.name && after.name !== page.name &&
-        (await renameToTitle(after.name, grant.itemId, rename(grant.itemId, page.id), () => productPage(runtime, id))) === "retry") {
-        await listRetitle(pendingSales, page.id, grant.itemId);
+        (await renameToTitle(after.name, page.catalogItemId, rename(page), () => read(id))) === "retry") {
+        await listRetitle(pendingSales, page.id, page.catalogItemId);
       }
     } else {
       // Listed before it is tried. If another sweep lists the same product meanwhile, its on-sale write came before
       // this listing, so this off-sale write still answers it.
-      const key = await takebackKey(page.id, grant.itemId);
+      const key = await takebackKey(page.id, page.catalogItemId);
       await pendingSales.put(key, { takeback: true, ...body });
       const listed = await pendingSales.getVersioned(key);
-      const off = listed ? await offSale(visitor, key, listed.revision, page.id, grant.itemId) : null;
+      const off = listed ? await offSale(visitor, key, listed.revision, body) : null;
       if (off) console.warn("[product-on-sale] the schedule or page changed meanwhile; taking the product off sale again is retried later:", off);
     }
     await drop();

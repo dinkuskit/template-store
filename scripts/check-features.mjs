@@ -28,9 +28,10 @@ if (
   manifest.dinkuskit?.sourcePins?.commerce?.repository !==
     "https://github.com/dinkuskit/commerce.git" ||
   !/^[0-9a-f]{40}$/u.test(manifest.dinkuskit?.sourcePins?.commerce?.commit ?? "") ||
-  !/^v\d+\.\d+\.\d+$/u.test(manifest.dinkuskit?.sourcePins?.commerce?.tag ?? "")
+  // A beta tag is allowed while the template needs a Commerce no stable release has yet (template-no-commerce-box-20261029).
+  !/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/u.test(manifest.dinkuskit?.sourcePins?.commerce?.tag ?? "")
 ) {
-  failures.push("Commerce source preparation must retain its exact repository, release tag and commit");
+  failures.push("Commerce source preparation must retain its exact repository, release or beta tag and commit");
 }
 
 const managedProductRuntime = readFileSync(

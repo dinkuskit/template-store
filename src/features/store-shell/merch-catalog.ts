@@ -1,5 +1,5 @@
 import { UNPRICED_PRODUCT_ITEM_ID } from "../unmanaged-product-sellability/identity/index.js";
-import { illustration, type Illustration } from "./product-routes.js";
+import { illustration, pageCommerceItemId, type Illustration } from "./product-routes.js";
 
 export type MerchRecord = Readonly<{
   id: string;
@@ -68,9 +68,8 @@ export function buildMerchCollections(
       (description != null && typeof description !== "string") ||
       !productPath(entry.id)
     ) continue;
-    const commerceItemId = typeof entry.data.commerce_item_id === "string"
-      ? entry.data.commerce_item_id
-      : "";
+    // Only the seed's demonstrations are managed or unmanaged; a Commerce-linked page is a preview here.
+    const commerceItemId = pageCommerceItemId(entry);
     const item: MerchRecord = {
       id: entry.id,
       title: title.trim(),

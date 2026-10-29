@@ -20,6 +20,8 @@ import {
   CATALOG_MANUAL_AVAILABILITY_COLLECTION,
   CATALOG_PRICES_COLLECTION,
   COMMERCE_PLUGIN_ID,
+  PRODUCT_PAGES_COLLECTION,
+  setProductPageOnSale,
   loadMerchantStoreSettings,
   saveMerchantStoreSettings,
   type CatalogManualAvailabilityRecord,
@@ -32,7 +34,7 @@ import { sql } from "kysely";
 
 import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, demoVariantOptionInput, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
 import { ensureStorefrontSearchSupport } from "../store-shell/index.js";
-import { buildDemoProductEntries } from "./demo-products.js";
+import { buildDemoProductEntries, demoProductPages } from "./demo-products.js";
 import { ensurePlaygroundSampleOrders } from "./demo-orders.js";
 import { PLAYGROUND_TOUR_PAGE_ENTRY } from "../playground-tour/copy.js";
 
@@ -57,6 +59,7 @@ export function playgroundCommerceStorage(db: Db) {
     availability: repository<CatalogManualAvailabilityRecord>(
       db, CATALOG_MANUAL_AVAILABILITY_COLLECTION, declarations?.[CATALOG_MANUAL_AVAILABILITY_COLLECTION],
     ),
+    pages: repository<{ entryId: string; catalogItemId: string }>(db, PRODUCT_PAGES_COLLECTION, declarations?.[PRODUCT_PAGES_COLLECTION]),
   };
 }
 
@@ -162,6 +165,23 @@ export const PLAYGROUND_CONNECT_PAGE_ENTRY = {
   },
 };
 
+/**
+ * Commerce holds which page sells each demo item (template-no-commerce-box-20261029). A page with no sale recorded
+ * yet is recorded as the publish check records one, so its item stays on sale with its page.
+ */
+async function linkDemoProductPages(db: Db, storage: Storage, pages: ReturnType<typeof demoProductPages>): Promise<void> {
+  if (pages.length === 0) return;
+  const rows = await sql<{ id: string; slug: string }>`
+    select id, slug from ec_products
+    where slug in (${sql.join(pages.map((page) => page.slug))}) and status = 'published' and deleted_at is null`.execute(db as never);
+  const ids = new Map(rows.rows.map((row) => [row.slug, row.id]));
+  for (const { slug, catalogItemId } of pages) {
+    const entryId = ids.get(slug);
+    if (!entryId || await storage.pages.get(`p:${entryId}`)) continue;
+    await setProductPageOnSale({ catalog: storage.catalog, pages: storage.pages }, { entryId, catalogItemId, onSale: true });
+  }
+}
+
 /** Every demo product, including the color and size hoodie. */
 export const PLAYGROUND_DEMO_PRODUCTS = DEMO_PRODUCTS;
 
@@ -199,6 +219,7 @@ export async function ensurePlaygroundDemoCatalog(db: Db, options: { playground?
     await applySeed(db as Parameters<typeof applySeed>[0], { version: "1", content: { products: entries } } as SeedFile, {
       includeContent: true, onConflict: "skip", skipMediaDownload: true,
     });
+    await linkDemoProductPages(db, storage, demoProductPages(links));
   }
   await ensureStorefrontSearchSupport(db as never);
   if (!options.playground) return { created };

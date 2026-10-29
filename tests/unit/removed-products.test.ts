@@ -28,7 +28,7 @@ describe("products whose Commerce product left the catalog", () => {
 
   it("drop out of category pages only when the catalog was read, while proof-only MerchCatalog groups live on /proof", () => {
     const category = readFileSync("src/pages/categories/[slug].astro", "utf8");
-    expect(category).toContain("const removedEntryIds = new Set(catalogRead");
+    expect(category).toContain('const removedEntryIds = new Set(profile === "shipping" && catalogRead');
     expect(category).toContain("withoutRemovedProducts([listedCategory], removedEntryIds)[0]");
     const home = readFileSync("src/pages/index.astro", "utf8");
     expect(home).not.toContain("<MerchCatalog");

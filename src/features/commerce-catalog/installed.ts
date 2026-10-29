@@ -153,6 +153,7 @@ function product(value: unknown): ProductResult {
     image: readCommerceImage(value.image, value.name),
     gallery: readCommerceGallery(value.gallery, value.name),
     ...(value.variants !== undefined ? { variants: variantMembers(value.variants) } : {}),
+    ...(typeof value.page === "string" && value.page ? { page: value.page } : {}),
   } };
 }
 
@@ -200,13 +201,14 @@ export async function readInstalledCommerceCatalog({ runtime, request }: Install
 async function lookupInstalledCommerceProduct(
   itemId: string,
   { runtime, request }: InstalledCatalogContext,
+  by: "itemId" | "pageId" = "itemId",
 ): Promise<ProductResult | null> {
   const pluginId = installedPluginId();
   if (!runtime || !publicGetRoute(runtime, pluginId, ITEM_ROUTE)) {
     throw new Error("Installed public product lookup unavailable");
   }
   const url = new URL(`/_emdash/api/plugins/${pluginId}/${ITEM_ROUTE}`, request.url);
-  url.searchParams.set("itemId", itemId);
+  url.searchParams.set(by, itemId);
   const result = await runtime.handlePublicPluginApiRoute(
     pluginId,
     "GET",
@@ -228,6 +230,22 @@ export async function readInstalledCommerceProduct(
   const parsed = await lookupInstalledCommerceProduct(itemId, context);
   if (parsed === null) return null;
   if (!("product" in parsed)) throw new Error("Invalid installed product projection");
+  return parsed.product;
+}
+
+/**
+ * The product a published page sells, found by the page's entry id, which
+ * Commerce keeps (template-no-commerce-box-20261029); null when that page
+ * sells nothing on the shop. A Commerce that predates the lookup refuses it,
+ * which throws, so the caller can fall back to an older store's field.
+ */
+export async function readInstalledCommerceProductByPage(
+  pageId: string,
+  context: InstalledCatalogContext,
+): Promise<PublicCommerceProduct | null> {
+  const parsed = await lookupInstalledCommerceProduct(pageId, context, "pageId");
+  if (parsed === null) return null;
+  if (!("product" in parsed) || parsed.product.page !== pageId) throw new Error("Invalid installed product projection");
   return parsed.product;
 }
 

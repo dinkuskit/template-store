@@ -9,13 +9,18 @@ import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { readCommerceCatalog } from "../../features/commerce-catalog/index.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
 import { leftCommerceCatalog, withoutRemovedProducts } from "../../features/store-shell/merch-catalog.js";
-import { hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
+import { commercePageLinks, hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
 
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
-const productLinks = readProductEntries(products.entries, categoryEntries.entries);
+// Commerce keeps which page sells each product (template-no-commerce-box-20261029), so the catalog is read first.
+let catalogRead = false;
+const catalog = await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request })
+  .then((products) => { catalogRead = true; return products; })
+  .catch(() => []);
+const productLinks = readProductEntries(products.entries, categoryEntries.entries, commercePageLinks(catalog));
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(
   products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id)),
   categoryEntries.entries,
@@ -31,17 +36,10 @@ const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, play
   }).catch(() => null));
 // Shipping stores show linked Commerce products with their real availability
 // and price instead of calling them previews.
-let catalogRead = false;
-const commerceById = new Map(
-  profile === "shipping" && listedCategory
-    ? (await readCommerceCatalog({ runtime: Astro.locals.emdash, request: Astro.request })
-      .then((catalog) => { catalogRead = true; return catalog; })
-      .catch(() => [])).map((product) => [product.id, product])
-    : [],
-);
+const commerceById = new Map(profile === "shipping" && listedCategory ? catalog.map((product) => [product.id, product]) : []);
 // A product whose Commerce product left the catalog (archived) leaves the
 // category too. If the catalog can't be read, nothing is dropped.
-const removedEntryIds = new Set(catalogRead
+const removedEntryIds = new Set(profile === "shipping" && catalogRead
   ? productLinks.products
     .filter((product) => leftCommerceCatalog(product.commerceItemId, commerceById.has(product.commerceItemId)))
     .map((product) => product.id)

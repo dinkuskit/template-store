@@ -403,7 +403,10 @@ describe("EmDash composition primitives & seed contract", () => {
         skipMediaDownload: true,
       });
       await sql`update ec_products set description = 'Owner wording' where slug = 'everyday-tee'`.execute(setupDb);
+      // Step 005 takes the Commerce product box off (template-no-commerce-box-20261029): the seed's demonstration
+      // ids name no Commerce product, so no page needs it. Every other saved value stays.
       columns = (await sql<{ name: string }>`select name from pragma_table_info('ec_products')`.execute(setupDb)).rows
+        .filter((row) => row.name !== "commerce_item_id")
         .map((row) => `"${row.name}"`)
         .join(", ");
       before = (await products(setupDb, columns)).rows;
@@ -423,6 +426,7 @@ describe("EmDash composition primitives & seed contract", () => {
           where c.slug = 'products'`.execute(verifyDb)).rows;
         expect(fields.find((field) => field.slug === "visual_label")?.required).toBe(0);
         expect(fields.map((field) => field.slug)).toEqual(expect.arrayContaining(["summary", "details"]));
+        expect(fields.map((field) => field.slug)).not.toContain("commerce_item_id");
         const blockTypes = (await sql<{ slug: string }>`
           select t.slug from _emdash_block_types t join _emdash_block_type_versions v on v.block_type_id = t.id and v.version = t.current_version
           order by t.slug`.execute(verifyDb)).rows.map((row) => row.slug);

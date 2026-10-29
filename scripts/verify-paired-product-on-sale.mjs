@@ -1,22 +1,23 @@
 // Proves the store's publish check (src/features/product-on-sale) against a real Commerce Registry build:
-// fetches Commerce at the exact released commit below, builds its sandbox bundle, checks the built files
-// against the released digests, starts this store on a fresh database with that bundle installed under the
-// beta runtime id, and runs tests/paired. DINKUS_PAIRED_COMMERCE_DIR uses an already-built Commerce checkout,
-// which must hold the same commit and files.
+// fetches Commerce at the exact commit below, builds its sandbox bundle, checks the built files against the
+// recorded digests, starts this store on a fresh database with that bundle installed under the beta runtime
+// id, and runs tests/paired. DINKUS_PAIRED_COMMERCE_DIR uses an already-built Commerce checkout, which must
+// hold the same commit and files.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-// Commerce v0.6.0-beta.1, the release carrying dinkuskit/commerce#180.
+// The Commerce that holds each page's product (dinkuskit/commerce#208, template-no-commerce-box-20261029),
+// at that pull request's head until the beta carrying it is cut; this pin then moves to the beta's tag.
 const COMMERCE = Object.freeze({
-  tag: "v0.6.0-beta.1",
+  tag: "commerce#208",
   // Whether this Commerce saves the page title sent as `name` (dinkuskit/commerce#188); 0.6.0 ignores it.
-  names: false,
-  commit: "1015f67eef99f0027d2033aff6b8832392cb1318",
+  names: true,
+  commit: "8e788dd3fd74399b4da27c4a8ed03da7043a4d5d",
   files: {
-    "dist/sandbox/plugin.mjs": "f292f09c1c360f828a0c96614fd69342327b23374150088c6c151ff1b61ed471",
-    "dist/sandbox/index.mjs": "c819be47393501fb38ed31e07251994db5fb9afb4c018467f5d9ef1c9890a665",
+    "dist/sandbox/plugin.mjs": "a1e51872fa08c3a7924b4c97de04647a475cacb42c92ed5e56c6c18ef5adfba6",
+    "dist/sandbox/index.mjs": "fc9072aa4bc0d78949b45b8602e6be9b99ab3badd687d16a3257e2a73efb4a65",
   },
 });
 
@@ -33,7 +34,7 @@ function mismatch(dir) {
   for (const [file, digest] of Object.entries(COMMERCE.files)) {
     const path = resolve(dir, file);
     if (!existsSync(path)) return `${path} is missing`;
-    if (sha256(path) !== digest) return `${path} does not match the released ${COMMERCE.tag} build`;
+    if (sha256(path) !== digest) return `${path} does not match the recorded ${COMMERCE.tag} build`;
   }
   return null;
 }

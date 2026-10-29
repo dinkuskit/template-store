@@ -11,7 +11,7 @@ import ProductGallery from "../../features/commerce-catalog/ProductGallery.astro
 import { productDetailComponents } from "../../features/store-shell/blocks/index.js";
 import UnknownBlock from "../../features/store-shell/blocks/UnknownBlock.astro";
 import { legacyPortableTextComponents } from "../../features/store-shell/portable-text/index.js";
-import { readInstalledCommerceProduct } from "../../features/commerce-catalog/installed.js";
+import { readInstalledCommerceProduct, readInstalledCommerceProductByPage } from "../../features/commerce-catalog/installed.js";
 import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
 import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
@@ -33,7 +33,17 @@ import "../../features/store-shell/global.css";
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
-const productLinks = readProductEntries(products.entries, categoryEntries.entries);
+// Commerce keeps which page sells each product (template-no-commerce-box-20261029): this page's product is
+// found by the page's entry id. A Commerce that cannot answer leaves an older store's field to name it.
+const pageEntry = products.entries.find((entry) => productPath(entry.id) === Astro.url.pathname);
+const pageEntryId = typeof pageEntry?.data.id === "string" ? pageEntry.data.id : "";
+let pageLookupFailed = false;
+const pageProduct = pageEntryId
+  ? await readInstalledCommerceProductByPage(pageEntryId, { runtime: Astro.locals.emdash, request: Astro.request })
+    .catch(() => { pageLookupFailed = true; return null; })
+  : null;
+const productLinks = readProductEntries(products.entries, categoryEntries.entries,
+  pageProduct ? new Map([[pageEntryId, pageProduct.id]]) : undefined);
 const validEntries = products.entries.filter((entry) => productLinks.products.some((product) => product.id === entry.id));
 const { profile, demonstrations, collections } = await loadStorefrontRouteContext(validEntries, categoryEntries.entries);
 const linked = productLinks.products.find((candidate) => productPath(candidate.id) === Astro.url.pathname);
@@ -59,15 +69,17 @@ const summary = Array.isArray(entryData.summary) && entryData.summary.length ? e
 const details = Array.isArray(entryData.details) && entryData.details.length ? entryData.details as BlockValue[] : null;
 const illustrationSrc = item?.illustration ? `/merch/${item.illustration}.svg` : null;
 let lookupUnavailable = false;
-let linkedProduct = null;
+let linkedProduct = pageProduct;
 // Shipping pages always resolve Commerce; other profiles resolve plain linked
 // entries (e.g. seeded demo products) and fall back to preview on failure.
-if (item && (profile === "shipping" || item.availabilitySource === "preview")) {
+if (item && !linkedProduct && (profile === "shipping" || item.availabilitySource === "preview")) {
   try {
     linkedProduct = await readInstalledCommerceProduct(
       (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
       { runtime: Astro.locals.emdash, request: Astro.request },
     );
+    // An older store's field can still name a product Commerce now sells on another page; it is not this page's.
+    if (linkedProduct?.page && linkedProduct.page !== pageEntryId) linkedProduct = null;
   } catch {
     lookupUnavailable = profile === "shipping";
   }
@@ -78,8 +90,14 @@ if (item && profile === "shipping" && item.availabilitySource !== "preview") {
 // A shipping store's page whose Commerce product left the catalog (archived)
 // is gone for shoppers, like Shopify and WooCommerce: a 404 that says so.
 const linkedItemId = item ? productLinks.products.find((product) => product.id === item.id)?.commerceItemId ?? "" : "";
-const noLongerAvailable = Boolean(item) && profile === "shipping" && !lookupUnavailable && !linkedProduct &&
-  item?.availabilitySource === "preview" && leftCommerceCatalog(linkedItemId, false);
+// A published page Commerce lists no product for, and no older field names, is gone for shoppers the same way.
+const unlinkedPage = Boolean(pageEntry) && !linked && productLinks.unlinked.includes(pageEntry!.id);
+if (unlinkedPage && profile === "shipping" && pageLookupFailed) {
+  lookupUnavailable = true;
+  Astro.response.status = 503;
+}
+const noLongerAvailable = profile === "shipping" && !lookupUnavailable && !linkedProduct &&
+  (unlinkedPage || (Boolean(item) && item?.availabilitySource === "preview" && leftCommerceCatalog(linkedItemId, false)));
 if (noLongerAvailable) Astro.response.status = 404;
 // The playground and demo profile offer cart + sandbox checkout only when
 // DINKUS_CHECKOUT_ENABLED is on; other proof profiles never do.

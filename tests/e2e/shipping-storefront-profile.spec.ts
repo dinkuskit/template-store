@@ -150,6 +150,8 @@ test("shipping profile uses installed catalog and fail-closes without a native p
 
   // Shipping search fails closed for Commerce-linked and demo products when the
   // installed Commerce catalog is unavailable, while preserving editorial previews.
+  // With no Commerce to hold its link (template-no-commerce-box-20261029), a new
+  // page names no product at all.
   const csrfHeaders = { "X-EmDash-Request": "1" };
   const outageSlug = `outage-parka-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
   const createdOutage = await context.request.post("/_emdash/api/content/products", {
@@ -161,7 +163,6 @@ test("shipping profile uses installed catalog and fail-closes without a native p
         title: "Outage Linked Parka",
         description: "Commerce-linked shipping product hidden when catalog is unavailable",
         visual_label: "hoodie",
-        commerce_item_id: "cat_shipping_outage_parka",
       },
     },
   });

@@ -24,6 +24,11 @@ export interface PublicCommerceProduct {
   gallery: readonly PublicCommerceImage[];
   /** Server-projected variant members (e.g. sizes/colors); absent for simple items. */
   variants?: readonly PublicCommerceVariant[];
+  /**
+   * The entry id of the product page that sells it, which Commerce keeps
+   * (template-no-commerce-box-20261029); absent before a publish check records one.
+   */
+  page?: string;
 }
 
 export interface PublicCommerceVariant {
