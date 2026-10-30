@@ -42,11 +42,13 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await recorded()).toBeNull();
     expect((await products()).visual_label?.required).toBe(1);
 
-    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses"]);
+    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products", "005_commerce_box_off"]);
     expect(await recorded()).toEqual(ALL);
     const after = await products();
     expect(after.visual_label).toMatchObject({ required: 0, label: VISUAL_LABEL_FIELD_LABEL });
     expect(after.summary && after.details).toBeTruthy();
+    // The seed's demonstrations name no Commerce product, so the box comes off.
+    expect(after.commerce_item_id).toBeUndefined();
     expect(await pageAddress()).toBe(PAGE_URL_PATTERN);
 
     // Recorded steps never run again, so an owner's later change stays.
@@ -71,6 +73,49 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await recorded()).toEqual(["a", "b", "c"]);
     // pnpm search:upgrade reruns every step to repair a local database.
     expect(await upgradeStorefront(db, { upgrades, all: true })).toEqual(["a", "b", "c"]);
+  });
+
+  it("leaves a waiting step unrecorded, runs the steps after it, and records it once it runs", async () => {
+    let wait = true;
+    const upgrades = [
+      { name: "a", run: async () => {} },
+      { name: "b", run: async () => (wait ? "wait" as const : undefined) },
+      { name: "c", run: async () => {} },
+    ];
+    const waiting: string[] = [];
+    expect(await upgradeStorefront(db, { upgrades, waiting })).toEqual(["a", "c"]);
+    expect(waiting).toEqual(["b"]);
+    expect(await recorded()).toEqual(["a", "c"]);
+    wait = false;
+    expect(await upgradeStorefront(db, { upgrades })).toEqual(["b"]);
+    expect(await recorded()).toEqual(["a", "c", "b"]);
+  });
+
+  it("tries a waiting step again later, after the wait, and then stops", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    await new OptionsRepository(db as never).set("emdash:setup_complete", true);
+    // A live page whose box names a real Commerce product that Commerce doesn't link to it yet.
+    const cap = (await sql<{ id: string }>`select id from ec_products where slug = 'canvas-cap'`.execute(db)).rows[0]!.id;
+    await sql`update ec_products set commerce_item_id = '123' where id = ${cap}`.execute(db);
+    await sql`insert into _plugin_storage (plugin_id, collection, id, data) values ('dinkus-commerce', 'catalogItems', '123', '{}')`.execute(db);
+    const upgrade = storefrontUpgrader(60_000, 900_000);
+    let opened = 0;
+    const open = async () => { opened += 1; return db; };
+
+    await upgrade(open, { now: 0 });
+    expect(await recorded()).toEqual(ALL.filter((name) => name !== "005_commerce_box_off"));
+    expect((await products()).commerce_item_id).toBeDefined();
+    await upgrade(open, { now: 600_000 });
+    expect(opened).toBe(1);
+
+    await sql`insert into _plugin_storage (plugin_id, collection, id, data) values ('dinkus-commerce', 'product_pages', ${`e:${cap}`}, '{}')`.execute(db);
+    await upgrade(open, { now: 900_000 });
+    expect(opened).toBe(2);
+    expect(await recorded()).toContain("005_commerce_box_off");
+    expect((await products()).commerce_item_id).toBeUndefined();
+    await upgrade(open, { now: 2_000_000 });
+    expect(opened).toBe(2);
   });
 
   it("upgrades once per isolate, never fails the request, waits before trying again, and stays off when EmDash migrations are manual", async () => {

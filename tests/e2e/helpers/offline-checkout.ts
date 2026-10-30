@@ -272,3 +272,14 @@ export async function installOfflineCheckoutHarness(
     blocked,
   };
 }
+
+// Billing may be in any country; this one differs from every delivery address the specs use.
+export const billingAddress = { name: "Bill Payer", line1: "2 Card Street", city: "Toronto", postalCode: "M5V 2T6", country: "CA" };
+
+export async function fillBilling(page: Page, address = billingAddress) {
+  await page.getByLabel("Billing name", { exact: true }).fill(address.name);
+  await page.getByLabel("Billing address line 1", { exact: true }).fill(address.line1);
+  await page.getByLabel("Billing city", { exact: true }).fill(address.city);
+  await page.getByLabel("Billing postal code", { exact: true }).fill(address.postalCode);
+  await page.getByLabel("Billing country", { exact: true }).selectOption(address.country);
+}

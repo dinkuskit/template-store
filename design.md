@@ -182,8 +182,11 @@ same chevron per dropdown. Escape closes the open dropdown, then the menu.
 Without JavaScript, desktop dropdowns open on hover and focus, and phones show
 the full menu expanded. The link for the current page carries
 `aria-current="page"`. The look stays within the existing warm-neutral tokens;
-this adds navigation, not a new visual round. The older `store-primary` menu
-remains the category row inside the seeded integration demonstrations.
+this adds navigation, not a new visual round. `primary` is the only
+navigation menu a fresh store seeds: the older `store-primary` ("Store
+navigation") menu controlled nothing a shopper sees, so it is gone, and the
+category row inside the `/proof` integration demonstrations lists the
+published categories it shows.
 
 ## Stitch tactile stamp system & upstream EmDash theming (2026-10-21)
 

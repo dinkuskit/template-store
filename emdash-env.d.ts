@@ -108,7 +108,6 @@ export interface Product {
   slug: string | null;
   status: string;
   title: string;
-  commerce_item_id?: string;
   description?: string;
   summary?: PortableTextBlock[];
   details?: ProductDetailsBlock[];

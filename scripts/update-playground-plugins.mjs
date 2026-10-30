@@ -4,9 +4,11 @@ import { resolve } from "node:path";
 
 // Moves each playground plugin pin in package.json, and the Commerce source
 // pin, to that repository's latest stable GitHub release (prereleases are
-// never picked), by exact tag and commit. The "Update playground plugins"
-// workflow opens the result as a PR, so every bump gets its own preview and
-// review before it goes live.
+// never picked), by exact tag and commit. A pin on a beta of a newer version
+// than that release stays until a stable release reaches it, so the template
+// never goes back to a Commerce it cannot run (template-no-commerce-box-20261029).
+// The "Update playground plugins" workflow opens the result as a PR, so every
+// bump gets its own preview and review before it goes live.
 
 const root = resolve(import.meta.dirname, "..");
 const manifestPath = resolve(root, "package.json");
@@ -37,11 +39,21 @@ function tagCommit(repository, tag) {
   return peeled[0];
 }
 
+/** Whether stable release tag `stable` comes before beta tag `pinned`, by their X.Y.Z (a release follows its betas). */
+function beforeBeta(stable, pinned) {
+  const beta = /^v(\d+)\.(\d+)\.(\d+)-/u.exec(pinned);
+  if (!beta) return false;
+  const released = /^v(\d+)\.(\d+)\.(\d+)$/u.exec(stable).slice(1).map(Number);
+  const wanted = beta.slice(1).map(Number);
+  const differs = released.findIndex((part, index) => part !== wanted[index]);
+  return differs !== -1 && released[differs] < wanted[differs];
+}
+
 const changes = [];
 for (const [name, pin] of Object.entries(pins)) {
   const tag = await latestStableTag(name);
-  if (tag === pin.tag) {
-    console.log(`playground plugins: ${name} stays at ${tag}`);
+  if (tag === pin.tag || beforeBeta(tag, pin.tag)) {
+    console.log(`playground plugins: ${name} stays at ${pin.tag}`);
     continue;
   }
   const commit = tagCommit(pin.repository, tag);

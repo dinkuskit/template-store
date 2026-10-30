@@ -27,4 +27,12 @@ describe("store main menu", () => {
     const seededCategories = seed.content.categories.map((entry: { slug: string }) => `categories:${entry.slug}`);
     expect(categoryRefs.toSorted()).toEqual(seededCategories.toSorted());
   });
+
+  it("does not seed the old Store navigation menu, which nothing on the storefront reads", () => {
+    const seed = JSON.parse(readFileSync(resolve("seed/seed.json"), "utf8"));
+    const names = seed.menus.map((entry: { name: string }) => entry.name);
+    expect(names).toContain(MAIN_MENU_NAME);
+    expect(names).not.toContain("store-primary");
+    expect(seed.menus.map((entry: { label: string }) => entry.label)).not.toContain("Store navigation");
+  });
 });

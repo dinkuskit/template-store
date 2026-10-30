@@ -48,6 +48,8 @@ export type GuestCheckoutDelivery = Readonly<{
 export type GuestCheckoutContact = Readonly<{
   email: string;
   delivery?: GuestCheckoutDelivery;
+  /** A full copy, even when it equals delivery (Commerce commerce-billing-address-001). */
+  billing?: GuestCheckoutDelivery;
 }>;
 
 export type GuestCheckoutProjection = Readonly<{

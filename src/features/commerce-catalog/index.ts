@@ -74,8 +74,10 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
   for (const product of products) {
     const availability = await resolveStorefrontAvailability(storage, { catalogItemId: product.catalogItemId });
     if (!availability.listable) continue;
-    const price = presentStorefrontPrice(await resolveCatalogItemPrice(storage.prices, product.catalogItemId));
+    const price = presentStorefrontPrice(await resolveCatalogItemPrice(storage.prices, product.catalogItemId, storage.catalog));
     if (!price.listable) continue;
+    // The page that sells it, as Commerce's public catalog lists it (template-no-commerce-box-20261029).
+    const page = (await storage.catalog.get(product.catalogItemId) as { pageId?: unknown } | null)?.pageId;
     visible.push({
       id: product.catalogItemId,
       name: product.name,
@@ -84,6 +86,7 @@ export async function readCommerceCatalog(context?: InstalledCatalogContext): Pr
       availability,
       image: null,
       gallery: [],
+      ...(typeof page === "string" && page ? { page } : {}),
     });
   }
   return visible;
@@ -164,7 +167,7 @@ export async function readCommerceCatalogSnapshots(
     const availability = await resolveStorefrontAvailability(storage, {
       catalogItemId: product.catalogItemId,
     });
-    const resolved = await resolveCatalogItemPrice(storage.prices, product.catalogItemId);
+    const resolved = await resolveCatalogItemPrice(storage.prices, product.catalogItemId, storage.catalog);
     const shown = presentStorefrontPrice(resolved);
     // The cart totals use the amount the shopper pays for one unit.
     const unitMinor = shown.listable ? (resolved.sale ?? resolved.regular)?.minor : undefined;

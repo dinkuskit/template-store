@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
+import { addPageProduct, catalogOp } from "./helpers/product-page";
 
 const proofRoot = resolve("runs/store-header-nav-20261017/browser");
 
@@ -162,7 +163,6 @@ test("the seeded main menu leads from every store page to the shop and its categ
         title: "Lifecycle Waxed Coat",
         description: "Published then unpublished search verification item",
         visual_label: "hoodie",
-        commerce_item_id: "dinkus-template-preview-lifecycle-coat",
       },
     },
   });
@@ -173,6 +173,10 @@ test("the seeded main menu leads from every store page to the shop and its categ
   let afterUnpublishApiBody: { data?: { items?: Array<{ slug?: string }>; total?: number } } = {};
   let afterUnpublishSuggestBody: { data?: { items?: Array<{ slug?: string }> } } = {};
   try {
+    // Commerce holds which product the page sells (template-no-commerce-box-20261029).
+    // Priced, since the shop lists only priced products.
+    const coatId = await addPageProduct(request, lifecycleId, { name: "Lifecycle Waxed Coat", sku: lifecycleSlug.toUpperCase() });
+    await catalogOp(request, { op: "prices", catalogItemId: coatId, regular: "120.00", sale: "", stockStatus: "in-stock" });
     const publishedLifecycle = await request.post(`/_emdash/api/content/products/${lifecycleId}/publish`, {
       headers: csrfHeaders,
     });
@@ -238,7 +242,6 @@ test("the seeded main menu leads from every store page to the shop and its categ
         title: "Orphaned Catalog Jacket",
         description: "Published CMS entry whose linked Commerce product left the catalog",
         visual_label: "hoodie",
-        commerce_item_id: "cat_archived_ghost_item",
       },
     },
   });
@@ -246,10 +249,14 @@ test("the seeded main menu leads from every store page to the shop and its categ
   const invalidId = ((await createdInvalid.json()) as { data: { item: { id: string } } }).data.item.id;
   let orphanSearchBody: { data?: { items?: Array<{ slug?: string }>; total?: number } } = {};
   try {
+    const ghostId = await addPageProduct(request, invalidId, { name: "Orphaned Catalog Jacket", sku: invalidProductSlug.toUpperCase() });
+    await catalogOp(request, { op: "prices", catalogItemId: ghostId, regular: "80.00", sale: "", stockStatus: "in-stock" });
     const publishedInvalid = await request.post(`/_emdash/api/content/products/${invalidId}/publish`, {
       headers: csrfHeaders,
     });
     expect(publishedInvalid.ok(), await publishedInvalid.text()).toBe(true);
+    // The owner archives the page's product in Commerce; the page stays published.
+    await catalogOp(request, { op: "archive", catalogItemId: ghostId, archived: true });
 
     await page.goto("/search?q=Orphaned");
     await expect(page.locator(`[data-search-result="${invalidProductSlug}"]`)).toHaveCount(0);
@@ -311,5 +318,50 @@ test("without JavaScript the main menu still opens on hover and shows in full on
     }
   } finally {
     await context.close();
+  }
+});
+
+test("a published category added under Shop in Main navigation shows in the header", async ({ page, request }, testInfo) => {
+  test.setTimeout(90_000);
+  expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
+  const csrfHeaders = { "X-EmDash-Request": "1" };
+  const project = testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase();
+  const slug = `accessories-${project}`;
+  const label = `Accessories ${project}`;
+
+  const created = await request.post("/_emdash/api/content/categories", {
+    headers: csrfHeaders,
+    data: { slug, status: "draft", data: { title: label } },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const categoryId = ((await created.json()) as { data: { item: { id: string } } }).data.item.id;
+  let menuItemId: string | undefined;
+  try {
+    const published = await request.post(`/_emdash/api/content/categories/${categoryId}/publish`, { headers: csrfHeaders });
+    expect(published.ok(), await published.text()).toBe(true);
+
+    // Publishing the category alone leaves the header as the owner set it.
+    await page.goto("/");
+    const main = page.locator("[data-store-header]").getByRole("navigation", { name: "Main", includeHidden: true });
+    await expect(main.getByRole("link", { name: "Hats", includeHidden: true })).toHaveCount(1);
+    await expect(main.getByRole("link", { name: label, includeHidden: true })).toHaveCount(0);
+
+    const menu = await request.get("/_emdash/api/menus/primary");
+    expect(menu.ok(), await menu.text()).toBe(true);
+    const items = ((await menu.json()) as { data: { items: Array<{ id: string; label: string; parent_id: string | null }> } }).data.items;
+    const shop = items.find((item) => item.label === "Shop" && !item.parent_id);
+    expect(shop, JSON.stringify(items)).toBeDefined();
+    const added = await request.post("/_emdash/api/menus/primary/items", {
+      headers: csrfHeaders,
+      data: { type: "collection", label, referenceCollection: "categories", referenceId: categoryId, parentId: shop!.id },
+    });
+    expect(added.status(), await added.text()).toBe(201);
+    menuItemId = ((await added.json()) as { data: { id: string } }).data.id;
+
+    await page.reload();
+    await expect(main.getByRole("link", { name: label, includeHidden: true })).toHaveAttribute("href", `/categories/${slug}`);
+  } finally {
+    if (menuItemId) await request.delete(`/_emdash/api/menus/primary/items/${menuItemId}`, { headers: csrfHeaders });
+    await request.delete(`/_emdash/api/content/categories/${categoryId}`, { headers: csrfHeaders });
   }
 });

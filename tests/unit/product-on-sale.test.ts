@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { productName, productPageChange, scheduledSaleSweeper, sellScheduledPages, withProductOnSale } from "../../src/features/product-on-sale/index.js";
+import { createPlugin } from "../../src/features/product-url-plugin/index.js";
 
 const user = { id: "u1", email: "owner@example.test", name: null, role: 50, createdAt: "2026-10-23T00:00:00.000Z" };
 
@@ -731,5 +732,180 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     await sweeper({ ...base, user }, now + 30_000);
     await sweeper({ ...base, user }, now + 60_002);
     expect(query).toHaveBeenCalledTimes(2);
+  });
+});
+
+// template-no-commerce-box-20261029: Commerce holds which product a page sells, so the store sends the page alone.
+describe("a page whose product Commerce holds", () => {
+  const author = { ...user, id: "u2", role: 30 };
+  // A Commerce with the catalog route: `links` is each page's product as Commerce answers it ("down" fails the read).
+  function linked(links: Record<string, string | null | "down">, fields: Record<string, unknown> = {}, slug?: string) {
+    const rt = runtime(fields);
+    const lookups: Array<{ body: unknown; user: unknown }> = [];
+    rt.getPluginRouteMeta.mockImplementation((_pluginId: string, path: string) =>
+      path === "catalog-items/set-on-sale" || path === "catalog" ? { public: false, permission: "content:publish_any" } : null);
+    if (slug) rt.handleContentGet.mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", slug, status: "published", data: fields } } }) as never);
+    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
+      const body = await request.json() as { op?: string; entryId: string };
+      if (path !== "catalog") {
+        rt.calls.push({ pluginId, path, body, user: caller });
+        return { success: true, data: { changed: true } };
+      }
+      lookups.push({ body, user: caller });
+      const product = links[body.entryId];
+      if (product === "down") return { success: false, error: { code: "INTERNAL_ERROR", message: "down" } } as never;
+      return { success: true, data: { product: product ? { catalogItemId: product, name: "Hat" } : null } } as never;
+    });
+    return Object.assign(rt, { lookups });
+  }
+  const done = async () => new Response("{}", { status: 200 });
+
+  it("asks Commerce for the page's product as the person publishing, and sends set-on-sale the page alone", async () => {
+    // A stale field on an older store is ignored once Commerce links the page.
+    const rt = linked({ "01PAGE": "item-1" }, { commerce_item_id: "item-old" });
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), done)).status).toBe(200);
+    expect(rt.lookups[0]).toEqual({ body: { op: "get", entryId: "01PAGE" }, user });
+    expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { entryId: "01PAGE", onSale: true }, user }]);
+  });
+
+  it("takes a linked page's product off sale before and after unpublish, naming only the page", async () => {
+    const rt = linked({ "01PAGE": "item-1" });
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), done);
+    await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), done);
+    expect(rt.calls.map((call) => call.body)).toEqual([
+      { entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: false, deleted: true },
+    ]);
+  });
+
+  it("refuses to publish a page that sells nothing, naming the Dinkus Commerce panel, and lets it unpublish", async () => {
+    const rt = linked({ "01PAGE": null });
+    const cms = vi.fn(done);
+    const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), cms);
+    expect(out.status).toBe(422);
+    const { error } = await out.json();
+    expect(error.code).toBe("PUBLISH_REJECTED");
+    expect(error.message).toContain("Dinkus Commerce panel");
+    expect(cms).not.toHaveBeenCalled();
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), cms)).status).toBe(200);
+    expect(rt.calls).toEqual([]);
+    // An Author's publish is refused the same way, before any permission matters.
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt, author), cms)).status).toBe(422);
+  });
+
+  it("reads an older store's field while Commerce links the page to nothing or cannot say", async () => {
+    const unlinked = linked({ "01PAGE": null }, { commerce_item_id: " item-1 " });
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", unlinked), done);
+    expect(unlinked.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: true }]);
+    const down = linked({ "01PAGE": "down" }, { commerce_item_id: "item-1" });
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", down), done);
+    expect(down.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }, { catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    // A Commerce without the catalog route keeps no links, so it is never asked.
+    const old = runtime({ commerce_item_id: "item-1" });
+    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", old), done);
+    expect(old.calls.map((call) => call.path)).toEqual(["catalog-items/set-on-sale"]);
+  });
+
+  it("never runs an unpublish blind when Commerce cannot say what the page sells, and keeps the publish", async () => {
+    const rt = linked({ "01PAGE": "down" });
+    const cms = vi.fn(done);
+    const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), cms);
+    expect(out.status).toBe(503);
+    expect((await out.json()).error.code).toBe("COMMERCE_UNAVAILABLE");
+    expect(cms).not.toHaveBeenCalled();
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), cms)).status).toBe(200);
+    expect(rt.calls).toEqual([]);
+  });
+
+  it("sells the seed's demonstration pages by their slug, as their field did", async () => {
+    const rt = linked({ "01PAGE": null }, {}, "everyday-tee");
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), done)).status).toBe(200);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "dinkus-template-managed-product", entryId: "01PAGE", onSale: true }]);
+  });
+
+  it("sells a page scheduled with no product named once it is published and Commerce links it, and drops it otherwise", async () => {
+    const pending = new Map<string, { value: unknown; revision: string }>();
+    let revision = 0;
+    const store = {
+      put: async (id: string, value: unknown) => void pending.set(id, { value, revision: `r${(revision += 1)}` }),
+      query: async () => ({ items: [...pending.keys()].map((id) => ({ id })) }),
+      getVersioned: async (id: string) => pending.get(id) ?? null,
+      compareAndDelete: async (id: string, at: string) => {
+        const applied = pending.get(id)?.revision === at;
+        if (applied) pending.delete(id);
+        return { applied };
+      },
+    };
+    const grant = (id: string) => ({ entryId: id, proposals: [], confirmed: { by: "u1", role: 50, scheduledAt: "2026-10-25T11:59:30.000Z" }, state: "published", updatedAt: "2026-10-25T11:59:00.000Z" });
+    await store.put("hat", grant("hat"));
+    await store.put("mug", grant("mug"));
+    // A take-back listed for a page Commerce links names only the page.
+    await store.put("takeback:cup:x", { takeback: true, entryId: "cup" });
+    const rt = linked({ hat: "item-hat", mug: null, cup: "item-cup" });
+    rt.handleContentGet.mockImplementation(async (_collection: string, id: string) => ({ success: true, data: { item: { id, slug: id, status: "published", scheduledAt: null, data: {} } } }) as never);
+    await sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: store as never,
+      userById: async (id: string) => (id === "u1" ? user : null) }, Date.parse("2026-10-25T12:00:00.000Z"), () => true);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true }, { entryId: "cup", onSale: false }]);
+    expect(pending.size).toBe(0);
+  });
+
+  // While upgrade 005 waits, a page can keep an older field naming one product while Commerce links it to another.
+  it("sells a page scheduled under an older field by Commerce's link, and holds a grant to the field only while the field decides", async () => {
+    const pending = new Map<string, { value: unknown; revision: string }>();
+    let revision = 0;
+    const store = {
+      put: async (id: string, value: unknown) => void pending.set(id, { value, revision: `r${(revision += 1)}` }),
+      query: async () => ({ items: [...pending.keys()].map((id) => ({ id })) }),
+      getVersioned: async (id: string) => pending.get(id) ?? null,
+      compareAndDelete: async (id: string, at: string) => {
+        const applied = pending.get(id)?.revision === at;
+        if (applied) pending.delete(id);
+        return { applied };
+      },
+    };
+    const grant = (id: string) => ({ entryId: id, proposals: [], confirmed: { by: "u1", role: 50, itemId: "item-old", scheduledAt: "2026-10-25T11:59:30.000Z" }, state: "published", updatedAt: "2026-10-25T11:59:00.000Z" });
+    for (const id of ["hat", "cap", "mug"]) await store.put(id, grant(id));
+    const fields: Record<string, string> = { hat: "item-old", cap: "item-old", mug: "item-other" };
+    // Commerce links the hat page to a newer product; the cap and mug pages still sell by their field.
+    const rt = linked({ hat: "item-new", cap: null, mug: null });
+    rt.handleContentGet.mockImplementation(async (_collection: string, id: string) => ({ success: true, data: { item: { id, slug: id, status: "published", scheduledAt: null, data: { commerce_item_id: fields[id] } } } }) as never);
+    await sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: store as never,
+      userById: async (id: string) => (id === "u1" ? user : null) }, Date.parse("2026-10-25T12:00:00.000Z"), () => true);
+    // The mug's field changed after it was scheduled, so its grant sells nothing.
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true }, { catalogItemId: "item-old", entryId: "cap", onSale: true }]);
+    expect(pending.size).toBe(0);
+  });
+
+  it("lets the product URL plugin's hooks ask Commerce for a page's product as the person, only inside the request", async () => {
+    const hooks = createPlugin().hooks as Record<string, { handler: (event: never, ctx: never) => Promise<unknown> }>;
+    const claims = new Map<string, unknown>();
+    const records = new Map<string, { value: unknown; revision: string }>();
+    const ctx = {
+      storage: {
+        claims: { put: async (id: string, data: unknown) => void claims.set(id, data), delete: async (id: string) => claims.delete(id), query: async () => ({ items: [] }) },
+        pending_sales: {
+          getVersioned: async (id: string) => records.get(id) ?? null,
+          compareAndSet: async (id: string, _at: string | null, value: unknown) => (records.set(id, { value, revision: "r" }), { applied: true }),
+          compareAndDelete: async (id: string) => ({ applied: records.delete(id) }),
+        },
+      },
+    } as never;
+    const scheduled = { collection: "products", content: { id: "01PAGE", slug: "hat", status: "draft", data: { commerce_item_id: "item-old" } },
+      scheduledAt: "2030-01-01T00:00:00Z", actor: { id: "u1", role: 50, source: "api" }, origin: { source: "api" } } as never;
+    const rt = linked({ "01PAGE": "item-new" });
+    const cms = async () => {
+      await hooks["content:beforeSchedule"]!.handler(scheduled, ctx);
+      return new Response("{}", { status: 200 });
+    };
+    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/schedule", rt), cms)).status).toBe(200);
+    expect(rt.lookups).toEqual([{ body: { op: "get", entryId: "01PAGE" }, user }]);
+    expect(claims.size).toBe(0);
+    expect((records.get("01PAGE")?.value as { proposals: Array<Record<string, unknown>> }).proposals[0]).not.toHaveProperty("itemId");
+    // Outside a signed-in person's request nobody is asked, and the field counts.
+    await hooks["content:beforeSchedule"]!.handler(scheduled, ctx);
+    expect(rt.lookups).toHaveLength(1);
+    expect(claims.get("01PAGE")).toMatchObject({ itemId: "item-old" });
   });
 });

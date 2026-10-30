@@ -15,6 +15,15 @@ const {
 } = Astro.props;
 // Shown disabled until Commerce publishes the store's allowed shipping countries.
 const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia", "Germany", "France", "Japan"];
+// A billing address may be in every country, so its list holds each country the runtime names.
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+const NOT_COUNTRIES = new Set(["EU", "EZ", "UN", "QO", "XA", "XB", "ZZ"]);
+const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromCharCode(65 + Math.floor(i / 26), 65 + (i % 26)))
+  .flatMap((code) => {
+    const name = NOT_COUNTRIES.has(code) ? code : regionNames.of(code);
+    return name && name !== code ? [{ code, name }] : [];
+  })
+  .sort((a, b) => a.name.localeCompare(b.name, "en"));
 ---
 <section
   class="guest-checkout"
@@ -39,12 +48,12 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
       </div>
       <fieldset class="guest-cart-contact" data-guest-cart-contact>
         <legend>Checkout contact</legend>
-        <p>Commerce uses your email for checkout. A delivery address is required only when the basket contains a physical item.</p>
+        <p>Commerce uses your email for checkout. Every order needs a billing address; a delivery address is required only when the basket contains a physical item.</p>
         <label for="guest-cart-email">Email</label>
         <input id="guest-cart-email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" />
         <div class="guest-cart-delivery" data-guest-cart-delivery hidden>
           <h2>Delivery address</h2>
-          <p>Complete these fields for a physical order. We do not collect a billing address.</p>
+          <p>Complete these fields for a physical order.</p>
           <label for="guest-cart-delivery-name">Recipient</label>
           <input id="guest-cart-delivery-name" data-guest-cart-delivery-name maxlength="200" autocomplete="shipping name" />
           <label for="guest-cart-delivery-line1">Address line 1</label>
@@ -62,6 +71,31 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
             <option value="">Select a country</option>
             <option value="US">United States</option>
             {COMING_SOON_SHIPPING_COUNTRIES.map((name) => <option value="" disabled>{name} (coming soon)</option>)}
+          </select>
+        </div>
+        <label class="guest-cart-billing-same" data-guest-cart-billing-same-row hidden>
+          <input type="checkbox" data-guest-cart-billing-same checked />
+          Billing address same as delivery address
+        </label>
+        <div class="guest-cart-delivery" data-guest-cart-billing>
+          <h2>Billing address</h2>
+          <p>The address for the card you pay with.</p>
+          <label for="guest-cart-billing-name">Billing name</label>
+          <input id="guest-cart-billing-name" data-guest-cart-billing-name maxlength="200" autocomplete="billing name" />
+          <label for="guest-cart-billing-line1">Billing address line 1</label>
+          <input id="guest-cart-billing-line1" data-guest-cart-billing-line1 maxlength="200" autocomplete="billing address-line1" />
+          <label for="guest-cart-billing-line2">Billing address line 2 <span>(optional)</span></label>
+          <input id="guest-cart-billing-line2" data-guest-cart-billing-line2 maxlength="200" autocomplete="billing address-line2" />
+          <label for="guest-cart-billing-city">Billing city</label>
+          <input id="guest-cart-billing-city" data-guest-cart-billing-city maxlength="200" autocomplete="billing address-level2" />
+          <label for="guest-cart-billing-region">Billing state or region <span>(optional)</span></label>
+          <input id="guest-cart-billing-region" data-guest-cart-billing-region maxlength="200" autocomplete="billing address-level1" />
+          <label for="guest-cart-billing-postal-code">Billing postal code</label>
+          <input id="guest-cart-billing-postal-code" data-guest-cart-billing-postal-code maxlength="200" autocomplete="billing postal-code" />
+          <label for="guest-cart-billing-country">Billing country</label>
+          <select id="guest-cart-billing-country" data-guest-cart-billing-country autocomplete="billing country">
+            <option value="">Select a country</option>
+            {BILLING_COUNTRIES.map(({ code, name }) => <option value={code}>{name}</option>)}
           </select>
         </div>
       </fieldset>
@@ -128,6 +162,9 @@ const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia",
   .guest-cart-contact input:focus-visible,.guest-cart-contact select:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
   .guest-cart-delivery{display:grid;gap:.55rem;margin-top:.5rem;padding-top:.75rem;border-top:1px solid #2d3a54}
   .guest-cart-delivery[hidden]{display:none}
+  .guest-cart-contact .guest-cart-billing-same{display:flex;gap:.5rem;align-items:center;margin-top:.75rem;font-weight:600}
+  .guest-cart-contact .guest-cart-billing-same input{width:auto}
+  .guest-cart-contact .guest-cart-billing-same[hidden]{display:none}
   .guest-cart-coupon{display:grid;gap:.5rem;margin:0 0 1.25rem;padding:1rem;border:1px dashed #3c4c6b;border-radius:.6rem;color:#b8c0cf;background:#11192a}
   .guest-cart-coupon label{font-weight:700;color:#f7f4ee}
   .guest-cart-coupon input{width:100%;box-sizing:border-box;padding:.6rem;border:1px solid #2d3a54;border-radius:.35rem;background:#0b111e;color:#94a3b8;font:inherit;cursor:not-allowed}

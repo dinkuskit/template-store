@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Kysely, sql } from "kysely";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
@@ -7,10 +7,17 @@ import { applySeed } from "emdash/seed";
 import {
   ADDED_PRODUCT_BLOCK_TYPES,
   ADDED_PRODUCT_FIELDS,
+  CATEGORY_PRODUCTS_FIELD,
+  COMMERCE_PRODUCT_FIELD,
   PAGE_URL_PATTERN,
   VISUAL_LABEL_FIELD_LABEL,
+  ensureStorefrontCategoryProducts,
   ensureStorefrontPageAddresses,
   ensureStorefrontProductFields,
+  LINK_HOLDING_COMMERCE,
+  olderVersion,
+  pagesWithoutCommerceLink,
+  removeStorefrontCommerceBox,
 } from "../../src/features/store-shell/product-schema-upgrade.js";
 
 const options = { includeContent: true, onConflict: "skip", skipMediaDownload: true } as const;
@@ -36,6 +43,8 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
       expect(seeded.find((entry: { slug: string }) => entry.slug === field.slug)).toEqual(field);
     }
     expect(seeded.find((entry: { slug: string }) => entry.slug === "visual_label")).toEqual({ slug: "visual_label", label: VISUAL_LABEL_FIELD_LABEL, type: "string" });
+    const categoryFields = seedNow().collections.find((collection: { slug: string }) => collection.slug === "categories").fields;
+    expect(categoryFields.find((entry: { slug: string }) => entry.slug === CATEGORY_PRODUCTS_FIELD.slug)).toEqual(CATEGORY_PRODUCTS_FIELD);
     const seededBlocks = seedNow().blockTypes;
     for (const blockType of ADDED_PRODUCT_BLOCK_TYPES) {
       expect(seededBlocks.find((entry: { slug: string }) => entry.slug === blockType.slug)).toEqual(blockType);
@@ -67,6 +76,70 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
     expect((await sql<{ label: string }>`select label from _emdash_block_types where slug = 'spec_table'`.execute(db)).rows[0]?.label).toBe("Specs");
   });
 
+  // A store set up before template-store#118, as the beta store was, has categories without their products list.
+  it("gives an older store's categories their products list, keeping the collection's label", async () => {
+    const categoryFields = async () => (await sql<{ slug: string; label: string; type: string; validation: string | null }>`
+      select f.slug, f.label, f.type, f.validation from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
+      where c.slug = 'categories' order by f.sort_order, f.slug`.execute(db)).rows;
+    const collectionLabel = async () => (await sql<{ label: string }>`
+      select label from _emdash_collections where slug = 'categories'`.execute(db)).rows[0]?.label;
+    const links = async () => (await sql<{ parent_group: string; child_group: string }>`
+      select r.parent_group, r.child_group from _emdash_content_references r join _emdash_relations rel on rel.id = r.relation_id
+      where rel.slug = 'product_categories' order by r.parent_group, r.child_group`.execute(db)).rows;
+    expect((await categoryFields()).map((field) => field.slug)).toEqual(["title", "description"]);
+    const linked = await links();
+    expect(linked.length).toBeGreaterThan(0);
+
+    await ensureStorefrontCategoryProducts(db);
+    const products = (await categoryFields()).find((field) => field.slug === "products");
+    expect(products).toMatchObject({ label: "Products in this category", type: "reference" });
+    expect(JSON.parse(products?.validation ?? "{}")).toEqual({ relation: "product_categories", relationSide: "parent", targetCollection: "products" });
+    expect(await collectionLabel()).toBe("Categories");
+    expect(await links()).toEqual(linked);
+
+    // Stored as a fresh store's seed stores it.
+    const fresh = new Kysely<never>({ dialect: createDialect({ url: ":memory:" }) });
+    try {
+      await runMigrations(fresh as never);
+      await applySeed(fresh as never, seedNow(), options);
+      const seeded = (await sql<{ label: string; type: string; validation: string | null; required: number; widget: string | null; options: string | null }>`
+        select f.label, f.type, f.validation, f.required, f.widget, f.options from _emdash_fields f
+        join _emdash_collections c on c.id = f.collection_id where c.slug = 'categories' and f.slug = 'products'`.execute(fresh)).rows[0];
+      const upgraded = (await sql<{ label: string; type: string; validation: string | null; required: number; widget: string | null; options: string | null }>`
+        select f.label, f.type, f.validation, f.required, f.widget, f.options from _emdash_fields f
+        join _emdash_collections c on c.id = f.collection_id where c.slug = 'categories' and f.slug = 'products'`.execute(db)).rows[0];
+      expect(seeded).toBeDefined();
+      expect({ ...upgraded, validation: JSON.parse(upgraded?.validation ?? "{}") }).toEqual({ ...seeded, validation: JSON.parse(seeded?.validation ?? "{}") });
+    } finally {
+      await fresh.destroy();
+    }
+
+    // Re-running changes nothing, and a merchant's own label survives.
+    await sql`update _emdash_fields set label = 'In this aisle' where slug = 'products'
+      and collection_id = (select id from _emdash_collections where slug = 'categories')`.execute(db);
+    await ensureStorefrontCategoryProducts(db);
+    expect((await categoryFields()).filter((field) => field.slug === "products")).toMatchObject([{ label: "In this aisle" }]);
+  });
+
+  it("leaves categories that already pick products through the relation as they are", async () => {
+    await sql`insert into _emdash_fields (id, collection_id, slug, label, type, column_type, validation, sort_order)
+      select 'own-picker', id, 'stock', 'Stocked items', 'reference', 'TEXT',
+        '{"relation":"product_categories","relationSide":"parent","targetCollection":"products"}', 9
+      from _emdash_collections where slug = 'categories'`.execute(db);
+    await ensureStorefrontCategoryProducts(db);
+    expect((await sql<{ slug: string }>`
+      select f.slug from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
+      where c.slug = 'categories' and f.type = 'reference'`.execute(db)).rows.map((row) => row.slug)).toEqual(["stock"]);
+  });
+
+  it("leaves a store without the product_categories relation as it is", async () => {
+    await sql`delete from _emdash_relations where slug = 'product_categories'`.execute(db);
+    await ensureStorefrontCategoryProducts(db);
+    expect((await sql<{ slug: string }>`
+      select f.slug from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
+      where c.slug = 'categories' and f.slug = 'products'`.execute(db)).rows).toEqual([]);
+  });
+
   it("keeps every existing product's saved values", async () => {
     // Every column the older store already had, read before the upgrade adds any.
     const columns = (await sql<{ name: string }>`select name from pragma_table_info('ec_products')`.execute(db)).rows.map((row) => `"${row.name}"`).join(", ");
@@ -75,6 +148,7 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
     expect(before.length).toBeGreaterThan(0);
     await ensureStorefrontProductFields(db);
     await ensureStorefrontPageAddresses(db);
+    await ensureStorefrontCategoryProducts(db);
     expect(await products()).toEqual(before);
   });
 
@@ -98,5 +172,126 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
     await sql`update _emdash_collections set url_pattern = '/info/{slug}' where slug = 'pages'`.execute(db);
     await ensureStorefrontPageAddresses(db);
     expect(await pageAddress()).toBe("/info/{slug}");
+  });
+
+  // template-no-commerce-box-20261029: Commerce holds a page's product, so the box comes off once no live page needs it.
+  describe("taking the Commerce product box off", () => {
+    const BETA = "r_fjzjvld3ssb4j63o";
+    const pageId = async (slug: string) => (await sql<{ id: string }>`select id from ec_products where slug = ${slug}`.execute(db)).rows[0]!.id;
+    const store = (plugin: string, collection: string, id: string, data: unknown = {}) =>
+      sql`insert into _plugin_storage (plugin_id, collection, id, data) values (${plugin}, ${collection}, ${id}, ${JSON.stringify(data)})`.execute(db);
+    const hasBox = async () => (await fields())[COMMERCE_PRODUCT_FIELD] !== undefined;
+
+    it("is no longer in the seed", () => {
+      const seeded = seedNow().collections.find((collection: { slug: string }) => collection.slug === "products").fields;
+      expect(seeded.map((field: { slug: string }) => field.slug)).not.toContain(COMMERCE_PRODUCT_FIELD);
+      for (const entry of seedNow().content.products) expect(entry.data).not.toHaveProperty(COMMERCE_PRODUCT_FIELD);
+    });
+
+    it("comes off a store whose box names no real Commerce product, as the seed's demonstrations don't", async () => {
+      // A typed "123" with no Commerce product 123 sells nothing either.
+      await sql`update ec_products set commerce_item_id = '123' where slug = 'canvas-cap'`.execute(db);
+      expect(await pagesWithoutCommerceLink(db)).toEqual([]);
+      await removeStorefrontCommerceBox(db);
+      expect(await hasBox()).toBe(false);
+      expect((await sql<{ name: string }>`select name from pragma_table_info('ec_products')`.execute(db)).rows.map((row) => row.name)).not.toContain(COMMERCE_PRODUCT_FIELD);
+      // A store without the box is left as it is.
+      await expect(removeStorefrontCommerceBox(db)).resolves.toBeUndefined();
+    });
+
+    it("waits while a live page's box names a Commerce product Commerce doesn't link to it, and comes off once it does", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const cap = await pageId("canvas-cap");
+      await sql`update ec_products set commerce_item_id = ' 123 ' where slug = 'canvas-cap'`.execute(db);
+      await store(BETA, "catalog_items", "123", { name: "Ryan Test Hat" });
+      expect(await pagesWithoutCommerceLink(db)).toEqual([{ id: cap, slug: "canvas-cap", itemId: "123" }]);
+      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
+      expect(await hasBox()).toBe(true);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("canvas-cap"));
+
+      // Another plugin's rows, or a link for another page, don't count.
+      await store("someone-else", "product_pages", `p:${cap}`);
+      await store(BETA, "product_pages", `p:${await pageId("everyday-tee")}`);
+      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
+
+      // The panel's pick links it.
+      await store(BETA, "product_pages", `e:${cap}`, { catalogItemId: "123" });
+      expect(await removeStorefrontCommerceBox(db)).toBeUndefined();
+      expect(await hasBox()).toBe(false);
+    });
+
+    it("waits while the store runs a Registry Commerce that links pages only through the box", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const install = (plugin: string, version: string, source = "registry") => sql`
+        insert into _plugin_state (plugin_id, version, status, source) values (${plugin}, ${version}, 'active', ${source})
+        on conflict (plugin_id) do update set version = excluded.version, source = excluded.source`.execute(db);
+      await install(BETA, "0.7.0-beta.2");
+      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining(`${BETA}@0.7.0-beta.2`));
+      await install(BETA, LINK_HOLDING_COMMERCE);
+      await install("r_gshdrqaldna3r7sn", "0.6.0");
+      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
+      // A Commerce the store's own config installs is the template's own pin, whatever its version says.
+      await install("r_gshdrqaldna3r7sn", "0.6.0", "config");
+      expect(await removeStorefrontCommerceBox(db)).toBeUndefined();
+      expect(await hasBox()).toBe(false);
+    });
+
+    it("orders Commerce versions as semver does, counting an unreadable one as older", () => {
+      expect(olderVersion("0.7.0-beta.2", "0.7.0-beta.3")).toBe(true);
+      expect(olderVersion("0.7.0-beta.10", "0.7.0-beta.3")).toBe(false);
+      expect(olderVersion("0.7.0-beta.3", "0.7.0-beta.3")).toBe(false);
+      expect(olderVersion("0.7.0", "0.7.0-beta.3")).toBe(false);
+      expect(olderVersion("0.6.9", "0.7.0-beta.3")).toBe(true);
+      expect(olderVersion("1.0.0", "0.7.0-beta.3")).toBe(false);
+      expect(olderVersion("0.7.0-alpha.9", "0.7.0-beta.3")).toBe(true);
+      expect(olderVersion("0.7.0-beta", "0.7.0-beta.3")).toBe(true);
+      expect(olderVersion("latest", "0.7.0-beta.3")).toBe(true);
+    });
+
+    it("counts every page whose box is the only record of its product, drafts and the trash included, on any install of Commerce", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const tee = await pageId("everyday-tee");
+      const hoodie = await pageId("pullover-hoodie-preview");
+      const waiting = async () => (await pagesWithoutCommerceLink(db)).map((page) => page.slug);
+      await sql`update ec_products set commerce_item_id = 'hat' where slug = 'everyday-tee'`.execute(db);
+      await store("dinkus-commerce", "catalogItems", "hat");
+      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
+      // A publish check's sale links it too.
+      await store("dinkus-commerce", "product_pages", `p:${tee}`, { entryId: tee, catalogItemId: "hat" });
+      expect(await pagesWithoutCommerceLink(db)).toEqual([]);
+      await sql`delete from _plugin_storage where id = ${`p:${tee}`}`.execute(db);
+
+      // A draft, a scheduled page and a page in the trash still need their product to publish or be restored.
+      await sql`update ec_products set status = 'draft', scheduled_at = null where slug = 'everyday-tee'`.execute(db);
+      expect(await waiting()).toEqual(["everyday-tee"]);
+      await sql`update ec_products set scheduled_at = '2030-01-01T00:00:00.000Z' where slug = 'everyday-tee'`.execute(db);
+      expect(await waiting()).toEqual(["everyday-tee"]);
+      await sql`update ec_products set deleted_at = '2026-10-29T00:00:00.000Z' where slug = 'everyday-tee'`.execute(db);
+      expect(await waiting()).toEqual(["everyday-tee"]);
+      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
+
+      // A copy of a page that sells the product can't sell it: Commerce records the other page as the product's
+      // page, or the other page's panel picked it.
+      await sql`update ec_products set commerce_item_id = 'hat' where slug = 'pullover-hoodie-preview'`.execute(db);
+      expect((await waiting()).sort()).toEqual(["everyday-tee", "pullover-hoodie-preview"]);
+      await sql`update _plugin_storage set data = ${JSON.stringify({ pageId: hoodie })} where id = 'hat'`.execute(db);
+      expect(await waiting()).toEqual(["pullover-hoodie-preview"]);
+      await sql`update _plugin_storage set data = '{}' where id = 'hat'`.execute(db);
+      await store("dinkus-commerce", "product_pages", `e:${hoodie}`, { entryId: hoodie, catalogItemId: "hat" });
+      expect(await waiting()).toEqual([]);
+      await sql`delete from _plugin_storage where id = ${`e:${hoodie}`}`.execute(db);
+      await sql`update ec_products set commerce_item_id = null where slug = 'pullover-hoodie-preview'`.execute(db);
+
+      // An archived product can be restored, and its page would need it again.
+      await sql`update _plugin_storage set data = ${JSON.stringify({ archivedAt: "2026-10-29T00:00:00.000Z" })} where id = 'hat'`.execute(db);
+      expect(await waiting()).toEqual(["everyday-tee"]);
+      await sql`update _plugin_storage set data = '{}' where id = 'hat'`.execute(db);
+
+      // Deleting the page for good lets its product go.
+      await sql`delete from ec_products where slug = 'everyday-tee'`.execute(db);
+      expect(await removeStorefrontCommerceBox(db)).toBeUndefined();
+      expect(await hasBox()).toBe(false);
+    });
   });
 });
