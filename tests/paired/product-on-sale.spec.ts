@@ -86,7 +86,8 @@ async function draftProduct(page: Page, sku: string, title: string) {
   await expect(page.getByRole("dialog", { name: "Review proposed changes" })).toHaveCount(0);
   const itemId = pickedProduct(pageId);
   expect(itemId).toMatch(/\S/);
-  const priceForm = linked.locator("form").filter({ has: page.getByRole("textbox", { name: "Regular", exact: true }) });
+  // EmDash 1.4 renders a Block Kit form block as a group named after its submit button (emdash-cms/emdash#4183).
+  const priceForm = linked.locator('[role="group"]').filter({ has: page.getByRole("textbox", { name: "Regular", exact: true }) });
   await priceForm.getByRole("textbox", { name: "Regular", exact: true }).fill("12");
   await priceForm.getByRole("button", { name: /^Save/ }).click();
   // A phone's drawer closes on the panel's answer too, so reopen it to read the saved price.
