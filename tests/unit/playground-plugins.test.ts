@@ -184,7 +184,7 @@ describe("Playground Payments, Ship and tour", () => {
   });
 
   it("turns EmDash's toolbar Deploy your own button into Start your real store", () => {
-    // The toolbar EmDash 1.2.0 really injects, so an upstream markup change fails here.
+    // The toolbar EmDash 1.4.0 really injects, so an upstream markup change fails here.
     const toolbar = readFileSync("node_modules/@emdash-cms/cloudflare/dist/db/playground-middleware.mjs", "utf8");
     const page = `<body>${toolbar}</body>`;
     const retargeted = retargetPlaygroundDeployLink(page);

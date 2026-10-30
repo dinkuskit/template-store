@@ -102,10 +102,14 @@ export async function publishProductPage(admin: Page, pageId: string) {
   await expect((await openPanel(admin)).getByText(/^(?:On sale|Published: off the shop) · SKU /)).toBeVisible({ timeout: 30_000 });
 }
 
+// EmDash 1.4 renders a Block Kit form block as a group of fields named after
+// its submit button, not an HTML <form> (emdash-cms/emdash#4183).
+const BLOCK_FORM = '[role="group"]';
+
 /** Saves the panel's Regular and Sale prices and returns the panel as it answered. */
 export async function savePanelPrices(admin: Page, regular: string, sale: string) {
   const panel = await openPanel(admin);
-  const form = panel.locator("form").filter({ has: admin.getByRole("textbox", { name: "Regular", exact: true }) });
+  const form = panel.locator(BLOCK_FORM).filter({ has: admin.getByRole("textbox", { name: "Regular", exact: true }) });
   await form.getByRole("textbox", { name: "Regular", exact: true }).fill(regular);
   await form.getByRole("textbox", { name: "Sale", exact: true }).fill(sale);
   // The editor posts panel actions to EmDash's plugin-extensions route for the page.
@@ -118,6 +122,6 @@ export async function savePanelPrices(admin: Page, regular: string, sale: string
 
 /** The panel's price fields, for reading what it saved. */
 export function panelPrice(admin: Page, panel: Locator, label: "Regular" | "Sale") {
-  return panel.locator("form").filter({ has: admin.getByRole("textbox", { name: "Regular", exact: true }) })
+  return panel.locator(BLOCK_FORM).filter({ has: admin.getByRole("textbox", { name: "Regular", exact: true }) })
     .getByRole("textbox", { name: label, exact: true });
 }

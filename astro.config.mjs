@@ -61,7 +61,7 @@ const pairedCommerce = pairedCommerceDir
   : undefined;
 const accessOptions = selectedRegistryAccessOptions(process.env);
 
-// EmDash 1.2.0's sandbox() only reads the default Wrangler file. Keep a
+// EmDash 1.4.0's sandbox() only reads the default Wrangler file. Keep a
 // dedicated deployment's runner aligned with the adapter's selected config.
 function cloudflareSandbox() {
   if (!process.env.DINKUS_WRANGLER_CONFIG) return sandbox();
