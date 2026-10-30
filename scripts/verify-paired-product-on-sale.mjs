@@ -8,15 +8,15 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-// The Commerce that holds each page's product (dinkuskit/commerce#208, template-no-commerce-box-20261029),
-// at that pull request's head until the beta carrying it is cut; this pin then moves to the beta's tag.
+// The Commerce that holds each page's product (dinkuskit/commerce#208, template-no-commerce-box-20261029):
+// the first beta carrying it, 0.7.0-beta.3.
 const COMMERCE = Object.freeze({
-  tag: "commerce#208",
+  tag: "v0.7.0-beta.3",
   // Whether this Commerce saves the page title sent as `name` (dinkuskit/commerce#188); 0.6.0 ignores it.
   names: true,
-  commit: "8e788dd3fd74399b4da27c4a8ed03da7043a4d5d",
+  commit: "7740b4c14e614740c454ed67aeb6e8eaac49db6d",
   files: {
-    "dist/sandbox/plugin.mjs": "a1e51872fa08c3a7924b4c97de04647a475cacb42c92ed5e56c6c18ef5adfba6",
+    "dist/sandbox/plugin.mjs": "a630ca239b3573cd5943cb430fb8e26702c946ba6d7c38438fcc86ac01c98f92",
     "dist/sandbox/index.mjs": "fc9072aa4bc0d78949b45b8602e6be9b99ab3badd687d16a3257e2a73efb4a65",
   },
 });
