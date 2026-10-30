@@ -51,7 +51,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  // EmDash 1.2.0's playground user has no createdAt, which every plugin route
+  // EmDash 1.4.0's playground user has no createdAt, which every plugin route
   // reads for ctx.user; without it Payments' and Ship's pages fail with a 500.
   const response = await emdashPlayground(context, ((...args: Parameters<typeof next>) => {
     const locals = context.locals as { user?: { createdAt?: unknown } };

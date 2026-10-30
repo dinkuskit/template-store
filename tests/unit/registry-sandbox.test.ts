@@ -8,6 +8,8 @@ vi.mock("cloudflare:workers", () => ({
   WorkerEntrypoint: class {
     constructor(public ctx: unknown, public env: unknown) {}
   },
+  // EmDash 1.4's sandbox bridge extends RpcTarget from cloudflare:workers.
+  RpcTarget: class {},
 }));
 import { PluginBridge } from "@emdash-cms/cloudflare/sandbox";
 import { createSandboxRunner } from "../../src/features/registry-sandbox/runner";
