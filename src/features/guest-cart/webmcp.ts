@@ -317,7 +317,8 @@ export function createStorefrontActions(
   const emit = env.dispatchEvent ?? defaultEmitEvent;
   const navigate = env.navigate ?? defaultNavigate;
 
-  let reviewedFingerprint: string | null = null;
+  let pendingReviewFingerprint: string | null = null;
+  let confirmedReviewFingerprint: string | null = null;
 
   const getCart = async (
     options?: Readonly<{ includeCatalog?: boolean }>,
@@ -446,7 +447,8 @@ export function createStorefrontActions(
       return error;
     }
 
-    reviewedFingerprint = null;
+    pendingReviewFingerprint = null;
+    confirmedReviewFingerprint = null;
     const snapshots =
       saved.intent.lines.length > 0
         ? await fetchSnapshot(saved.intent.lines.map((line) => line.id))
@@ -469,7 +471,7 @@ export function createStorefrontActions(
     const reviewStatus =
       cart.itemCount === 0
         ? "empty_cart"
-        : reviewedFingerprint === cart.reviewFingerprint
+        : confirmedReviewFingerprint === cart.reviewFingerprint
           ? "buyer_reviewed"
           : "buyer_review_required";
     return Object.freeze({
@@ -526,15 +528,18 @@ export function createStorefrontActions(
 
     const suppliedFingerprint =
       typeof input?.reviewFingerprint === "string" ? input.reviewFingerprint.trim() : "";
+    const hasPendingOrConfirmedReview =
+      pendingReviewFingerprint === preview.reviewFingerprint ||
+      confirmedReviewFingerprint === preview.reviewFingerprint;
     const confirmed =
       input?.buyerConfirmed === true &&
       suppliedFingerprint.length > 0 &&
-      reviewedFingerprint !== null &&
-      reviewedFingerprint === preview.reviewFingerprint &&
+      hasPendingOrConfirmedReview &&
       suppliedFingerprint === preview.reviewFingerprint;
 
     if (!confirmed) {
-      reviewedFingerprint = preview.reviewFingerprint;
+      pendingReviewFingerprint = preview.reviewFingerprint;
+      confirmedReviewFingerprint = null;
       return {
         ok: true,
         status: "buyer_review_required",
@@ -548,6 +553,7 @@ export function createStorefrontActions(
       };
     }
 
+    confirmedReviewFingerprint = preview.reviewFingerprint;
     navigate("/checkout");
     return {
       ok: true,

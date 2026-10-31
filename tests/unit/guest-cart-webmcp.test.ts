@@ -258,6 +258,9 @@ describe("storefront actions and progressive WebMCP adapter", () => {
     expect(step1.totals.taxMinor).toBeNull();
     expect(step1.totals.totalMinor).toBeNull();
     expect(navigated).toEqual([]);
+    expect((await firstInstall.actions.getCheckoutPreview()).reviewStatus).toBe(
+      "buyer_review_required",
+    );
 
     // Omitting reviewFingerprint on confirmation is rejected and stays at buyer_review_required.
     const missingFingerprintConfirm = (await byName.get("proceed_to_checkout")!.execute({
@@ -300,6 +303,9 @@ describe("storefront actions and progressive WebMCP adapter", () => {
     expect(step2.status).toBe("requires_escalation");
     expect(step2.continueUrl).toBe("/checkout");
     expect(navigated).toEqual(["/checkout"]);
+    expect((await firstInstall.actions.getCheckoutPreview()).reviewStatus).toBe(
+      "buyer_reviewed",
+    );
 
     // Clearing the cart resets state.
     await byName.get("cancel_cart")!.execute({});
