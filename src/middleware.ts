@@ -14,6 +14,7 @@ import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-p
 import {
    ensurePlaygroundDemoCatalog,
 } from "./features/playground/demo-commerce-seed.js";
+import { ensureDemoCatalogThroughCommerce } from "./features/playground/demo-registry-seed.js";
 import {
   filterPublicSearchApiResponse,
 } from "./features/store-shell/index.js";
@@ -143,7 +144,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // /api/checkout/status route authorizes against the same store start wrote.
   const playgroundBindings = isPlayground ? playgroundCheckoutBindingsFor(context.locals) : undefined;
 
-  // Publishing a product page puts its Commerce product on sale; the playground runs native Commerce.
+  // Publishing a product page puts its Commerce product on sale. Only the playground still runs the native
+  // Commerce copy, until its own switch to the Registry build (template-one-build-registry-20261031).
   const productOnSale = () => {
     const runtime = context.locals.emdash as unknown as OnSaleRuntime | undefined;
     const user = (context.locals as { user?: unknown }).user;
@@ -152,7 +154,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       url: context.url,
       runtime,
       user,
-      commercePluginId: isPlayground || isDemoCatalogProfile() ? NATIVE_COMMERCE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
+      commercePluginId: isPlayground ? NATIVE_COMMERCE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
       currentUser: () => (runtime ? storedUser(runtime, user) : Promise.resolve(user)),
       pendingSales: runtime?.db
         ? (new PluginStorageRepository(runtime.db as never, PRODUCT_URL_PLUGIN_ID, PENDING_SALES, []) as unknown as PendingSales)
@@ -234,12 +236,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
       mode: process.env.EMDASH_MIGRATIONS_MODE ?? import.meta.env.EMDASH_MIGRATIONS_MODE,
     });
   }
-  if (!isPlayground && isDemoCatalogProfile() && !demoProfileSeeded) {
-    // The demo profile (native-development catalog + proof storefront) gets the
-    // same create-only-if-missing demo catalog. Shipping stores never do.
+  const demoSeedRuntime = context.locals.emdash as unknown as Parameters<typeof ensureDemoCatalogThroughCommerce>[0] | undefined;
+  if (!isPlayground && isDemoCatalogProfile() && !demoProfileSeeded && typeof demoSeedRuntime?.handlePluginApiRoute === "function") {
+    // The demo store (proof storefront profile) gets the same create-only-if-missing demo catalog, written
+    // through the installed Commerce Registry build's own private routes. Those need EmDash's full runtime,
+    // which it attaches to a signed-in person's requests (an anonymous visitor's requests carry only the
+    // public dispatcher), so the seed runs on the first signed-in request: the setup and sign-in calls every
+    // proof run makes first, or the owner opening the admin of a fresh demo. Shipping stores never seed. A
+    // fresh install builds Commerce's unique indexes on its first requests, so a refused seed is tried again.
     demoProfileSeeded = true;
-    const { getDb } = await import("emdash/runtime");
-    await ensurePlaygroundDemoCatalog(await getDb() as Parameters<typeof ensurePlaygroundDemoCatalog>[0])
+    await ensureDemoCatalogThroughCommerce(demoSeedRuntime, COMMERCE_REGISTRY_RUNTIME_ID, context.url.origin)
       .catch((error: unknown) => { demoProfileSeeded = false; console.error("[demo-seed] failed", error); });
   }
 
@@ -291,8 +297,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
+  // The playground's native Commerce answers its account routes through the playground runtime; a store
+  // running the Registry build serves the installed plugin's own account routes.
   const accountKind = shopperAccountRouteKind(context.url.pathname);
-  if (accountKind && (isPlayground || isDemoCatalogProfile())) {
+  if (accountKind && isPlayground) {
     const response = await dispatchNativeShopperAccount(
       context.locals,
       context.request,

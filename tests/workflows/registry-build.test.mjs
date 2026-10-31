@@ -148,6 +148,8 @@ test("build and runtime stay shipping with a loader and closed bootstrap", () =>
   assert.equal(child.DINKUS_PROOF_MODE, "0"); assert.equal(child.DINKUS_CATALOG_PROFILE, "shipping");
   assert.equal(child.DINKUS_HOSTING_PROFILE, "cloudflare");
   assert.equal(child.DINKUS_WRANGLER_CONFIG, "runs/registry/wrangler.jsonc");
+  // The store installs Commerce from the Registry; the paired build stays out of a Registry store build.
+  assert.equal(child.DINKUS_PAIRED_COMMERCE_DIR, "");
 });
 
 

@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { PAIRED_COMMERCE_DIR_ENV, resolvePairedCommerceDir } from "./paired-commerce.mjs";
 
 const ROOTS = Object.freeze({
   proof: ".artifacts/e2e",
@@ -50,7 +51,13 @@ export function validateOfflineE2EOptions({ root, profile, port }) {
   });
 }
 
-export function buildOfflineE2EEnvironment(inherited, options) {
+/**
+ * The proof store mounts the paired Commerce Registry build (template-one-build-registry-20261031); the
+ * shipping store mounts no Commerce at all and must fail closed. `resolve` finds the build: the inherited
+ * DINKUS_PAIRED_COMMERCE_DIR (a checkout being developed), else the pin's prepared build, else none, which
+ * the proof store refuses to start on.
+ */
+export function buildOfflineE2EEnvironment(inherited, options, resolve = resolvePairedCommerceDir) {
   const validated = validateOfflineE2EOptions(options);
   const env = {};
   for (const [key, value] of Object.entries(inherited ?? {})) {
@@ -58,12 +65,19 @@ export function buildOfflineE2EEnvironment(inherited, options) {
       env[key] = value;
     }
   }
+  let pairedCommerce = "";
+  if (validated.profile === "proof") {
+    pairedCommerce = resolve({ [PAIRED_COMMERCE_DIR_ENV]: inherited?.[PAIRED_COMMERCE_DIR_ENV] }, validated.root) ?? "";
+    if (!pairedCommerce) {
+      throw new Error("offline e2e proof store needs the paired Commerce Registry build; run pnpm prepare:commerce (or set DINKUS_PAIRED_COMMERCE_DIR)");
+    }
+  }
   return {
     ...env,
     ASTRO_DEV_BACKGROUND: "0",
     DINKUS_PROOF_MODE: validated.profile === "proof" ? "1" : "0",
     DINKUS_STOREFRONT_PROFILE: validated.profile,
-    ...(validated.profile === "proof" ? { DINKUS_CATALOG_PROFILE: "native-development" } : {}),
+    [PAIRED_COMMERCE_DIR_ENV]: pairedCommerce,
     DINKUS_TEMPLATE_DB_URL: `file:./${validated.relativeDir}/content.db`,
     DINKUS_TEMPLATE_UPLOADS_DIR: `./${validated.relativeDir}/uploads`,
     EMDASH_SITE_URL: validated.siteOrigin,

@@ -35,8 +35,8 @@ if [ "$have" != "$want" ] || [ "$have_pnpm" != "$want_pnpm" ]; then
 fi
 status+=("node $have (pnpm $have_pnpm)")
 
-# sqlite3 CLI: scripts/scheduled-index-harness.mjs shells out to it, and CI's
-# Ubuntu runner already has it.
+# sqlite3 CLI: the browser tests read the proof store's SQLite database with it,
+# and CI's Ubuntu runner already has it.
 if command -v sqlite3 >/dev/null 2>&1; then
   status+=("sqlite3 present")
 elif [ "$(id -u)" = 0 ] && command -v apt-get >/dev/null 2>&1 &&

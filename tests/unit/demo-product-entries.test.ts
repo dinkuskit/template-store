@@ -116,10 +116,13 @@ describe("demo EmDash product entries", () => {
   });
 
   it("runs only for the playground and demo profile, never a shipping store", () => {
-    expect(isDemoCatalogProfile({ DINKUS_CATALOG_PROFILE: "native-development", DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(true);
+    // The demo store is the proof storefront profile on Commerce's Registry build (template-one-build-registry-20261031).
+    expect(isDemoCatalogProfile({ DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(true);
+    expect(isDemoCatalogProfile({ DINKUS_STOREFRONT_PROFILE: "proof", DINKUS_CATALOG_PROFILE: "shipping" })).toBe(true);
     expect(isDemoCatalogProfile({})).toBe(false);
-    expect(isDemoCatalogProfile({ DINKUS_STOREFRONT_PROFILE: "shipping", DINKUS_CATALOG_PROFILE: "native-development" })).toBe(false);
-    expect(isDemoCatalogProfile({ DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(false);
+    expect(isDemoCatalogProfile({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBe(false);
+    // The retired native copy never counts as the demo.
+    expect(isDemoCatalogProfile({ DINKUS_CATALOG_PROFILE: "native-development", DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(false);
     const middleware = readFileSync("src/middleware.ts", "utf8");
     expect(middleware).toMatch(/isPlayground\) \{[\s\S]*ensurePlaygroundDemoCatalog[\s\S]*isDemoCatalogProfile\(\)/);
   });
@@ -130,23 +133,24 @@ describe("demo EmDash product entries", () => {
     expect(card).toContain("{!href && <AddToCart");
   });
 
-  it("hides Add to cart on product pages whenever checkout is unavailable", () => {
+  it("offers Add to cart on every store's product pages, the playground's only with its sandbox checkout on", () => {
+    // Every product sells from its page on Commerce's Registry build, so the page is where the guest cart
+    // starts; the demo keeps its guest cart with checkout closed (hosted-demo-007).
     expect(productPageOffersCart({ profile: "shipping", isPlayground: false })).toBe(true);
-    expect(productPageOffersCart({ profile: "shipping", isPlayground: true })).toBe(false);
-    expect(productPageOffersCart({ profile: "proof", isPlayground: false })).toBe(false);
-    expect(productPageOffersCart({ profile: "proof", isPlayground: true })).toBe(false);
-    // DINKUS_CHECKOUT_ENABLED turns sandbox checkout on for the playground/demo only.
+    expect(productPageOffersCart({ profile: "proof", isPlayground: false })).toBe(true);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: false, isDemo: true, checkoutEnabled: false })).toBe(true);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: false, isDemo: true, checkoutEnabled: true })).toBe(true);
     expect(productPageOffersCart({ profile: "shipping", isPlayground: false, checkoutEnabled: false })).toBe(true);
+    // DINKUS_CHECKOUT_ENABLED turns sandbox checkout, and with it the cart, on for the playground.
+    expect(productPageOffersCart({ profile: "shipping", isPlayground: true })).toBe(false);
+    expect(productPageOffersCart({ profile: "proof", isPlayground: true })).toBe(false);
     expect(productPageOffersCart({ profile: "shipping", isPlayground: true, checkoutEnabled: true })).toBe(true);
     expect(productPageOffersCart({ profile: "proof", isPlayground: true, checkoutEnabled: true })).toBe(true);
-    expect(productPageOffersCart({ profile: "proof", isPlayground: false, isDemo: true, checkoutEnabled: true })).toBe(true);
-    expect(productPageOffersCart({ profile: "proof", isPlayground: false, isDemo: true, checkoutEnabled: false })).toBe(false);
     expect(productPageOffersCart({ profile: "proof", isPlayground: true, checkoutEnabled: false })).toBe(false);
-    expect(productPageOffersCart({ profile: "proof", isPlayground: false, checkoutEnabled: true })).toBe(false);
     const page = readFileSync("src/pages/products/[id].astro", "utf8");
     expect(page).toContain("const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checkoutEnabled });");
     expect(page).toContain("{cartProduct && offersCart && <AddToCart");
     expect(page).not.toMatch(/!isPlayground && <AddToCart/);
-    expect(page).toContain("data-checkout-unavailable>Demo product. Cart and checkout are unavailable.");
+    expect(page).toContain('data-checkout-unavailable>{offersCart ? "Demo product. Checkout is unavailable." : "Demo product. Cart and checkout are unavailable."}');
   });
 });

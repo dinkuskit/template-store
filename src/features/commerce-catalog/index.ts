@@ -64,6 +64,8 @@ async function openCommerceCatalogStorage() {
 }
 
 export async function readCommerceCatalog(context?: InstalledCatalogContext): Promise<PublicCommerceProduct[]> {
+  // Every store reads the installed Commerce's public catalog; the storage read below is the playground's,
+  // which alone still runs the native copy (template-one-build-registry-20261031).
   if (process.env.DINKUS_CATALOG_PROFILE !== "native-development") {
     if (!context) throw new Error("Installed catalog context unavailable");
     return readInstalledCommerceCatalog(context);

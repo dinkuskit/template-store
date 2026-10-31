@@ -70,7 +70,7 @@ registry bundle or released tarball digest.
 | Bundles | Commerce / relevant owner contract | Not a blocker for this bounded native qualification; unimplemented with no bundle affordance |
 | Registry pair | Commerce + Template release artifact owners | Exact qualified pre-release artifacts adopted locally; official Registry release/delivery/install proof pending |
 | Blocks runtime | Template composition / EmDash public native Blocks | Current candidate uses EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks; no `@dinkuskit/blocks` dependency or registration. The archived `dinkuskit/blocks` repository is not used anywhere |
-| Hosted demo | Template exact working pair, isolated synthetic state | Plan only; no approved deploy or verified URL |
+| Hosted demo | Template exact working pair, isolated synthetic state | Retired 18 Oct 2026 for the playground (`hosted-demo-retired-20261031`) |
 
 The 2026-10-06 composition used EmDash 1.0.1 public native Blocks and collection APIs
 for first-class `layout` renderers. `astro.config.mjs` registers native

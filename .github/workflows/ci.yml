@@ -96,6 +96,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - if: needs.plan.outputs.browser == 'true'
         uses: ./.github/actions/setup-chromium
+      # The browser tests' proof store runs the pinned Commerce's Registry build; its fetch and build are
+      # kept per Commerce commit, so only a pin change rebuilds it.
+      - if: needs.plan.outputs.browser == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .artifacts/paired-commerce
+          key: paired-commerce-${{ hashFiles('package.json') }}-${{ runner.os }}
       # Every non-browser check, desktop browser tests and the built-site crawl.
       - if: needs.plan.outputs.browser == 'true'
         run: pnpm verify
@@ -143,6 +150,11 @@ jobs:
         run: pnpm install --frozen-lockfile
       - if: needs.plan.outputs.browser == 'true'
         uses: ./.github/actions/setup-chromium
+      - if: needs.plan.outputs.browser == 'true'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .artifacts/paired-commerce
+          key: paired-commerce-${{ hashFiles('package.json') }}-${{ runner.os }}
       - if: needs.plan.outputs.browser == 'true'
         run: bin/verify-web browser
         env:

@@ -13,7 +13,8 @@
     "nodejs_compat"
   ],
   "vars": {
-    "DINKUS_CATALOG_PROFILE": "native-development",
+    "DINKUS_CATALOG_PROFILE": "shipping",
+    "DINKUS_COMMERCE_PROFILE": "stable",
     "DINKUS_STOREFRONT_PROFILE": "proof",
     "DINKUS_DEMO_NOINDEX": "1",
     "DINKUS_EMDASH_ADMIN_ENABLED": "1"
@@ -33,6 +34,13 @@
     {
       "binding": "MEDIA",
       "bucket_name": "dinkuskit-template-demo-media"
+    }
+  ],
+  // The demo runs the pinned Commerce's Registry build under EmDash's Cloudflare sandbox, which needs the
+  // Worker Loader (Workers paid plan), as every Registry store does (template-one-build-registry-20261031).
+  "worker_loaders": [
+    {
+      "binding": "LOADER"
     }
   ],
   "ratelimits": [
