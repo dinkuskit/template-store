@@ -185,3 +185,8 @@
 {"action": "decision_superseded", "at": "2026-10-31T21:02:29+00:00", "data": {"affected": [], "decision_id": "playground-commerce-until-part-2-20261022", "replacement_id": "playground-commerce-in-store-20261031"}, "event_id": "f4cbdd2c-35b6-42ec-b699-e28ac887dde8"}
 {"action": "decision_implemented", "at": "2026-10-31T21:02:29+00:00", "data": {"decision_id": "playground-commerce-in-store-20261031"}, "event_id": "49179d37-964d-4933-a45d-c26f08afbff7"}
 {"action": "decision_verified", "at": "2026-10-31T21:02:29+00:00", "data": {"decision_id": "playground-commerce-in-store-20261031"}, "event_id": "13bf4571-3ee7-4312-888d-3b7437266015"}
+{"action": "decision_proposed", "at": "2026-10-31T21:11:42+00:00", "data": {"decision_id": "policy-pages-content-20261031"}, "event_id": "d0db043f-6ad9-4733-ae7e-441ab84f867b"}
+{"action": "decision_locked", "at": "2026-10-31T21:11:42+00:00", "data": {"decision_id": "policy-pages-content-20261031"}, "event_id": "887d3ef6-ea82-4e1f-8ce2-5291daccb99c"}
+{"action": "decision_superseded", "at": "2026-10-31T21:11:42+00:00", "data": {"affected": [], "decision_id": "structured-data-policy-feed-035", "replacement_id": "policy-pages-content-20261031"}, "event_id": "fc66ca3c-02fc-4443-9279-a3459f500f57"}
+{"action": "decision_implemented", "at": "2026-10-31T21:11:42+00:00", "data": {"decision_id": "policy-pages-content-20261031"}, "event_id": "90b53a66-993c-4e25-b22f-16748f526b78"}
+{"action": "decision_verified", "at": "2026-10-31T21:11:42+00:00", "data": {"decision_id": "policy-pages-content-20261031"}, "event_id": "e56adc29-3447-482f-a7b9-504d9a804d6d"}

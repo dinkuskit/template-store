@@ -3,46 +3,31 @@ import { getEmDashEntry, getSection, type PortableTextBlock } from "emdash";
 import { PortableText } from "emdash/ui";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import StoreFooter from "../features/store-shell/StoreFooter.astro";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../features/guest-cart/checkout-protocol.js";
-import { readInstalledCommercePolicies } from "../features/commerce-policies/index.js";
 import {
   POLICY_SUPPORT_SECTION_SLUG,
   STORE_TITLE,
   readStorefrontProfile,
 } from "../features/store-shell/index.js";
 import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
-import { canonicalUrl } from "../features/store-shell/structured-data.js";
+import { canonicalUrl, jsonLdScript, storeReturnPolicyJsonLd } from "../features/store-shell/structured-data.js";
 import "../features/store-shell/global.css";
 
-const { entry } = await getEmDashEntry("pages", "returns");
+// The returns policy is this EmDash page, written by the merchant; it always shows its own text
+// (GrillTrack policy-pages-content-20261031).
+const { entry, isPreview } = await getEmDashEntry("pages", "returns");
 const supportSection = await getSection(POLICY_SUPPORT_SECTION_SLUG).catch(() => null);
 const profile = readStorefrontProfile();
-const policies = await readInstalledCommercePolicies(
-  { runtime: Astro.locals.emdash, request: Astro.request },
-  COMMERCE_REGISTRY_RUNTIME_ID,
-).catch(() => null);
-const returns = policies?.returns ?? null;
 const content = Array.isArray(entry?.data?.content) ? (entry.data.content as PortableTextBlock[]) : [];
+const intro = (entry?.data as { intro?: string } | undefined)?.intro;
 const canonical = canonicalUrl("/returns", Astro.site, Astro.url);
-const returnCategoryLabels = {
-  MerchantReturnFiniteReturnWindow: "Limited return window",
-  MerchantReturnNotPermitted: "Returns not accepted",
-  MerchantReturnUnlimitedWindow: "Unlimited return window",
-} as const;
-const returnMethodLabels = {
-  ReturnByMail: "Return by mail",
-  ReturnInStore: "Return in store",
-  ReturnAtKiosk: "Return at a kiosk",
-} as const;
-const returnFeeLabels = {
-  FreeReturn: "Free returns",
-  ReturnFeesCustomerResponsibility: "Return fees are the customer's responsibility",
-  ReturnShippingFees: "Return shipping fees apply",
-} as const;
+// A published returns page names itself as the store's return policy, by link only.
+const returnPolicyJsonLd = content.length > 0 && !isPreview
+  ? storeReturnPolicyJsonLd({ storeName: STORE_TITLE, storeUrl: canonicalUrl("/", Astro.site, Astro.url), returnsUrl: canonical })
+  : null;
 ---
 <!doctype html>
 <html lang="en">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><link rel="canonical" href={canonical} /><title>{entry?.data?.title ?? "Returns"} | {STORE_TITLE}</title></head>
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><link rel="canonical" href={canonical} /><title>{entry?.data?.title ?? "Returns"} | {STORE_TITLE}</title>{returnPolicyJsonLd && <script type="application/ld+json" set:html={jsonLdScript(returnPolicyJsonLd)} />}</head>
   <body data-storefront-profile={profile}>
     <StoreHeader profile={profile} />
     <main class="policy-page">
@@ -62,8 +47,8 @@ const returnFeeLabels = {
               <PortableText value={supportSection.content} />
             ) : (
               <>
-                <h3>Policy provenance</h3>
-                <p>Authoritative shipping charges, handling windows, and return eligibility come directly from the connected Commerce store.</p>
+                <h3>About these policies</h3>
+                <p>This store writes its shipping and returns policies on these pages. The shipping charge for an order is shown at checkout.</p>
               </>
             )}
           </div>
@@ -72,23 +57,12 @@ const returnFeeLabels = {
         <section class="policy-card" aria-labelledby="return-policy-heading">
           <p class="policy-card__kicker">Store policy</p>
           <h1 id="return-policy-heading">{entry?.data?.title ?? "Returns"}</h1>
-          <p class="policy-card__intro">{(entry?.data as { intro?: string } | undefined)?.intro ?? "Return details are configured by the connected Commerce store."}</p>
-          {returns ? (
-            <>
-              <dl data-return-policy data-policy-revision={returns.revision} data-return-days={returns.merchantReturnDays} data-return-category={returns.returnPolicyCategory} data-return-method={returns.returnMethod} data-return-fees={returns.returnFees} data-return-countries={returns.applicableCountry?.join(",")}>
-                {returns.returnPolicyCategory && <><dt>Return policy</dt><dd>{returnCategoryLabels[returns.returnPolicyCategory]}</dd></>}
-                {returns.merchantReturnDays !== undefined && <><dt>Return window</dt><dd>{returns.merchantReturnDays} days</dd></>}
-                {returns.returnMethod && <><dt>Return method</dt><dd>{returnMethodLabels[returns.returnMethod]}</dd></>}
-                {returns.returnFees && <><dt>Return fees</dt><dd>{returnFeeLabels[returns.returnFees]}</dd></>}
-                {returns.applicableCountry && <><dt>Applicable countries</dt><dd>{returns.applicableCountry.join(", ")}</dd></>}
-              </dl>
-              {content.length > 0 && (
-                <div class="policy-page__body prose" data-policy-body data-return-policy-body>
-                  <PortableText value={content} components={legacyPortableTextComponents} />
-                </div>
-              )}
-            </>
-          ) : <p class="policy-card__unset" role="status" data-return-policy-unset>Return policy is not configured.</p>}
+          {intro && <p class="policy-card__intro">{intro}</p>}
+          {content.length > 0 ? (
+            <div class="policy-page__body prose" data-policy-body data-return-policy-body>
+              <PortableText value={content} components={legacyPortableTextComponents} />
+            </div>
+          ) : <p class="policy-card__unset" role="status" data-return-policy-unset>This store has not published its returns policy yet.</p>}
         </section>
       </div>
     </main>
@@ -110,13 +84,10 @@ const returnFeeLabels = {
   .policy-card__kicker{margin:0 0 .35rem;color:var(--store-accent);font-family:var(--font-mono);font-size:.75rem;font-weight:800;letter-spacing:.12em}
   .policy-card h1{margin:0 0 .75rem;font-size:clamp(2.1rem,5vw,3.4rem);line-height:1.02;letter-spacing:-.045em}
   .policy-card__intro{margin:0 0 1.5rem;color:var(--store-muted)}
-  .policy-page dl{display:grid;grid-template-columns:minmax(10rem,1fr) 2fr;gap:.65rem 1.25rem;margin:0;padding-top:1rem;border-top:1px solid var(--store-line)}
-  .policy-page dt{font-weight:800;color:var(--store-muted)}
-  .policy-page dd{margin:0;font-family:var(--font-mono);font-weight:700}
   .policy-page__body{margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid var(--store-line);line-height:1.65}
   .policy-page__body :global(h2){margin:1.5rem 0 .5rem;font-size:1.3rem;letter-spacing:-.02em}
   .policy-page__body :global(h2:first-child){margin-top:0}
   .policy-page__body :global(p){margin:0 0 1rem;color:var(--store-ink)}
   .policy-card__unset{margin:0;padding:.9rem 1rem;border:1px dashed var(--store-line);border-radius:var(--store-radius-pill);color:var(--store-muted)}
-  @media(max-width:52rem){.policy-shell{grid-template-columns:1fr}.policy-page dl{grid-template-columns:1fr;gap:.25rem}}
+  @media(max-width:52rem){.policy-shell{grid-template-columns:1fr}}
 </style>

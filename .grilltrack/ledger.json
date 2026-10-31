@@ -3733,6 +3733,20 @@
           "review_source_identity": null,
           "to": "verified",
           "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/VERIFIER-OWNER-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/owner-pass-after.log;file:runs/structured-data-policy-feed-035-runs/owner-pass-pnpm-verify.log"
+        },
+        {
+          "at": "2026-10-31T21:11:42+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "verified",
+          "implementation_ref": "file:src/pages/products/[id].astro;file:tests/e2e/product-pages.spec.ts;file:tests/e2e/structured-data-policy-feed.spec.ts",
+          "note": "Ronald, 31 Oct 2026 (\"What I recommend \u2014 agreed\"): the policy pages show their own EmDash text, with no Commerce policy facts; product JSON-LD and feeds carry over unchanged.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/VARIANT-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/variant-after-rerun.log;file:runs/structured-data-policy-feed-035-runs/variant-pnpm-verify.log"
         }
       ],
       "id": "structured-data-policy-feed-035",
@@ -3791,9 +3805,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "verified",
-      "superseded_by": null,
-      "updated_at": "2026-10-21T01:11:59+00:00",
+      "status": "superseded",
+      "superseded_by": "policy-pages-content-20261031",
+      "updated_at": "2026-10-31T21:11:42+00:00",
       "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/VARIANT-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/variant-after-rerun.log;file:runs/structured-data-policy-feed-035-runs/variant-pnpm-verify.log"
     },
     {
@@ -5448,6 +5462,75 @@
       "superseded_by": null,
       "updated_at": "2026-10-31T21:02:29+00:00",
       "verification_ref": "file:.grilltrack/proof/playground-commerce-in-store-20261031/PROOF.md"
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+      "context_ref": "thread:policy-pages-20261031",
+      "created_at": "2026-10-31T21:11:42+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T21:11:42+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T21:11:42+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T21:11:42+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "implemented",
+          "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "policy-pages-content-20261031",
+      "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u",
+      "question": "How will the starter publish truthful product metadata, store policies and feeds, now that a store's policies are its EmDash pages?",
+      "rationale": "Ronald, 31 Oct 2026, on the recommendation: \"What I recommend \u2014 agreed\"; earlier: \"The page would always show its EmDash text \u2014 I think this was my intended design.\" Commerce keeps no policy records (Commerce policy-pages-are-content-20261031). Google reads a store-wide return policy from merchantReturnLink alone, and Search Console and Merchant Center settings take precedence over markup.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T21:11:42+00:00",
+      "verification_ref": "file:.grilltrack/proof/policy-pages-content-20261031/PROOF.md"
     }
   ],
   "last_activation": {
@@ -5470,5 +5553,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-31T21:02:29+00:00"
+  "updated_at": "2026-10-31T21:11:42+00:00"
 }

@@ -5,19 +5,8 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   buildProductJsonLd,
   buildProductPreviewJsonLd,
-  type StructuredPoliciesInput,
-  type StructuredReturnPolicy,
-  type StructuredShippingPolicy,
 } from "../../.artifacts/source-deps/commerce/src/features/structured-data/index.ts";
 import { COMMERCE_API, catalogOp, listCatalog, openProductsList, setStockStatus } from "./helpers/product-page";
-
-const RETURN_CATEGORIES = ["MerchantReturnFiniteReturnWindow", "MerchantReturnNotPermitted", "MerchantReturnUnlimitedWindow"] as const;
-const RETURN_METHODS = ["ReturnByMail", "ReturnInStore", "ReturnAtKiosk"] as const;
-const RETURN_FEES = ["FreeReturn", "ReturnFeesCustomerResponsibility", "ReturnShippingFees"] as const;
-
-function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
-  return value && (allowed as readonly string[]).includes(value) ? value as T : undefined;
-}
 
 const HOSTILE = "</script><script>alert(1)</script>";
 const SHIRT_GTIN = "4006381333931";
@@ -53,50 +42,29 @@ async function productScript(page: Page): Promise<Record<string, unknown>> {
   return JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "") as Record<string, unknown>;
 }
 
-async function policyInput(page: Page): Promise<StructuredPoliciesInput> {
+/**
+ * The policy pages are EmDash content and always show their own text; the published returns page names itself as
+ * the store's return policy by link only (GrillTrack policy-pages-content-20261031).
+ */
+async function expectPolicyPages(page: Page): Promise<void> {
   await page.goto("/shipping");
-  const shippingNode = page.locator("[data-shipping-policy]");
-  let shipping: StructuredShippingPolicy | null = null;
-  if (await shippingNode.count()) {
-    const mode = await shippingNode.getAttribute("data-shipping-mode");
-    const configurationId = await shippingNode.getAttribute("data-shipping-configuration-id");
-    if ((mode === "free" || mode === "flat") && configurationId) {
-      const minor = await shippingNode.getAttribute("data-shipping-minor");
-      const countries = await shippingNode.getAttribute("data-shipping-countries");
-      const handlingMin = await shippingNode.getAttribute("data-handling-min");
-      const handlingMax = await shippingNode.getAttribute("data-handling-max");
-      const transitMin = await shippingNode.getAttribute("data-transit-min");
-      const transitMax = await shippingNode.getAttribute("data-transit-max");
-      shipping = {
-        revision: Number(await shippingNode.getAttribute("data-policy-revision")),
-        configurationId,
-        mode,
-        ...(minor ? { amount: { currency: "USD" as const, minor } } : {}),
-        ...(countries ? { shippingDestinationCountries: countries.split(",") } : {}),
-        ...(handlingMin && handlingMax ? { handlingTimeDays: { min: Number(handlingMin), max: Number(handlingMax) } } : {}),
-        ...(transitMin && transitMax ? { transitTimeDays: { min: Number(transitMin), max: Number(transitMax) } } : {}),
-      };
-    }
-  }
+  await expect(page.locator("[data-shipping-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-shipping-policy-unset]")).toHaveCount(0);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/u);
   await page.goto("/returns");
-  const returnNode = page.locator("[data-return-policy]");
-  let returns: StructuredReturnPolicy | null = null;
-  if (await returnNode.count()) {
-    const category = oneOf(await returnNode.getAttribute("data-return-category"), RETURN_CATEGORIES);
-    const method = oneOf(await returnNode.getAttribute("data-return-method"), RETURN_METHODS);
-    const fees = oneOf(await returnNode.getAttribute("data-return-fees"), RETURN_FEES);
-    const countries = await returnNode.getAttribute("data-return-countries");
-    const days = await returnNode.getAttribute("data-return-days");
-    returns = {
-      revision: Number(await returnNode.getAttribute("data-policy-revision")),
-      ...(countries ? { applicableCountry: countries.split(",") } : {}),
-      ...(category ? { returnPolicyCategory: category } : {}),
-      ...(days ? { merchantReturnDays: Number(days) } : {}),
-      ...(method ? { returnMethod: method } : {}),
-      ...(fees ? { returnFees: fees } : {}),
-    };
-  }
-  return { ...(shipping ? { shipping } : {}), ...(returns ? { returns } : {}) };
+  await expect(page.locator("[data-return-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-return-policy-unset]")).toHaveCount(0);
+  const returnsCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
+  const storePolicy = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "") as Record<string, unknown>;
+  expect(storePolicy).toEqual({
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    name: expect.any(String),
+    url: new URL("/", returnsCanonical ?? "").href,
+    hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", merchantReturnLink: returnsCanonical },
+  });
 }
 
 test("published Commerce products, policies, and feeds share one public revision", async ({ page, request, browser }, testInfo) => {
@@ -125,18 +93,7 @@ test("published Commerce products, policies, and feeds share one public revision
     const mugId = await catalogId(admin, "DEMO-HOSTED-MUG");
     const hoodieId = await catalogId(admin, "DEMO-HOSTED-HOODIE-S");
 
-    await page.goto("/shipping");
-    const shippingAlreadySet = await page.locator("[data-shipping-policy]").count();
-    if (shippingAlreadySet === 0) {
-      await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
-      await expect(page.locator("[data-policy-body]")).toHaveCount(0);
-      await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/u);
-    }
-    await page.goto("/returns");
-    if (await page.locator("[data-return-policy]").count() === 0) {
-      await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
-      await expect(page.locator("[data-policy-body]")).toHaveCount(0);
-    }
+    await expectPolicyPages(page);
 
     await page.goto("/products/demo-shirt");
     await expect(page.locator("h1")).toHaveText("Dinkus Demo Heavyweight T-Shirt");
@@ -146,8 +103,6 @@ test("published Commerce products, policies, and feeds share one public revision
     await expect(page.locator("[data-product-status]")).toHaveText("In stock");
     const canonical = await page.locator('link[rel="canonical"]').getAttribute("href");
     expect(new URL(canonical ?? "").pathname).toBe("/products/demo-shirt");
-    const initialPolicies = await policyInput(page);
-    await page.goto("/products/demo-shirt");
     const initialScript = await productScript(page);
     const description = await page.locator(".product-detail__description").innerText();
     expect(initialScript).toEqual(buildProductJsonLd({
@@ -163,8 +118,8 @@ test("published Commerce products, policies, and feeds share one public revision
         name: await page.locator("h1").innerText(),
         ...(description ? { description } : {}),
       },
-      ...(initialPolicies.shipping || initialPolicies.returns ? { policies: initialPolicies } : {}),
     }));
+    expect(JSON.stringify(initialScript)).not.toMatch(/hasMerchantReturnPolicy|shippingDetails/u);
     expect(initialScript).not.toHaveProperty("inventoryLevel");
     expect(JSON.stringify(initialScript)).not.toContain("8 available");
     expect((initialScript.offers as { url?: string }).url).toBe(canonical);
@@ -268,29 +223,12 @@ test("published Commerce products, policies, and feeds share one public revision
     }, { timeout: 20_000 }).toBe(originalDescription);
     originalDescription = undefined;
 
-    // Store policies on the installed Commerce (the Registry build): its public `policies/public` route
-    // answers, and the pages and JSON-LD say truthfully what it holds. The Registry build has no route that
-    // writes a policy (the native copy's settings/shipping-policy and settings/return-policy were never
-    // ported), so this store cannot set one; the pages stay in their unset state and the product's JSON-LD
-    // carries no policies. Policy writing returns with Commerce's own policy editing.
-    for (const route of ["settings/shipping-policy", "settings/return-policy"]) {
-      const answer = await admin.request.post(`${COMMERCE_API}/${route}`, { headers: { "X-EmDash-Request": "1" }, data: {} });
-      // EmDash's sandbox answers a route the installed plugin does not declare with 400 ROUTE_ERROR "Route not found".
-      expect(answer.ok(), route).toBe(false);
-      expect(await answer.text(), route).toMatch(/Route not found|NOT_FOUND|ROUTE_NOT_FOUND/u);
-    }
-    const publicPolicies = await request.get(`${COMMERCE_API}/policies/public`);
-    expect(publicPolicies.ok(), await publicPolicies.text()).toBe(true);
+    // The store's policies are its EmDash pages; the product's JSON-LD carries no shipping or return terms.
+    await expectPolicyPages(page);
     await page.goto("/shipping");
-    await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
-    await expect(page.locator("[data-policy-body]")).toHaveCount(0);
     await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
     await page.goto("/returns");
-    await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
-    await expect(page.locator("[data-policy-body]")).toHaveCount(0);
     await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
-    const policies = await policyInput(page);
-    expect(policies).toEqual({});
     await page.goto("/products/demo-shirt");
     const shirtCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
     const script = await productScript(page);

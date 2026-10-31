@@ -12,8 +12,6 @@ import { productDetailComponents } from "../../features/store-shell/blocks/index
 import UnknownBlock from "../../features/store-shell/blocks/UnknownBlock.astro";
 import { legacyPortableTextComponents } from "../../features/store-shell/portable-text/index.js";
 import { readInstalledCommerceProduct, readInstalledCommerceProductByPage } from "../../features/commerce-catalog/installed.js";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
-import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
 import {
   buildProductJsonLd,
   buildProductPreviewJsonLd,
@@ -151,12 +149,6 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
 } as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
-const policies = linkedProduct
-  ? await readInstalledCommercePolicies(
-    { runtime: Astro.locals.emdash, request: Astro.request },
-    COMMERCE_REGISTRY_RUNTIME_ID,
-  ).catch(() => null)
-  : null;
 const productCanonical = item
   ? canonicalUrl(`/products/${item.id}`, Astro.site, Astro.url)
   : "";
@@ -183,7 +175,8 @@ const linkedProductJsonLd = (variant: (typeof variants)[number] | null) => {
       name: productName,
       ...(item.description ? { description: item.description } : {}),
     },
-    ...(policies ? { policies } : {}),
+    // No shipping or return terms: the store's policies are its EmDash pages, and structured terms are deferred
+    // (GrillTrack policy-pages-content-20261031).
   });
 };
 // Editorial pages use the preview builder. Unavailable routes emit no data.

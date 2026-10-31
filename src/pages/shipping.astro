@@ -3,27 +3,22 @@ import { getEmDashEntry, getSection, type PortableTextBlock } from "emdash";
 import { PortableText } from "emdash/ui";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import StoreFooter from "../features/store-shell/StoreFooter.astro";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../features/guest-cart/checkout-protocol.js";
-import { readInstalledCommercePolicies } from "../features/commerce-policies/index.js";
 import {
   POLICY_SUPPORT_SECTION_SLUG,
   STORE_TITLE,
-  formatUsdMinor,
   readStorefrontProfile,
 } from "../features/store-shell/index.js";
 import { legacyPortableTextComponents } from "../features/store-shell/portable-text/index.js";
 import { canonicalUrl } from "../features/store-shell/structured-data.js";
 import "../features/store-shell/global.css";
 
+// The shipping policy is this EmDash page, written by the merchant; it always shows its own text
+// (GrillTrack policy-pages-content-20261031). The charge for an order is Commerce's, shown at checkout.
 const { entry } = await getEmDashEntry("pages", "shipping");
 const supportSection = await getSection(POLICY_SUPPORT_SECTION_SLUG).catch(() => null);
 const profile = readStorefrontProfile();
-const policies = await readInstalledCommercePolicies(
-  { runtime: Astro.locals.emdash, request: Astro.request },
-  COMMERCE_REGISTRY_RUNTIME_ID,
-).catch(() => null);
-const shipping = policies?.shipping ?? null;
 const content = Array.isArray(entry?.data?.content) ? (entry.data.content as PortableTextBlock[]) : [];
+const intro = (entry?.data as { intro?: string } | undefined)?.intro;
 const canonical = canonicalUrl("/shipping", Astro.site, Astro.url);
 ---
 <!doctype html>
@@ -48,8 +43,8 @@ const canonical = canonicalUrl("/shipping", Astro.site, Astro.url);
               <PortableText value={supportSection.content} />
             ) : (
               <>
-                <h3>Policy provenance</h3>
-                <p>Authoritative shipping charges, handling windows, and return eligibility come directly from the connected Commerce store.</p>
+                <h3>About these policies</h3>
+                <p>This store writes its shipping and returns policies on these pages. The shipping charge for an order is shown at checkout.</p>
               </>
             )}
           </div>
@@ -58,22 +53,12 @@ const canonical = canonicalUrl("/shipping", Astro.site, Astro.url);
         <section class="policy-card" aria-labelledby="shipping-policy-heading">
           <p class="policy-card__kicker">Store policy</p>
           <h1 id="shipping-policy-heading">{entry?.data?.title ?? "Shipping"}</h1>
-          <p class="policy-card__intro">{(entry?.data as { intro?: string } | undefined)?.intro ?? "Shipping details are configured by the connected Commerce store."}</p>
-          {shipping ? (
-            <>
-              <dl data-shipping-policy data-policy-revision={shipping.revision} data-shipping-configuration-id={shipping.configurationId} data-shipping-mode={shipping.mode} data-shipping-minor={shipping.amount?.minor} data-shipping-countries={shipping.shippingDestinationCountries?.join(",")} data-handling-min={shipping.handlingTimeDays?.min} data-handling-max={shipping.handlingTimeDays?.max} data-transit-min={shipping.transitTimeDays?.min} data-transit-max={shipping.transitTimeDays?.max}>
-                <dt>Shipping charge</dt><dd>{shipping.mode === "free" ? "Free shipping" : shipping.amount ? formatUsdMinor(shipping.amount.minor) : "Configured shipping charge"}</dd>
-                {shipping.shippingDestinationCountries && <><dt>Ships to</dt><dd>{shipping.shippingDestinationCountries.join(", ")}</dd></>}
-                {shipping.handlingTimeDays && <><dt>Handling time</dt><dd>{shipping.handlingTimeDays.min}–{shipping.handlingTimeDays.max} days</dd></>}
-                {shipping.transitTimeDays && <><dt>Transit time</dt><dd>{shipping.transitTimeDays.min}–{shipping.transitTimeDays.max} days</dd></>}
-              </dl>
-              {content.length > 0 && (
-                <div class="policy-page__body prose" data-policy-body data-shipping-policy-body>
-                  <PortableText value={content} components={legacyPortableTextComponents} />
-                </div>
-              )}
-            </>
-          ) : <p class="policy-card__unset" role="status" data-shipping-policy-unset>Shipping policy is not configured.</p>}
+          {intro && <p class="policy-card__intro">{intro}</p>}
+          {content.length > 0 ? (
+            <div class="policy-page__body prose" data-policy-body data-shipping-policy-body>
+              <PortableText value={content} components={legacyPortableTextComponents} />
+            </div>
+          ) : <p class="policy-card__unset" role="status" data-shipping-policy-unset>This store has not published its shipping policy yet.</p>}
         </section>
       </div>
     </main>
@@ -95,13 +80,10 @@ const canonical = canonicalUrl("/shipping", Astro.site, Astro.url);
   .policy-card__kicker{margin:0 0 .35rem;color:var(--store-accent);font-family:var(--font-mono);font-size:.75rem;font-weight:800;letter-spacing:.12em}
   .policy-card h1{margin:0 0 .75rem;font-size:clamp(2.1rem,5vw,3.4rem);line-height:1.02;letter-spacing:-.045em}
   .policy-card__intro{margin:0 0 1.5rem;color:var(--store-muted)}
-  .policy-page dl{display:grid;grid-template-columns:minmax(10rem,1fr) 2fr;gap:.65rem 1.25rem;margin:0;padding-top:1rem;border-top:1px solid var(--store-line)}
-  .policy-page dt{font-weight:800;color:var(--store-muted)}
-  .policy-page dd{margin:0;font-family:var(--font-mono);font-weight:700}
   .policy-page__body{margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid var(--store-line);line-height:1.65}
   .policy-page__body :global(h2){margin:1.5rem 0 .5rem;font-size:1.3rem;letter-spacing:-.02em}
   .policy-page__body :global(h2:first-child){margin-top:0}
   .policy-page__body :global(p){margin:0 0 1rem;color:var(--store-ink)}
   .policy-card__unset{margin:0;padding:.9rem 1rem;border:1px dashed var(--store-line);border-radius:var(--store-radius-pill);color:var(--store-muted)}
-  @media(max-width:52rem){.policy-shell{grid-template-columns:1fr}.policy-page dl{grid-template-columns:1fr;gap:.25rem}}
+  @media(max-width:52rem){.policy-shell{grid-template-columns:1fr}}
 </style>

@@ -3,8 +3,6 @@ import StoreFooter from "../../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { GuestCheckout } from "../../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
-import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import SandboxCheckoutNotice from "../../features/playground-checkout/SandboxCheckoutNotice.astro";
 import { isCheckoutEnabled, playgroundCheckoutAdmission, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
@@ -26,13 +24,9 @@ const sandboxCheckout = showsSandboxCheckoutNotice(gate);
 // Only a configured playground session admits checkout; everything else stays closed.
 const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)));
 const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
-const installedPolicies = isPlayground
-  ? null
-  : await readInstalledCommercePolicies(
-      { runtime: Astro.locals.emdash, request: Astro.request },
-      COMMERCE_REGISTRY_RUNTIME_ID,
-    ).catch(() => null);
-const shipping = isPlayground ? PLAYGROUND_FLAT_RATE_SHIPPING : installedPolicies?.shipping ?? null;
+// The playground shows its flat rate before checkout starts; elsewhere Commerce prices shipping when checkout
+// starts (Commerce keeps no policy records: GrillTrack policy-pages-content-20261031).
+const shipping = isPlayground ? PLAYGROUND_FLAT_RATE_SHIPPING : null;
 const shippingMode = shipping?.mode === "flat" || shipping?.mode === "free" ? shipping.mode : null;
 const shippingMinor = shipping?.amount?.minor ?? null;
 ---
