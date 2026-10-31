@@ -22,8 +22,8 @@
     "playgroundPlugins": {
       "payments": {
         "repository": "https://github.com/dinkuskit/payments.git",
-        "tag": "v0.4.0",
-        "commit": "82c19d0d347d2c78a8e44dd2a3b2f00e530beb84"
+        "tag": "v0.5.0",
+        "commit": "4589ac818017b5a65cdde29a60aaec23aca5f795"
       },
       "ship": {
         "repository": "https://github.com/dinkuskit/ship.git",
