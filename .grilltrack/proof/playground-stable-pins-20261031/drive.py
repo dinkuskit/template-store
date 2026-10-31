@@ -24,7 +24,7 @@ def show(blocks, depth=0):
         t = b.get("type"); txt = b.get("text") or b.get("title") or b.get("label") or ""
         extra = b.get("description") or ""
         acts = [(e.get("label"), e.get("action_id"), e.get("value"), e.get("url")) for e in b.get("elements", []) if isinstance(e, dict)]
-        print("  " * depth + f"- {t}: {txt} {('| ' + extra) if extra else ''} {acts if acts else ''}"[:400])
+        print(("  " * depth + f"- {t}: {txt} {('| ' + extra) if extra else ''} {acts if acts else ''}"[:400]).rstrip())
         if b.get("fields"): print("  " * depth + "  fields:", json.dumps(b["fields"])[:1200])
         if b.get("rows"): print("  " * depth + "  rows:", json.dumps(b["rows"])[:500])
         if b.get("submit"): print("  " * depth + "  form submit:", json.dumps(b.get("submit"))[:200])
@@ -39,7 +39,7 @@ elif cmd == "admin":
     print("HTTP", s)
     try:
         d = json.loads(t); data = d.get("data", d)
-        show(data.get("blocks", [])); 
+        show(data.get("blocks", []))
         for k in data:
             if k != "blocks": print(" ", k, json.dumps(data[k])[:300])
     except Exception: print(t[:800])

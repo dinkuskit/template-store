@@ -1,22 +1,22 @@
 ### new build, same visitor store: tour card before any action
-- banner: This is your own store to play with | Nobody else sees it, nothing here costs anything, and it all resets when your playground session ends. Follow the steps; each one ticks itself off when you do it. 
-- meter: 3 of 4 steps done  
+- banner: This is your own store to play with | Nobody else sees it, nothing here costs anything, and it all resets when your playground session ends. Follow the steps; each one ticks itself off when you do it.
+- meter: 3 of 4 steps done
 ### new build: Payments page load (no reconnect)
-- header: Payment setup  
-- banner: Connected: Stripe test mode | Shoppers can pay with Stripe test cards. Real customer payments need a live Stripe connection. 
-- section: Connect payments: Connected: Stripe test mode. Test card payments work at checkout. Real customer payments need a live Stripe connection, which isn't set up yet.  
-- section: Place a test order: Not complete. Place an order on your store and pay with a Stripe test card. This step completes when Stripe confirms the payment and Commerce saves the order.  
+- header: Payment setup
+- banner: Connected: Stripe test mode | Shoppers can pay with Stripe test cards. Real customer payments need a live Stripe connection.
+- section: Connect payments: Connected: Stripe test mode. Test card payments work at checkout. Real customer payments need a live Stripe connection, which isn't set up yet.
+- section: Place a test order: Not complete. Place an order on your store and pay with a Stripe test card. This step completes when Stripe confirms the payment and Commerce saves the order.
 - actions:   [('Check connection', 'check', None, None), ('Reconnect', 'connect', None, None), ('Check provider identity', 'check_provider_identity', None, None)]
 ### new build: Payments Check connection
-- header: Payment setup  
-- banner: Connected: Stripe test mode | Shoppers can pay with Stripe test cards. Real customer payments need a live Stripe connection. 
-- section: Connect payments: Connected: Stripe test mode. Test card payments work at checkout. Real customer payments need a live Stripe connection, which isn't set up yet.  
+- header: Payment setup
+- banner: Connected: Stripe test mode | Shoppers can pay with Stripe test cards. Real customer payments need a live Stripe connection.
+- section: Connect payments: Connected: Stripe test mode. Test card payments work at checkout. Real customer payments need a live Stripe connection, which isn't set up yet.
 ### new build: Ship page load (no reconnect)
-- header: Shipments  
-- banner: Pitney Bowes is not connected | Real orders need your own Pitney Bowes postage account, connected in Ship Settings. TEST orders get free sandbox or practice labels either way. 
-- table:   
+- header: Shipments
+- banner: Pitney Bowes is not connected | Real orders need your own Pitney Bowes postage account, connected in Ship Settings. TEST orders get free sandbox or practice labels either way.
+- table:
   rows: [{"order": "#1004 (TEST)", "to": "Sam Okafor, 88 Pine Street, Knoxville, TN 37902", "items": "1 \u00d7 Dinkus Demo Everyday Hoodie, 2 \u00d7 Dinkus Demo Structured Cap", "status": "Label bought", "open": {"type": "button", "label": "Open", "action_id": "open", "value": "playground-sample-paid", "style": "secondary"}}, {"order": "#1003 (TEST)", "to": "Jordan Rivers, 214 Laurel Ave, Asheville, NC 28801", "items": "1 \u00d7 Dinkus Demo Heavyweight T-Shirt, 1 \u00d7 Dinkus Demo Ceramic Mug", "status
-- context: Refunds, label history, Settings and your Pitney Bowes account are on Ship's own page.  
+- context: Refunds, label history, Settings and your Pitney Bowes account are on Ship's own page.
 ### new build: open the labelled order
   fields: [{"label": "Ship to", "value": "Sam Okafor, 88 Pine Street, Knoxville, TN 37902"}, {"label": "Items", "value": "1 \u00d7 Dinkus Demo Everyday Hoodie, 2 \u00d7 Dinkus Demo Structured Cap"}, {"label": "Items' weight", "value": "24 oz"}, {"label": "Status", "value": "Label bought"}]
   fields: [{"label": "Service", "value": "USPS Ground Advantage"}, {"label": "Tracking number", "value": "TEST979503883 (test, not trackable)"}, {"label": "Box", "value": "Small box: 9 \u00d7 6 \u00d7 3 in"}, {"label": "Weight", "value": "28 oz"}, {"label": "Postage", "value": "Free practice label, no postage"}, {"label": "Bought", "value": "2026-10-31 13:39"}]
