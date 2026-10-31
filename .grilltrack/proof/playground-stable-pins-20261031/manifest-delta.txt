@@ -1,0 +1,8 @@
+== payments 0.4.0 -> 0.5.0
+ changed: admin
+   old: {"settingsSchema": {"registry_session": {"label": "Payments Registry session", "description": "Encrypted Payments Connect session and this plugin's DinkusKit store key. Managed by Connect; don't change it here.", "type": "secret"}}, "pages": [{"path": "/status", "label": "Payments status", "icon": "activity"}], "widgets": []}
+   new: {"settingsSchema": {"registry_session": {"label": "Payments Registry session", "description": "Encrypted Payments Connect session and this plugin's DinkusKit store key. Managed by Connect; don't change it here.", "type": "secret"}}, "pages": [{"path": "/status", "label": "Payment settings", "icon": "activity", "group": "Dinkus Payments"}], "widgets": []}
+== ship 0.3.0 -> 0.3.1
+ changed: admin
+   old: {"settingsSchema": {"connection": {"label": "DinkusKit connection", "description": "Encrypted Store ID and this plugin's own DinkusKit store key. Managed by Connect on the Shipping page; don't change it here.", "type": "secret"}}, "pages": [{"path": "/shipping", "label": "Shipping", "icon": "truck"}], "widgets": []}
+   new: {"settingsSchema": {"connection": {"label": "DinkusKit connection", "description": "Encrypted Store ID and this plugin's own DinkusKit store key. Managed by Connect on the Shipping page; don't change it here.", "type": "secret"}}, "pages": [{"path": "/shipping", "label": "Shipments", "icon": "truck", "group": "Dinkus Ship"}], "widgets": []}

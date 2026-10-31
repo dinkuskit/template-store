@@ -1,0 +1,25 @@
+### old build: Payments Continue
+- header: Payment setup  
+- banner: Connected: Stripe test mode | Shoppers can pay with Stripe test cards. Real customer payments need a live Stripe connection. 
+- section: Connect payments: Connected: Stripe test mode. Test card payments work at checkout. Real customer payments need a live Stripe connection, which isn't set up yet.  
+### old build: Ship page
+- header: Shipping  
+- banner: Connect Ship | Connect this plugin to DinkusKit.com so it can buy labels through Ship. Commerce connects first; the business owner approves at DinkusKit.com. 
+- actions:   [('Connect', 'connect', None, None), ('DinkusKit.com', None, None, None)]
+### old build: Ship Connect
+- header: Shipping  
+- banner: Approve at DinkusKit.com | The business owner opens this link, signs in to DinkusKit.com and presses Approve. Anyone helping can send the owner the same link. 
+- actions:   [('Approve at DinkusKit.com', None, None, None), ('Check', 'check', None, None), ('Cancel', 'cancel_connect', None, None)]
+### old build: Ship Check
+- header: Shipping  
+- banner: Pitney Bowes is not connected | Real orders need your own Pitney Bowes postage account, connected in Ship Settings. TEST orders get free sandbox or practice labels either way. 
+- table:   
+  rows: [{"order": "#1004 (TEST)", "to": "Sam Okafor, 88 Pine Street, Knoxville, TN 37902", "items": "1 \u00d7 Dinkus Demo Everyday Hoodie, 2 \u00d7 Dinkus Demo Structured Cap", "status": "No label", "open": {"type": "button", "label": "Open", "action_id": "open", "value": "playground-sample-paid", "style": "primary"}}, {"order": "#1003 (TEST)", "to": "Jordan Rivers, 214 Laurel Ave, Asheville, NC 28801", "items": "1 \u00d7 Dinkus Demo Heavyweight T-Shirt, 1 \u00d7 Dinkus Demo Ceramic Mug", "status": "La
+- context: Refunds, label history, Settings and your Pitney Bowes account are on Ship's own page.  
+### old build: practice label
+  fields: [{"label": "Ship to", "value": "Sam Okafor, 88 Pine Street, Knoxville, TN 37902"}, {"label": "Items", "value": "1 \u00d7 Dinkus Demo Everyday Hoodie, 2 \u00d7 Dinkus Demo Structured Cap"}, {"label": "Items' weight", "value": "24 oz"}, {"label": "Status", "value": "Label bought"}]
+  fields: [{"label": "Service", "value": "USPS Ground Advantage"}, {"label": "Tracking number", "value": "TEST979503883 (test, not trackable)"}, {"label": "Box", "value": "Small box: 9 \u00d7 6 \u00d7 3 in"}, {"label": "Weight", "value": "28 oz"}, {"label": "Postage", "value": "Free practice label, no postage"}, {"label": "Bought", "value": "2026-10-31 13:39"}]
+  toast {"type": "success", "message": "Practice label made."}
+### old build: tour card
+- banner: Done: Connect Payments, Look at your shop, Ship an order ✓ | Nice work. Next: Edit a product. 
+- meter: 3 of 4 steps done  
