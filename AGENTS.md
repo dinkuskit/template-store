@@ -52,6 +52,13 @@ outputs must be original and public-safe.
   consume actual registry-installed Commerce through supported public surfaces;
   native registration or direct storage access is not equivalent without proof
   of matching plugin identity, storage and route authority.
+- Commerce runs one build here, the Registry (sandboxed) one, everywhere
+  (GrillTrack `template-one-build-registry-20261031`): local dev, the hosted
+  demo and the browser tests mount the pinned Commerce's Registry bundle through
+  EmDash's `sandboxed: [...]` (`scripts/lib/paired-commerce.mjs`,
+  `DINKUS_PAIRED_COMMERCE_DIR`). Commerce's native copy and
+  `DINKUS_CATALOG_PROFILE=native-development` are retired; only the playground
+  still runs the native copy until its own switch to the Registry build.
 - The authorized guest-cart extension consumes Commerce authority. Browser
   identity/quantity persistence is untrusted intent/cache, never a price, stock,
   checkout or order backend. Guest checkout and return states depend on the
@@ -86,15 +93,18 @@ Establish a fast baseline and iterate with `bin/verify-web quick` (~15s) plus
 targeted Playwright specs (`pnpm exec playwright test <spec> --project=chromium-desktop`)
 before running the full suite. Run `pnpm verify` (`bin/verify-web full`, ~10m)
 once before closeout after targeted checks pass. Browser proof must exercise desktop Chromium
-and a mobile viewport. The explicit development integration profile observes the managed `8 -> 5 -> 8` Inventory sequence,
-and observe unmanaged manual availability cycle through in-stock, out-of-stock,
-and available-on-backorder without showing a quantity. The default shipping
-profile must prove the installed Commerce public catalog path without a native
-plugin mount, Inventory configuration/network, or proof adapter bootstrap.
-Without a paired installed artifact the catalog fail-closes and invents no
-products. Native Products admin-to-storefront remains the explicit
-`native-development` proof profile. Source-pilot checks
-do not establish released artifact, registry, checkout, or Cloudflare readiness.
+and a mobile viewport. The proof store runs the pinned Commerce's Registry
+build (`pnpm prepare:commerce` first; `bin/verify-web` does it): its product
+checks go through Commerce's own routes (the product panel, the private
+`catalog` route, `catalog-items/set-on-sale`, the public reads). The explicit
+development integration profile observes the managed `8 -> 5 -> 8` Inventory
+sequence, and observe unmanaged manual availability cycle through in-stock,
+out-of-stock, and available-on-backorder without showing a quantity. The
+default shipping profile must prove the installed Commerce public catalog path
+with no Commerce mounted at all, no Inventory configuration/network, and no
+proof adapter bootstrap. Without a paired installed artifact the catalog
+fail-closes and invents no products. Source-pilot checks do not establish
+released artifact, registry, checkout, or Cloudflare readiness.
 
 ## Gates
 

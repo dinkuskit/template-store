@@ -54,8 +54,11 @@ export function buildDemoProductEntries(links: readonly DemoCatalogLink[]) {
 }
 
 
-/** The synthetic demo profile only; a shipping store never matches. */
+/**
+ * The synthetic demo store: the proof storefront profile (pnpm dev:fresh and the proof store
+ * the browser tests use), which runs the paired Commerce Registry build and seeds the demo catalog through it
+ * (template-one-build-registry-20261031). A shipping store never matches.
+ */
 export function isDemoCatalogProfile(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.DINKUS_CATALOG_PROFILE === "native-development" &&
-    env.DINKUS_STOREFRONT_PROFILE === "proof";
+  return env.DINKUS_STOREFRONT_PROFILE === "proof" && env.DINKUS_CATALOG_PROFILE !== "native-development";
 }

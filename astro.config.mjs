@@ -1,17 +1,16 @@
-import { resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import cloudflare from "@astrojs/cloudflare";
 import node from "@astrojs/node";
 import react from "@astrojs/react";
 import { defineConfig } from "astro/config";
-import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
 import emdash, { local } from "emdash/astro";
 import { sqlite } from "emdash/db";
 import { access, d1, r2, sandbox } from "@emdash-cms/cloudflare";
 import { unstable_readConfig } from "wrangler";
 import { selectedRegistryAccessOptions } from "./scripts/registry-access.mjs";
-import { selectedRegistrySandboxRunner } from "./scripts/registry-sandbox.mjs";
+import { registrySandboxRunner, selectedRegistrySandboxRunner } from "./scripts/registry-sandbox.mjs";
+import { pairedCommerceDescriptor, pairedCommercePin, pairedCommerceProfile, resolvePairedCommerceDir } from "./scripts/lib/paired-commerce.mjs";
 
 import { commerceProfile, commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
 
@@ -21,9 +20,6 @@ const isCloudflare =
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
-);
-const playgroundCommerceEntry = fileURLToPath(
-  new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
 );
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
@@ -42,38 +38,46 @@ const viteCacheDir = artifactSlotMatch
   ? `.artifacts/${artifactSlotMatch[1]}/vite-cache`
   : "node_modules/.vite";
 
-const enableLocalStockManagement =
-  !isCloudflare &&
-  process.env.DINKUS_PROOF_MODE === "1" &&
-  process.env.DINKUS_STOREFRONT_PROFILE === "proof";
-
 const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
 
-// Proof only: a local store that installs a built Commerce Registry bundle the way a Registry store does,
-// under the selected profile's runtime id (scripts/verify-paired-product-on-sale.mjs).
-const pairedCommerceDir = !isCloudflare && process.env.DINKUS_PAIRED_COMMERCE_DIR;
+// Commerce runs one build, the Registry (sandboxed) one, everywhere (template-one-build-registry-20261031).
+// The native copy's development profile is gone with it.
+if (process.env.DINKUS_CATALOG_PROFILE === "native-development") {
+  throw new Error(
+    "DINKUS_CATALOG_PROFILE=native-development is retired: the store runs Commerce's Registry build " +
+    "(pnpm prepare:commerce, or DINKUS_PAIRED_COMMERCE_DIR for a Commerce checkout you are building). Unset it.",
+  );
+}
+// The Commerce this store mounts the way a Registry store installs it: the pin's Registry build, or the
+// checkout a developer is building (scripts/lib/paired-commerce.mjs). A Registry store build mounts none;
+// its owner installs Commerce from the Registry.
+const pairedCommerceDir = resolvePairedCommerceDir(process.env);
+// The build's package names the runtime id: a pre-release pin is the beta package, a release the stable one.
+if (pairedCommerceDir && !process.env.DINKUS_COMMERCE_PROFILE) {
+  process.env.DINKUS_COMMERCE_PROFILE = pairedCommerceProfile(pairedCommercePin());
+}
 const pairedCommerce = pairedCommerceDir
-  ? {
-      ...(await import(pathToFileURL(resolve(pairedCommerceDir, "dist/sandbox/index.mjs")).href)).default,
-      id: commerceProfile(process.env.DINKUS_COMMERCE_PROFILE).runtimeId,
-      entrypoint: resolve(pairedCommerceDir, "dist/sandbox/plugin.mjs"),
-    }
+  ? await pairedCommerceDescriptor(pairedCommerceDir, commerceProfile(process.env.DINKUS_COMMERCE_PROFILE).runtimeId)
   : undefined;
 const accessOptions = selectedRegistryAccessOptions(process.env);
 
 // EmDash 1.4.0's sandbox() only reads the default Wrangler file. Keep a
-// dedicated deployment's runner aligned with the adapter's selected config.
+// dedicated deployment's runner aligned with the adapter's selected config, and
+// refuse to build a Worker that mounts Commerce without the Worker Loader it needs.
 function cloudflareSandbox() {
-  if (!process.env.DINKUS_WRANGLER_CONFIG) return sandbox();
+  const configPath = process.env.DINKUS_WRANGLER_CONFIG ?? "wrangler.jsonc";
   const config = unstable_readConfig({
-    config: process.env.DINKUS_WRANGLER_CONFIG,
+    config: configPath,
     ...(process.env.CLOUDFLARE_ENV ? { env: process.env.CLOUDFLARE_ENV } : {}),
   }, { hideWarnings: true });
   if (!config.worker_loaders?.some(({ binding }) => binding === "LOADER")) {
-    if (config.vars?.DINKUS_CATALOG_PROFILE === "native-development") return undefined;
-    throw new Error("The selected Cloudflare config must provide LOADER for Registry plugins.");
+    if (pairedCommerce) throw new Error(`${configPath} must bind LOADER (worker_loaders) to run the paired Commerce Registry build.`);
+    if (process.env.DINKUS_WRANGLER_CONFIG) throw new Error("The selected Cloudflare config must provide LOADER for Registry plugins.");
+    return sandbox();
   }
-  return selectedRegistrySandboxRunner(process.env) ?? "@emdash-cms/cloudflare/sandbox";
+  // Every Cloudflare host of the installed Commerce gets the Registry profile's subrequest budget
+  // (registry-sandbox-budget-002): the demo mounts the same plugin.
+  return selectedRegistrySandboxRunner(process.env) ?? (pairedCommerce ? registrySandboxRunner() : sandbox());
 }
 
 export default defineConfig({
@@ -100,23 +104,16 @@ export default defineConfig({
           }),
       ...(siteUrl ? { siteUrl } : {}),
       ...(accessOptions ? { auth: access(accessOptions) } : {}),
-      ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : {}),
-      ...(pairedCommerce ? { sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox", sandboxed: [pairedCommerce] } : {}),
+      // On Cloudflare the Worker Loader runs the installed plugins; on Node the workerd runner does, and
+      // astro dev hands them to Miniflare (EmDash's documented loop: build the plugin, run the site).
+      ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : pairedCommerce ? { sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox" } : {}),
+      ...(pairedCommerce ? { sandboxed: [pairedCommerce] } : {}),
       plugins: [
         {
           id: "dinkus-template-product-urls",
           version: "1.0.0",
           entrypoint: productUrlEntry,
         },
-        ...(process.env.DINKUS_CATALOG_PROFILE === "native-development" ? [
-          {
-            ...dinkusCommerce({
-              enableLocalStockManagement,
-              ...(siteUrl ? { siteUrl } : {}),
-            }),
-            entrypoint: playgroundCommerceEntry,
-          },
-        ] : []),
       ],
     }),
   ],

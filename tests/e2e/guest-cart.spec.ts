@@ -3,32 +3,13 @@ import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { expect, test, type APIResponse, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { GUEST_CART_STORAGE_KEY } from "../../src/features/guest-cart/index.js";
-import { openProductsList } from "./helpers/product-page";
-
-const CREATE_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/create";
-const LIST_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/list";
-const SAVE_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/save-prices";
-const STATUS_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/set-manual-availability";
+import { COMMERCE_SKU_INDEX, catalogOp, listCatalog, openProductsList, sellProduct, setStockStatus } from "./helpers/product-page";
 
 function inventoryishUrl(url: string): boolean {
   return /configure-inventory|@dinkuskit\/inventory|dinkuskit\.inventory|\/api\/proof\//iu.test(url);
-}
-
-function unwrap<T>(body: unknown): T {
-  if (typeof body === "object" && body !== null && "data" in body) {
-    return (body as { data: T }).data;
-  }
-  return body as T;
-}
-
-async function adminPost(admin: Page, path: string, data: Record<string, unknown>): Promise<APIResponse> {
-  return admin.request.post(path, {
-    data,
-    headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
-  });
 }
 
 function readStoredIntent(raw: string | null): { version: number; lines: { id: string; quantity: number }[] } {
@@ -61,36 +42,27 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   const admin = await adminContext.newPage();
   await openProductsList(admin);
   expect(existsSync(".artifacts/e2e/content.db")).toBe(true);
+  // The installed Commerce (the Registry build) builds its unique indexes on a fresh store's first requests.
   await expect.poll(
     () =>
       execFileSync(
         "sqlite3",
         [
           ".artifacts/e2e/content.db",
-          "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_dinkus-commerce_catalogItems_%'",
+          "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%_catalog_items_%'",
         ],
         { encoding: "utf8" },
       ),
     { timeout: 90_000 },
-  ).toContain("uidx_plugin_dinkus-commerce_catalogItems_skuKey");
+  ).toContain(COMMERCE_SKU_INDEX);
   await expect.poll(async () => {
-    const listed = await adminPost(admin, LIST_ROUTE, {});
-    return listed.ok();
+    try { await listCatalog(admin.request); return true; } catch { return false; }
   }, { timeout: 15_000 }).toBe(true);
 
+  // A product sells from its page (no product without a page): created for the page, priced, published.
   const name = `Guest cart hat ${testInfo.project.name}`;
   const sku = `CART-${testInfo.project.name.replaceAll(/[^A-Za-z0-9]+/g, "-").toUpperCase()}`;
-  const created = await adminPost(admin, CREATE_ROUTE, {
-    commandId: `guest-cart-${crypto.randomUUID()}`,
-    name,
-    sku,
-    manageStock: false,
-  });
-  expect(created.ok(), await created.text()).toBe(true);
-  const id = unwrap<{ item: { itemId: string } }>(await created.json()).item.itemId;
-  const priced = await adminPost(admin, SAVE_ROUTE, { catalogItemId: id, regular: "24", sale: "" });
-  expect(priced.ok(), await priced.text()).toBe(true);
-  expect(unwrap<{ saved: boolean }>(await priced.json()).saved).toBe(true);
+  const { itemId: id } = await sellProduct(admin.request, { title: name, sku, regular: "24" });
 
   const inventoryRequests: string[] = [];
   const shopperContext = await browser.newContext({ viewport: testInfo.project.use.viewport });
@@ -108,10 +80,15 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   expect(
     (await shopperContext.cookies()).filter((cookie) => /emdash|session|auth|token/i.test(cookie.name)),
   ).toEqual([]);
-  const card = shopper.locator(`[data-commerce-product="${id}"]`);
+  // The shop lists the product and links to its page, where Add to cart lives.
+  const listing = shopper.locator(`[data-commerce-product="${id}"]`);
+  await expect(listing).toBeVisible({ timeout: 15_000 });
+  await expect(listing.locator("[data-stock-value]")).toHaveCount(0);
+  await expect(shopper.getByRole("link", { name: /Cart/ })).toBeVisible();
+  await shopper.goto(`/products/${sku.toLowerCase()}`);
+  const card = shopper.locator("[data-product-page]");
   await expect(card.getByRole("button", { name: "Add to cart", exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(card.locator("[data-stock-value]")).toHaveCount(0);
-  await expect(shopper.getByRole("link", { name: /Cart/ })).toBeVisible();
 
   await shopper.evaluate((key) => {
     const original = Storage.prototype.setItem;
@@ -267,17 +244,16 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   ).toBe(false);
   await shopper.screenshot({ path: resolve(root, "cart-forged-success.png"), fullPage: true, animations: "disabled" });
 
-  const unavailable = await adminPost(admin, STATUS_ROUTE, { catalogItemId: id, status: "out-of-stock" });
-  expect(unavailable.ok(), await unavailable.text()).toBe(true);
+  await setStockStatus(admin.request, id, "out-of-stock", { regular: "24", sale: "" });
   await shopper.reload();
   await expect(shopper.locator("[data-guest-cart-line-reason]")).toContainText("cannot be checked out");
   await shopper.screenshot({ path: resolve(root, "cart-unavailable.png"), fullPage: true, animations: "disabled" });
 
-  const cleared = await adminPost(admin, SAVE_ROUTE, { catalogItemId: id, regular: "", sale: "" });
-  expect(cleared.ok(), await cleared.text()).toBe(true);
-  expect(unwrap<{ saved: boolean }>(await cleared.json()).saved).toBe(true);
+  const cleared = await catalogOp<{ saved: boolean; message: string | null }>(admin.request, { op: "prices", catalogItemId: id, regular: "", sale: "", stockStatus: "out-of-stock" });
+  expect(cleared.saved, cleared.message ?? "").toBe(true);
   await shopper.reload();
-  await expect(shopper.locator("[data-guest-cart-line-reason]")).toContainText("does not have a current price");
+  // The installed Commerce's public catalog lists priced products only, so an unpriced one reads as gone.
+  await expect(shopper.locator("[data-guest-cart-line-reason]")).toContainText("no longer in the catalog");
   // An unpriced line has no amount, so no total is claimed.
   await expect(lineTotal).toHaveCount(0);
   await expect(subtotal).toBeHidden();
@@ -297,13 +273,9 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(shopper.locator("[data-product-page] [data-add-to-cart]")).toHaveCount(0);
   await expect(shopper.locator("[data-product-page] a[href*='checkout']")).toHaveCount(0);
 
-  const restored = await adminPost(admin, SAVE_ROUTE, { catalogItemId: id, regular: "18", sale: "" });
-  expect(restored.ok(), await restored.text()).toBe(true);
-  expect(unwrap<{ saved: boolean }>(await restored.json()).saved).toBe(true);
-  const inStock = await adminPost(admin, STATUS_ROUTE, { catalogItemId: id, status: "in-stock" });
-  expect(inStock.ok(), await inStock.text()).toBe(true);
-  await shopper.goto("/");
-  await shopper.locator(`[data-commerce-product="${id}"]`).getByRole("button", { name: "Add to cart", exact: true }).click();
+  await setStockStatus(admin.request, id, "in-stock", { regular: "18", sale: "" });
+  await shopper.goto(`/products/${sku.toLowerCase()}`);
+  await card.getByRole("button", { name: "Add to cart", exact: true }).click();
   await shopper.getByRole("link", { name: /Cart/ }).click();
   await expect(shopper.getByRole("heading", { name, exact: true })).toBeVisible();
   const savedBeforeQtyFail = readStoredIntent(
@@ -329,27 +301,18 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
 
   // Verify the PDP quantity stepper, one Add to cart per page, and an
   // unavailable variant turning that button into "Sold out" on the live compiled storefront.
-  const variantSecondCreated = await adminPost(admin, CREATE_ROUTE, {
-    commandId: `guest-cart-xl-${crypto.randomUUID()}`,
-    name: `${name} XL`,
-    sku: `${sku}-XL`,
-    manageStock: false,
-  });
-  expect(variantSecondCreated.ok(), await variantSecondCreated.text()).toBe(true);
-  const xlId = unwrap<{ item: { itemId: string } }>(await variantSecondCreated.json()).item.itemId;
-  const xlPriced = await adminPost(admin, SAVE_ROUTE, { catalogItemId: xlId, regular: "28", sale: "" });
-  expect(xlPriced.ok(), await xlPriced.text()).toBe(true);
+  const { itemId: xlId } = await sellProduct(admin.request, { title: `${name} XL`, sku: `${sku}-XL`, regular: "28" });
 
-  await shopper.goto("/");
+  await shopper.goto(`/products/${sku.toLowerCase()}`);
   await shopper.evaluate((key) => localStorage.removeItem(key), GUEST_CART_STORAGE_KEY);
   await shopper.evaluate(
-    ({ smallId, secondId, unsellableId }) => {
-      const cardEl = document.querySelector<HTMLElement>(`[data-commerce-product="${smallId}"]`);
-      const container = cardEl?.querySelector<HTMLElement>(".guest-cart-add");
+    ({ secondId, unsellableId, smallId }) => {
+      const pageEl = document.querySelector<HTMLElement>("[data-product-page]");
+      const container = pageEl?.querySelector<HTMLElement>(".guest-cart-add");
       const single = container?.querySelector<HTMLElement>("[data-add-to-cart-single]");
       const statusEl = container?.querySelector<HTMLElement>("[data-add-to-cart-status]");
-      if (!cardEl || !container || !single || !statusEl) {
-        throw new Error("Missing guest-cart-add container on storefront card");
+      if (!pageEl || !container || !single || !statusEl) {
+        throw new Error("Missing guest-cart-add container on the product page");
       }
 
       const picker = document.createElement("fieldset");

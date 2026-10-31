@@ -200,11 +200,12 @@ export async function resolvePublishedProduct(
 }
 
 /**
- * Product pages offer Add to cart only where checkout can actually run: a
- * shipping storefront outside the playground, or the playground/demo profile
- * once DINKUS_CHECKOUT_ENABLED turns on sandbox checkout. Otherwise the page
- * shows the checkout-unavailable notice instead.
+ * Product pages offer Add to cart wherever the shop sells: a shipping storefront, and the demo store, whose
+ * guest cart is browser-only intent that stays honest about its closed checkout (hosted-demo-007). Every
+ * product sells from its page on Commerce's Registry build (template-one-build-registry-20261031), so the
+ * page is the one place to add to the cart. The playground offers it only once DINKUS_CHECKOUT_ENABLED turns
+ * its sandbox checkout on; otherwise its page shows the cart-and-checkout-unavailable notice instead.
  */
 export function productPageOffersCart(input: CheckoutGateInput): boolean {
-  return offersCheckout(input);
+  return input.isPlayground ? offersCheckout(input) : true;
 }

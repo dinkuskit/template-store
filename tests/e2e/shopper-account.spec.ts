@@ -4,6 +4,13 @@ import { expect, test } from "@playwright/test";
 
 const proofRoot = resolve("runs/shopper-account-20261020/browser");
 
+// The instant demo account, the captured-PIN sign-in and the leads they record are the playground's
+// (shopper-accounts-playground-20261020), served by the playground runtime around the native Commerce copy.
+// The proof store now runs Commerce's Registry build (template-one-build-registry-20261031), whose own
+// account routes sign shoppers in by email, so this browser proof returns with the playground's switch to
+// the Registry build. Until then the playground's HTTP proof (pnpm verify:playground-account-http) covers it.
+test.skip(true, "playground-only shopper account demo; returns with the playground's Registry Commerce switch");
+
 test("storefront /account supports both instant demo opt-out and verified email OTP opt-in, plus /checkout prefill", async ({
   page,
   request,
