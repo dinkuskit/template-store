@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "frontier-batch",
     "confirmed": true,
-    "confirmed_at": "2026-10-27T17:09:13+00:00",
-    "domain": "Template sells anything (Grow Funky Beans migration issues)",
-    "started_at": "2026-10-27T17:09:13+00:00",
+    "confirmed_at": "2026-10-31T03:13:58+00:00",
+    "domain": "UCP for shoppers' AI agents (post-v1)",
+    "started_at": "2026-10-31T03:13:58+00:00",
     "status": "confirmed",
-    "summary": "Ronald answered by number in the thread, 16:50-16:57 UTC 27 Oct 2026."
+    "summary": "Ronald answered 'agreed on all 8' in the thread, 03:13 UTC 31 Oct 2026."
   },
   "decisions": [
     {
@@ -4868,6 +4868,348 @@
       "superseded_by": null,
       "updated_at": "2026-10-29T16:47:03+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "Plan and lock now; build nothing until the first real order ships (v1 done). Parked like the UPS/FedEx/DHL carrier plan.",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:58+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:58+00:00",
+          "choice": "Plan and lock now; build nothing until the first real order ships (v1 done). Parked like the UPS/FedEx/DHL carrier plan.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-timing-20261031",
+      "implementation_ref": null,
+      "question": "When does UCP support for shoppers' agents get built?",
+      "rationale": "No scope growth in v1; the plan is ready when v1 is.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:58+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "The agent may build the cart and checkout, but the shopper always pays on the store's own checkout page. Checkout answers status requires_escalation with continue_url to that page; the agent never completes payment (no AP2, no payment tokens).",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:58+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "ucp-timing-20261031"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:58+00:00",
+          "choice": "The agent may build the cart and checkout, but the shopper always pays on the store's own checkout page. Checkout answers status requires_escalation with continue_url to that page; the agent never completes payment (no AP2, no payment tokens).",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-payment-handoff-20261031",
+      "implementation_ref": null,
+      "question": "How do shoppers' agents pay?",
+      "rationale": "Matches Payments (hosted Stripe or Authorize.net only), keeps card data away from agents, and is what Shopify does for agents it does not fully trust.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:58+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "The store website (template store) serves /.well-known/ucp, /agents.md, /llms.txt and one agent (MCP) address, translating UCP calls to Commerce's existing public catalog, policy and guest checkout routes inside the website's own server, as the checkout pages already do. Not inside Commerce and not in the Guide. The same-origin rule on Commerce's guest checkout is not loosened.",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:58+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "ucp-timing-20261031"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:58+00:00",
+          "choice": "The store website (template store) serves /.well-known/ucp, /agents.md, /llms.txt and one agent (MCP) address, translating UCP calls to Commerce's existing public catalog, policy and guest checkout routes inside the website's own server, as the checkout pages already do. Not inside Commerce and not in the Guide. The same-origin rule on Commerce's guest checkout is not loosened.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-home-template-store-20261031",
+      "implementation_ref": null,
+      "question": "Where does the UCP surface live?",
+      "rationale": "Commerce has about 396 bytes left under the Registry 128 KiB cap; the profile must sit at the store's own web address; the Guide is a read-only docs helper on dinkuskit.com.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:58+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "Phase 1: catalog search and lookup, product details, cart, checkout with handoff, and get_order. Phase 2: signed, retried order webhooks and the fulfillment extension. Phase 3: identity linking, browser tools, coupons.",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:58+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "ucp-home-template-store-20261031"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:58+00:00",
+          "choice": "Phase 1: catalog search and lookup, product details, cart, checkout with handoff, and get_order. Phase 2: signed, retried order webhooks and the fulfillment extension. Phase 3: identity linking, browser tools, coupons.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-first-tools-20261031",
+      "implementation_ref": null,
+      "question": "Which UCP pieces come first?",
+      "rationale": "Phase 1 is a translation layer over routes that exist; webhooks need signing keys, retries and an agent platform that gives a webhook address.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:58+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "Any agent that identifies itself with a valid UCP profile, rate limited per agent and per IP; no trust tiers.",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:59+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "ucp-payment-handoff-20261031"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:59+00:00",
+          "choice": "Any agent that identifies itself with a valid UCP profile, rate limited per agent and per IP; no trust tiers.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-agent-access-20261031",
+      "implementation_ref": null,
+      "question": "Which agents may shop?",
+      "rationale": "UCP onboarding is permissionless by design, and the shopper still pays on our page, so the money risk stays low.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:59+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "An agent sees only the orders whose checkout it started (UCP's platform-credential default). Seeing all of a shopper's orders through account sign-in waits for phase 3. Where the starting agent is recorded (Commerce or the template store) is decided at build time.",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:59+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "ucp-first-tools-20261031"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:59+00:00",
+          "choice": "An agent sees only the orders whose checkout it started (UCP's platform-credential default). Seeing all of a shopper's orders through account sign-in waits for phase 3. Where the starting agent is recorded (Commerce or the template store) is decided at build time.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-order-access-20261031",
+      "implementation_ref": null,
+      "question": "Which orders can an agent read?",
+      "rationale": "UCP default; needs only a record of which agent started each checkout.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:59+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "On for every store, with no settings switch, until an owner asks for one.",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:59+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "ucp-home-template-store-20261031"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:59+00:00",
+          "choice": "On for every store, with no settings switch, until an owner asks for one.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-owner-control-20261031",
+      "implementation_ref": null,
+      "question": "Can a store owner turn agent shopping off?",
+      "rationale": "Shopify advertises the order capability on every shop with no flag; a switch nobody needs is extra settings to explain.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:59+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:4d0fe8e",
+      "candidate_refs": [],
+      "choice": "No. WebMCP tools wait for a later phase.",
+      "context_ref": "https://claude.ai/artifact/2Dm9F1EhMPqSXXmwjTX2fQ",
+      "created_at": "2026-10-31T03:13:59+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "ucp-first-tools-20261031"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T03:13:59+00:00",
+          "choice": "No. WebMCP tools wait for a later phase.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "ucp-browser-agents-later-20261031",
+      "implementation_ref": null,
+      "question": "Do browser agents get tools on the page (WebMCP) now?",
+      "rationale": "The browser standard (navigator.modelContext) is still changing.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T03:13:59+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -4890,5 +5232,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-29T16:47:03+00:00"
+  "updated_at": "2026-10-31T03:13:59+00:00"
 }
