@@ -11,7 +11,7 @@ import {
 } from "@dinkuskit/commerce";
 import type { GuestCartPublicThumbnail } from "../guest-cart/present.js";
 import { presentStorefrontPrice, type PublicPriceView } from "../store-shell/index.js";
-import { readInstalledCommerceCatalog, readInstalledCommerceProducts, type InstalledCatalogContext } from "./installed.js";
+import { cartLineProduct, readInstalledCommerceCatalog, readInstalledCommerceProducts, type InstalledCatalogContext } from "./installed.js";
 import { resolveCommerceImage, type PublicCommerceImage } from "./media.js";
 import type { PublicCommerceProduct } from "./types.js";
 
@@ -138,7 +138,9 @@ export async function readCommerceCatalogSnapshots(
     // store to run past the cart's time limit.
     const byId = ids.length <= SNAPSHOT_ITEM_LOOKUP_LIMIT
       ? await readInstalledCommerceProducts(ids, context)
-      : new Map((await readInstalledCommerceCatalog(context)).map(product => [product.id, product]));
+      : new Map((await readInstalledCommerceCatalog(context)).flatMap(product =>
+          (product.variants?.length ? product.variants.map(member => member.id) : [product.id])
+            .map(id => [id, cartLineProduct(product, id)] as const)));
     return Promise.all(ids.map(async (id): Promise<CommerceCatalogSnapshot> => {
       const product = byId.get(id);
       if (!product) return { id, found: false as const };

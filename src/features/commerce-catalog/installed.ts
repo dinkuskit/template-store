@@ -81,6 +81,7 @@ function variantMembers(variants: unknown): PublicCommerceVariant[] {
       unitMinor: minor,
       priceText: formatUsdMinor(minor),
       availability: { status: availability.status as PublicCommerceVariant["availability"]["status"], sellable: availability.sellable },
+      ...(member.fulfillment === "physical" || member.fulfillment === "digital" ? { fulfillment: member.fulfillment } : {}),
     });
   }
   return members;
@@ -254,11 +255,34 @@ export async function readInstalledCommerceProductByPage(
 }
 
 /**
+ * The product a cart line's id buys. Commerce answers a variant member's id
+ * with its whole product, so a product with choices is read through the
+ * chosen member: its own price, availability and fulfillment, never the
+ * product's "from" price or another member. A member Commerce no longer lists is null.
+ */
+export function cartLineProduct(item: PublicCommerceProduct, itemId: string): PublicCommerceProduct | null {
+  if (!item.variants?.length) return item.id === itemId ? item : null;
+  const member = item.variants.find(variant => variant.id === itemId);
+  if (!member) return null;
+  const { variants: _variants, ...rest } = item;
+  return {
+    ...rest,
+    id: member.id,
+    name: `${item.name} \u2014 ${member.selections.map(([, value]) => value).join(" / ")}`,
+    // Commerce projects no member SKU; the product's SKU would name a different item.
+    sku: "",
+    price: { listable: true, regularText: member.priceText, saleText: null, unitMinor: member.unitMinor },
+    availability: { ...member.availability, listable: true },
+    // Commerce projects each member's fulfillment, so a digital Size checks out without a delivery address;
+    // without one, fail closed to physical as for simple products.
+    fulfillment: member.fulfillment ?? "physical",
+  };
+}
+
+/**
  * Reads only the requested items, one public item lookup each, instead of the
- * whole catalog. Matches the catalog read: an item Commerce no longer lists,
- * or one whose projection is invalid, comes back null; a variant member id
- * resolves to its parent product, which the catalog lists under the parent id,
- * so it is null too.
+ * whole catalog. An item Commerce no longer lists, or one whose projection is
+ * invalid, comes back null; a variant member id comes back as that member.
  */
 export async function readInstalledCommerceProducts(
   itemIds: readonly string[],
@@ -269,7 +293,7 @@ export async function readInstalledCommerceProducts(
     if (parsed !== null && !("product" in parsed)) {
       console.warn("Skipping invalid installed catalog item", { id: parsed.id, reason: parsed.reason });
     }
-    return [itemId, parsed !== null && "product" in parsed && parsed.product.id === itemId ? parsed.product : null];
+    return [itemId, parsed !== null && "product" in parsed ? cartLineProduct(parsed.product, itemId) : null];
   }));
   return new Map(found);
 }
