@@ -192,6 +192,15 @@ const canonical = canonicalUrl("/search", Astro.site, Astro.url);
     <StoreFooter profile={profile} />
   </body>
 </html>
+<script>
+  import { bindLiveSearchResultKeyboard } from "../features/store-shell/live-search-keyboard.js";
+
+  function bindSearches() {
+    document.querySelectorAll<HTMLElement>("emdash-live-search").forEach(bindLiveSearchResultKeyboard);
+  }
+  bindSearches();
+  document.addEventListener("astro:page-load", bindSearches);
+</script>
 <style>
   .search-page {
     width: min(70rem, calc(100% - 2rem));

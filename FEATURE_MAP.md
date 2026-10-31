@@ -38,6 +38,13 @@ Final pairing is pending the Commerce owner's immutable artifact handoff. No see
 Commerce Products to an initialized starter; preserve its edited CMS content.
 See [operator and compatibility boundaries](docs/implementation/commerce-catalog.md).
 
+The `/search` LiveSearch keeps the SDK's query/results and input handling.
+`src/features/store-shell/live-search-keyboard.ts` continues arrow navigation
+(with wraparound) and Escape dismissal once focus enters a default result link;
+Tab, Enter, pointer activation and modified keys retain their native behavior.
+`tests/e2e/live-search-keyboard.spec.ts` covers populated real results and
+keyboard reopening/activation on desktop and mobile.
+
 ## Canonical product URLs and public site verification
 
 Published products are routed only at `/products/{slug}` and categories only
