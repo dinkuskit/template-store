@@ -41,6 +41,7 @@ export interface StorefrontAgentFeedOptions {
   readonly storeName: string;
   readonly siteOrigin: string;
   readonly description?: string;
+  readonly pluginId?: string;
   readonly products: readonly AgentProductFeedFacts[];
   readonly policies?: readonly StorefrontPolicySummary[];
   readonly shipping?: StorefrontShippingQuoteInput | null;
@@ -53,7 +54,7 @@ export interface AgentCatalogProductEntry {
   readonly canonicalUrl: string;
   readonly description?: string;
   readonly imageUrls: readonly string[];
-  readonly price: {
+  readonly price?: {
     readonly currency: "USD";
     readonly minor: string;
     readonly formatted: string;
@@ -62,7 +63,25 @@ export interface AgentCatalogProductEntry {
     readonly status: ProductFeedFacts["product"]["availability"]["status"];
     readonly sellable: boolean;
   };
-  readonly fulfillment: "physical" | "digital";
+  readonly fulfillment?: "physical" | "digital";
+  readonly variants?: {
+    readonly productId: string;
+    readonly options: NonNullable<ProductFeedFacts["product"]["variants"]>["options"];
+    readonly members: readonly {
+      readonly catalogItemId: string;
+      readonly selections: NonNullable<ProductFeedFacts["product"]["variants"]>["members"][number]["selections"];
+      readonly price: {
+        readonly currency: "USD";
+        readonly minor: string;
+        readonly formatted: string;
+      };
+      readonly availability: {
+        readonly status: ProductFeedFacts["product"]["availability"]["status"];
+        readonly sellable: boolean;
+      };
+      readonly fulfillment: "physical" | "digital";
+    }[];
+  };
   readonly brand?: string;
   readonly gtin?: string;
   readonly mpn?: string;
@@ -106,13 +125,30 @@ function normalizeAiProjection(projection: ProductAiProjection | undefined): Pro
   };
 }
 
+function hasPricedListableMember(product: AgentProductFeedFacts): boolean {
+  const members = product.product.variants?.members;
+  if (!members?.length) return false;
+  return members.some((member) => member.availability.listable && member.price !== null && member.price !== undefined);
+}
+
 function agentEligible(product: AgentProductFeedFacts): boolean {
   return (
+    product.eligibility.length > 0 &&
     product.product.availability.listable &&
-    product.product.price !== undefined &&
+    (product.product.price !== undefined || hasPricedListableMember(product)) &&
     product.content.canonicalUrl.trim().length > 0 &&
     product.content.title.trim().length > 0
   );
+}
+
+function resolveProductFulfillment(product: AgentProductFeedFacts): "physical" | "digital" | undefined {
+  if (product.product.fulfillment === "physical" || product.product.fulfillment === "digital") {
+    return product.product.fulfillment;
+  }
+  const members = product.product.variants?.members ?? [];
+  if (!members.length) return undefined;
+  const values = new Set(members.map((member) => member.fulfillment));
+  return values.size === 1 ? [...values][0] : undefined;
 }
 
 function shippingSummaryLine(shipping: StorefrontShippingQuoteInput | null | undefined): string {
@@ -120,7 +156,7 @@ function shippingSummaryLine(shipping: StorefrontShippingQuoteInput | null | und
   if (shipping.mode === "free") return "Free shipping ($0.00 USD; 0 minor units).";
   const flat = shipping.amount ? `$${formatMinorUnitsAsDecimal(shipping.amount)} USD (${shipping.amount.minor} minor units)` : "flat rate";
   if (shipping.freeOver) {
-    return `Flat ${flat}; free on merchandise orders over $${formatMinorUnitsAsDecimal(shipping.freeOver)} USD (${shipping.freeOver.minor} minor units). Digital-only orders pay 0 shipping.`;
+    return `Flat ${flat}; free when discounted net merchandise (netMerchandise) is at least $${formatMinorUnitsAsDecimal(shipping.freeOver)} USD (>= ${shipping.freeOver.minor} minor units, inclusive, after coupon discounts). Digital-only orders pay 0 shipping.`;
   }
   return `Flat ${flat}. Digital-only orders pay 0 shipping.`;
 }
@@ -130,9 +166,26 @@ export function buildAgentCatalogFeed(options: StorefrontAgentFeedOptions): Agen
   const products: AgentCatalogProductEntry[] = options.products
     .filter(agentEligible)
     .map((row) => {
-      const money = row.product.price!;
+      const money = row.product.price;
       const aiProjection = normalizeAiProjection(row.content.aiProjection);
       const description = row.content.description?.trim();
+      const fulfillment = resolveProductFulfillment(row);
+      const variantMembers = (row.product.variants?.members ?? [])
+        .filter((member) => member.availability.listable && member.price !== null && member.price !== undefined)
+        .map((member) => ({
+          catalogItemId: member.catalogItemId,
+          selections: member.selections,
+          price: {
+            currency: "USD" as const,
+            minor: member.price!.minor,
+            formatted: `$${formatMinorUnitsAsDecimal(member.price!)} USD`,
+          },
+          availability: {
+            status: member.availability.status,
+            sellable: member.availability.sellable,
+          },
+          fulfillment: member.fulfillment,
+        }));
       return {
         id: row.product.id,
         sku: row.product.sku,
@@ -140,16 +193,29 @@ export function buildAgentCatalogFeed(options: StorefrontAgentFeedOptions): Agen
         canonicalUrl: row.content.canonicalUrl.trim(),
         ...(description ? { description } : {}),
         imageUrls: [...(row.content.imageUrls ?? [])],
-        price: {
-          currency: "USD",
-          minor: money.minor,
-          formatted: `$${formatMinorUnitsAsDecimal(money)} USD`,
-        },
+        ...(money
+          ? {
+              price: {
+                currency: "USD",
+                minor: money.minor,
+                formatted: `$${formatMinorUnitsAsDecimal(money)} USD`,
+              },
+            }
+          : {}),
         availability: {
           status: row.product.availability.status,
-          sellable: row.product.availability.sellable,
+          sellable: row.product.availability.sellable || variantMembers.some((member) => member.availability.sellable),
         },
-        fulfillment: row.product.fulfillment === "digital" ? "digital" : "physical",
+        ...(fulfillment ? { fulfillment } : {}),
+        ...(row.product.variants && variantMembers.length
+          ? {
+              variants: {
+                productId: row.product.variants.productId,
+                options: row.product.variants.options,
+                members: variantMembers,
+              },
+            }
+          : {}),
         ...(row.product.brand ? { brand: row.product.brand } : {}),
         ...(row.product.gtin ? { gtin: row.product.gtin } : {}),
         ...(row.product.mpn ? { mpn: row.product.mpn } : {}),
@@ -197,8 +263,14 @@ export function buildStorefrontLlmsTxt(options: StorefrontAgentFeedOptions): str
     for (const item of feed.products) {
       const blurb = item.aiProjection?.summary ?? item.description ?? "";
       const summarySuffix = blurb ? ` — ${blurb}` : "";
+      const priceLabel = item.price
+        ? `${item.price.formatted} (${item.price.minor} minor units)`
+        : item.variants?.members.length
+          ? `from ${item.variants.members[0]!.price.formatted} (${item.variants.members.length} variants)`
+          : "see options";
+      const fulfillmentPart = item.fulfillment ? `, ${item.fulfillment}` : "";
       lines.push(
-        `- [${item.title}](${item.canonicalUrl}): ${item.price.formatted} (${item.price.minor} minor units, ${item.availability.status}, SKU \`${item.sku}\`, ${item.fulfillment})${summarySuffix}`,
+        `- [${item.title}](${item.canonicalUrl}): ${priceLabel}, ${item.availability.status}, SKU \`${item.sku}\`${fulfillmentPart}${summarySuffix}`,
       );
     }
   }
@@ -239,10 +311,23 @@ export function buildStorefrontLlmsFullTxt(options: StorefrontAgentFeedOptions):
       `- Canonical URL: ${item.canonicalUrl}`,
       `- Product ID: \`${item.id}\``,
       `- SKU: \`${item.sku}\``,
-      `- Price: ${item.price.formatted} (\`minor: "${item.price.minor}"\`, \`currency: "${item.price.currency}"\`)`,
-      `- Availability: \`${item.availability.status}\` (\`sellable: ${item.availability.sellable}\`)`,
-      `- Fulfillment: \`${item.fulfillment}\``,
     );
+    if (item.price) {
+      lines.push(`- Price: ${item.price.formatted} (\`minor: "${item.price.minor}"\`, \`currency: "${item.price.currency}"\`)`);
+    }
+    lines.push(`- Availability: \`${item.availability.status}\` (\`sellable: ${item.availability.sellable}\`)`);
+    if (item.fulfillment) {
+      lines.push(`- Fulfillment: \`${item.fulfillment}\``);
+    }
+    if (item.variants?.members.length) {
+      lines.push(`- Variants (${item.variants.members.length}):`);
+      for (const member of item.variants.members) {
+        const sel = member.selections.map((s) => `${s.optionLabel}: ${s.valueLabel}`).join(", ");
+        lines.push(
+          `  - \`catalogItemId: "${member.catalogItemId}"\` (${sel || "default"}): ${member.price.formatted} (\`minor: "${member.price.minor}"\`), \`${member.availability.status}\`, \`sellable: ${member.availability.sellable}\`, \`fulfillment: "${member.fulfillment}"\``,
+        );
+      }
+    }
     if (item.brand) lines.push(`- Brand: ${item.brand}`);
     if (item.gtin) lines.push(`- GTIN: \`${item.gtin}\``);
     if (item.mpn) lines.push(`- MPN: \`${item.mpn}\``);
@@ -284,6 +369,8 @@ export function buildStorefrontLlmsFullTxt(options: StorefrontAgentFeedOptions):
 
 export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): string {
   const feed = buildAgentCatalogFeed(options);
+  const pluginId = options.pluginId?.trim() || "r_gshdrqaldna3r7sn";
+  const pluginBase = `${feed.siteOrigin}/_emdash/api/plugins/${pluginId}`;
   return [
     `# Shopping Agent & Virtual Card Contract — ${feed.storeName}`,
     "",
@@ -292,8 +379,8 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
     "## 1. Discovery & Structured Feeds",
     `- **Concise LLM Index**: \`GET ${feed.siteOrigin}/llms.txt\``,
     `- **Full Catalog & Policy Corpus**: \`GET ${feed.siteOrigin}/llms-full.txt\``,
-    `- **Live Public Catalog JSON API**: \`GET ${feed.siteOrigin}/_emdash/api/plugins/dinkus-commerce/catalog\``,
-    `- **Single Item JSON API**: \`GET ${feed.siteOrigin}/_emdash/api/plugins/dinkus-commerce/catalog-item?itemId=<id>\` (or \`?pageId=<pageId>\`)`,
+    `- **Live Public Catalog JSON API**: \`GET ${pluginBase}/catalog/public\` (installed plugin runtime ID \`${pluginId}\`; paginate while \`data.cursor\` is present)`,
+    `- **Single Item JSON API**: \`GET ${pluginBase}/catalog/public/item?itemId=<id>\` (or \`?pageId=<pageId>\`)`,
     `- **Google Merchant XML Feed**: \`GET ${feed.siteOrigin}/feeds/google-merchant.xml\``,
     `- **Meta Catalog CSV Feed**: \`GET ${feed.siteOrigin}/feeds/meta-catalog.csv\``,
     "",
@@ -313,17 +400,22 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
     "- `data-checkout-total-minor=\"<integer-cents>\"`",
     "",
     "## 3. Guest Checkout API Protocol",
-    "1. **Prepare Capability**: `POST /_emdash/api/plugins/dinkus-commerce/checkout/prepare` with same-origin `Origin` header (`sec-fetch-site: same-origin`). Retain `capability.capability` from the JSON response body and send it on subsequent requests via the `x-commerce-guest-capability` header.",
-    "2. **Start Checkout & Freeze Pricing**: `POST /_emdash/api/plugins/dinkus-commerce/checkout/start` with `x-commerce-guest-capability`, `lines: [{ catalogItemId, quantity }]`, optional `couponCode`, and `contact` (`email`, plus `delivery` address when a line has `fulfillment: \"physical\"`).",
-    "   - The response `checkout.pricing` object contains:",
+    "For every guest checkout call, verify HTTP status 200, the EmDash transport wrapper `success === true`, and Commerce's `data.ok === true` before reading `data`.",
+    `1. **Prepare Capability**: \`POST ${pluginBase}/checkout/guest/prepare\` with an empty JSON body \`{}\` and same-origin \`Origin\` header (\`sec-fetch-site: same-origin\`). Retain the capability token string at \`data.capability.capability\` from the JSON response and send it on subsequent requests via the \`x-commerce-guest-capability\` header. Also inspect \`data.contactRequirements.requirePhoneNumber\` and \`data.contactRequirements.shippingCountries\`.`,
+    `2. **Start Checkout & Freeze Pricing**: \`POST ${pluginBase}/checkout/guest/start\` with header \`x-commerce-guest-capability: <token>\`, \`lines: [{ catalogItemId, quantity }]\` (for products with options, use the chosen sellable member's \`catalogItemId\` from \`variants.members\`), optional \`couponCode\`, and \`contact\`:`,
+    "   - `email` (required)",
+    "   - `phone` (required when `data.contactRequirements.requirePhoneNumber === true`)",
+    "   - `billing`: required on every checkout (including digital-only orders) with `{ name, line1, line2?, city, region?, postalCode, country }` (`country` as 2-letter ISO code)",
+    "   - `delivery`: required when a line has `fulfillment: \"physical\"`, with `{ name, line1, line2?, city, region?, postalCode, country }` in an enabled `shippingCountries` destination (US requires a valid 2-letter state or full state name in `region`)",
+    "   - The response `data.checkout.pricing` object contains:",
     "     - `merchandiseSubtotal: { currency: \"USD\", minor: \"...\" }`",
     "     - `couponDiscount: { currency: \"USD\", minor: \"...\" }`",
     "     - `netMerchandise: { currency: \"USD\", minor: \"...\" }`",
     "     - `shipping: { mode: \"free\" | \"flat\", charge: { currency: \"USD\", minor: \"...\" } }`",
     "     - `tax: { currency: \"USD\", minor: \"0\" }`",
     "     - `finalTotal: { currency: \"USD\", minor: \"...\" }`",
-    "   - Size the virtual card to `checkout.pricing.finalTotal.minor` (in USD cents) and navigate to `checkout.redirectUrl`.",
-    "3. **Poll Status / Receipt**: `GET /_emdash/api/plugins/dinkus-commerce/checkout/status?attemptId=<attemptId>` with `x-commerce-guest-capability` until `checkout.state === \"paid\"` and `checkout.order.receiptId` is present.",
+    "   - Size the virtual card to `data.checkout.pricing.finalTotal.minor` (in USD cents) and navigate to `data.checkout.paymentSession.checkoutUrl`.",
+    `3. **Poll Status / Receipt**: \`POST ${pluginBase}/checkout/guest/status\` with header \`x-commerce-guest-capability: <token>\` and JSON body \`{ "sessionId": "<data.checkout.sessionId>" }\` until \`data.checkout.status === "paid"\` and \`data.checkout.receipt\` is present.`,
     "",
   ].join("\n");
 }
@@ -397,6 +489,7 @@ export async function buildInstalledStorefrontAgentFeedOptions(
   return {
     storeName: STORE_TITLE,
     siteOrigin: origin,
+    pluginId,
     products: enrichedProducts,
     policies: policyLinks,
     shipping,

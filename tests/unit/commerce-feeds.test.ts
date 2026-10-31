@@ -215,7 +215,6 @@ describe("installed Commerce feed facts", () => {
     expect(agentFeed.products.map((item) => [item.id, item.availability.sellable])).toEqual([
       ["commerce-hat", true],
       ["commerce-cap", true],
-      ["commerce-mug", false],
     ]);
 
     const llmsTxt = buildStorefrontLlmsTxt(options);
@@ -223,6 +222,7 @@ describe("installed Commerce feed facts", () => {
     expect(llmsTxt).toContain("https://shop.example.test/llms-full.txt");
     expect(llmsTxt).toContain("https://shop.example.test/agents.md");
     expect(llmsTxt).toContain("[commerce-hat](https://shop.example.test/products/hat)");
+    expect(llmsTxt).not.toContain("commerce-mug");
 
     const llmsFullTxt = buildStorefrontLlmsFullTxt(options);
     expect(llmsFullTxt).toContain("## Detailed Product Projections");
@@ -233,5 +233,7 @@ describe("installed Commerce feed facts", () => {
     expect(agentsMd).toContain("# Shopping Agent & Virtual Card Contract — Dinkus Store");
     expect(agentsMd).toContain("data-checkout-tax-minor=\"0\"");
     expect(agentsMd).toContain("tax: { currency: \"USD\", minor: \"0\" }");
+    expect(agentsMd).toContain("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare");
+    expect(agentsMd).toContain("data.capability.capability");
   });
 });
