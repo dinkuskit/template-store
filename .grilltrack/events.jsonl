@@ -179,3 +179,9 @@
 {"action": "decision_locked", "at": "2026-10-31T16:24:14+00:00", "data": {"decision_id": "hosted-demo-retired-20261031"}, "event_id": "6b81fd3b-ddba-4bd8-9c77-f9d13476d743"}
 {"action": "decision_superseded", "at": "2026-10-31T16:24:14+00:00", "data": {"affected": [], "decision_id": "hosted-demo-007", "replacement_id": "hosted-demo-retired-20261031"}, "event_id": "08b91228-a10e-4f3b-8e76-8d72459b8e41"}
 {"action": "decision_superseded", "at": "2026-10-31T16:24:14+00:00", "data": {"affected": [], "decision_id": "v1-demo-003", "replacement_id": "hosted-demo-retired-20261031"}, "event_id": "e77f607e-0606-46ec-b573-8076aa58ca1a"}
+{"action": "decision_proposed", "at": "2026-10-31T21:02:23+00:00", "data": {"decision_id": "playground-commerce-in-store-20261031"}, "event_id": "c2afa285-fe0a-4e7d-ad91-c627ea524de2"}
+{"action": "decision_locked", "at": "2026-10-31T21:02:23+00:00", "data": {"decision_id": "playground-commerce-in-store-20261031"}, "event_id": "6e576551-358f-4d93-b900-3c38e2004cd6"}
+{"action": "decision_superseded", "at": "2026-10-31T21:02:29+00:00", "data": {"affected": [], "decision_id": "playground-commerce-050-source-first-20261023", "replacement_id": "playground-commerce-in-store-20261031"}, "event_id": "3ba5d031-3da4-487e-9a97-572bcf9019f2"}
+{"action": "decision_superseded", "at": "2026-10-31T21:02:29+00:00", "data": {"affected": [], "decision_id": "playground-commerce-until-part-2-20261022", "replacement_id": "playground-commerce-in-store-20261031"}, "event_id": "f4cbdd2c-35b6-42ec-b699-e28ac887dde8"}
+{"action": "decision_implemented", "at": "2026-10-31T21:02:29+00:00", "data": {"decision_id": "playground-commerce-in-store-20261031"}, "event_id": "49179d37-964d-4933-a45d-c26f08afbff7"}
+{"action": "decision_verified", "at": "2026-10-31T21:02:29+00:00", "data": {"decision_id": "playground-commerce-in-store-20261031"}, "event_id": "13bf4571-3ee7-4312-888d-3b7437266015"}

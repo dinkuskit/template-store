@@ -4201,6 +4201,20 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T21:02:29+00:00",
+          "choice": "Keep the development Commerce copy (with the playground's working 4242 test checkout) until part 2. Part 2 (playground-pretend-connected-20261022) switches the playground to the released Registry Commerce, so the admin matches a real store, and seeds the sample orders (one paid and waiting to ship, one shipped) then, because the development copy has no Orders page. Part 1 ships Payments, Ship and the welcome card without sample orders.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Part 2's switch is done: the playground's development Commerce copy is gone and the playground runs Commerce's Registry build in-store, with the sample orders seeded through Commerce's own routes.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
         }
       ],
       "id": "playground-commerce-until-part-2-20261022",
@@ -4213,9 +4227,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
-      "superseded_by": null,
-      "updated_at": "2026-10-22T15:11:33+00:00",
+      "status": "superseded",
+      "superseded_by": "playground-commerce-in-store-20261031",
+      "updated_at": "2026-10-31T21:02:29+00:00",
       "verification_ref": null
     },
     {
@@ -4414,6 +4428,20 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T21:02:29+00:00",
+          "choice": "In two steps. First, the playground's Commerce source pin moves from the development copy c42597b to the released tag v0.5.0 (6ff63ef), in the same in-store setup, so the 4242 test checkout keeps working; package.json is the only place the pin lives, and the Update playground plugins button moves it to each new stable Commerce release along with Payments and Ship. Second, in its own PR after the guided tour, the playground switches to the released Registry Commerce plugin as playground-commerce-until-part-2-20261022 calls for, so the admin matches a real store.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Its second step is done: the playground runs Commerce's Registry build in-store under r_gshdrqaldna3r7sn (Ronald, 31 Oct 2026: \"Commerce goes in the same way as a third in-store plugin under r_gshdrqaldna3r7sn \u2014 Agreed.\"). The pin stays in package.json and moves with the Update playground plugins button.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
         }
       ],
       "id": "playground-commerce-050-source-first-20261023",
@@ -4426,9 +4454,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
-      "superseded_by": null,
-      "updated_at": "2026-10-23T03:10:41+00:00",
+      "status": "superseded",
+      "superseded_by": "playground-commerce-in-store-20261031",
+      "updated_at": "2026-10-31T21:02:29+00:00",
       "verification_ref": null
     },
     {
@@ -5348,6 +5376,78 @@
       "superseded_by": null,
       "updated_at": "2026-10-31T16:24:14+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+      "context_ref": "thread:one-commerce-build-20261031",
+      "created_at": "2026-10-31T21:02:23+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-one-build-registry-20261031",
+        "playground-plugins-in-store-20261023"
+      ],
+      "domain": "UCP for shoppers' AI agents (post-v1)",
+      "history": [
+        {
+          "at": "2026-10-31T21:02:23+00:00",
+          "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T21:02:29+00:00",
+          "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T21:02:29+00:00",
+          "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+          "from": "implemented",
+          "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u;git:087b7ef",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-commerce-in-store-20261031",
+      "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u;git:087b7ef",
+      "question": "How does the playground run Commerce once Commerce keeps one build?",
+      "rationale": "Ronald, 31 Oct 2026: \"Commerce goes in the same way as a third in-store plugin under r_gshdrqaldna3r7sn \u2014 Agreed.\" Completes template-one-build-registry-20261031 for the playground and is the switch playground-commerce-until-part-2-20261022 and playground-commerce-050-source-first-20261023 planned, so the playground's admin is a real store's.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-10-31T21:02:29+00:00",
+      "verification_ref": "file:.grilltrack/proof/playground-commerce-in-store-20261031/PROOF.md"
     }
   ],
   "last_activation": {
@@ -5370,5 +5470,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-31T16:24:14+00:00"
+  "updated_at": "2026-10-31T21:02:29+00:00"
 }
