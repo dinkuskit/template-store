@@ -55,7 +55,7 @@ export function buildDemoProductEntries(links: readonly DemoCatalogLink[]) {
 
 
 /**
- * The synthetic demo store: the proof storefront profile (the hosted demo, pnpm dev:fresh and the proof store
+ * The synthetic demo store: the proof storefront profile (pnpm dev:fresh and the proof store
  * the browser tests use), which runs the paired Commerce Registry build and seeds the demo catalog through it
  * (template-one-build-registry-20261031). A shipping store never matches.
  */

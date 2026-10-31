@@ -161,8 +161,8 @@ refused.
 
 ### Disposable playground
 
-The public playground is a separate Worker application and does not use the
-demo Worker or its D1 database:
+The public playground is a separate Worker application; the retired demo
+Worker's `wrangler.jsonc` plays no part in it:
 
 ```bash
 pnpm prepare:sources

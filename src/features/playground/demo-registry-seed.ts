@@ -1,6 +1,6 @@
 /**
  * The demo catalog on a store that runs Commerce's Registry build (template-one-build-registry-20261031):
- * the hosted demo, pnpm dev:fresh and the proof store the browser tests use. Everything goes through the
+ * pnpm dev:fresh and the proof store the browser tests use. Everything goes through the
  * installed plugin's own private routes, as the owner's product panel and the CLI do (catalog-api-20261027),
  * so the seed proves the Registry build and opens no plugin storage itself: each demo product's page first,
  * then the product created for that page, its choices, its prices and stock status, and the sale the page's

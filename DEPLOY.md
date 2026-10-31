@@ -1,5 +1,7 @@
 # Deployment and Cloudflare Access
 
+> **The demo Worker is retired.** `dinkuskit-template-demo` (demo.dinkuskit.com) was retired on 18 Oct 2026 ([dinkuskit/dinkuskit#51](https://github.com/dinkuskit/dinkuskit/pull/51); GrillTrack `hosted-demo-retired-20261031`). The public store is the playground (`astro.playground.config.mjs`, `wrangler.playground.jsonc`) and the live test store is beta.sm0ky.dev, built by `pnpm build:registry`. `wrangler.jsonc`, `pnpm build` and the demo rules below describe the retired Worker until a follow-up PR removes them.
+
 This repository does not change a store's live Cloudflare Access applications.
 
 Workers.dev and preview URLs stay disabled (`workers_dev: false`, `preview_urls: false` in `wrangler.jsonc`) so the demo is served only on its Access-protected custom domain.

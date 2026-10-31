@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 
 // The Commerce this store runs: the Registry (sandboxed) build, the one build Commerce keeps
 // (template-one-build-registry-20261031), mounted through EmDash's `sandboxed: [...]` the way a Registry
-// store installs it. Local dev, the proof store CI's browser tests use, the hosted demo build and the
+// store installs it. Local dev, the proof store CI's browser tests use, the retired demo Worker's build and the
 // paired publish-check proof all take it from here: the pinned Commerce (package.json
 // dinkuskit.sourcePins.commerce) fetched and built once per commit, or a checkout a developer is
 // building (DINKUS_PAIRED_COMMERCE_DIR), which is EmDash's documented loop: build the plugin, run the site.

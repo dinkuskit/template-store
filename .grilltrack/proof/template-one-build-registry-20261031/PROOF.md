@@ -2,7 +2,7 @@
 
 Covers `template-one-build-registry-20261031`. Ronald locked it on 31 Oct 2026
 ("lock it"): Commerce runs ONE build, the Registry (sandboxed) one, everywhere.
-The Template Store's local dev, its public demo and its CI browser tests leave
+The Template Store's local dev, its demo Worker (found retired since 18 Oct 2026 after this proof ran: `hosted-demo-retired-20261031`) and its CI browser tests leave
 Commerce's native copy (`DINKUS_CATALOG_PROFILE=native-development`, Commerce
 `src/index.ts`) for the Registry bundle mounted through EmDash's
 `sandboxed: [...]`, EmDash's documented loop: build the plugin, run the site.

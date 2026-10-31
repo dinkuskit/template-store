@@ -175,3 +175,7 @@
 {"action": "decision_locked", "at": "2026-10-31T13:30:08+00:00", "data": {"decision_id": "template-one-build-registry-20261031"}, "event_id": "58c749ad-b9eb-478f-9c3c-e93e3716230c"}
 {"action": "decision_implemented", "at": "2026-10-31T15:14:48+00:00", "data": {"decision_id": "template-one-build-registry-20261031"}, "event_id": "ce47cae3-d749-436b-82ac-d2ccaf2a3add"}
 {"action": "decision_verified", "at": "2026-10-31T15:14:48+00:00", "data": {"decision_id": "template-one-build-registry-20261031"}, "event_id": "6715f32a-db07-4a97-a314-716400b03e44"}
+{"action": "decision_proposed", "at": "2026-10-31T16:24:14+00:00", "data": {"decision_id": "hosted-demo-retired-20261031"}, "event_id": "e80897ab-f822-45fc-bac5-9b02c49efc14"}
+{"action": "decision_locked", "at": "2026-10-31T16:24:14+00:00", "data": {"decision_id": "hosted-demo-retired-20261031"}, "event_id": "6b81fd3b-ddba-4bd8-9c77-f9d13476d743"}
+{"action": "decision_superseded", "at": "2026-10-31T16:24:14+00:00", "data": {"affected": [], "decision_id": "hosted-demo-007", "replacement_id": "hosted-demo-retired-20261031"}, "event_id": "08b91228-a10e-4f3b-8e76-8d72459b8e41"}
+{"action": "decision_superseded", "at": "2026-10-31T16:24:14+00:00", "data": {"affected": [], "decision_id": "v1-demo-003", "replacement_id": "hosted-demo-retired-20261031"}, "event_id": "e77f607e-0606-46ec-b573-8076aa58ca1a"}

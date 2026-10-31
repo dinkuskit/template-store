@@ -38,7 +38,7 @@ fixtures keep their identities and do not qualify this pairing.
 
 Commerce runs one build here, the Registry (sandboxed) one
 (template-one-build-registry-20261031). The proof store (`pnpm dev:fresh`,
-the browser tests' proof server, the hosted demo) mounts the pinned Commerce's
+the browser tests' proof server) mounts the pinned Commerce's
 Registry bundle through EmDash's `sandboxed: [...]` under its Registry runtime
 id (`scripts/lib/paired-commerce.mjs`; `pnpm prepare:commerce` builds it once
 per pin, `DINKUS_PAIRED_COMMERCE_DIR` points at a Commerce checkout being

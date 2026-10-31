@@ -1,3 +1,5 @@
+// The demo Worker this builds (dinkuskit-template-demo, demo.dinkuskit.com) was retired on 18 Oct 2026
+// (hosted-demo-retired-20261031): this script, wrangler.jsonc and pnpm build go in a follow-up PR.
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
