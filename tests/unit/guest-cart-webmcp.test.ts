@@ -215,17 +215,44 @@ describe("storefront actions and progressive WebMCP adapter", () => {
 
     const byName = new Map(registered.map((tool) => [tool.name, tool]));
     await byName.get("add_to_cart")!.execute({ id: "prod_hoodie", quantity: 1 });
+    // Repeated add_to_cart increments existing line quantity (1 -> 3).
+    const secondAdd = (await byName.get("add_to_cart")!.execute({
+      id: "prod_hoodie",
+      quantity: 2,
+    })) as { ok: boolean; cart: { itemCount: number; subtotalMinor: number; lines: Array<{ id: string; quantity: number }> } };
+    expect(secondAdd.ok).toBe(true);
+    expect(secondAdd.cart.itemCount).toBe(3);
+    expect(secondAdd.cart.lines).toEqual([
+      expect.objectContaining({ id: "prod_hoodie", quantity: 3 }),
+    ]);
+    expect(secondAdd.cart.subtotalMinor).toBe(6500 * 3);
 
-    // Step 1: Unconfirmed proceed_to_checkout pauses at buyer_review_required without navigating.
+    // Step 1: Unconfirmed proceed_to_checkout pauses at buyer_review_required without navigating, leaving totalMinor null while shipping/tax are unknown.
     const step1 = (await byName.get("proceed_to_checkout")!.execute({})) as {
       ok: boolean;
       status: string;
       reviewFingerprint: string;
-      totals: { subtotalMinor: number };
+      totals: { subtotalMinor: number; shippingMinor: number | null; taxMinor: number | null; totalMinor: number | null };
     };
     expect(step1.ok).toBe(true);
     expect(step1.status).toBe("buyer_review_required");
-    expect(step1.totals.subtotalMinor).toBe(6500);
+    expect(step1.totals.subtotalMinor).toBe(6500 * 3);
+    expect(step1.totals.shippingMinor).toBeNull();
+    expect(step1.totals.taxMinor).toBeNull();
+    expect(step1.totals.totalMinor).toBeNull();
+    expect(navigated).toEqual([]);
+
+    // Omitting reviewFingerprint on confirmation is rejected and stays at buyer_review_required.
+    const missingFingerprintConfirm = (await byName.get("proceed_to_checkout")!.execute({
+      buyerConfirmed: true,
+    })) as {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+    };
+    expect(missingFingerprintConfirm.ok).toBe(true);
+    expect(missingFingerprintConfirm.status).toBe("buyer_review_required");
+    expect(missingFingerprintConfirm.reviewFingerprint).toBe(step1.reviewFingerprint);
     expect(navigated).toEqual([]);
 
     // Mutating the cart invalidates the prior review fingerprint.
@@ -260,6 +287,68 @@ describe("storefront actions and progressive WebMCP adapter", () => {
     // Clearing the cart resets state.
     await byName.get("cancel_cart")!.execute({});
     expect(JSON.parse(storage.getItem(GUEST_CART_STORAGE_KEY) ?? "{}").lines).toEqual([]);
+  });
+
+  it("invalidates buyer review when authoritative Commerce prices change without a cart mutation", async () => {
+    const storage = createMemoryStorage();
+    let hoodieUnitMinor = "6500";
+    const navigated: string[] = [];
+    const actions = createStorefrontActions({
+      storage,
+      navigate: (path) => navigated.push(path),
+      fetchSnapshot: async (ids) =>
+        ids.map((id) => {
+          if (id === "prod_hoodie") {
+            return {
+              ...CATALOG_FIXTURES[0]!,
+              price: {
+                listable: true,
+                regularText: hoodieUnitMinor === "6500" ? "$65.00" : "$55.00",
+                saleText: null,
+                unitMinor: hoodieUnitMinor,
+              },
+            };
+          }
+          return { id, found: false as const };
+        }),
+    });
+
+    await actions.updateCart({
+      mode: "add",
+      lines: [{ id: "prod_hoodie", quantity: 1 }],
+    });
+
+    const initialReview = await actions.proceedToCheckout();
+    expect(initialReview.ok).toBe(true);
+    if (!initialReview.ok) return;
+    expect(initialReview.status).toBe("buyer_review_required");
+    expect(initialReview.totals.subtotalMinor).toBe(6500);
+    expect(initialReview.totals.totalMinor).toBeNull();
+
+    // Commerce price changes from $65.00 (6500) to $55.00 (5500) while cart intent stays identical.
+    hoodieUnitMinor = "5500";
+
+    const confirmWithOldPriceFingerprint = await actions.proceedToCheckout({
+      buyerConfirmed: true,
+      reviewFingerprint: initialReview.reviewFingerprint,
+    });
+    expect(confirmWithOldPriceFingerprint.ok).toBe(true);
+    if (!confirmWithOldPriceFingerprint.ok) return;
+    expect(confirmWithOldPriceFingerprint.status).toBe("buyer_review_required");
+    expect(confirmWithOldPriceFingerprint.reviewFingerprint).not.toBe(
+      initialReview.reviewFingerprint,
+    );
+    expect(confirmWithOldPriceFingerprint.totals.subtotalMinor).toBe(5500);
+    expect(navigated).toEqual([]);
+
+    const confirmWithNewPriceFingerprint = await actions.proceedToCheckout({
+      buyerConfirmed: true,
+      reviewFingerprint: confirmWithOldPriceFingerprint.reviewFingerprint,
+    });
+    expect(confirmWithNewPriceFingerprint.ok).toBe(true);
+    if (!confirmWithNewPriceFingerprint.ok) return;
+    expect(confirmWithNewPriceFingerprint.status).toBe("requires_escalation");
+    expect(navigated).toEqual(["/checkout"]);
   });
 
   it("blocks checkout escalation when the cart is empty or contains an unsellable item", async () => {

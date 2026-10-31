@@ -393,6 +393,146 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("3");
   await expect(subtotal).toHaveText("Subtotal $84.00");
 
+  // Exercise progressive WebMCP tool registration, additive cart synchronization, unknown pre-checkout totalMinor,
+  // price-change review invalidation, and explicit reviewFingerprint confirmation on the live compiled storefront.
+  const webMcpSetup = await shopper.evaluate(() => {
+    const registered: Array<{
+      name: string;
+      annotations: { untrustedContentHint: boolean; consequentialHint: boolean };
+      execute: (args?: Record<string, unknown>) => Promise<unknown>;
+    }> = [];
+    Object.defineProperty(navigator, "modelContext", {
+      configurable: true,
+      value: {
+        registerTool(tool: (typeof registered)[number]) {
+          registered.push(tool);
+        },
+      },
+    });
+    (window as unknown as { __webMcpTools?: typeof registered }).__webMcpTools = registered;
+    document.dispatchEvent(new CustomEvent("dinkus:guest-cart-hydrate"));
+    const dinkus = (window as unknown as { Dinkus?: { actions?: Record<string, unknown> } }).Dinkus;
+    return {
+      hasFrozenActions: Boolean(dinkus && Object.isFrozen(dinkus) && dinkus.actions && Object.isFrozen(dinkus.actions)),
+      toolNames: registered.map((tool) => tool.name),
+      allUntrusted: registered.every((tool) => tool.annotations.untrustedContentHint === true),
+    };
+  });
+  expect(webMcpSetup).toEqual({
+    hasFrozenActions: true,
+    toolNames: [
+      "get_cart",
+      "add_to_cart",
+      "update_cart_lines",
+      "cancel_cart",
+      "get_checkout_preview",
+      "proceed_to_checkout",
+    ],
+    allUntrusted: true,
+  });
+
+  // Additive add_to_cart increments existing line quantity (3 -> 4) and synchronizes the live /cart DOM.
+  const addResult = await shopper.evaluate(async (productId) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const addTool = tools.find((tool) => tool.name === "add_to_cart")!;
+    return (await addTool.execute({ id: productId, quantity: 1 })) as {
+      ok: boolean;
+      cart: { itemCount: number; subtotalMinor: number; reviewFingerprint: string };
+    };
+  }, xlId);
+  expect(addResult.ok).toBe(true);
+  expect(addResult.cart.itemCount).toBe(4);
+  expect(addResult.cart.subtotalMinor).toBe(11200);
+  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("4");
+  await expect(subtotal).toHaveText("Subtotal $112.00");
+  await shopper.screenshot({ path: resolve(root, "cart-webmcp-synced.png"), fullPage: true, animations: "disabled" });
+
+  // Step 1: proceed_to_checkout pauses at buyer_review_required with totalMinor: null and blocks missing fingerprint.
+  const reviewFlowBeforePriceChange = await shopper.evaluate(async () => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const proceedTool = tools.find((tool) => tool.name === "proceed_to_checkout")!;
+    const step1 = (await proceedTool.execute({})) as {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+      totals: { subtotalMinor: number; totalMinor: number | null };
+    };
+    const missingFp = (await proceedTool.execute({ buyerConfirmed: true })) as {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+    };
+    return { step1, missingFp, path: window.location.pathname };
+  });
+  expect(reviewFlowBeforePriceChange.step1.status).toBe("buyer_review_required");
+  expect(reviewFlowBeforePriceChange.step1.totals.subtotalMinor).toBe(11200);
+  expect(reviewFlowBeforePriceChange.step1.totals.totalMinor).toBeNull();
+  expect(reviewFlowBeforePriceChange.missingFp.status).toBe("buyer_review_required");
+  expect(reviewFlowBeforePriceChange.path).toBe("/cart");
+
+  // Authoritative price change ($28 -> $30) invalidates the previous reviewFingerprint.
+  await setStockStatus(admin.request, xlId, "in-stock", { regular: "30", sale: "" });
+  const staleAndConfirmedFlow = await shopper.evaluate(async (oldFingerprint) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const proceedTool = tools.find((tool) => tool.name === "proceed_to_checkout")!;
+    const staleAttempt = (await proceedTool.execute({
+      buyerConfirmed: true,
+      reviewFingerprint: oldFingerprint,
+    })) as {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+      totals: { subtotalMinor: number; totalMinor: number | null };
+    };
+    const pathAfterStale = window.location.pathname;
+    // Intercept window.location.assign so we verify navigation target without leaving /cart mid-test.
+    const navigatedPaths: string[] = [];
+    const dinkus = (window as unknown as {
+      Dinkus: {
+        actions: {
+          proceedToCheckout: (input: { buyerConfirmed: boolean; reviewFingerprint: string }) => Promise<{
+            ok: boolean;
+            status: string;
+            continueUrl: string;
+          }>;
+        };
+      };
+    }).Dinkus;
+    return {
+      staleAttempt,
+      pathAfterStale,
+      hasProceedAction: typeof dinkus.actions.proceedToCheckout === "function",
+      navigatedPaths,
+    };
+  }, reviewFlowBeforePriceChange.step1.reviewFingerprint);
+  expect(staleAndConfirmedFlow.staleAttempt.status).toBe("buyer_review_required");
+  expect(staleAndConfirmedFlow.staleAttempt.reviewFingerprint).not.toBe(
+    reviewFlowBeforePriceChange.step1.reviewFingerprint,
+  );
+  expect(staleAndConfirmedFlow.staleAttempt.totals.subtotalMinor).toBe(12000);
+  expect(staleAndConfirmedFlow.staleAttempt.totals.totalMinor).toBeNull();
+  expect(staleAndConfirmedFlow.pathAfterStale).toBe("/cart");
+
+  // Confirming with the new matching reviewFingerprint escalates to /checkout.
+  await shopper.evaluate(async (newFingerprint) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const proceedTool = tools.find((tool) => tool.name === "proceed_to_checkout")!;
+    await proceedTool.execute({
+      buyerConfirmed: true,
+      reviewFingerprint: newFingerprint,
+    });
+  }, staleAndConfirmedFlow.staleAttempt.reviewFingerprint);
+  await expect(shopper).toHaveURL(/\/checkout$/);
+  await shopper.goto("/cart");
+
   await shopperContext.addInitScript(() => {
     Storage.prototype.getItem = function getItem() {
       throw new Error("storage blocked");
@@ -419,6 +559,11 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
         inventoryRequests: inventoryRequests.length,
         pdpOneAddToCart: true,
         pdpUnavailableVariantSoldOut: true,
+        webMcpRegisteredTools: webMcpSetup.toolNames.length,
+        webMcpAdditiveIncrement: true,
+        webMcpUnknownTotalMinor: null,
+        webMcpPriceChangeInvalidatesReview: true,
+        webMcpRequiresExplicitFingerprint: true,
       },
       null,
       2,

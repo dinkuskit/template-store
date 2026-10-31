@@ -73,7 +73,7 @@ export type DinkusCartSnapshot = Readonly<{
 }>;
 
 export type DinkusCartUpdatePatch = Readonly<{
-  mode?: "merge" | "replace";
+  mode?: "add" | "merge" | "replace";
   clear?: boolean;
   lines?: readonly Readonly<{ id: string; quantity: number }>[];
 }>;
@@ -151,12 +151,45 @@ export type StorefrontWebMcpEnvironment = Readonly<{
   globalTarget?: Record<string, unknown> | null;
 }>;
 
-export function computeCartReviewFingerprint(intent: GuestCartIntent): string {
+export function computeCartReviewFingerprint(
+  intent: GuestCartIntent,
+  resolved?: Readonly<{
+    currency?: string;
+    subtotalMinor?: number | null;
+    lines?: readonly DinkusCartLineSnapshot[];
+  }>,
+): string {
   if (intent.lines.length === 0) return "cart:empty";
-  const canonical = [...intent.lines]
+  const resolvedById = new Map<string, DinkusCartLineSnapshot>();
+  if (resolved?.lines) {
+    for (const line of resolved.lines) {
+      resolvedById.set(line.id, line);
+    }
+  }
+  const canonicalLines = [...intent.lines]
     .sort((left, right) => left.id.localeCompare(right.id))
-    .map((line) => `${line.id}:${line.quantity}`)
+    .map((line) => {
+      const snap = resolvedById.get(line.id);
+      if (!snap) {
+        return `${line.id}:${line.quantity}:unquoted`;
+      }
+      return [
+        line.id,
+        String(line.quantity),
+        snap.unitPriceMinor !== null ? String(snap.unitPriceMinor) : "unpriced",
+        snap.lineSubtotalMinor !== null ? String(snap.lineSubtotalMinor) : "unpriced",
+        snap.sellable !== null ? String(snap.sellable) : "unknown",
+        snap.fulfillment ?? "unknown",
+        snap.currency,
+      ].join(":");
+    })
     .join("|");
+  const subtotalToken =
+    resolved && resolved.subtotalMinor !== undefined && resolved.subtotalMinor !== null
+      ? String(resolved.subtotalMinor)
+      : "unpriced";
+  const currencyToken = resolved?.currency ?? "USD";
+  const canonical = `${canonicalLines}|currency=${currencyToken}|subtotal=${subtotalToken}`;
   let hash = 2166136261;
   for (let index = 0; index < canonical.length; index += 1) {
     hash ^= canonical.charCodeAt(index);
@@ -265,7 +298,11 @@ function buildCartSnapshot(
     currency: "USD",
     itemCount: guestCartItemCount(intent),
     subtotalMinor,
-    reviewFingerprint: computeCartReviewFingerprint(intent),
+    reviewFingerprint: computeCartReviewFingerprint(intent, {
+      currency: "USD",
+      subtotalMinor,
+      lines,
+    }),
     lines: Object.freeze(lines),
     storageNotice: notice,
   });
@@ -340,12 +377,14 @@ export function createStorefrontActions(
         }
         const id = item.id.trim();
         if (item.quantity === 0) {
-          if (patch.mode === "replace") {
+          if (patch.mode === "replace" || patch.mode === "add") {
             const error: DinkusCartUpdateResult = {
               ok: false,
               code: "INVALID_QUANTITY",
               message:
-                "Full-replacement update_cart_lines requires positive quantities (1..99); omit a line from the array to remove it.",
+                patch.mode === "add"
+                  ? `Additive add_to_cart requires a positive quantity from 1 to ${GUEST_CART_MAX_QUANTITY}.`
+                  : "Full-replacement update_cart_lines requires positive quantities (1..99); omit a line from the array to remove it.",
               instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
             };
             emit("dinkus:cart:error", error);
@@ -367,9 +406,9 @@ export function createStorefrontActions(
         }
         const exists = current.lines.some((line) => line.id === id);
         const mutation =
-          patch.mode === "replace" || !exists
-            ? addGuestCartLine(current, id, item.quantity)
-            : setGuestCartLineQuantity(current, id, item.quantity);
+          patch.mode === "replace" && exists
+            ? setGuestCartLineQuantity(current, id, item.quantity)
+            : addGuestCartLine(current, id, item.quantity);
         if (!mutation.accepted) {
           const error: DinkusCartUpdateResult = {
             ok: false,
@@ -434,7 +473,7 @@ export function createStorefrontActions(
         shippingMinor: null,
         discountMinor: 0,
         taxMinor: null,
-        totalMinor: cart.subtotalMinor,
+        totalMinor: null,
       }),
       lines: cart.lines,
       continueUrl: "/checkout",
@@ -474,11 +513,14 @@ export function createStorefrontActions(
       };
     }
 
+    const suppliedFingerprint =
+      typeof input?.reviewFingerprint === "string" ? input.reviewFingerprint.trim() : "";
     const confirmed =
       input?.buyerConfirmed === true &&
+      suppliedFingerprint.length > 0 &&
+      reviewedFingerprint !== null &&
       reviewedFingerprint === preview.reviewFingerprint &&
-      (input.reviewFingerprint === undefined ||
-        input.reviewFingerprint === preview.reviewFingerprint);
+      suppliedFingerprint === preview.reviewFingerprint;
 
     if (!confirmed) {
       reviewedFingerprint = preview.reviewFingerprint;
@@ -490,7 +532,7 @@ export function createStorefrontActions(
         continueUrl: "/checkout",
         totals: preview.totals,
         instruction:
-          "Present the cart lines and integer minor-unit subtotal to the shopper for explicit confirmation before calling proceed_to_checkout with buyerConfirmed: true. " +
+          "Present the cart lines and integer minor-unit merchandise subtotal to the shopper for explicit confirmation before calling proceed_to_checkout with buyerConfirmed: true and the exact matching reviewFingerprint. " +
           WEBMCP_ANTI_SCRAPE_NOTICE,
       };
     }
@@ -542,7 +584,7 @@ export function buildStorefrontWebMcpTools(
     {
       name: "add_to_cart",
       description:
-        "Add a sellable Commerce product to the storefront guest cart by product id and integer quantity (1..99).",
+        "Add or increment a sellable Commerce product in the storefront guest cart by product id and integer quantity (1..99).",
       annotations: Object.freeze({
         title: "Add to Cart",
         readOnlyHint: false,
@@ -568,7 +610,7 @@ export function buildStorefrontWebMcpTools(
         const id = typeof args?.id === "string" ? args.id : "";
         const quantity = typeof args?.quantity === "number" ? args.quantity : 1;
         return actions.updateCart({
-          mode: "merge",
+          mode: "add",
           lines: [{ id, quantity }],
         });
       },
@@ -637,7 +679,7 @@ export function buildStorefrontWebMcpTools(
     {
       name: "get_checkout_preview",
       description:
-        "Read deterministic integer minor-unit checkout preview totals (subtotalMinor, discountMinor, shippingMinor, taxMinor, totalMinor) and reviewFingerprint before buyer confirmation or SpendRequest virtual-card sizing.",
+        "Read deterministic integer minor-unit merchandise subtotal (subtotalMinor, discountMinor) and reviewFingerprint before buyer confirmation. Shipping, tax, and final order total (shippingMinor, taxMinor, totalMinor) remain null until authoritative charges are resolved on /checkout.",
       annotations: Object.freeze({
         title: "Get Checkout Preview",
         readOnlyHint: true,
@@ -655,7 +697,7 @@ export function buildStorefrontWebMcpTools(
     {
       name: "proceed_to_checkout",
       description:
-        "Two-step buyer review gate for checkout handoff. First call transitions to buyer_review_required and returns reviewFingerprint; second call with buyerConfirmed: true and matching reviewFingerprint escalates to /checkout where the shopper completes payment.",
+        "Two-step buyer review gate for checkout handoff. First call transitions to buyer_review_required and returns reviewFingerprint; second call requires both buyerConfirmed: true and the exact matching reviewFingerprint before escalating to /checkout.",
       annotations: Object.freeze({
         title: "Proceed to Checkout",
         readOnlyHint: false,
@@ -674,7 +716,8 @@ export function buildStorefrontWebMcpTools(
           },
           reviewFingerprint: {
             type: "string",
-            description: "Cart fingerprint returned by the prior buyer_review_required step.",
+            description:
+              "Exact cart quote fingerprint returned by the prior buyer_review_required step (required when buyerConfirmed is true).",
           },
         },
       }),
