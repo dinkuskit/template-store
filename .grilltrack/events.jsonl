@@ -153,3 +153,21 @@
 {"action": "decision_proposed", "at": "2026-10-29T16:46:58+00:00", "data": {"decision_id": "template-no-commerce-box-20261029"}, "event_id": "965e1bef-bde6-4b6b-ba7a-816d99bd66aa"}
 {"action": "decision_locked", "at": "2026-10-29T16:47:03+00:00", "data": {"decision_id": "template-no-commerce-box-20261029"}, "event_id": "abad393b-6475-4f24-a244-04742f0ad7a4"}
 {"action": "decision_superseded", "at": "2026-10-29T16:47:03+00:00", "data": {"affected": [], "decision_id": "template-one-product-screen-20261023", "replacement_id": "template-no-commerce-box-20261029"}, "event_id": "6cef9a68-35aa-4a73-931d-fdefcf6cf49c"}
+{"action": "focus_started", "at": "2026-10-31T03:13:58+00:00", "data": {"cadence": "frontier-batch", "domain": "UCP for shoppers' AI agents (post-v1)"}, "event_id": "4f64d419-aa67-4ca8-8abb-3eb578137688"}
+{"action": "shared_understanding_confirmed", "at": "2026-10-31T03:13:58+00:00", "data": {"summary": "Ronald answered 'agreed on all 8' in the thread, 03:13 UTC 31 Oct 2026."}, "event_id": "4bc021be-17d9-4556-995b-660bd7824770"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-timing-20261031"}, "event_id": "c34b99ef-c918-4b19-9b50-a790fc217bb2"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-timing-20261031"}, "event_id": "2885eb46-ee82-4eef-ac5a-c98558b8ec6c"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-payment-handoff-20261031"}, "event_id": "51d87bb8-08fd-4dd5-887f-1f834764836b"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-payment-handoff-20261031"}, "event_id": "a27a87c4-9ede-49d7-a6df-019953894d3a"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-home-template-store-20261031"}, "event_id": "e1166dba-c16a-4669-b5f3-873148624770"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-home-template-store-20261031"}, "event_id": "8dbc740a-b69b-4e88-8462-1c1ac3a955d3"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-first-tools-20261031"}, "event_id": "3eca1d71-401c-4b96-96a1-0d47834fdfc2"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:58+00:00", "data": {"decision_id": "ucp-first-tools-20261031"}, "event_id": "4ee10aea-8c48-4cba-af06-7ad935237401"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-agent-access-20261031"}, "event_id": "150e0067-09b9-436a-8183-e19b8b000cda"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-agent-access-20261031"}, "event_id": "81120f65-1f32-47ff-b9b6-d2daf2992c9a"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-order-access-20261031"}, "event_id": "b816c8c2-0d0d-48c7-9be9-eb5d75e17606"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-order-access-20261031"}, "event_id": "efe76fa2-f914-4185-a3c9-a8b936e58a52"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-owner-control-20261031"}, "event_id": "0466b851-6dfe-4f0f-a5a3-0b58ceccb305"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-owner-control-20261031"}, "event_id": "cad35473-2033-4c8f-84de-3021fa271f7b"}
+{"action": "decision_proposed", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-browser-agents-later-20261031"}, "event_id": "5536bf83-f700-4940-a2e6-29ad078362b9"}
+{"action": "decision_locked", "at": "2026-10-31T03:13:59+00:00", "data": {"decision_id": "ucp-browser-agents-later-20261031"}, "event_id": "565db6c8-13d2-48d9-ad1a-3d686eefd6d0"}
