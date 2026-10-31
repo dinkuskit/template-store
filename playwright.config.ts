@@ -62,11 +62,11 @@ export default defineConfig({
       url: `http://127.0.0.1:${proofPort}/_emdash/api/setup/dev-bypass`,
       reuseExistingServer: false,
       timeout: 120_000,
+      // The proof store runs the paired Commerce Registry build (pnpm prepare:commerce first).
       env: childEnv({
         DINKUS_E2E_PORT: proofPort,
         DINKUS_STOREFRONT_PROFILE: "proof",
         DINKUS_PROOF_MODE: "1",
-        DINKUS_CATALOG_PROFILE: "native-development",
       }),
     },
     {
@@ -74,13 +74,11 @@ export default defineConfig({
       url: `http://127.0.0.1:${shippingPort}/_emdash/api/setup/dev-bypass`,
       reuseExistingServer: false,
       timeout: 120_000,
-      env: (() => {
-        const env = childEnv({
-          DINKUS_SHIPPING_E2E_PORT: shippingPort,
-        });
-        delete env.DINKUS_CATALOG_PROFILE;
-        return env;
-      })(),
+      // The shipping store mounts no Commerce: the fail-closed installed catalog path.
+      env: childEnv({
+        DINKUS_SHIPPING_E2E_PORT: shippingPort,
+        DINKUS_PAIRED_COMMERCE_DIR: "",
+      }),
     },
   ],
   outputDir: "test-results/playwright",

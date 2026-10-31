@@ -119,6 +119,18 @@ describe("installed Commerce public catalog consumer", () => {
         availability: { status: "in-stock", sellable: true, listable: true }, fulfillment: "physical" })) },
   });
 
+  const sized = {
+    ...hoodie([]),
+    variants: { schema: "dinkuskit.commerce.product-variants/v1", productId: "hoodie",
+      options: [{ optionId: "size", label: "Size", values: [{ valueId: "s", label: "Small" }, { valueId: "l", label: "Large" }] }],
+      members: [
+        { catalogItemId: "hoodie-s", selections: [{ optionId: "size", optionLabel: "Size", valueId: "s", valueLabel: "Small" }],
+          price: { currency: "USD", minor: "4000" }, availability: { status: "in-stock", sellable: true, listable: true }, fulfillment: "physical" },
+        { catalogItemId: "hoodie-l", selections: [{ optionId: "size", optionLabel: "Size", valueId: "l", valueLabel: "Large" }],
+          price: { currency: "USD", minor: "4500" }, availability: { status: "out-of-stock", sellable: false, listable: true }, fulfillment: "physical" },
+      ] },
+  };
+
   it("renders all items when a variant product has no top-level price, using a from-price", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const products = await readInstalledCommerceCatalog(context([{ products: [
@@ -144,8 +156,8 @@ describe("installed Commerce public catalog consumer", () => {
     const product = await readInstalledCommerceProduct("hoodie", context([value]));
     expect(product?.price.regularText).toBe("from $56.00");
     expect(product?.variants).toEqual([
-      { id: "hoodie-s", selections: [["Size", "Small"]], unitMinor: "5600", priceText: "$56.00", availability: { status: "in-stock", sellable: true } },
-      { id: "hoodie-m", selections: [["Size", "Medium"]], unitMinor: "6000", priceText: "$60.00", availability: { status: "out-of-stock", sellable: false } },
+      { id: "hoodie-s", selections: [["Size", "Small"]], unitMinor: "5600", priceText: "$56.00", availability: { status: "in-stock", sellable: true }, fulfillment: "physical" },
+      { id: "hoodie-m", selections: [["Size", "Medium"]], unitMinor: "6000", priceText: "$60.00", availability: { status: "out-of-stock", sellable: false }, fulfillment: "physical" },
     ]);
   });
 
@@ -185,19 +197,32 @@ describe("installed Commerce public catalog consumer", () => {
 
   it("looks up only the requested items for a cart, one public item call each", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const ctx = context([item("hat"), null, { ...item("bad"), price: undefined }, hoodie([{ id: "hoodie-s", minor: "4000" }])]);
+    const ctx = context([item("hat"), null, { ...item("bad"), price: undefined }, sized]);
     const products = await readInstalledCommerceProducts(["hat", "gone", "bad", "hoodie-s"], ctx);
     expect(ctx.runtime.handlePublicPluginApiRoute).toHaveBeenCalledTimes(4);
     const calls = ctx.runtime.handlePublicPluginApiRoute.mock.calls as unknown as [string, string, string, Request][];
     expect(calls.map(([, , route]) => route)).toEqual(Array(4).fill("catalog/public/item"));
     expect(calls.map(([, , , request]) => new URL(request.url).searchParams.get("itemId"))).toEqual(["hat", "gone", "bad", "hoodie-s"]);
     expect(products.get("hat")?.price.regularText).toBe("$1.25");
-    // Missing, malformed and variant-member ids resolve as the whole-catalog read does: not found.
     expect(products.get("gone")).toBeNull();
     expect(products.get("bad")).toBeNull();
-    expect(products.get("hoodie-s")).toBeNull();
+    // Commerce answers a member id with its whole product; the cart reads the member it asked for.
+    expect(products.get("hoodie-s")).toMatchObject({
+      id: "hoodie-s", name: "Demo hoodie \u2014 Small", sku: "",
+      price: { listable: true, regularText: "$40.00", saleText: null, unitMinor: "4000" },
+      availability: { status: "in-stock", sellable: true, listable: true },
+    });
+    expect(products.get("hoodie-s")).not.toHaveProperty("variants");
     expect(warn).toHaveBeenCalledTimes(1);
     warn.mockRestore();
+  });
+
+  it("never prices a cart line from the product or a sibling member", async () => {
+    // hoodie is the product's own id; Commerce lists only hoodie-s and hoodie-l (sold out).
+    const products = await readInstalledCommerceProducts(["hoodie", "hoodie-l", "hoodie-m"], context([sized, sized, sized]));
+    expect(products.get("hoodie")).toBeNull();
+    expect(products.get("hoodie-l")).toMatchObject({ price: { unitMinor: "4500" }, availability: { status: "out-of-stock", sellable: false } });
+    expect(products.get("hoodie-m")).toBeNull();
   });
 
   it("fails a cart lookup when Commerce cannot answer, so the cart keeps its lines", async () => {

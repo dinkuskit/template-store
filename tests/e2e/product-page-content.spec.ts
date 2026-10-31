@@ -7,9 +7,6 @@ import { addPageProduct, catalogOp } from "./helpers/product-page";
 // template-sells-anything-20261027 and template-rich-product-page-20261027:
 // any kind of product gets a page, the page carries the owner's rich summary and
 // sections, and Commerce's gallery shows as thumbnails.
-const CREATE_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/create";
-const SAVE_PRICES_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/save-prices";
-const SAVE_MEDIA_ROUTE = "/_emdash/api/plugins/dinkus-commerce/catalog-items/save-media";
 const csrf = { "X-EmDash-Request": "1" };
 
 function unwrap<T>(body: unknown): T {
@@ -69,22 +66,8 @@ test("a product of any kind shows its rich summary, sections and gallery", async
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
   const suffix = testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase();
 
-  // A seed packet: no apparel placeholder art, sold through Commerce with a gallery.
-  const created = await request.post(CREATE_ROUTE, {
-    headers: csrf,
-    data: { commandId: `page-content-${crypto.randomUUID()}`, name: `Runtz Candy Kush ${suffix}`, sku: `SEED-${suffix.toUpperCase()}`, manageStock: false },
-  });
-  expect(created.ok(), await created.text()).toBe(true);
-  const itemId = unwrap<{ item: { itemId: string } }>(await created.json()).item.itemId;
-  expect((await request.post(SAVE_PRICES_ROUTE, { headers: csrf, data: { catalogItemId: itemId, regular: "22", sale: "" } })).ok()).toBe(true);
-  const pictures = [
-    await upload(request, `packet-front-${suffix}.png`, [40, 120, 60]),
-    await upload(request, `packet-back-${suffix}.png`, [200, 160, 40]),
-    await upload(request, `seeds-${suffix}.png`, [90, 50, 30]),
-  ];
-  const media = await request.post(SAVE_MEDIA_ROUTE, { headers: csrf, data: { catalogItemId: itemId, image: pictures[0], gallery: pictures.slice(1) } });
-  expect(media.ok(), await media.text()).toBe(true);
-
+  // A seed packet: no apparel placeholder art, sold through Commerce with a gallery. Its page comes first;
+  // Commerce creates the product for the page (no product without a page).
   const slug = `runtz-candy-kush-${suffix}`;
   const entry = await request.post("/_emdash/api/content/products", {
     headers: csrf,
@@ -110,7 +93,14 @@ test("a product of any kind shows its rich summary, sections and gallery", async
   const entryId = unwrap<{ item: { id: string } }>(await entry.json()).item.id;
   try {
     // Commerce holds which product the page sells (template-no-commerce-box-20261029).
-    await catalogOp(request, { op: "link", entryId, catalogItemId: itemId });
+    const itemId = await addPageProduct(request, entryId, { name: `Runtz Candy Kush ${suffix}`, sku: `SEED-${suffix.toUpperCase()}` });
+    await catalogOp(request, { op: "prices", catalogItemId: itemId, regular: "22", sale: "", stockStatus: "in-stock" });
+    const pictures = [
+      await upload(request, `packet-front-${suffix}.png`, [40, 120, 60]),
+      await upload(request, `packet-back-${suffix}.png`, [200, 160, 40]),
+      await upload(request, `seeds-${suffix}.png`, [90, 50, 30]),
+    ];
+    await catalogOp(request, { op: "media", catalogItemId: itemId, image: pictures[0], gallery: pictures.slice(1) });
     expect((await request.post(`/_emdash/api/content/products/${entryId}/publish`, { headers: csrf })).ok()).toBe(true);
     await page.goto(`/products/${slug}`);
     const detail = page.locator(`[data-product-page="${slug}"]`);

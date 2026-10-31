@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
-import { draftProductPage, openPanel, openProductPage, openProductsList, panelPrice, publishProductPage, savePanelPrices } from "./helpers/product-page";
+import { COMMERCE_API, COMMERCE_SKU_INDEX, draftProductPage, openPanel, openProductPage, openProductsList, panelPrice, publishProductPage, savePanelPrices, setStockStatus } from "./helpers/product-page";
 
 // Owns the persisted admin-to-anonymous-storefront boundary; demo runtime tests cannot catch split storage.
 test("merchant product prices drive public listing and survive an admin reload", async ({ page, browser, request }, testInfo) => {
@@ -14,7 +14,8 @@ test("merchant product prices drive public listing and survive an admin reload",
   const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
   const admin = await context.newPage();
   await openProductsList(admin);
-  await expect.poll(() => execFileSync("sqlite3", [".artifacts/e2e/content.db", "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_dinkus-commerce_catalogItems_%'"], { encoding: "utf8" }), { timeout: 90_000 }).toContain("uidx_plugin_dinkus-commerce_catalogItems_skuKey");
+  // The installed Commerce (the Registry build) builds its unique indexes on a fresh store's first requests.
+  await expect.poll(() => execFileSync("sqlite3", [".artifacts/e2e/content.db", "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%_catalog_items_%'"], { encoding: "utf8" }), { timeout: 90_000 }).toContain(COMMERCE_SKU_INDEX);
   // Commerce 0.6.0: the owner adds price and stock on the product's Content > Products page; it is a Draft.
   const name = `Merchant hat ${testInfo.project.name}`;
   const { pageId, itemId: id } = await draftProductPage(admin, { title: name, sku: `MERCHANT-${testInfo.project.name}` });
@@ -44,26 +45,27 @@ test("merchant product prices drive public listing and survive an admin reload",
   panel = await savePanelPrices(admin, "24", "18");
   await expect(panelPrice(admin, panel, "Sale")).toHaveValue("18.00");
   await page.reload();
-  await expect(card.locator("s[data-regular-price]")).toHaveText("$24.00");
-  await expect(card.locator("[data-sale-price]")).toHaveText("$18.00");
+  // The installed Commerce's public catalog projects the price the shopper pays; the Regular/Sale pair stays
+  // in the panel, so the shop shows the sale price alone, never a reconstructed strike-through.
+  await expect(card.locator("[data-regular-price]")).toHaveText("$18.00");
+  await expect(card.locator("s[data-regular-price]")).toHaveCount(0);
+  await expect(card.locator("[data-sale-price]")).toHaveCount(0);
   await admin.screenshot({ path: resolve(root, "admin-sale.png"), fullPage: true, animations: "disabled" });
   await page.screenshot({ path: resolve(root, "public-sale.png"), fullPage: true, animations: "disabled" });
   // A price with a fraction of a cent is refused and nothing changes on the shop.
   panel = await savePanelPrices(admin, "12.999", "18");
   await expect(panelPrice(admin, panel, "Regular")).toHaveValue("12.999");
   await page.reload();
-  await expect(card.locator("[data-sale-price]")).toHaveText("$18.00");
-  await expect(card.locator("s[data-regular-price]")).toHaveText("$24.00");
+  await expect(card.locator("[data-regular-price]")).toHaveText("$18.00");
   // The saved prices survive an admin reload.
   await admin.reload();
   await expect(panelPrice(admin, await openPanel(admin), "Sale")).toHaveValue("18.00");
   await expect(panelPrice(admin, await openPanel(admin), "Regular")).toHaveValue("24.00");
-  const statusRoute = "/_emdash/api/plugins/dinkus-commerce/catalog-items/set-manual-availability";
-  const denied = await page.request.post(statusRoute, { data: { catalogItemId: id, status: "out-of-stock" }, headers: { "X-EmDash-Request": "1" } });
+  // Stock status is saved with the prices (the panel's Save, the CLI's products prices), by someone signed in.
+  const denied = await page.request.post(`${COMMERCE_API}/catalog`, { data: { op: "prices", catalogItemId: id, regular: "24", sale: "18", stockStatus: "out-of-stock" }, headers: { "X-EmDash-Request": "1" } });
   expect([401, 403]).toContain(denied.status());
-  for (const status of ["out-of-stock", "available-on-backorder", "in-stock"]) {
-    const changed = await admin.request.post(statusRoute, { data: { catalogItemId: id, status }, headers: { "X-EmDash-Request": "1" } });
-    expect(changed.ok(), await changed.text()).toBe(true);
+  for (const status of ["out-of-stock", "available-on-backorder", "in-stock"] as const) {
+    await setStockStatus(admin.request, id, status, { regular: "24", sale: "18" });
     await page.reload();
     await expect(card.locator("[data-commerce-availability]")).toHaveAttribute("data-commerce-availability", status);
     await expect(card.locator("[data-stock-value]")).toHaveCount(0);
@@ -72,7 +74,7 @@ test("merchant product prices drive public listing and survive an admin reload",
   const editPage = await context.newPage();
   await editPage.goto("/");
   await expect(editPage.getByRole("checkbox", { name: "Edit mode" })).toBeChecked();
-  await expect(editPage.locator(`[data-commerce-product="${id}"] [data-sale-price]`)).toHaveText("$18.00");
+  await expect(editPage.locator(`[data-commerce-product="${id}"] [data-regular-price]`)).toHaveText("$18.00");
   await editPage.screenshot({ path: resolve(root, "public-edit.png"), fullPage: true, animations: "disabled" });
   await editPage.close();
   await openProductPage(admin, pageId);

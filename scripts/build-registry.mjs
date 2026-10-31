@@ -109,7 +109,9 @@ export function registryConfig(env) {
 export function registryBuildEnv(env, config) {
   const childEnv = { ...env, ...config.vars,
     DINKUS_HOSTING_PROFILE: "cloudflare", ASTRO_ADAPTER: "cloudflare",
-    DINKUS_WRANGLER_CONFIG: configRelativePath };
+    DINKUS_WRANGLER_CONFIG: configRelativePath,
+    // A Registry store installs Commerce from the Registry itself; it never bundles the paired build.
+    DINKUS_PAIRED_COMMERCE_DIR: "" };
   delete childEnv.CLOUDFLARE_ENV;
   return childEnv;
 }

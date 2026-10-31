@@ -35,10 +35,11 @@ pnpm dev
 
 Open the URL printed by Astro and `/_emdash/admin`. This prepares exact Commerce
 source automatically; source aliases remain temporary integration mechanics.
-The default storefront consumes installed Commerce `catalog/public`. Without a
-paired installed artifact, Shop fail-closes and invents no products. Native
-Products admin and storage reads require
-`DINKUS_CATALOG_PROFILE=native-development`.
+The default storefront consumes installed Commerce `catalog/public`. With the
+pinned Commerce's Registry bundle prepared (`pnpm prepare:commerce`), `pnpm dev`
+mounts it as a Registry store installs it (template-one-build-registry-20261031);
+without a mounted or installed Commerce, Shop fail-closes and invents no products.
+The native copy's `DINKUS_CATALOG_PROFILE=native-development` is retired.
 The default storefront does not bootstrap integration stock demonstrations.
 Use the explicit integration profile only for development regression verification:
 

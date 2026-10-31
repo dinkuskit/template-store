@@ -22,7 +22,7 @@ components through the explicit public `ui.ts` entry.
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; explicit native-development proof retains Regular/Sale composition, truthful catalog guidance, and warm-neutral card presentation | `src/features/commerce-catalog/`; `tests/e2e/commerce-catalog.spec.ts`; `tests/e2e/shipping-storefront-profile.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed; bounded 2026-10-09 visual refinement |
+| `dinkus.commerce-catalog` | Installed Commerce public-only SSR catalog consumption with complete opaque pagination; the proof store, running the pinned Commerce's Registry build (template-one-build-registry-20261031), proves Regular/Sale composition, truthful catalog guidance, and warm-neutral card presentation | `src/features/commerce-catalog/`; `tests/e2e/commerce-catalog.spec.ts`; `tests/e2e/shipping-storefront-profile.spec.ts` | `src/features/commerce-catalog/index.ts` | Commerce catalog/public installed boundary; EmDash public-only SSR dispatch | `bin/verify-web quick` | `bin/verify-web full` | installed read candidate; checkout closed; bounded 2026-10-09 visual refinement |
 
 | Journey | How to reach | Proof action | Observable success |
 | --- | --- | --- | --- |
@@ -50,6 +50,15 @@ variants are redirect inputs only, and redirect responses are `302`/`no-store`
 until verified for a later `301`. Demos, previews, and staging are noindex by
 default; a real merchant store must explicitly set
 `DINKUS_LAUNCH_INDEXABLE=1`. Noindex controls search visibility, not access.
+
+Category pages honor the CMS's ordered **Products in this category** references,
+read through the SDK's published/edit-preview reference query and all of its
+pages. Ordering applies only to the already-eligible merchandise: it cannot add
+draft, missing, or Commerce-removed products or change Commerce facts. Missing
+reference fields or failed reads retain the previous product order; unmatched
+eligible products remain stably last. See
+`src/features/store-shell/category-product-order.ts` and
+`tests/unit/category-product-order.test.ts`.
 
 Run the site verifier in order against the local server, a preview origin,
 then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD
@@ -105,11 +114,13 @@ Commerce49 derives canonical TEST payment lookup and wake list/ACK from original
 The default source-pilot profile is `shipping`; explicit
 `DINKUS_STOREFRONT_PROFILE=proof` selects development demonstrations.
 `tests/e2e/shipping-storefront-profile.spec.ts` covers the installed public
-catalog path with no native plugin mount: fail-closed Shop, no invented
+catalog path with no Commerce mounted: fail-closed Shop, no invented
 products, absent quantities/demonstrations, preview isolation, and closed
-checkout on desktop/mobile. Native Products create, Regular/Sale, Coming soon,
-and guest-cart add-to-cart remain `native-development` proof.
-`pnpm verify` keeps both this profile and all earlier managed regressions.
+checkout on desktop/mobile. Product create, Regular/Sale, stock status and
+guest-cart add-to-cart are proved on the proof store, which runs the pinned
+Commerce's Registry build (template-one-build-registry-20261031) and speaks
+only its routes. `pnpm verify` keeps both this profile and all earlier managed
+regressions.
 
 ## Storefront drivers
 
@@ -253,6 +264,6 @@ and intentionally refuse this new pairing. They are not proof of this source
 candidate. The optional cart coupon passes only intent to canonical checkout;
 it stays subject to Commerce support. Checkout admission now consumes the
 exact owner-supplied TEST readiness response through the original installed
-public dispatcher; native-development catalogs, absent plugins, and
+public dispatcher; the playground's native-development catalog, absent plugins, and
 missing/invalid configuration remain closed. Catalog or prepare success does
 not imply Registry readiness. See [Registry merchant checkout](docs/implementation/registry-merchant-checkout.md).

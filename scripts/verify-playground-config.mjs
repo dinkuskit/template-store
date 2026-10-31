@@ -35,7 +35,7 @@ if (config.includes("workers.dev")) {
   throw new Error("Playground URLs must never be configured as workers.dev URLs.");
 }
 
-// demo.dinkuskit.com belongs to the live demo Worker; the playground must not claim it.
+// demo.dinkuskit.com belonged to the demo Worker, retired 18 Oct 2026; the playground must not claim it.
 if (/["/.]demo\.dinkuskit\.com/.test(config)) {
   throw new Error("Playground Wrangler config must not route demo.dinkuskit.com.");
 }

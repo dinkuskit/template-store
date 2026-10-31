@@ -5,12 +5,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  demoBundlesPairedCommerce,
   isCloudflareBuild,
   readDemoCatalogProfile,
+  readDemoCommerceProfile,
 } from "../../scripts/build-demo.mjs";
+import { pairedCommercePin, pairedCommerceProfile } from "../../scripts/lib/paired-commerce.mjs";
 
 test("demo Cloudflare builds read the catalog profile from Wrangler config", () => {
-  assert.equal(readDemoCatalogProfile(), "native-development");
+  // The demo runs Commerce's Registry build as a shipping store installs it (template-one-build-registry-20261031).
+  assert.equal(readDemoCatalogProfile(), "shipping");
   assert.equal(
     isCloudflareBuild({
       DINKUS_HOSTING_PROFILE: "cloudflare",
@@ -28,7 +32,15 @@ test("demo Cloudflare builds read the catalog profile from Wrangler config", () 
   assert.equal(isCloudflareBuild({}), false);
 });
 
-test("an explicitly selected shipping config does not inherit the native demo profile", () => {
+test("the retired native profile is refused, and an explicit shipping config reads as such", () => {
+  const retired = mkdtempSync(join(tmpdir(), "store-build-profile-"));
+  try {
+    const configPath = join(retired, "wrangler.jsonc");
+    writeFileSync(configPath, JSON.stringify({ vars: { DINKUS_CATALOG_PROFILE: "native-development" } }));
+    assert.throws(() => readDemoCatalogProfile(configPath), /native-development is retired/);
+  } finally {
+    rmSync(retired, { recursive: true, force: true });
+  }
   const directory = mkdtempSync(join(tmpdir(), "store-build-profile-"));
   try {
     const configPath = join(directory, "wrangler.jsonc");
@@ -37,4 +49,13 @@ test("an explicitly selected shipping config does not inherit the native demo pr
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("the demo Worker bundles the pinned Commerce's Registry build under the package its tag names", () => {
+  // wrangler.jsonc's DINKUS_COMMERCE_PROFILE follows the pin: a pre-release pin is the beta package.
+  assert.equal(readDemoCommerceProfile(), pairedCommerceProfile(pairedCommercePin()));
+  assert.equal(demoBundlesPairedCommerce({ DINKUS_HOSTING_PROFILE: "cloudflare" }), true);
+  // A store's own Registry config installs Commerce from the Registry and bundles none.
+  assert.equal(demoBundlesPairedCommerce({ DINKUS_HOSTING_PROFILE: "cloudflare" }, "runs/registry/wrangler.jsonc"), false);
+  assert.equal(demoBundlesPairedCommerce({}), false);
 });
