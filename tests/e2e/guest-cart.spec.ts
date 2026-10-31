@@ -449,6 +449,69 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(subtotal).toHaveText("Subtotal $112.00");
   await shopper.screenshot({ path: resolve(root, "cart-webmcp-synced.png"), fullPage: true, animations: "disabled" });
 
+  // Regression: when an initial snapshot request for product A (xlId) is still in flight while an agent action
+  // adds product B (id), the cart client queues a follow-up snapshot refresh for A+B so B never remains unpriced.
+  await shopper.evaluate(
+    async ({ productA, productB }) => {
+      const tools = (window as unknown as {
+        __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+      }).__webMcpTools;
+      const addTool = tools.find((tool) => tool.name === "add_to_cart")!;
+      const replaceTool = tools.find((tool) => tool.name === "update_cart_lines")!;
+      await replaceTool.execute({ lines: [{ id: productA, quantity: 1 }] });
+
+      const originalFetch = window.fetch.bind(window);
+      let releaseDelayedResponse!: () => void;
+      const delayedGate = new Promise<void>((resolveGate) => {
+        releaseDelayedResponse = resolveGate;
+      });
+      let notifyDelayedStarted!: () => void;
+      const delayedStarted = new Promise<void>((resolveStarted) => {
+        notifyDelayedStarted = resolveStarted;
+      });
+      let intercepted = false;
+
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        if (
+          !intercepted &&
+          url.includes("/api/guest-cart/snapshot") &&
+          !decodeURIComponent(url).includes(productB)
+        ) {
+          intercepted = true;
+          notifyDelayedStarted();
+          const res = await originalFetch(input, init);
+          await delayedGate;
+          return res;
+        }
+        return originalFetch(input, init);
+      };
+
+      try {
+        document.dispatchEvent(new CustomEvent("guest-cart-updated"));
+        await delayedStarted;
+        await addTool.execute({ id: productB, quantity: 1 });
+        releaseDelayedResponse();
+      } finally {
+        window.fetch = originalFetch;
+      }
+    },
+    { productA: xlId, productB: id },
+  );
+  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("1");
+  await expect(shopper.locator(`[data-guest-cart-qty="${id}"]`)).toHaveValue("1");
+  await expect(subtotal).toHaveText("Subtotal $46.00");
+
+  // Restore the 4x XL cart line for the checkout review flow assertions below.
+  await shopper.evaluate(async (productA) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const replaceTool = tools.find((tool) => tool.name === "update_cart_lines")!;
+    await replaceTool.execute({ lines: [{ id: productA, quantity: 4 }] });
+  }, xlId);
+  await expect(subtotal).toHaveText("Subtotal $112.00");
+
   // Step 1: proceed_to_checkout pauses at buyer_review_required with totalMinor: null and blocks missing fingerprint.
   const reviewFlowBeforePriceChange = await shopper.evaluate(async () => {
     const tools = (window as unknown as {
@@ -564,6 +627,7 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
         webMcpUnknownTotalMinor: null,
         webMcpPriceChangeInvalidatesReview: true,
         webMcpRequiresExplicitFingerprint: true,
+        webMcpOverlappingSnapshotRefreshCoalesced: true,
       },
       null,
       2,
