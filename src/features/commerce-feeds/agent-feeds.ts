@@ -42,6 +42,7 @@ export interface StorefrontAgentFeedOptions {
   readonly siteOrigin: string;
   readonly description?: string;
   readonly pluginId?: string;
+  readonly checkoutBreakdownSelector?: string;
   readonly products: readonly AgentProductFeedFacts[];
   readonly policies?: readonly StorefrontPolicySummary[];
   readonly shipping?: StorefrontShippingQuoteInput | null;
@@ -266,7 +267,12 @@ export function buildStorefrontLlmsTxt(options: StorefrontAgentFeedOptions): str
       const priceLabel = item.price
         ? `${item.price.formatted} (${item.price.minor} minor units)`
         : item.variants?.members.length
-          ? `from ${item.variants.members[0]!.price.formatted} (${item.variants.members.length} variants)`
+          ? (() => {
+              const lowest = item.variants.members.reduce((min, candidate) =>
+                BigInt(candidate.price.minor) < BigInt(min.price.minor) ? candidate : min
+              );
+              return `from ${lowest.price.formatted} (${item.variants.members.length} variants)`;
+            })()
           : "see options";
       const fulfillmentPart = item.fulfillment ? `, ${item.fulfillment}` : "";
       lines.push(
@@ -371,6 +377,19 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
   const feed = buildAgentCatalogFeed(options);
   const pluginId = options.pluginId?.trim() || "r_gshdrqaldna3r7sn";
   const pluginBase = `${feed.siteOrigin}/_emdash/api/plugins/${pluginId}`;
+  const domSelector = options.checkoutBreakdownSelector?.trim();
+  const domLines = domSelector
+    ? [
+        "",
+        "### Checkout DOM Attributes (`/checkout`)",
+        `On the \`/checkout\` page, \`${domSelector}\` exposes live integer minor-unit attributes alongside formatted USD strings:`,
+        "- `data-checkout-currency=\"USD\"`",
+        "- `data-checkout-subtotal-minor=\"<integer-cents>\"`",
+        "- `data-checkout-shipping-minor=\"<integer-cents>\"`",
+        "- `data-checkout-tax-minor=\"0\"`",
+        "- `data-checkout-total-minor=\"<integer-cents>\"`",
+      ]
+    : [];
   return [
     `# Shopping Agent & Virtual Card Contract — ${feed.storeName}`,
     "",
@@ -390,23 +409,16 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
     `- **Tax**: Always \`${feed.virtualCardSizing.taxMinor}\` minor units (\`tax: { currency: "USD", minor: "0" }\`). Tax is not added at payment session creation.`,
     `- **Shipping**: ${shippingSummaryLine(feed.virtualCardSizing.shipping)}`,
     `- **Exact Total Formula**: \`${feed.virtualCardSizing.formula}\``,
-    "",
-    "### Checkout DOM Attributes (`/checkout`)",
-    "On the `/checkout` page, `[data-checkout-breakdown]` exposes live integer minor-unit attributes alongside formatted USD strings:",
-    "- `data-checkout-currency=\"USD\"`",
-    "- `data-checkout-subtotal-minor=\"<integer-cents>\"`",
-    "- `data-checkout-shipping-minor=\"<integer-cents>\"`",
-    "- `data-checkout-tax-minor=\"0\"`",
-    "- `data-checkout-total-minor=\"<integer-cents>\"`",
+    ...domLines,
     "",
     "## 3. Guest Checkout API Protocol",
     "For every guest checkout call, verify HTTP status 200, the EmDash transport wrapper `success === true`, and Commerce's `data.ok === true` before reading `data`.",
-    `1. **Prepare Capability**: \`POST ${pluginBase}/checkout/guest/prepare\` with an empty JSON body \`{}\` and same-origin \`Origin\` header (\`sec-fetch-site: same-origin\`). Retain the capability token string at \`data.capability.capability\` from the JSON response and send it on subsequent requests via the \`x-commerce-guest-capability\` header. Also inspect \`data.contactRequirements.requirePhoneNumber\` and \`data.contactRequirements.shippingCountries\`.`,
+    `1. **Prepare Capability**: \`POST ${pluginBase}/checkout/guest/prepare\` with an empty JSON body \`{}\` and same-origin \`Origin\` header (\`sec-fetch-site: same-origin\`). Retain the capability token string at \`data.capability.capability\` from the JSON response and send it on subsequent requests via the \`x-commerce-guest-capability\` header. Also inspect \`data.contactRequirements.requirePhoneNumber\` to determine whether \`contact.phone\` is required.`,
     `2. **Start Checkout & Freeze Pricing**: \`POST ${pluginBase}/checkout/guest/start\` with header \`x-commerce-guest-capability: <token>\`, \`lines: [{ catalogItemId, quantity }]\` (for products with options, use the chosen sellable member's \`catalogItemId\` from \`variants.members\`), optional \`couponCode\`, and \`contact\`:`,
     "   - `email` (required)",
     "   - `phone` (required when `data.contactRequirements.requirePhoneNumber === true`)",
     "   - `billing`: required on every checkout (including digital-only orders) with `{ name, line1, line2?, city, region?, postalCode, country }` (`country` as 2-letter ISO code)",
-    "   - `delivery`: required when a line has `fulfillment: \"physical\"`, with `{ name, line1, line2?, city, region?, postalCode, country }` in an enabled `shippingCountries` destination (US requires a valid 2-letter state or full state name in `region`)",
+    "   - `delivery`: required when a line has `fulfillment: \"physical\"`, with `{ name, line1, line2?, city, region?, postalCode, country }` in a shipping destination supported by the store (published in the storefront shipping policy; US delivery requires a valid 2-letter state or full state name in `region`)",
     "   - The response `data.checkout.pricing` object contains:",
     "     - `merchandiseSubtotal: { currency: \"USD\", minor: \"...\" }`",
     "     - `couponDiscount: { currency: \"USD\", minor: \"...\" }`",
@@ -414,8 +426,8 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
     "     - `shipping: { mode: \"free\" | \"flat\", charge: { currency: \"USD\", minor: \"...\" } }`",
     "     - `tax: { currency: \"USD\", minor: \"0\" }`",
     "     - `finalTotal: { currency: \"USD\", minor: \"...\" }`",
-    "   - Size the virtual card to `data.checkout.pricing.finalTotal.minor` (in USD cents) and navigate to `data.checkout.paymentSession.checkoutUrl`.",
-    `3. **Poll Status / Receipt**: \`POST ${pluginBase}/checkout/guest/status\` with header \`x-commerce-guest-capability: <token>\` and JSON body \`{ "sessionId": "<data.checkout.sessionId>" }\` until \`data.checkout.status === "paid"\` and \`data.checkout.receipt\` is present.`,
+    "   - Size the virtual card to `data.checkout.pricing.finalTotal.minor` (in USD cents) and navigate to `data.checkout.redirectUrl` (when `data.checkout.state === \"pending\"` and `data.checkout.redirectUrl` is non-null; zero-total checkouts complete immediately with `data.checkout.state === \"paid\"`).",
+    `3. **Poll Status / Receipt**: \`POST ${pluginBase}/checkout/guest/status\` with header \`x-commerce-guest-capability: <token>\` and JSON body \`{}\` (or \`{ "attemptId": "<data.checkout.attemptId>" }\`) until \`data.checkout.state === "paid"\` and \`data.checkout.order\` (\`orderId\`, \`receiptId\`, \`lines\`, \`total\`, \`pricing\`) is present.`,
     "",
   ].join("\n");
 }
@@ -490,6 +502,7 @@ export async function buildInstalledStorefrontAgentFeedOptions(
     storeName: STORE_TITLE,
     siteOrigin: origin,
     pluginId,
+    checkoutBreakdownSelector: "[data-checkout-breakdown]",
     products: enrichedProducts,
     policies: policyLinks,
     shipping,

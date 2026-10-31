@@ -205,6 +205,7 @@ describe("installed Commerce feed facts", () => {
       storeName: "Dinkus Store",
       siteOrigin: "https://shop.example.test",
       description: "Agent-ready store.",
+      checkoutBreakdownSelector: "[data-checkout-breakdown]",
       policies: [
         { slug: "shipping", title: "Shipping policy", url: "https://shop.example.test/shipping", body: "Ships in 2 business days." },
         { slug: "returns", title: "Returns policy", url: "https://shop.example.test/returns", body: "30-day returns." },
