@@ -152,7 +152,7 @@ export function resolveGuestCheckoutAdmission(input: {
   ) {
     return null;
   }
-  if (!hasInstalledGuestCheckoutRoutes(input.runtime)) return null;
+  if (!hasInstalledGuestCheckoutRoutes(input.runtime, false)) return null;
   return {
     pluginId: COMMERCE_REGISTRY_RUNTIME_ID,
     routes: SUPPORTED_GUEST_CHECKOUT_ROUTES,
@@ -160,8 +160,11 @@ export function resolveGuestCheckoutAdmission(input: {
   };
 }
 
-function hasInstalledGuestCheckoutRoutes(runtime: RuntimeGuestCheckoutMetadata): boolean {
+function hasInstalledGuestCheckoutRoutes(runtime: RuntimeGuestCheckoutMetadata, inStore: boolean): boolean {
+  // A Registry install has a Registry manifest; the playground installs Commerce's Registry build in the
+  // visitor's store under the same id (template-one-build-registry-20261031), without one.
   if (
+    !inStore &&
     typeof runtime.getRuntimePluginSettingsSchema === "function" &&
     runtime.getRuntimePluginSettingsSchema(COMMERCE_REGISTRY_RUNTIME_ID) === null
   ) {
@@ -179,10 +182,13 @@ function hasInstalledGuestCheckoutRoutes(runtime: RuntimeGuestCheckoutMetadata):
 /** Existing capabilities reach Commerce's fresh start/status validation without
  * consulting its cached readiness advisory. This is routing permission only;
  * Commerce still validates the capability, configuration, binding and attempt. */
-export function canDispatchInstalledGuestCheckout(context: InstalledCheckoutReadinessContext): boolean {
+export function canDispatchInstalledGuestCheckout(
+  context: InstalledCheckoutReadinessContext,
+  { inStore = false }: { inStore?: boolean } = {},
+): boolean {
   return Boolean(context.runtime &&
     typeof context.runtime.handlePublicPluginApiRoute === "function" &&
-    hasInstalledGuestCheckoutRoutes(context.runtime));
+    hasInstalledGuestCheckoutRoutes(context.runtime, inStore));
 }
 
 /**

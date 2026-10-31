@@ -24,7 +24,7 @@ import {
 } from "./index.js";
 
 export const PAYMENTS_PLAYGROUND_BINDING_REF = "playground";
-export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured } from "./index.js";
+export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured, playgroundEnvOf } from "./index.js";
 const MAX_PAYMENTS_RESPONSE_BYTES = 128 * 1024;
 
 type EnvLike = Record<string, unknown>;

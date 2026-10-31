@@ -12,7 +12,7 @@
 import { OptionsRepository, PluginStorageRepository } from "emdash";
 import { getRequestContext } from "emdash/request-context";
 import { CHECKOUT_PRICING_SCHEMA } from "@dinkuskit/commerce/features/checkout";
-import { getStorePass, isCheckoutEnabled, readPaymentsConfig, readStripeAccount } from "../playground-checkout/index.js";
+import { getStorePass, playgroundCheckoutConfigured, readPaymentsConfig, readStripeAccount } from "../playground-checkout/index.js";
 import { PAYMENTS_PLAYGROUND_BINDING_REF, playgroundPaymentsFetch } from "../playground-checkout/payments-port.js";
 import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../playground/flat-rate-shipping.js";
 import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "./registry-plugins.mjs";
@@ -170,7 +170,7 @@ async function storePass(authorization: string | null, init: RequestInit | undef
   // always used (site "playground", binding "playground", Stripe test mode). Checkout off: no pass.
   if (clientId === "dinkus-commerce-emdash" && body.scope === "payments:checkout") {
     const config = readPaymentsConfig(env);
-    if (!isCheckoutEnabled(env) || !config || !readStripeAccount(env)) return json({ error: "service_not_enabled" }, 403);
+    if (!playgroundCheckoutConfigured(env) || !config) return json({ error: "service_not_enabled" }, 403);
     const pass = await getStorePass(config);
     if (!pass) return json({ error: "temporarily_unavailable" }, 503);
     return json({ access_token: pass, token_type: "Bearer", expires_in: passSecondsLeft(pass) });
@@ -184,12 +184,12 @@ async function storePass(authorization: string | null, init: RequestInit | undef
 /**
  * What a real store's Set up Commerce at DinkusKit.com hands Commerce, for the playground: Stripe TEST checkout
  * through the real Payments service under binding "playground", with the playground's flat-rate shipping. With
- * checkout off (no flag, key, Payments origin or Stripe test account) it is the documented turned-off settings,
- * so Commerce's checkout stays unavailable. The store origin is the one EmDash gives the plugins.
+ * checkout off (no flag, key, Payments origin, Stripe test account or trusted store origin: the same test the
+ * middleware admits checkout by) it is the documented turned-off settings, so Commerce's checkout stays unavailable. The store origin is the one EmDash gives the plugins.
  */
 function commerceSettings(env: Record<string, unknown>, origin: string): Response {
   const config = readPaymentsConfig(env), account = readStripeAccount(env);
-  if (!isCheckoutEnabled(env) || !config || !account) {
+  if (!playgroundCheckoutConfigured(env) || !config || !account) {
     return json({ schema: "dinkuskit.commerce.registry-checkout/v1", enabled: false });
   }
   return json({

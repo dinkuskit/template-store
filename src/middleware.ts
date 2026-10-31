@@ -276,6 +276,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     applySecurityHeaders(response.headers);
     return response;
   }
+  // Without the full checkout configuration the playground's checkout routes never reach Commerce.
+  if (checkoutKind && isPlayground) {
+    const refused = checkoutJsonError(503, "Playground checkout is unavailable.");
+    applySecurityHeaders(refused.headers);
+    return refused;
+  }
 
   // Status recovery (/api/checkout/status) dispatches in-process to the visitor's
   // Commerce; give its Payments lookup the same visitor context.

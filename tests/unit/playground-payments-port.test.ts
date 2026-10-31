@@ -16,6 +16,7 @@ const env = {
   PAYMENTS_URL: "https://payments.dinkuskit.com",
   PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
   PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
+  EMDASH_SITE_URL: "https://playground.dinkuskit.com",
 };
 const STORE = "https://playground.dinkuskit.com";
 let bindings: PlaygroundCheckoutBindingStore;
@@ -63,7 +64,8 @@ describe("the pretend DinkusKit sets up the visitor's Commerce (template-one-bui
 
   it("hands Commerce turned-off settings, so its checkout stays closed, unless the flag and every value are set", async () => {
     for (const environment of [{ ...env, DINKUS_CHECKOUT_ENABLED: "0" }, { ...env, PAYMENTS_URL: undefined },
-      { ...env, PAYMENTS_STORE_KEY: undefined }, { ...env, PAYMENTS_STRIPE_ACCOUNT_ID: undefined }]) {
+      { ...env, PAYMENTS_STORE_KEY: undefined }, { ...env, PAYMENTS_STRIPE_ACCOUNT_ID: undefined },
+      { ...env, EMDASH_SITE_URL: undefined }]) {
       const value = await settings(standIn(environment).fetch);
       expect(value).toEqual({ schema: "dinkuskit.commerce.registry-checkout/v1", enabled: false });
       expect(admitRegistryCheckoutConfig(value, STORE)).toBeNull();

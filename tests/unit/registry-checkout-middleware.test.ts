@@ -67,6 +67,14 @@ describe("installed checkout dispatch boundary", () => {
     expect(canDispatchInstalledGuestCheckout({ runtime: {
       handlePublicPluginApiRoute, getRuntimePluginSettingsSchema: () => null,
     } })).toBe(false);
+    // The playground's in-store Commerce has no Registry manifest; its public routes still decide.
+    expect(canDispatchInstalledGuestCheckout({ runtime: {
+      handlePublicPluginApiRoute, getRuntimePluginSettingsSchema: () => null,
+    } }, { inStore: true })).toBe(true);
+    expect(canDispatchInstalledGuestCheckout({ runtime: {
+      handlePublicPluginApiRoute, getRuntimePluginSettingsSchema: () => null,
+      getPluginRouteMeta: () => ({ public: false, methods: ["POST"] }),
+    } }, { inStore: true })).toBe(false);
     expect(canDispatchInstalledGuestCheckout({ runtime: {
       handlePublicPluginApiRoute,
       getPluginRouteMeta: () => ({ public: false, methods: ["POST"] }),

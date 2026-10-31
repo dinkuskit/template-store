@@ -7,7 +7,7 @@ const { onRequest } = await import("../../src/middleware.js");
 const { COMMERCE_REGISTRY_RUNTIME_ID } = await import("../../src/features/guest-cart/checkout-protocol.js");
 const { playgroundCheckoutAdmission } = await import("../../src/features/playground-checkout/index.js");
 const { storeBannerText } = await import("../../src/features/store-shell/checkout-copy.js");
-const { playgroundCheckoutConfigured } = await import("../../src/features/playground-checkout/payments-port.js");
+const { playgroundCheckoutConfigured, playgroundEnvOf } = await import("../../src/features/playground-checkout/payments-port.js");
 
 const registryStart = `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/start`;
 const nativeStart = "/_emdash/api/plugins/dinkus-commerce/checkout/guest/start";
@@ -70,6 +70,12 @@ describe("playground sandbox checkout gates", () => {
       const { response, next } = await call(registryStart);
       expect(response.status).toBe(503);
       expect(next).not.toHaveBeenCalled();
+      // With the visitor's Commerce installed, its checkout routes are still never reached.
+      for (const path of [registryStart, registryStart.replace("/start", "/prepare")]) {
+        const installed = await call(path, { commerce: true, raw: path.endsWith("/prepare") ? "{}" : undefined });
+        expect(installed.response.status, `${missing} ${path}`).toBe(503);
+        expect(installed.next).not.toHaveBeenCalled();
+      }
       expect((await call(nativeStart)).response.status).toBe(405);
     }
   });
@@ -122,6 +128,12 @@ describe("playground sandbox checkout gates", () => {
     expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "http://localhost:4397", DINKUS_LOCAL_PROOF: "1" })).toBe(true);
     expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "http://playground.example", DINKUS_LOCAL_PROOF: "1" })).toBe(false);
     expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "https://playground.example" })).toBe(true);
+    // Pages judge the playground on the environment the checkout routes are gated on, not on the Site URL the
+    // Worker derives into process.env for EmDash.
+    Object.assign(process.env, { ...payments, EMDASH_SITE_URL: "https://playground.example" });
+    expect(playgroundCheckoutConfigured(playgroundEnvOf({ __playgroundEnv: payments }))).toBe(false);
+    expect(playgroundCheckoutConfigured(playgroundEnvOf({}))).toBe(true);
+    delete process.env.EMDASH_SITE_URL;
 
     // The live gates stay closed too: no Commerce dispatch for the cart's checkout calls.
     Object.assign(process.env, payments);

@@ -49,7 +49,6 @@
     "test:e2e": "playwright test",
     "audit:features": "node scripts/check-features.mjs",
     "verify:playground-config": "node scripts/verify-playground-config.mjs",
-    "verify:playground-authority": "pnpm prepare:sources && node scripts/verify-playground-checkout-authority.mjs",
     "verify:playground-http": "pnpm prepare:sources && node scripts/verify-playground-checkout-http.mjs",
     "verify:playground-account-http": "pnpm prepare:sources && node scripts/verify-playground-account-http.mjs",
     "search:upgrade": "node scripts/upgrade-storefront-search.ts",

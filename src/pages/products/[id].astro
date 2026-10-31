@@ -25,7 +25,7 @@ import { variantPickerView, NO_OFFER_JSON_LD_KEY, type VariantPickerMember } fro
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, productPageOffersCart, readProductEntries } from "../../features/store-shell/product-routes.js";
 import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
-import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
@@ -102,7 +102,7 @@ if (noLongerAvailable) Astro.response.status = 404;
 // DINKUS_CHECKOUT_ENABLED is on; other proof profiles never do.
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const isDemo = isDemoCatalogProfile();
-const checkoutEnabled = playgroundCheckoutConfigured();
+const checkoutEnabled = playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals));
 const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checkoutEnabled });
 const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo, checkoutEnabled });
 const variants = linkedProduct?.variants ?? [];
@@ -129,7 +129,7 @@ const cartProduct = linkedProduct && selectedVariant
   : linkedProduct;
 const linkedStatus = selectedVariant?.availability.status ?? linkedProduct?.availability.status;
 // A configured playground admits its sandbox checkout, as the cart page does.
-const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)))) ||
   Boolean(await acquireGuestCheckoutAdmission({
     runtime: Astro.locals.emdash,
     request: Astro.request,

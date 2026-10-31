@@ -109,6 +109,14 @@ export function readTrustedReturnOrigin(env: EnvLike = process.env): string | nu
  * status route cannot confirm a paid return without it). Dependency-free so
  * request handlers can gate on it without loading the Commerce payment port.
  */
+/**
+ * The environment the store middleware gates playground checkout on (the Worker's own, in the playground), so a
+ * page's checkout banner agrees with the checkout routes. Undefined outside the playground.
+ */
+export function playgroundEnvOf(locals: unknown): EnvLike | undefined {
+  return (locals as { __playgroundEnv?: EnvLike } | undefined)?.__playgroundEnv;
+}
+
 export function playgroundCheckoutConfigured(env: EnvLike = process.env): boolean {
   return isCheckoutEnabled(env) && readPaymentsConfig(env) !== null && readStripeAccount(env) !== null &&
     readTrustedReturnOrigin(env) !== null;

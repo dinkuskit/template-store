@@ -152,8 +152,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!runtime || typeof runtime.handlePublicPluginApiRoute !== "function") {
     return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
   }
+  const isPlayground = Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb);
   try {
-    if (!canDispatchInstalledGuestCheckout({ runtime, request })) {
+    if (!canDispatchInstalledGuestCheckout({ runtime, request }, { inStore: isPlayground })) {
       return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
     }
     const pluginId = COMMERCE_REGISTRY_RUNTIME_ID;
@@ -188,7 +189,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const validated = parseGuestCheckoutWireResult(parsed);
     if (!validated) return unavailable(503, "CHECKOUT_STATUS_RESPONSE_INVALID");
     if (!validated.ok) return unavailable(503, domainFailureCode(validated.error.code));
-    const isPlayground = Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb);
     const terminal = validated.checkout.state === "paid" || validated.checkout.order !== null;
     if (isPlayground && playgroundCheckoutConfigured(env) && terminal) {
       const sessionId = request.headers.get("cookie")?.match(/(?:^|;\s*)emdash_playground=([^;]+)/u)?.[1] ?? "";

@@ -8,7 +8,7 @@ import { readInstalledCommercePolicies } from "../../features/commerce-policies/
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import SandboxCheckoutNotice from "../../features/playground-checkout/SandboxCheckoutNotice.astro";
 import { isCheckoutEnabled, playgroundCheckoutAdmission, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
-import { playgroundCheckoutConfigured } from "../../features/playground-checkout/payments-port.js";
+import { playgroundCheckoutConfigured, playgroundEnvOf } from "../../features/playground-checkout/payments-port.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../../features/playground/flat-rate-shipping.js";
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
@@ -24,7 +24,7 @@ const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__pl
 const gate = { profile, isPlayground, isDemo: isDemoCatalogProfile(), checkoutEnabled: isCheckoutEnabled() };
 const sandboxCheckout = showsSandboxCheckoutNotice(gate);
 // Only a configured playground session admits checkout; everything else stays closed.
-const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured());
+const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)));
 const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
 const installedPolicies = isPlayground
   ? null
