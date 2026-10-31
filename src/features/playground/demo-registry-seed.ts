@@ -59,7 +59,8 @@ export class DemoSeedRefusal extends Error {
   }
 }
 
-async function call<T>(runtime: CommerceSeedRuntime, pluginId: string, origin: string, path: string, body: Record<string, unknown>): Promise<T> {
+/** One private Commerce route, as the seed's Administrator; a refusal throws with Commerce's reason. */
+export async function callCommerceRoute<T>(runtime: CommerceSeedRuntime, pluginId: string, origin: string, path: string, body: Record<string, unknown>): Promise<T> {
   const request = new Request(new URL(`/_emdash/api/plugins/${pluginId}/${path}`, origin), {
     method: "POST",
     headers: { "content-type": "application/json", "X-EmDash-Request": "1" },
@@ -86,7 +87,7 @@ function memberSku(product: DemoProductSeed, member: VariantMember): string {
 }
 
 async function createProduct(runtime: CommerceSeedRuntime, pluginId: string, origin: string, product: DemoProductSeed, entryId: string): Promise<void> {
-  const op = <T>(body: Record<string, unknown>) => call<T>(runtime, pluginId, origin, CATALOG_ROUTE, body);
+  const op = <T>(body: Record<string, unknown>) => callCommerceRoute<T>(runtime, pluginId, origin, CATALOG_ROUTE, body);
   const { catalogItemId } = await op<{ catalogItemId: string }>({ op: "create", commandId: product.commandId, name: product.name, sku: product.sku, entryId });
   const items = new Map<string, string>([[catalogItemId, product.sku]]);
   if (product.variant) {
@@ -112,7 +113,7 @@ async function createProduct(runtime: CommerceSeedRuntime, pluginId: string, ori
     });
   }
   // The page is published, so its product is on sale, as the store's publish check records it.
-  await call(runtime, pluginId, origin, SET_ON_SALE_ROUTE, { entryId, onSale: true });
+  await callCommerceRoute(runtime, pluginId, origin, SET_ON_SALE_ROUTE, { entryId, onSale: true });
 }
 
 /** Each demo product's page slug (`demo-<kind>`), as the seed publishes it. */
@@ -143,7 +144,7 @@ export async function ensureDemoCatalogThroughCommerce(
     select id, slug from ec_products
     where slug in (${sql.join(entries.map((entry) => entry.slug))}) and status = 'published' and deleted_at is null`.execute(db as never);
   const pages = new Map(rows.rows.map((row) => [row.slug, row.id]));
-  const listed = await call<{ products: { catalogItemId: string; sku: string }[] }>(runtime, pluginId, origin, CATALOG_ROUTE, { op: "list" });
+  const listed = await callCommerceRoute<{ products: { catalogItemId: string; sku: string }[] }>(runtime, pluginId, origin, CATALOG_ROUTE, { op: "list" });
   const existing = new Set(listed.products.map((product) => product.sku.toUpperCase()));
   const created: string[] = [];
   for (const product of DEMO_PRODUCTS) {

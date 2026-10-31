@@ -8,6 +8,7 @@
  */
 import { PluginStorageRepository } from "emdash";
 import { ORDER_NUMBERS_COLLECTION, ORDERS_COLLECTION, PAID_ORDER_SCHEMA } from "@dinkuskit/commerce";
+import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "../playground-plugins/registry-plugins.mjs";
 import { BOXES, STAND_IN_STORAGE, type Label } from "../playground-plugins/dinkuskit-stand-in.js";
 import { DEMO_SHOPPER_ORDER_NUMBER } from "../shopper-account/index.js";
 import { PRE_UPGRADE_SHOPPER_ORDER_NUMBER } from "../shopper-account/playground-runtime.js";
@@ -15,7 +16,8 @@ import { PRE_UPGRADE_SHOPPER_ORDER_NUMBER } from "../shopper-account/playground-
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 type Line = { sku: string; name: string; quantity: number; unitMinor: string };
 
-const COMMERCE = "dinkus-commerce";
+/** Commerce's orders, under the id the playground installs it with (its Registry runtime id). */
+const COMMERCE = PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce;
 const SHIPPING_MINOR = 500;
 const HOUR = 3_600_000;
 

@@ -12,7 +12,6 @@ import { productDetailComponents } from "../../features/store-shell/blocks/index
 import UnknownBlock from "../../features/store-shell/blocks/UnknownBlock.astro";
 import { legacyPortableTextComponents } from "../../features/store-shell/portable-text/index.js";
 import { readInstalledCommerceProduct, readInstalledCommerceProductByPage } from "../../features/commerce-catalog/installed.js";
-import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
 import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
 import {
@@ -155,9 +154,7 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
 const policies = linkedProduct
   ? await readInstalledCommercePolicies(
     { runtime: Astro.locals.emdash, request: Astro.request },
-    process.env.DINKUS_CATALOG_PROFILE === "native-development"
-      ? COMMERCE_NATIVE_PLUGIN_ID
-      : COMMERCE_REGISTRY_RUNTIME_ID,
+    COMMERCE_REGISTRY_RUNTIME_ID,
   ).catch(() => null)
   : null;
 const productCanonical = item

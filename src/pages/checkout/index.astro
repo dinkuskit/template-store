@@ -3,7 +3,6 @@ import StoreFooter from "../../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { GuestCheckout } from "../../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
-import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
 import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
@@ -31,7 +30,7 @@ const installedPolicies = isPlayground
   ? null
   : await readInstalledCommercePolicies(
       { runtime: Astro.locals.emdash, request: Astro.request },
-      process.env.DINKUS_CATALOG_PROFILE === "native-development" ? COMMERCE_NATIVE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
+      COMMERCE_REGISTRY_RUNTIME_ID,
     ).catch(() => null);
 const shipping = isPlayground ? PLAYGROUND_FLAT_RATE_SHIPPING : installedPolicies?.shipping ?? null;
 const shippingMode = shipping?.mode === "flat" || shipping?.mode === "free" ? shipping.mode : null;

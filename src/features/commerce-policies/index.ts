@@ -1,12 +1,7 @@
-import { PluginStorageRepository } from "emdash";
-import { getDb } from "emdash/runtime";
-import { COMMERCE_PLUGIN_ID, normalizeMoney } from "@dinkuskit/commerce";
-import {
-  readPublicStorePoliciesFromStorage,
-  STORE_RETURN_POLICY_COLLECTION,
-  STORE_SHIPPING_POLICY_COLLECTION,
-  type StoreReturnPolicyRecord,
-  type StoreShippingPolicyRecord,
+import { normalizeMoney } from "@dinkuskit/commerce";
+import type {
+  StoreReturnPolicyRecord,
+  StoreShippingPolicyRecord,
 } from "@dinkuskit/commerce/features/store-policies";
 
 const ROUTE = "policies/public";
@@ -105,29 +100,6 @@ function policyProjection(value: unknown): PublicCommercePolicies {
   };
 }
 
-/**
- * The native plugin does not mount `policies/public`. Native hosts read the
- * same versioned records through the public store-policies export. Registry
- * installs keep the sandboxed public route and do not open storage here.
- */
-async function readNativeDevelopmentPolicies(): Promise<PublicCommercePolicies> {
-  const db = await getDb();
-  return policyProjection(await readPublicStorePoliciesFromStorage({
-    shipping: new PluginStorageRepository<StoreShippingPolicyRecord>(
-      db,
-      COMMERCE_PLUGIN_ID,
-      STORE_SHIPPING_POLICY_COLLECTION,
-      [],
-    ),
-    returns: new PluginStorageRepository<StoreReturnPolicyRecord>(
-      db,
-      COMMERCE_PLUGIN_ID,
-      STORE_RETURN_POLICY_COLLECTION,
-      [],
-    ),
-  }));
-}
-
 function publicPolicyRoute(
   runtime: NonNullable<InstalledPoliciesContext["runtime"]>,
   pluginId: string,
@@ -143,9 +115,6 @@ export async function readInstalledCommercePolicies(
   pluginId: string,
 ): Promise<PublicCommercePolicies> {
   if (!runtime || !publicPolicyRoute(runtime, pluginId)) {
-    if (process.env.DINKUS_CATALOG_PROFILE === "native-development") {
-      return readNativeDevelopmentPolicies();
-    }
     throw new Error("Installed public policy route unavailable");
   }
   const url = new URL(`/_emdash/api/plugins/${pluginId}/${ROUTE}`, request.url);
@@ -155,13 +124,6 @@ export async function readInstalledCommercePolicies(
     ROUTE,
     new Request(url, { method: "GET" }),
   );
-  // The storefront runtime may only expose the public dispatcher. A missing
-  // `policies/public` route is reported as NOT_FOUND, including on the native
-  // plugin, which does not mount it. Native hosts then read the same records.
-  if (!result.success && result.error?.code === "NOT_FOUND" &&
-      process.env.DINKUS_CATALOG_PROFILE === "native-development") {
-    return readNativeDevelopmentPolicies();
-  }
   if (!result.success) {
     throw new Error("Invalid installed public policy projection");
   }

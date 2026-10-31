@@ -3,7 +3,6 @@ import { getEmDashEntry, getSection, type PortableTextBlock } from "emdash";
 import { PortableText } from "emdash/ui";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import StoreFooter from "../features/store-shell/StoreFooter.astro";
-import { COMMERCE_NATIVE_PLUGIN_ID } from "../features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../features/guest-cart/checkout-protocol.js";
 import { readInstalledCommercePolicies } from "../features/commerce-policies/index.js";
 import {
@@ -20,7 +19,7 @@ const supportSection = await getSection(POLICY_SUPPORT_SECTION_SLUG).catch(() =>
 const profile = readStorefrontProfile();
 const policies = await readInstalledCommercePolicies(
   { runtime: Astro.locals.emdash, request: Astro.request },
-  process.env.DINKUS_CATALOG_PROFILE === "native-development" ? COMMERCE_NATIVE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
+  COMMERCE_REGISTRY_RUNTIME_ID,
 ).catch(() => null);
 const returns = policies?.returns ?? null;
 const content = Array.isArray(entry?.data?.content) ? (entry.data.content as PortableTextBlock[]) : [];

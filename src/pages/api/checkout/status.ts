@@ -9,7 +9,7 @@ import {
 } from "../../../features/guest-cart/checkout-protocol.js";
 
 import { canDispatchInstalledGuestCheckout } from "../../../features/guest-cart/checkout-admission.js";
-import { NATIVE_COMMERCE_PLUGIN_ID, nativeCheckoutPath, playgroundCheckoutConfigured } from "../../../features/playground-checkout/index.js";
+import { playgroundCheckoutConfigured } from "../../../features/playground-checkout/index.js";
 import {
   playgroundAttemptBelongsToVisitor,
   playgroundCheckoutBindingsFromLocals,
@@ -132,15 +132,10 @@ function trustedStatusOrigin(request: Request, env: Record<string, unknown>): st
 }
 
 /**
- * A configured playground session serves guest checkout from its own native
- * Commerce plugin (per-visitor runtime), not the Registry install, so status
- * recovery dispatches there. Capability and origin checks above still apply.
+ * Status recovery dispatches to the store's Commerce (on the playground, the visitor's own Registry build).
+ * Capability and origin checks below still apply; a configured playground shows a terminal status only to
+ * the visitor whose session started that payment.
  */
-function playgroundNativeStatus(locals: unknown, env: Record<string, unknown>): boolean {
-  return Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb) &&
-    playgroundCheckoutConfigured(env);
-}
-
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = ((locals as { __playgroundEnv?: Record<string, unknown> } | undefined)?.__playgroundEnv ?? process.env);
   const requestBody = await boundedRequestText(request);
@@ -158,14 +153,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
   }
   try {
-    const native = playgroundNativeStatus(locals, env);
-    if (!native && !canDispatchInstalledGuestCheckout({ runtime, request })) {
+    if (!canDispatchInstalledGuestCheckout({ runtime, request })) {
       return unavailable(503, "CHECKOUT_STATUS_UNAVAILABLE");
     }
-    const pluginId = native ? NATIVE_COMMERCE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID;
-    const target = native
-      ? new URL(nativeCheckoutPath("status"), origin)
-      : new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
+    const pluginId = COMMERCE_REGISTRY_RUNTIME_ID;
+    const target = new URL(COMMERCE_GUEST_CHECKOUT_STATUS_ENDPOINT, origin);
     const dispatch = () => runtime.handlePublicPluginApiRoute(
       pluginId,
       "POST",
@@ -198,7 +190,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     if (!validated.ok) return unavailable(503, domainFailureCode(validated.error.code));
     const isPlayground = Boolean((locals as { __playgroundDb?: unknown } | undefined)?.__playgroundDb);
     const terminal = validated.checkout.state === "paid" || validated.checkout.order !== null;
-    if (native && isPlayground && terminal) {
+    if (isPlayground && playgroundCheckoutConfigured(env) && terminal) {
       const sessionId = request.headers.get("cookie")?.match(/(?:^|;\s*)emdash_playground=([^;]+)/u)?.[1] ?? "";
       // Published by the middleware: the same persistent store checkout start wrote.
       const bindingStore = playgroundCheckoutBindingsFromLocals(locals);

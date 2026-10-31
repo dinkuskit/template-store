@@ -206,14 +206,9 @@ export function showsSandboxCheckoutNotice(input: CheckoutGateInput): boolean {
   return (input.isPlayground || input.isDemo === true) && offersCheckout(input);
 }
 
-export const NATIVE_COMMERCE_PLUGIN_ID = "dinkus-commerce";
 export const GUEST_CHECKOUT_PATH =
-  new RegExp(`^/_emdash/api/plugins/(?:${COMMERCE_REGISTRY_RUNTIME_ID}|${NATIVE_COMMERCE_PLUGIN_ID})/checkout/guest/(prepare|start|status)$`, "u");
+  new RegExp(`^/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/(prepare|start|status)$`, "u");
 
-/** The native Commerce route that serves a guest checkout call on the playground. */
-export function nativeCheckoutPath(kind: CheckoutRouteKind): string {
-  return `/_emdash/api/plugins/${NATIVE_COMMERCE_PLUGIN_ID}/checkout/guest/${kind}`;
-}
 export const MAX_CHECKOUT_BODY_BYTES = 4 * 1024;
 const MAX_ATTEMPT_ID_LENGTH = 256;
 const MAX_COUPON_LENGTH = 128;

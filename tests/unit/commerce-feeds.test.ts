@@ -135,8 +135,9 @@ describe("installed Commerce feed facts", () => {
     expect(meta).not.toContain("commerce-orphan");
   });
 
-  it("joins native eligibility when the public catalog omits feed channels", async () => {
-    process.env.DINKUS_CATALOG_PROFILE = "native-development";
+  it("puts a product the public catalog lists without feed channels in no feed", async () => {
+    // Commerce's public catalog carries each product's approved channels; the store never reads its storage
+    // for them (template-one-build-registry-20261031), so a stored eligibility the catalog omits counts for nothing.
     eligibility.set("commerce-hat", {
       recordKind: "product-feed-eligibility",
       channels: ["google-merchant"],
@@ -146,11 +147,10 @@ describe("installed Commerce feed facts", () => {
       catalogItem("commerce-cap"),
     ]));
     expect(facts.map((fact) => [fact.product.id, fact.eligibility])).toEqual([
-      ["commerce-hat", ["google-merchant"]],
+      ["commerce-hat", []],
       ["commerce-cap", []],
     ]);
-    expect(buildGoogleMerchantFeed(facts)).toContain("<g:id>commerce-hat</g:id>");
-    expect(buildGoogleMerchantFeed(facts)).not.toContain("commerce-cap");
+    expect(buildGoogleMerchantFeed(facts)).not.toContain("commerce-hat");
   });
 
   it("resolves approved primary and gallery images into absolute XML and CSV feed URLs", async () => {

@@ -96,16 +96,14 @@ describe("installed Commerce policy consumer", () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
-  it("reads native policy storage when the public route is not mounted", async () => {
-    process.env.DINKUS_CATALOG_PROFILE = "native-development";
+  it("never falls back to reading Commerce's storage when the public route is not mounted", async () => {
+    // Every store reads the installed Commerce's public policy route (template-one-build-registry-20261031).
     const dispatch = vi.fn(async () => ({ success: false, error: { code: "NOT_FOUND" } }));
-    const result = await readInstalledCommercePolicies({
+    await expect(readInstalledCommercePolicies({
       request: new Request("https://shop.example.test/shipping"),
       runtime: { handlePublicPluginApiRoute: dispatch },
-    }, "dinkus-commerce");
+    }, "r_gshdrqaldna3r7sn")).rejects.toThrow();
     expect(dispatch).toHaveBeenCalledOnce();
-    expect(result.shipping?.revision).toBe(2);
-    expect(result.returns).toBeNull();
   });
 
   it.each([

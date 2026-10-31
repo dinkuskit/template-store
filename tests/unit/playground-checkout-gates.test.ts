@@ -37,7 +37,8 @@ async function call(path: string, opts: { playground?: boolean; ip?: string | nu
     locals.__playgroundDb = {};
     locals.__playgroundCheckoutLimiter = "limiter" in opts ? opts.limiter : { limit: async () => ({ success: true }) };
   }
-  const next = vi.fn(async () => new Response("native", { status: 200 }));
+  // The visitor's own Commerce (its Registry build, installed in the store) answers behind next().
+  const next = vi.fn(async () => Response.json({ success: true, data: { forwardedBody: await request.text() } }));
   const response = await (onRequest as unknown as (c: unknown, n: unknown) => Promise<Response>)({
     url: new URL(request.url), request, locals, cookies: { get: () => ({ value: "pg-session" }) },
   }, next);
@@ -75,18 +76,16 @@ describe("playground sandbox checkout gates", () => {
 
   it("open only for a configured playground session, after validation, IP and limiter", async () => {
     Object.assign(process.env, READY);
-    // The cart's Registry-path call is served by the playground's native
-    // Commerce route through EmDash's public plugin boundary, body intact.
+    // The cart's Registry-path call reaches the visitor's own Commerce (template-one-build-registry-20261031),
+    // with the body the guard validated still unread.
     const ok = await call(registryStart, { commerce: true });
     expect(ok.response.status).toBe(200);
-    expect(ok.next).not.toHaveBeenCalled();
-    expect(ok.dispatch).toHaveBeenCalledTimes(1);
-    expect(ok.dispatch.mock.calls[0].slice(0, 3)).toEqual(["dinkus-commerce", "POST", "checkout/guest/start"]);
-    expect(await ok.response.json()).toEqual({ success: true,
-      data: { forwardedBody: body, forwardedUrl: `https://playground.example${nativeStart}` } });
+    expect(ok.next).toHaveBeenCalledTimes(1);
+    expect(ok.dispatch).not.toHaveBeenCalled();
+    expect(await ok.response.json()).toEqual({ success: true, data: { forwardedBody: body } });
     const streamed = await call(registryStart, { omitContentLength: true, commerce: true });
     expect(streamed.response.status).toBe(200);
-    expect(streamed.dispatch.mock.calls[0].slice(0, 3)).toEqual(["dinkus-commerce", "POST", "checkout/guest/start"]);
+    expect(streamed.next).toHaveBeenCalledTimes(1);
     expect((await call(registryStart, { raw: JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1, price: 1 }] }) })).response.status).toBe(400);
     expect((await call(registryStart, { ip: null })).response.status).toBe(400);
     expect((await call(registryStart, { limiter: { limit: async () => ({ success: false }) } })).response.status).toBe(429);
@@ -210,22 +209,5 @@ describe("playground status recovery visitor context", () => {
     process.env.DINKUS_CHECKOUT_ENABLED = "0";
     await statusCall(true).catch(() => undefined);
     expect(seen).toEqual([]);
-  });
-});
-
-describe("native Commerce dispatch envelope", () => {
-  it("relays Commerce refusals with EmDash's plugin-route status and envelope", async () => {
-    Object.assign(process.env, READY);
-    const request = new Request(`https://playground.example${registryStart}`, {
-      method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7" }, body });
-    const dispatch = vi.fn(async () => ({ success: false, status: 403, error: { code: "ORIGIN_DENIED", message: "Guest checkout origin is missing or invalid" } }));
-    const response = await (onRequest as unknown as (c: unknown, n: unknown) => Promise<Response>)({
-      url: new URL(request.url), request,
-      locals: { emdash: { handlePublicPluginApiRoute: dispatch }, __playgroundDb: {}, __playgroundCheckoutLimiter: { limit: async () => ({ success: true }) } },
-      cookies: { get: () => ({ value: "pg-session" }) },
-    }, vi.fn());
-    expect(response.status).toBe(403);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
-    expect(await response.json()).toEqual({ success: false, error: { code: "ORIGIN_DENIED", message: "Guest checkout origin is missing or invalid" } });
   });
 });

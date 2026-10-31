@@ -180,7 +180,6 @@ function hasInstalledGuestCheckoutRoutes(runtime: RuntimeGuestCheckoutMetadata):
  * consulting its cached readiness advisory. This is routing permission only;
  * Commerce still validates the capability, configuration, binding and attempt. */
 export function canDispatchInstalledGuestCheckout(context: InstalledCheckoutReadinessContext): boolean {
-  if (process.env.DINKUS_CATALOG_PROFILE === "native-development") return false;
   return Boolean(context.runtime &&
     typeof context.runtime.handlePublicPluginApiRoute === "function" &&
     hasInstalledGuestCheckoutRoutes(context.runtime));
@@ -194,8 +193,6 @@ export function canDispatchInstalledGuestCheckout(context: InstalledCheckoutRead
 export async function acquireGuestCheckoutAdmission(
   context: InstalledCheckoutReadinessContext,
 ): Promise<GuestCheckoutAdmission> {
-  // Native-development catalog reads use a different storage namespace.
-  if (process.env.DINKUS_CATALOG_PROFILE === "native-development") return null;
   const readiness = await readInstalledCheckoutReadiness(context);
   if (!readiness || readiness.status !== "supported" || readiness.mode !== "test") {
     return null;
