@@ -9,6 +9,7 @@ import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { readCommerceCatalog } from "../../features/commerce-catalog/index.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
 import { leftCommerceCatalog, withoutRemovedProducts } from "../../features/store-shell/merch-catalog.js";
+import { orderCategoryProducts } from "../../features/store-shell/category-product-order.js";
 import { commercePageLinks, hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
 
@@ -44,7 +45,8 @@ const removedEntryIds = new Set(profile === "shipping" && catalogRead
     .filter((product) => leftCommerceCatalog(product.commerceItemId, commerceById.has(product.commerceItemId)))
     .map((product) => product.id)
   : []);
-const category = listedCategory ? withoutRemovedProducts([listedCategory], removedEntryIds)[0] : undefined;
+const visibleCategory = listedCategory ? withoutRemovedProducts([listedCategory], removedEntryIds)[0] : undefined;
+const category = visibleCategory ? await orderCategoryProducts(visibleCategory) : undefined;
 const commerceProducts = new Map(productLinks.products.flatMap((product) => {
   const commerce = commerceById.get(product.commerceItemId);
   return commerce ? [[product.id, commerce] as const] : [];
