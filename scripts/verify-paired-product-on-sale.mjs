@@ -9,15 +9,15 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
 // The Commerce that holds each page's product (dinkuskit/commerce#208, template-no-commerce-box-20261029):
-// the first beta carrying it, 0.7.0-beta.3, here 0.7.0-beta.4 on EmDash 1.4.0.
+// the first beta carrying it, 0.7.0-beta.3, here the 0.7.0 release on EmDash 1.4.0.
 const COMMERCE = Object.freeze({
-  tag: "v0.7.0-beta.4",
+  tag: "v0.7.0",
   // Whether this Commerce saves the page title sent as `name` (dinkuskit/commerce#188); 0.6.0 ignores it.
   names: true,
-  commit: "b3494cbcb932680c16dda0bebc6a6ffd68456a4d",
+  commit: "4c975824923626e52460d6fbad29d5e32613a319",
   files: {
     "dist/sandbox/plugin.mjs": "a630ca239b3573cd5943cb430fb8e26702c946ba6d7c38438fcc86ac01c98f92",
-    "dist/sandbox/index.mjs": "fc9072aa4bc0d78949b45b8602e6be9b99ab3badd687d16a3257e2a73efb4a65",
+    "dist/sandbox/index.mjs": "2f2fc69eb020e323db6541e8c959b66c2bd151dae575a59b44d65539d4ffa11f",
   },
 });
 
