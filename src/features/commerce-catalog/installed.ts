@@ -77,6 +77,7 @@ function variantMembers(variants: unknown): PublicCommerceVariant[] {
       unitMinor: minor,
       priceText: formatUsdMinor(minor),
       availability: { status: availability.status as PublicCommerceVariant["availability"]["status"], sellable: availability.sellable },
+      ...(member.fulfillment === "physical" || member.fulfillment === "digital" ? { fulfillment: member.fulfillment } : {}),
     });
   }
   return members;
@@ -252,8 +253,8 @@ export async function readInstalledCommerceProductByPage(
 /**
  * The product a cart line's id buys. Commerce answers a variant member's id
  * with its whole product, so a product with choices is read through the
- * chosen member: its own price and availability, never the product's "from"
- * price or another member. A member Commerce no longer lists is null.
+ * chosen member: its own price, availability and fulfillment, never the
+ * product's "from" price or another member. A member Commerce no longer lists is null.
  */
 export function cartLineProduct(item: PublicCommerceProduct, itemId: string): PublicCommerceProduct | null {
   if (!item.variants?.length) return item.id === itemId ? item : null;
@@ -268,6 +269,9 @@ export function cartLineProduct(item: PublicCommerceProduct, itemId: string): Pu
     sku: "",
     price: { listable: true, regularText: member.priceText, saleText: null, unitMinor: member.unitMinor },
     availability: { ...member.availability, listable: true },
+    // Commerce projects each member's fulfillment, so a digital Size checks out without a delivery address;
+    // without one, fail closed to physical as for simple products.
+    fulfillment: member.fulfillment ?? "physical",
   };
 }
 

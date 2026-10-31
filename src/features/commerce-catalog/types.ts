@@ -38,4 +38,6 @@ export interface PublicCommerceVariant {
   unitMinor: string;
   priceText: string;
   availability: Pick<StorefrontAvailabilityResult, "status" | "sellable">;
+  /** The member's own fulfillment as Commerce projects it; absent when Commerce sends none or an unknown value. */
+  fulfillment?: "physical" | "digital";
 }

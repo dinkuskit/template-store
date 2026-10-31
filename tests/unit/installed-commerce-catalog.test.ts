@@ -156,8 +156,8 @@ describe("installed Commerce public catalog consumer", () => {
     const product = await readInstalledCommerceProduct("hoodie", context([value]));
     expect(product?.price.regularText).toBe("from $56.00");
     expect(product?.variants).toEqual([
-      { id: "hoodie-s", selections: [["Size", "Small"]], unitMinor: "5600", priceText: "$56.00", availability: { status: "in-stock", sellable: true } },
-      { id: "hoodie-m", selections: [["Size", "Medium"]], unitMinor: "6000", priceText: "$60.00", availability: { status: "out-of-stock", sellable: false } },
+      { id: "hoodie-s", selections: [["Size", "Small"]], unitMinor: "5600", priceText: "$56.00", availability: { status: "in-stock", sellable: true }, fulfillment: "physical" },
+      { id: "hoodie-m", selections: [["Size", "Medium"]], unitMinor: "6000", priceText: "$60.00", availability: { status: "out-of-stock", sellable: false }, fulfillment: "physical" },
     ]);
   });
 

@@ -105,3 +105,60 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
     expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
   }
 });
+
+test("a digital choice checks out with no delivery address, and a physical one asks for it", async ({ page, browser }, testInfo) => {
+  test.setTimeout(300_000);
+  expect((await page.request.get("/_emdash/api/setup/dev-bypass")).status()).toBe(200);
+  expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
+  const { request } = page;
+  const catalog = async (body: Record<string, unknown>) => {
+    const response = await request.post(`/_emdash/api/plugins/${commerce}/catalog`, { headers, data: body });
+    expect(response.ok(), await response.text()).toBe(true);
+    return (await response.json()).data;
+  };
+  const sku = testInfo.project.name === "phone" ? "GROW-GUIDE-PHONE" : "GROW-GUIDE";
+  const slug = sku.toLowerCase();
+  const created = (await (await request.post("/_emdash/api/content/products", { headers, data: { slug, data: { title: "Grow guide", visual_label: "Guide" } } })).json()).data;
+  const pageId: string = (created.item ?? created).id;
+  try {
+    // Print is the product itself (physical); PDF is a digital version of it.
+    const { catalogItemId: print } = await catalog({ op: "create", commandId: `guide-${slug}`, name: "Grow guide", sku, entryId: pageId });
+    const choice = await catalog({ op: "choice", productId: print, optionId: "format", optionLabel: "Format", values: [
+      { valueId: "print", label: "Print", member: { catalogItemId: print, fulfillment: "physical" } },
+      { valueId: "pdf", label: "PDF", member: { commandId: `guide-${slug}-pdf`, name: "Grow guide", sku: `${sku}-PDF`, fulfillment: "digital" } },
+    ] });
+    const pdf = (choice.product.members as { catalogItemId: string }[]).map((member) => member.catalogItemId).find((id) => id !== print)!;
+    expect((await catalog({ op: "prices", catalogItemId: print, regular: "24", sale: "", stockStatus: "in-stock" })).saved).not.toBe(false);
+    expect((await catalog({ op: "prices", catalogItemId: pdf, productId: print, regular: "9", sale: "", stockStatus: "in-stock" })).saved).not.toBe(false);
+    expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
+    const members = async () => (await (await request.get(`/_emdash/api/plugins/${commerce}/catalog/public/item?itemId=${pdf}`)).json()).data?.variants?.members ?? [];
+    await expect.poll(async () => (await members()).length).toBe(2);
+    // Commerce projects each member's own fulfillment.
+    expect(Object.fromEntries((await members()).map((member: { catalogItemId: string; fulfillment: string }) => [member.catalogItemId, member.fulfillment]))).toEqual({ [print]: "physical", [pdf]: "digital" });
+
+    const shopperContext = await browser.newContext({ viewport: testInfo.project.use.viewport, isMobile: testInfo.project.use.isMobile, hasTouch: testInfo.project.use.hasTouch, storageState: { cookies: [], origins: [] } });
+    const shopper = await shopperContext.newPage();
+    try {
+      const cart = (ids: string[]) => shopper.evaluate(([key, lines]) => localStorage.setItem(key, JSON.stringify({ version: 1, lines: JSON.parse(lines).map((id: string) => ({ id, quantity: 1 })) })), [CART_KEY, JSON.stringify(ids)]);
+      await shopper.goto("/cart");
+      await cart([pdf]);
+      await shopper.goto("/checkout");
+      const line = shopper.locator(`[data-guest-cart-line="${pdf}"]`);
+      await expect(line.getByRole("heading", { level: 2 })).toHaveText("Grow guide \u2014 PDF");
+      await expect(line).toContainText("$9.00");
+      // A digital-only cart never asks where to deliver it.
+      await expect(shopper.locator("[data-guest-cart-delivery]")).toBeHidden();
+      await capture(shopper, "4-checkout-digital-only");
+
+      await cart([pdf, print]);
+      await shopper.reload();
+      await expect(shopper.locator(`[data-guest-cart-line="${print}"]`).getByRole("heading", { level: 2 })).toHaveText("Grow guide \u2014 Print");
+      await expect(shopper.locator("[data-guest-cart-delivery]")).toBeVisible();
+      await capture(shopper, "5-checkout-with-print");
+    } finally {
+      await shopperContext.close();
+    }
+  } finally {
+    expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  }
+});
