@@ -132,17 +132,32 @@ pnpm verify
 pnpm dev
 ```
 
-For a disposable local demo with a fresh Wrangler state, run:
+Commerce runs one build here, the Registry (sandboxed) one, as every store
+installs it (GrillTrack `template-one-build-registry-20261031`). `pnpm dev`
+mounts the pinned Commerce's Registry bundle through EmDash's `sandboxed: [...]`
+and its workerd runner (`astro dev` hands it to Miniflare), once
+`pnpm prepare:commerce` has fetched and built that pin under
+`.artifacts/paired-commerce/<commit>` (about two minutes, once per pin). This
+is EmDash's documented plugin loop: build the plugin, run the site. To work on
+Commerce itself, build it in its own checkout (`npm run build`) and point the
+store at it:
+
+```bash
+DINKUS_PAIRED_COMMERCE_DIR=../commerce pnpm dev
+```
+
+For a disposable local demo on a fresh database, run:
 
 ```bash
 pnpm dev:fresh
 ```
 
-This removes `.wrangler/state`, prepares and builds the pinned sources,
-initializes the Commerce catalog index, bundles and seeds the demo data, and
-starts `wrangler dev` with `DINKUS_CATALOG_PROFILE=native-development`.
-Stale local Wrangler state can otherwise leave the catalog empty and produce
-`uidx_plugin_dinkus-commerce_catalogItems_skuKey was not created` errors.
+This removes `.artifacts/dev`, prepares the pinned sources and the Commerce
+Registry bundle, and starts `astro dev` on the proof storefront profile, which
+seeds the demo catalog through the installed Commerce's own routes on the first
+signed-in request: open `/_emdash/admin` once and the shop fills.
+`DINKUS_CATALOG_PROFILE=native-development`, the retired native copy, is
+refused.
 
 ### Disposable playground
 

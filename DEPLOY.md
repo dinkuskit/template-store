@@ -4,6 +4,8 @@ This repository does not change a store's live Cloudflare Access applications.
 
 Workers.dev and preview URLs stay disabled (`workers_dev: false`, `preview_urls: false` in `wrangler.jsonc`) so the demo is served only on its Access-protected custom domain.
 
+The demo Worker runs the pinned Commerce's Registry build the way a Registry store installs it (GrillTrack `template-one-build-registry-20261031`): `pnpm build` fetches and builds that pin (`scripts/lib/paired-commerce.mjs`) and mounts it through EmDash's `sandboxed: [...]`, which on Cloudflare runs in EmDash's sandbox and needs the Worker Loader. `wrangler.jsonc` therefore binds `LOADER` (`worker_loaders`), which the Workers paid plan provides; the demo's account already runs Workers with that binding. A deploy of this config is a change to the live Worker's bindings and needs the owner's approval like any deployment. The demo catalog seeds itself through the installed Commerce on the first signed-in request after a fresh deploy (open the admin once).
+
 ## Rule
 
 1. With `PAYMENTS_UNAVAILABLE=1` (the shipping default), keep all of

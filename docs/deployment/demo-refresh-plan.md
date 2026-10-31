@@ -41,7 +41,8 @@ reconciled against a fresh read-only inspection.
 ## 3. Build, preview, approve
 
 1. Run the full project verification and capture desktop Chromium and mobile
-   viewport proof from the native-development profile locally only.
+   viewport proof from the proof store (the pinned Commerce's Registry build)
+   locally only.
 2. Run the read-only site verifier against the preview origin, including
    canonical routes, redirects, noindex behavior, robots, sitemap, and nested
    links.
@@ -124,7 +125,8 @@ reseed or overwrite later editorial changes. Keep checkout unavailable throughou
 The committed Wrangler template currently names the proof storefront profile.
 It is not a deploy-ready shipping configuration. The deployment owner must
 review an explicit shipping profile, disabled proof mode and disabled payments,
-with no `native-development` catalog registration, before preview qualification.
+with the Registry build mounted under `LOADER` and no native catalog
+registration, before preview qualification.
 The local compilation used the shipping profile and an ignored local D1
 configuration; it proves compilation only. It does not establish remote D1/R2,
 Registry installation, route activation or content migration readiness.

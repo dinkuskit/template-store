@@ -6,9 +6,10 @@ Shop on `/` consumes installed Commerce
 `catalog/public` through EmDash public-only SSR dispatch
 (`handlePublicPluginApiRoute`). The shipping Commerce Registry identity is
 `r_gshdrqaldna3r7sn`, derived from publisher
-`did:plc:ekk4pjmkh3k3ql2kfoex3qt4` and slug `dinkus-commerce`. The native
-`dinkus-commerce` identity is reserved for the explicit native-development
-profile; shipping does not fall back to it. The request is a fresh public GET: no incoming cookies,
+`did:plc:ekk4pjmkh3k3ql2kfoex3qt4` and slug `dinkus-commerce` (the beta
+package's is `r_fjzjvld3ssb4j63o`). The native `dinkus-commerce` identity is
+the retired native copy's; only the playground still runs it, and shipping
+never falls back to it. The request is a fresh public GET: no incoming cookies,
 credentials, query parameters, or shopper capability. Every opaque cursor is
 followed, including empty filtered pages. Display price is Commerce's projected
 customer price; this template does not reconstruct a Regular/Sale pair.
@@ -33,19 +34,30 @@ A matching installed Commerce artifact is required before Shop can list live
 Products on the shipping profile. Historical Commerce49/Payments12 package
 fixtures keep their identities and do not qualify this pairing.
 
-## Native-development proof
+## Proof store on the Registry build
 
-`DINKUS_CATALOG_PROFILE=native-development` mounts native `dinkusCommerce()` and
-reads persisted plugin collections through EmDash `getDb` /
-`PluginStorageRepository`, then Commerce public resolvers. Canonical proof
-Playwright uses that profile. Shipping Playwright deletes it so the verifier
-cannot pass on native storage while claiming the installed default.
+Commerce runs one build here, the Registry (sandboxed) one
+(template-one-build-registry-20261031). The proof store (`pnpm dev:fresh`,
+the browser tests' proof server, the hosted demo) mounts the pinned Commerce's
+Registry bundle through EmDash's `sandboxed: [...]` under its Registry runtime
+id (`scripts/lib/paired-commerce.mjs`; `pnpm prepare:commerce` builds it once
+per pin, `DINKUS_PAIRED_COMMERCE_DIR` points at a Commerce checkout being
+developed). The storefront reads it exactly as a shipping store reads an
+installed Commerce: the public catalog routes. Products are made the way the
+owner's tools make them: a Content > Products page, its Dinkus Commerce panel
+(or the private `catalog` route the CLI uses) for price and stock, and the
+page's publish, which puts the product on sale. The demo catalog seeds itself
+the same way on the first signed-in request
+(`src/features/playground/demo-registry-seed.ts`). Shipping Playwright mounts
+no Commerce at all, so the verifier cannot pass on a mounted plugin while
+claiming the installed default. `DINKUS_CATALOG_PROFILE=native-development`
+is refused.
 
-On the native-development profile only: open EmDash admin → Products, add a name
-and SKU, then set Regular in dollars. Reload `/` to see the product under Shop.
-A lower Sale strikes Regular and displays Sale. Clear both price fields to
-remove the product from public listings while retaining it in Products. An
-explicit zero Regular is a free listed
+On the proof store: open a Content > Products page, add a SKU and press Add
+price and stock in its Dinkus Commerce panel, then set Regular in dollars and
+publish the page. Reload `/` to see the product under Shop. A lower Sale
+strikes Regular and displays Sale. Clear both price fields to take the product
+off the shop while Commerce keeps it. An explicit zero Regular is a free listed
 product. CMS merchandise cannot claim a Commerce identity. Server failures show
 an unavailable catalog, never invented prices or stock. No public mutation
 endpoint is added.
@@ -74,10 +86,9 @@ reseed or re-bootstrap from the current `seed/seed.json` and review Products,
 Categories, and Pages. Do not use seed `update` or claim an automatic
 `merchandise` migration. Existing live stores do not exist.
 
-Native Products create still needs `DINKUS_CATALOG_PROFILE=native-development`.
 Stop the server and back up the existing SQLite database before that upgrade.
-EmDash registers native Commerce plugin storage; the Node scheduler materializes
-the unique catalog indexes (up to one minute). Commerce refuses create until
+EmDash installs the mounted Commerce Registry bundle and builds its unique
+catalog indexes on a fresh store's first requests; Commerce refuses create until
 those indexes exist. The merchant catalog starts empty; demo products are not
 silently copied into Commerce storage.
 
@@ -85,12 +96,12 @@ silently copied into Commerce storage.
 
 `bin/verify-web full` shipping projects
 (`tests/e2e/shipping-storefront-profile.spec.ts`) prove the installed public
-path without a native plugin: unavailable Shop, no invented product cards, no
+path with no Commerce mounted: unavailable Shop, no invented product cards, no
 add-to-cart, closed checkout, preview isolation, desktop and mobile.
 
-Native Products create, Regular/Sale, Coming soon, and guest-cart add-to-cart
-remain `tests/e2e/commerce-catalog.spec.ts` and `tests/e2e/guest-cart.spec.ts`
-on the explicit native-development proof server. Existing suites retain the
-Inventory sequence, manual availability, CMS authoring, editorial query card,
-and preview isolation. Sanitized browser media is retained separately from
-product source.
+Product create, Regular/Sale, stock status and guest-cart add-to-cart are
+`tests/e2e/commerce-catalog.spec.ts` and `tests/e2e/guest-cart.spec.ts` on the
+proof server, which runs the pinned Commerce's Registry build and speaks only
+its routes. Existing suites retain the Inventory sequence, manual availability,
+CMS authoring, editorial query card, and preview isolation. Sanitized browser
+media is retained separately from product source.

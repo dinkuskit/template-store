@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { checkoutLimited } from "../../../features/playground-checkout/index.js";
-import { isDemoCatalogProfile } from "../../../features/playground/demo-products.js";
 import {
   mintDemoShopperSession,
   resolvePlaygroundAccountSiteOrigin,
@@ -12,8 +11,9 @@ const NO_STORE_HEADERS = {
 };
 
 export const POST: APIRoute = async ({ request, url, locals }) => {
+  // The instant demo shopper is the playground's; a store running Commerce's Registry build has none.
   const isPlayground = Boolean((locals as { __playgroundDb?: unknown }).__playgroundDb);
-  if (!isPlayground && !isDemoCatalogProfile()) {
+  if (!isPlayground) {
     return new Response(
       JSON.stringify({ ok: false, error: { code: "NOT_FOUND", message: "Route not found." } }),
       { status: 404, headers: NO_STORE_HEADERS },
@@ -76,7 +76,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 
 export const ALL: APIRoute = async ({ locals }) => {
   const isPlayground = Boolean((locals as { __playgroundDb?: unknown }).__playgroundDb);
-  if (!isPlayground && !isDemoCatalogProfile()) {
+  if (!isPlayground) {
     return new Response(
       JSON.stringify({ ok: false, error: { code: "NOT_FOUND", message: "Route not found." } }),
       { status: 404, headers: NO_STORE_HEADERS },

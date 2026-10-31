@@ -38,43 +38,32 @@ Local SVG placeholders for the nine demo products live under `public/images/prod
 
 ## Seeding Procedure
 
-Catalog writes stay on Commerce `createCatalogItem`, `setCatalogItemRegularPrice`, `setCatalogItemSalePrice`, `clearCatalogItemSalePrice`, and `setCatalogItemManualAvailability`. EmDash content setup stays on `runMigrations` and `applySeed`. The seeder does not construct `EmDashRuntime`, does not import `api-BBZlif0y.mjs` or `emdash/internal/plugin-test-runtime`, and does not author index SQL.
+The demo runs Commerce's Registry build (template-one-build-registry-20261031),
+so the demo catalog is written the way the owner's own tools write products:
+through the installed Commerce's private routes (`catalog` and
+`catalog-items/set-on-sale`), as an Administrator. The store does this itself
+(`src/features/playground/demo-registry-seed.ts`), create-only-if-missing and
+keyed by SKU, on the first request EmDash hands its full runtime to, which is a
+signed-in person's. A fresh deploy therefore seeds when the owner first opens
+the admin behind Access. Nothing opens Commerce's storage; Commerce holds the
+link from each demo page (`demo-<kind>`) to its product and builds its own
+unique indexes on a fresh store's first requests (a seed attempt before that is
+refused and retried on the next signed-in request).
 
-`emdash@1.0.1` root exports `definePlugin` and `PluginStorageRepository`. It does not export `EmDashRuntime`. Canonical plugin indexes, including `uidx_plugin_dinkus-commerce_catalogItems_skuKey`, are created inside the Astro-built Cloudflare Worker. `src/worker.ts` keeps the guarded Astro `fetch` and adds `scheduled: createScheduledHandler()` from `@emdash-cms/cloudflare/worker`, plus the `PluginBridge` export. No `LOADER` binding and no Cron Trigger are added. `createScheduledHandler()` calls public `emdash/middleware` `runScheduledTasks` in that built context, and runtime maintenance calls `syncPluginStorageIndexesOnce()`.
+The earlier D1 seeder (`scripts/seed-synthetic-demo.ts`, its scheduled-index
+harness and seed bundle) wrote the retired native copy's `dinkus-commerce`
+camelCase collections directly; it was removed with that copy. Nothing in the
+repository writes Commerce's storage from outside Commerce any more.
 
-`wrangler dev --help` documents `--test-scheduled` as local-only: visit `/__scheduled`. The public fetch guard still denies that path. The harness is not a production endpoint.
+Local check, on a disposable store:
 
-1. **Local index bootstrap** (required once per fresh D1 persist, before Commerce writes):
-   ```bash
-   node scripts/scheduled-index-harness.mjs --persist .wrangler/state/v3
-   ```
-   The harness builds the Cloudflare Worker when `dist/server/entry.mjs` has no `scheduled` export, then runs `wrangler dev --local --ip 127.0.0.1 --test-scheduled --persist-to .wrangler/state` against that built entry. It requests loopback `/__scheduled`, checks the physical `skuKey` unique index read-only, and stops that child process. Normal local default state remains `.wrangler/state/v3`.
+```bash
+pnpm dev:fresh
+```
 
-2. **Local seed** (default, `remoteBindings: false`):
-   ```bash
-   pnpm seed:bundle
-   node --import ./scripts/cloudflare-workers-hook.mjs .artifacts/seed/seed-synthetic-demo.mjs
-   ```
-   Refuses `D1_DB_PATH`. Writes use ignored `.artifacts/wrangler.local.jsonc` and `getPlatformProxy` with `remoteBindings: false`. Before any seed write, a read-only `sqlite_master` lookup must find `uidx_plugin_dinkus-commerce_catalogItems_skuKey`. If it is missing, the command exits 2 with `INDEX_INIT_REQUIRED` and does not write. `--prove-sentinel --persist <isolated>/v3` is the non-demo preservation run and cannot target `.wrangler/state/v3`.
-
-3. **Remote execution** (opt-in, not run, still unproved):
-   ```bash
-   node --import ./scripts/cloudflare-workers-hook.mjs .artifacts/seed/seed-synthetic-demo.mjs --remote --confirm <fingerprint>
-   ```
-   `--remote` without the ignored manifest `.artifacts/remote-operator-target.json` exits 2 with `REMOTE_SEED_UNPROVED` before any proxy. A present manifest still has to match ignored `.artifacts/wrangler.remote.jsonc`: worker `dinkuskit-template-demo`, database name `dinkuskit-template-demo`, exactly one D1 binding `DB` with `remote: true`, materialized `account_id` and `database_id`, `run_worker_first`, and rate namespace `2026100101`. The manifest scope must be `fresh-demo-only`. `--confirm` must equal the manifest confirmation and the SHA-256 hex of these lines, lowercased ids, with no trailing newline on the last line:
-
-   ```text
-   <account id>
-   <database id>
-   dinkuskit-template-demo
-   dinkuskit-template-demo
-   DB
-   ```
-
-   The passing proxy call, which this slice does not invoke, is `getPlatformProxy({ configPath: <repo>/.artifacts/wrangler.remote.jsonc, remoteBindings: true, envFiles: [], persist: false })`. The command rejects preview ids, a local UUID presented as remote, a database file path, any other worker or database name, `--prove-sentinel`, a missing or wrong confirmation, and committed `account_id` / `database_id` / `remote` in `wrangler.jsonc`. Account and database ids stay in those ignored files only. A remote database also needs the same built-Worker scheduled initialization against that approved remote binding before Commerce writes. That remote initialization has not been run. Actual remote seeding remains unproved.
-
-4. **Verification**:
-   After the local scheduled harness and seed, all nine `DEMO-HOSTED-*` products (ten SKUs, counting both hoodie sizes) are at the baseline prices and availability. The repeat run reports the non-demo sentinel unchanged and the neutral home page published. Remote verification is not claimed.
+Open `/_emdash/admin` once; the shop then lists the nine demo products (ten
+SKUs, both hoodie sizes) at the baseline prices and availability, served from
+Commerce's public catalog under its Registry runtime id.
 
 ---
 
@@ -82,6 +71,11 @@ Catalog writes stay on Commerce `createCatalogItem`, `setCatalogItemRegularPrice
 
 If the demo storefront requires resetting to its baseline state:
 
-1. Re-run the local seed command (`pnpm seed:demo` runs that bundled script) against a database whose scheduled harness already created the Commerce `skuKey` index. Remote reset has not been proved.
-2. The script identifies existing `DEMO-HOSTED-*` items by SKU and re-applies baseline regular prices, sale prices, and manual availability statuses idempotently.
-3. Any guest cart sessions in client storage expire or can be cleared by end users; no server-side order or checkout records are created because checkout is disabled on the public demo.
+1. There is no baseline reset tool for the Registry build yet: the seed creates
+   missing products and never changes one that exists. Resetting an edited demo
+   product means editing it back in its page's Dinkus Commerce panel, or with
+   the `dinkus-commerce` CLI against the demo's `catalog` route, until a reset
+   that speaks the installed Commerce's routes is written (follow-up).
+2. Any guest cart sessions in client storage expire or can be cleared by end
+   users; no server-side order or checkout records are created because checkout
+   is disabled on the public demo.
