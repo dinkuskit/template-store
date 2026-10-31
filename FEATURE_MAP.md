@@ -51,6 +51,15 @@ until verified for a later `301`. Demos, previews, and staging are noindex by
 default; a real merchant store must explicitly set
 `DINKUS_LAUNCH_INDEXABLE=1`. Noindex controls search visibility, not access.
 
+Category pages honor the CMS's ordered **Products in this category** references,
+read through the SDK's published/edit-preview reference query and all of its
+pages. Ordering applies only to the already-eligible merchandise: it cannot add
+draft, missing, or Commerce-removed products or change Commerce facts. Missing
+reference fields or failed reads retain the previous product order; unmatched
+eligible products remain stably last. See
+`src/features/store-shell/category-product-order.ts` and
+`tests/unit/category-product-order.test.ts`.
+
 Run the site verifier in order against the local server, a preview origin,
 then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD
 checks and crawls the homepage, sitemap-linked internal URLs, and nested
