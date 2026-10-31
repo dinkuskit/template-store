@@ -24,9 +24,13 @@ vi.mock("emdash/runtime", () => ({
 
 import { getEmDashCollection } from "emdash";
 import {
+  buildAgentCatalogFeed,
   buildGoogleMerchantFeed,
   buildInstalledCommerceFeedFacts,
   buildMetaCatalogFeed,
+  buildStorefrontAgentsMd,
+  buildStorefrontLlmsFullTxt,
+  buildStorefrontLlmsTxt,
 } from "../../src/features/commerce-feeds/index.js";
 
 const getCollection = vi.mocked(getEmDashCollection);
@@ -188,5 +192,46 @@ describe("installed Commerce feed facts", () => {
       .toEqual(["https://media.example.test/main.jpg"]);
     const unsafe = { ...ctx, runtime: { ...ctx.runtime, getPublicMediaUrl: () => "javascript:alert(1)" } };
     expect((await buildInstalledCommerceFeedFacts(unsafe))[0]!.content.imageUrls).toBeUndefined();
+  });
+
+  it("builds storefront /llms.txt, /llms-full.txt, and /agents.md from installed catalog facts", async () => {
+    const facts = await buildInstalledCommerceFeedFacts(context([
+      catalogItem("commerce-hat", { gtin: "4006381333931", feedChannels: ["google-merchant"] }),
+      catalogItem("commerce-cap", { feedChannels: ["meta-catalog"] }),
+      catalogItem("commerce-mug", { availability: { status: "out-of-stock", sellable: false, listable: true } }),
+    ]));
+    const options = {
+      products: facts,
+      storeName: "Dinkus Store",
+      siteOrigin: "https://shop.example.test",
+      description: "Agent-ready store.",
+      policies: [
+        { slug: "shipping", title: "Shipping policy", url: "https://shop.example.test/shipping", body: "Ships in 2 business days." },
+        { slug: "returns", title: "Returns policy", url: "https://shop.example.test/returns", body: "30-day returns." },
+      ],
+    };
+    const agentFeed = buildAgentCatalogFeed(options);
+    expect(agentFeed.virtualCardSizing.taxMinor).toBe("0");
+    expect(agentFeed.products.map((item) => [item.id, item.availability.sellable])).toEqual([
+      ["commerce-hat", true],
+      ["commerce-cap", true],
+      ["commerce-mug", false],
+    ]);
+
+    const llmsTxt = buildStorefrontLlmsTxt(options);
+    expect(llmsTxt).toContain("# Dinkus Store");
+    expect(llmsTxt).toContain("https://shop.example.test/llms-full.txt");
+    expect(llmsTxt).toContain("https://shop.example.test/agents.md");
+    expect(llmsTxt).toContain("[commerce-hat](https://shop.example.test/products/hat)");
+
+    const llmsFullTxt = buildStorefrontLlmsFullTxt(options);
+    expect(llmsFullTxt).toContain("## Detailed Product Projections");
+    expect(llmsFullTxt).toContain("- GTIN: `4006381333931`");
+    expect(llmsFullTxt).toContain("## Store Policies Corpus");
+
+    const agentsMd = buildStorefrontAgentsMd(options);
+    expect(agentsMd).toContain("# Shopping Agent & Virtual Card Contract — Dinkus Store");
+    expect(agentsMd).toContain("data-checkout-tax-minor=\"0\"");
+    expect(agentsMd).toContain("tax: { currency: \"USD\", minor: \"0\" }");
   });
 });

@@ -125,3 +125,17 @@ export async function buildInstalledCommerceFeedFacts(
 }
 
 export { buildGoogleMerchantFeed, buildMetaCatalogFeed };
+export {
+  buildAgentCatalogFeed,
+  buildInstalledStorefrontAgentFeedOptions,
+  buildStorefrontAgentsMd,
+  buildStorefrontLlmsFullTxt,
+  buildStorefrontLlmsTxt,
+  type AgentCatalogFeed,
+  type AgentCatalogProductEntry,
+  type AgentProductFeedFacts,
+  type ProductAiProjection,
+  type StorefrontAgentFeedOptions,
+  type StorefrontPolicySummary,
+  type StorefrontShippingQuoteInput,
+} from "./agent-feeds.js";
