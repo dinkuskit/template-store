@@ -113,3 +113,24 @@ export type {
   GuestCheckoutTransport,
   GuestCheckoutWireResult,
 } from "./checkout-protocol.js";
+export {
+  WEBMCP_ANTI_SCRAPE_NOTICE,
+  WEBMCP_REGISTRATION_SYMBOL,
+  buildStorefrontWebMcpTools,
+  computeCartReviewFingerprint,
+  createStorefrontActions,
+  installStorefrontWebMcp,
+} from "./webmcp.js";
+export type {
+  DinkusCartLineSnapshot,
+  DinkusCartSnapshot,
+  DinkusCartUpdatePatch,
+  DinkusCartUpdateResult,
+  DinkusCheckoutPreview,
+  DinkusCheckoutProceedResult,
+  DinkusStorefrontActions,
+  ModelContextHost,
+  StorefrontWebMcpEnvironment,
+  WebMcpToolAnnotations,
+  WebMcpToolDescriptor,
+} from "./webmcp.js";

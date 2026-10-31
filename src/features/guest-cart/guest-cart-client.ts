@@ -28,6 +28,7 @@ import {
   strictStripeCheckoutUrl,
   guestCheckoutRetryUrl,
   settleGuestCheckoutCart,
+  installStorefrontWebMcp,
   type GuestCartCatalogSnapshot,
   type GuestCartIntent,
   type GuestCartReadNotice,
@@ -708,6 +709,7 @@ let hydrateListenerRegistered = false;
 export function hydrateGuestCartControls(): void {
   session = loadSession();
   renderNav();
+  installStorefrontWebMcp();
   if (!hydrateListenerRegistered && typeof document.addEventListener === "function") {
     hydrateListenerRegistered = true;
     document.addEventListener("dinkus:guest-cart-hydrate", () => {
@@ -886,7 +888,12 @@ export function hydrateGuestCartPage(): void {
     mutationNotice = null;
     applyIntent(result.intent, session.notice, root);
   });
-  document.addEventListener("guest-cart-updated", () => void probeGuestCheckout(root));
+  document.addEventListener("guest-cart-updated", () => {
+    session = loadSession();
+    renderCart(root);
+    void refreshSnapshot(root);
+    void probeGuestCheckout(root);
+  });
   if (guestReturnQueryIsPresent(window.location.search)) {
     mutationNotice = null;
   }
