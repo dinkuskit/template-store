@@ -215,6 +215,23 @@ describe("storefront actions and progressive WebMCP adapter", () => {
 
     const byName = new Map(registered.map((tool) => [tool.name, tool]));
     await byName.get("add_to_cart")!.execute({ id: "prod_hoodie", quantity: 1 });
+    // Malformed update_cart_lines input (missing or null lines) is rejected without clearing the cart.
+    const malformedReplaceMissing = (await byName.get("update_cart_lines")!.execute({})) as {
+      ok: boolean;
+      code: string;
+    };
+    expect(malformedReplaceMissing.ok).toBe(false);
+    expect(malformedReplaceMissing.code).toBe("INVALID_PATCH");
+    const malformedReplaceNull = (await byName.get("update_cart_lines")!.execute({
+      lines: null,
+    })) as {
+      ok: boolean;
+      code: string;
+    };
+    expect(malformedReplaceNull.ok).toBe(false);
+    expect(malformedReplaceNull.code).toBe("INVALID_PATCH");
+    expect((await firstInstall.actions.getCart()).itemCount).toBe(1);
+
     // Repeated add_to_cart increments existing line quantity (1 -> 3).
     const secondAdd = (await byName.get("add_to_cart")!.execute({
       id: "prod_hoodie",

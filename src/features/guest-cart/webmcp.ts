@@ -345,6 +345,17 @@ export function createStorefrontActions(
       return error;
     }
 
+    if (patch.mode === "replace" && patch.clear !== true && !Array.isArray(patch.lines)) {
+      const error: DinkusCartUpdateResult = {
+        ok: false,
+        code: "INVALID_PATCH",
+        message: "Cart lines must be an array of { id, quantity } entries.",
+        instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
+      };
+      emit("dinkus:cart:error", error);
+      return error;
+    }
+
     const store = resolveStorage();
     const loaded = loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store);
     let current: GuestCartIntent =
@@ -649,15 +660,14 @@ export function buildStorefrontWebMcpTools(
           },
         },
       }),
-      execute: async (args) => {
-        const rawLines = Array.isArray(args?.lines)
-          ? (args.lines as Readonly<{ id: string; quantity: number }>[])
-          : [];
-        return actions.updateCart({
+      execute: async (args) =>
+        actions.updateCart({
           mode: "replace",
-          lines: rawLines,
-        });
-      },
+          lines: args?.lines as unknown as readonly Readonly<{
+            id: string;
+            quantity: number;
+          }>[],
+        }),
     },
     {
       name: "cancel_cart",
