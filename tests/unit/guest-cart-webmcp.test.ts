@@ -398,4 +398,50 @@ describe("storefront actions and progressive WebMCP adapter", () => {
     }
     expect(computeCartReviewFingerprint({ version: 1, lines: [] })).toBe("cart:empty");
   });
+
+  it("revalidates persisted cart intent when native shopper edits occur during an in-flight snapshot read", async () => {
+    const storage = createMemoryStorage();
+    const navigated: string[] = [];
+    let mutateStorageDuringNextFetch: (() => void) | null = null;
+    const actions = createStorefrontActions({
+      storage,
+      navigate: (path) => navigated.push(path),
+      fetchSnapshot: async (ids) => {
+        if (mutateStorageDuringNextFetch) {
+          const hook = mutateStorageDuringNextFetch;
+          mutateStorageDuringNextFetch = null;
+          hook();
+        }
+        return fetchFixtureSnapshots(ids);
+      },
+    });
+
+    await actions.updateCart({
+      mode: "replace",
+      lines: [{ id: "prod_hoodie", quantity: 1 }],
+    });
+    const step1 = await actions.proceedToCheckout();
+    expect(step1.ok).toBe(true);
+    if (!step1.ok) return;
+    expect(step1.status).toBe("buyer_review_required");
+
+    // Simulate a native shopper quantity change in storage while proceedToCheckout's snapshot fetch is in flight.
+    mutateStorageDuringNextFetch = () => {
+      storage.setItem(
+        GUEST_CART_STORAGE_KEY,
+        JSON.stringify({ version: 1, lines: [{ id: "prod_hoodie", quantity: 2 }] }),
+      );
+    };
+
+    const confirmAfterConcurrentEdit = await actions.proceedToCheckout({
+      buyerConfirmed: true,
+      reviewFingerprint: step1.reviewFingerprint,
+    });
+    expect(confirmAfterConcurrentEdit.ok).toBe(true);
+    if (!confirmAfterConcurrentEdit.ok) return;
+    expect(confirmAfterConcurrentEdit.status).toBe("buyer_review_required");
+    expect(confirmAfterConcurrentEdit.totals.subtotalMinor).toBe(6500 * 2);
+    expect(confirmAfterConcurrentEdit.reviewFingerprint).not.toBe(step1.reviewFingerprint);
+    expect(navigated).toEqual([]);
+  });
 });

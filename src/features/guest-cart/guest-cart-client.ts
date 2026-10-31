@@ -772,6 +772,7 @@ export function hydrateGuestCartControls(): void {
         }
         quantity = parsed;
       }
+      session = loadSession();
       commitAddToCartMutation(container, addGuestCartLine(session.intent, id, quantity));
       button.disabled = false;
     });
@@ -881,6 +882,7 @@ export function hydrateGuestCartPage(): void {
     const removeId = target.getAttribute("data-guest-cart-remove");
     if (!removeId) return;
     if (checkoutLocked()) return;
+    session = loadSession();
     const result = removeGuestCartLine(session.intent, removeId);
     if (!result.accepted) {
       mutationNotice = result.reason;
@@ -908,6 +910,7 @@ export function hydrateGuestCartPage(): void {
       setStatus(root, mutationNotice, true);
       return;
     }
+    session = loadSession();
     const result = setGuestCartLineQuantity(session.intent, id, quantity);
     if (!result.accepted) {
       mutationNotice = result.reason;

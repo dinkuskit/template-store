@@ -221,12 +221,6 @@ function defaultEmitEvent(eventName: string, detail: unknown): void {
   if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
   }
-  if (typeof document !== "undefined" && typeof document.dispatchEvent === "function") {
-    if (eventName === "dinkus:cart:updated") {
-      document.dispatchEvent(new CustomEvent("guest-cart-updated"));
-      document.dispatchEvent(new CustomEvent("dinkus:guest-cart-hydrate"));
-    }
-  }
 }
 
 function defaultNavigate(path: string): void {
@@ -308,6 +302,17 @@ function buildCartSnapshot(
   });
 }
 
+function intentLinesKey(intent: GuestCartIntent): string {
+  return intent.lines.map((line) => `${line.id}:${line.quantity}`).join("|");
+}
+
+function notifyNativeCartListeners(): void {
+  if (typeof document !== "undefined" && typeof document.dispatchEvent === "function") {
+    document.dispatchEvent(new CustomEvent("guest-cart-updated"));
+    document.dispatchEvent(new CustomEvent("dinkus:guest-cart-hydrate"));
+  }
+}
+
 export function createStorefrontActions(
   env: StorefrontWebMcpEnvironment = {},
 ): DinkusStorefrontActions {
@@ -319,16 +324,46 @@ export function createStorefrontActions(
 
   let pendingReviewFingerprint: string | null = null;
   let confirmedReviewFingerprint: string | null = null;
+  let reviewedIntentKey: string | null = null;
+
+  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+    document.addEventListener("guest-cart-updated", () => {
+      const currentKey = intentLinesKey(
+        loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
+      );
+      if (reviewedIntentKey !== null && currentKey !== reviewedIntentKey) {
+        pendingReviewFingerprint = null;
+        confirmedReviewFingerprint = null;
+        reviewedIntentKey = null;
+      }
+    });
+  }
 
   const getCart = async (
     options?: Readonly<{ includeCatalog?: boolean }>,
   ): Promise<DinkusCartSnapshot> => {
-    const loaded = loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage());
+    let loaded = loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage());
     const includeCatalog = options?.includeCatalog !== false;
-    const snapshots =
-      includeCatalog && loaded.intent.lines.length > 0
-        ? await fetchSnapshot(loaded.intent.lines.map((line) => line.id))
-        : null;
+    if (!includeCatalog || loaded.intent.lines.length === 0) {
+      return buildCartSnapshot(loaded.intent, loaded.notice, null);
+    }
+    let snapshots = await fetchSnapshot(loaded.intent.lines.map((line) => line.id));
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const latest = loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage());
+      if (intentLinesKey(latest.intent) === intentLinesKey(loaded.intent)) {
+        loaded = latest;
+        break;
+      }
+      pendingReviewFingerprint = null;
+      confirmedReviewFingerprint = null;
+      reviewedIntentKey = null;
+      loaded = latest;
+      if (loaded.intent.lines.length === 0) {
+        snapshots = null;
+        break;
+      }
+      snapshots = await fetchSnapshot(loaded.intent.lines.map((line) => line.id));
+    }
     return buildCartSnapshot(loaded.intent, loaded.notice, snapshots);
   };
 
@@ -449,11 +484,9 @@ export function createStorefrontActions(
 
     pendingReviewFingerprint = null;
     confirmedReviewFingerprint = null;
-    const snapshots =
-      saved.intent.lines.length > 0
-        ? await fetchSnapshot(saved.intent.lines.map((line) => line.id))
-        : null;
-    const cart = buildCartSnapshot(saved.intent, saved.notice, snapshots);
+    reviewedIntentKey = null;
+    notifyNativeCartListeners();
+    const cart = await getCart({ includeCatalog: true });
     emit("dinkus:cart:updated", cart);
     return {
       ok: true,
@@ -468,10 +501,15 @@ export function createStorefrontActions(
 
   const getCheckoutPreview = async (): Promise<DinkusCheckoutPreview> => {
     const cart = await getCart({ includeCatalog: true });
+    const currentKey = intentLinesKey(
+      loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
+    );
     const reviewStatus =
       cart.itemCount === 0
         ? "empty_cart"
-        : confirmedReviewFingerprint === cart.reviewFingerprint
+        : confirmedReviewFingerprint === cart.reviewFingerprint &&
+            reviewedIntentKey !== null &&
+            reviewedIntentKey === currentKey
           ? "buyer_reviewed"
           : "buyer_review_required";
     return Object.freeze({
@@ -499,7 +537,13 @@ export function createStorefrontActions(
       reviewFingerprint?: string;
     }>,
   ): Promise<DinkusCheckoutProceedResult> => {
+    const preReadIntentKey = intentLinesKey(
+      loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
+    );
     const preview = await getCheckoutPreview();
+    const postReadIntentKey = intentLinesKey(
+      loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
+    );
     if (preview.itemCount === 0) {
       return {
         ok: false,
@@ -528,18 +572,24 @@ export function createStorefrontActions(
 
     const suppliedFingerprint =
       typeof input?.reviewFingerprint === "string" ? input.reviewFingerprint.trim() : "";
+    const intentUnchangedSinceReview =
+      preReadIntentKey === postReadIntentKey &&
+      reviewedIntentKey !== null &&
+      reviewedIntentKey === postReadIntentKey;
     const hasPendingOrConfirmedReview =
       pendingReviewFingerprint === preview.reviewFingerprint ||
       confirmedReviewFingerprint === preview.reviewFingerprint;
     const confirmed =
       input?.buyerConfirmed === true &&
       suppliedFingerprint.length > 0 &&
+      intentUnchangedSinceReview &&
       hasPendingOrConfirmedReview &&
       suppliedFingerprint === preview.reviewFingerprint;
 
     if (!confirmed) {
       pendingReviewFingerprint = preview.reviewFingerprint;
       confirmedReviewFingerprint = null;
+      reviewedIntentKey = postReadIntentKey;
       return {
         ok: true,
         status: "buyer_review_required",
@@ -554,6 +604,7 @@ export function createStorefrontActions(
     }
 
     confirmedReviewFingerprint = preview.reviewFingerprint;
+    reviewedIntentKey = postReadIntentKey;
     navigate("/checkout");
     return {
       ok: true,

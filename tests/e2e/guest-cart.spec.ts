@@ -449,9 +449,10 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(subtotal).toHaveText("Subtotal $112.00");
   await shopper.screenshot({ path: resolve(root, "cart-webmcp-synced.png"), fullPage: true, animations: "disabled" });
 
-  // Regression: when an initial snapshot request for product A (xlId) is still in flight while an agent action
-  // adds product B (id), the cart client queues a follow-up snapshot refresh for A+B so B never remains unpriced.
-  await shopper.evaluate(
+  // Regression 1: when an initial snapshot request for product A (xlId) is still in flight while an agent action
+  // adds product B (id), and a native shopper quantity edit on A also occurs while the agent's catalog read is in flight,
+  // both lines and the native quantity edit (A=2, B=1 -> $74.00) are preserved and priced.
+  const concurrentUpdateResult = await shopper.evaluate(
     async ({ productA, productB }) => {
       const tools = (window as unknown as {
         __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
@@ -461,27 +462,45 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
       await replaceTool.execute({ lines: [{ id: productA, quantity: 1 }] });
 
       const originalFetch = window.fetch.bind(window);
-      let releaseDelayedResponse!: () => void;
-      const delayedGate = new Promise<void>((resolveGate) => {
-        releaseDelayedResponse = resolveGate;
+      let releaseDelayedAOnly!: () => void;
+      const delayedAOnlyGate = new Promise<void>((resolveGate) => {
+        releaseDelayedAOnly = resolveGate;
       });
-      let notifyDelayedStarted!: () => void;
-      const delayedStarted = new Promise<void>((resolveStarted) => {
-        notifyDelayedStarted = resolveStarted;
+      let notifyDelayedAOnlyStarted!: () => void;
+      const delayedAOnlyStarted = new Promise<void>((resolveStarted) => {
+        notifyDelayedAOnlyStarted = resolveStarted;
       });
-      let intercepted = false;
+      let releaseDelayedAB!: () => void;
+      const delayedABGate = new Promise<void>((resolveGate) => {
+        releaseDelayedAB = resolveGate;
+      });
+      let notifyDelayedABStarted!: () => void;
+      const delayedABStarted = new Promise<void>((resolveStarted) => {
+        notifyDelayedABStarted = resolveStarted;
+      });
+      let interceptedAOnly = false;
+      let interceptedAB = false;
 
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-        if (
-          !intercepted &&
-          url.includes("/api/guest-cart/snapshot") &&
-          !decodeURIComponent(url).includes(productB)
-        ) {
-          intercepted = true;
-          notifyDelayedStarted();
+        const decoded = decodeURIComponent(url);
+        if (!interceptedAOnly && url.includes("/api/guest-cart/snapshot") && !decoded.includes(productB)) {
+          interceptedAOnly = true;
+          notifyDelayedAOnlyStarted();
           const res = await originalFetch(input, init);
-          await delayedGate;
+          await delayedAOnlyGate;
+          return res;
+        }
+        if (
+          !interceptedAB &&
+          url.includes("/api/guest-cart/snapshot") &&
+          decoded.includes(productA) &&
+          decoded.includes(productB)
+        ) {
+          interceptedAB = true;
+          notifyDelayedABStarted();
+          const res = await originalFetch(input, init);
+          await delayedABGate;
           return res;
         }
         return originalFetch(input, init);
@@ -489,18 +508,31 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
 
       try {
         document.dispatchEvent(new CustomEvent("guest-cart-updated"));
-        await delayedStarted;
-        await addTool.execute({ id: productB, quantity: 1 });
-        releaseDelayedResponse();
+        await delayedAOnlyStarted;
+        const addPromise = addTool.execute({ id: productB, quantity: 1 }) as Promise<{
+          ok: boolean;
+          cart: { itemCount: number; subtotalMinor: number; lines: Array<{ id: string; quantity: number }> };
+        }>;
+        await delayedABStarted;
+        // Native shopper edits productA quantity (1 -> 2) while add_to_cart(productB) is still awaiting catalog I/O.
+        const qtyInput = document.querySelector<HTMLInputElement>(`[data-guest-cart-qty="${productA}"]`)!;
+        qtyInput.value = "2";
+        qtyInput.dispatchEvent(new Event("change", { bubbles: true }));
+        releaseDelayedAOnly();
+        releaseDelayedAB();
+        return await addPromise;
       } finally {
         window.fetch = originalFetch;
       }
     },
     { productA: xlId, productB: id },
   );
-  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("1");
+  expect(concurrentUpdateResult.ok).toBe(true);
+  expect(concurrentUpdateResult.cart.itemCount).toBe(3);
+  expect(concurrentUpdateResult.cart.subtotalMinor).toBe(7400);
+  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("2");
   await expect(shopper.locator(`[data-guest-cart-qty="${id}"]`)).toHaveValue("1");
-  await expect(subtotal).toHaveText("Subtotal $46.00");
+  await expect(subtotal).toHaveText("Subtotal $74.00");
 
   // Restore the 4x XL cart line for the checkout review flow assertions below.
   await shopper.evaluate(async (productA) => {
@@ -513,11 +545,14 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(subtotal).toHaveText("Subtotal $112.00");
 
   // Step 1: proceed_to_checkout pauses at buyer_review_required with totalMinor: null and blocks missing fingerprint.
-  const reviewFlowBeforePriceChange = await shopper.evaluate(async () => {
+  // Regression 2: if a native shopper quantity edit (4 -> 3) happens while the confirming proceed_to_checkout call
+  // is awaiting its snapshot read, confirmation is rejected and stays on /cart with buyer_review_required.
+  const reviewFlowBeforePriceChange = await shopper.evaluate(async (productA) => {
     const tools = (window as unknown as {
       __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
     }).__webMcpTools;
     const proceedTool = tools.find((tool) => tool.name === "proceed_to_checkout")!;
+    const replaceTool = tools.find((tool) => tool.name === "update_cart_lines")!;
     const step1 = (await proceedTool.execute({})) as {
       ok: boolean;
       status: string;
@@ -529,12 +564,67 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
       status: string;
       reviewFingerprint: string;
     };
-    return { step1, missingFp, path: window.location.pathname };
-  });
+
+    const originalFetch = window.fetch.bind(window);
+    let releaseConfirmFetch!: () => void;
+    const confirmFetchGate = new Promise<void>((resolveGate) => {
+      releaseConfirmFetch = resolveGate;
+    });
+    let notifyConfirmFetchStarted!: () => void;
+    const confirmFetchStarted = new Promise<void>((resolveStarted) => {
+      notifyConfirmFetchStarted = resolveStarted;
+    });
+    let interceptedConfirm = false;
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (!interceptedConfirm && url.includes("/api/guest-cart/snapshot")) {
+        interceptedConfirm = true;
+        notifyConfirmFetchStarted();
+        const res = await originalFetch(input, init);
+        await confirmFetchGate;
+        return res;
+      }
+      return originalFetch(input, init);
+    };
+
+    let confirmDuringNativeEdit: {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+      totals: { subtotalMinor: number; totalMinor: number | null };
+    };
+    try {
+      const confirmPromise = proceedTool.execute({
+        buyerConfirmed: true,
+        reviewFingerprint: step1.reviewFingerprint,
+      }) as Promise<typeof confirmDuringNativeEdit>;
+      await confirmFetchStarted;
+      const qtyInput = document.querySelector<HTMLInputElement>(`[data-guest-cart-qty="${productA}"]`)!;
+      qtyInput.value = "3";
+      qtyInput.dispatchEvent(new Event("change", { bubbles: true }));
+      releaseConfirmFetch();
+      confirmDuringNativeEdit = await confirmPromise;
+    } finally {
+      window.fetch = originalFetch;
+    }
+
+    // Restore 4x XL and re-run step1 so the subsequent authoritative price-change test starts from a reviewed 4x XL quote.
+    await replaceTool.execute({ lines: [{ id: productA, quantity: 4 }] });
+    const restoredStep1 = (await proceedTool.execute({})) as typeof step1;
+    return {
+      step1: restoredStep1,
+      missingFp,
+      confirmDuringNativeEdit,
+      path: window.location.pathname,
+    };
+  }, xlId);
   expect(reviewFlowBeforePriceChange.step1.status).toBe("buyer_review_required");
   expect(reviewFlowBeforePriceChange.step1.totals.subtotalMinor).toBe(11200);
   expect(reviewFlowBeforePriceChange.step1.totals.totalMinor).toBeNull();
   expect(reviewFlowBeforePriceChange.missingFp.status).toBe("buyer_review_required");
+  expect(reviewFlowBeforePriceChange.confirmDuringNativeEdit.status).toBe("buyer_review_required");
+  expect(reviewFlowBeforePriceChange.confirmDuringNativeEdit.totals.subtotalMinor).toBe(8400);
   expect(reviewFlowBeforePriceChange.path).toBe("/cart");
 
   // Authoritative price change ($28 -> $30) invalidates the previous reviewFingerprint.
