@@ -5,11 +5,11 @@ The following table records the **historical 2026-10-06 pairing evidence**. It
 is not the current dependency list or a current release/live-install verdict.
 
 Current source pins are authoritative in [`package.json`](../package.json):
-Commerce `v0.7.0-beta.4` / `b3494cbcb932680c16dda0bebc6a6ffd68456a4d`,
+Commerce `v0.7.0` / `4c975824923626e52460d6fbad29d5e32613a319`,
 `emdash`, `@emdash-cms/cloudflare`, `@emdash-cms/auth`, and
-`@emdash-cms/blocks` `1.4.0`; playground Payments `v0.4.0` /
-`82c19d0d347d2c78a8e44dd2a3b2f00e530beb84`, and playground Ship `v0.3.0` /
-`dab45d0df69a5f39158b603ff2b8236c6af6fe54`. The Inventory source remains
+`@emdash-cms/blocks` `1.4.0`; playground Payments `v0.5.0` /
+`4589ac818017b5a65cdde29a60aaec23aca5f795`, and playground Ship `v0.3.1` /
+`b032a1d689baf6674b900a3c9c57c191d64733e6`. The Inventory source remains
 `5889c7d59398376da51ac400d5c1f1214aba2c6b` for explicit development proof,
 with Inventory off in shipping v1. A pin or tag does not prove a released,
 installed, upgraded, or deployed pair; that needs exact-artifact evidence.

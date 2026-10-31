@@ -15,20 +15,20 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "tag": "v0.7.0-beta.4",
-        "commit": "b3494cbcb932680c16dda0bebc6a6ffd68456a4d"
+        "tag": "v0.7.0",
+        "commit": "4c975824923626e52460d6fbad29d5e32613a319"
       }
     },
     "playgroundPlugins": {
       "payments": {
         "repository": "https://github.com/dinkuskit/payments.git",
-        "tag": "v0.4.0",
-        "commit": "82c19d0d347d2c78a8e44dd2a3b2f00e530beb84"
+        "tag": "v0.5.0",
+        "commit": "4589ac818017b5a65cdde29a60aaec23aca5f795"
       },
       "ship": {
         "repository": "https://github.com/dinkuskit/ship.git",
-        "tag": "v0.3.0",
-        "commit": "dab45d0df69a5f39158b603ff2b8236c6af6fe54"
+        "tag": "v0.3.1",
+        "commit": "b032a1d689baf6674b900a3c9c57c191d64733e6"
       }
     }
   },

@@ -181,11 +181,11 @@ const adminPath = (path: string) => `/_emdash/admin${path}`;
 export function tourSteps(state: TourState): TourStep[] {
   return [
     { id: "edit-product", copy: "edit-product", done: state.productEdited, href: adminPath("/content/products"), button: "Open Products", inAdmin: true },
-    { id: "connect-payments", copy: "connect-payments", done: state.paymentsConnected, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`), button: "Open Payments", inAdmin: true },
+    { id: "connect-payments", copy: "connect-payments", done: state.paymentsConnected, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`), button: "Open Payment settings", inAdmin: true },
     state.checkoutOpen
       ? { id: "place-order", copy: "place-order", done: state.orders > 0, href: "/", button: "Open your shop", inAdmin: false }
       : { id: "place-order", copy: "look-at-shop", done: state.shopVisited, href: "/", button: "Open your shop", inAdmin: false },
-    { id: "ship-order", copy: "ship-order", done: state.labels > 0, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`), button: "Open Shipping", inAdmin: true },
+    { id: "ship-order", copy: "ship-order", done: state.labels > 0, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`), button: "Open Shipments", inAdmin: true },
     { id: "real-store", copy: "real-store", done: false, href: START_REAL_STORE_URL, button: "Start your real store", inAdmin: false },
   ];
 }
