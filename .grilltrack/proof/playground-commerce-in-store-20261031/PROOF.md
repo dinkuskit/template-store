@@ -41,6 +41,7 @@ admin is now a real store's.
 
 | Check | Result |
 | --- | --- |
+| `pnpm verify` (`bin/verify-web full`: type check, unit, workflow and audit checks, build, desktop and phone browser tests, site verifier) | `verify-web: full passed`; Playwright 81 passed, 9 skipped |
 | `pnpm exec vitest run` | 60 files, 562 tests passed |
 | `pnpm exec astro check` | 0 errors, 0 warnings |
 | `node --test tests/workflows/*.test.mjs` | 0 failed |
