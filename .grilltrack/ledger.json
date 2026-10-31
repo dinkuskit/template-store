@@ -5235,10 +5235,38 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T15:14:48+00:00",
+          "choice": "The Registry (sandboxed) build, the one build Commerce keeps, everywhere. Local dev (pnpm dev:fresh), the public demo (the dinkuskit-template-demo Worker), the playground and the CI browser tests leave Commerce's native copy (DINKUS_CATALOG_PROFILE=native-development, Commerce src/index.ts) for the Registry bundle mounted through sandboxed: [...] with the workerd runner, which astro dev runs in Miniflare: EmDash's documented loop (build the plugin, pnpm dev in the site). The paired harness (scripts/verify-paired-product-on-sale.mjs, DINKUS_PAIRED_COMMERCE_DIR), which already runs a real Registry build locally, is reused. The demo Worker gets the LOADER Worker Loader binding. Seeds, proofs and tests use the Registry's routes (catalog, admin, catalog-items/set-on-sale, the public reads) and its snake_case storage under the Registry runtime id; the native-only routes (catalog-items/set-manual-availability, catalog-items/set-feed-eligibility and the rest) are no longer called. Local dev and the demo are proved on the Registry build before Commerce removes anything.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-10-31T15:14:48+00:00",
+          "choice": "The Registry (sandboxed) build, the one build Commerce keeps, everywhere. Local dev (pnpm dev:fresh), the public demo (the dinkuskit-template-demo Worker), the playground and the CI browser tests leave Commerce's native copy (DINKUS_CATALOG_PROFILE=native-development, Commerce src/index.ts) for the Registry bundle mounted through sandboxed: [...] with the workerd runner, which astro dev runs in Miniflare: EmDash's documented loop (build the plugin, pnpm dev in the site). The paired harness (scripts/verify-paired-product-on-sale.mjs, DINKUS_PAIRED_COMMERCE_DIR), which already runs a real Registry build locally, is reused. The demo Worker gets the LOADER Worker Loader binding. Seeds, proofs and tests use the Registry's routes (catalog, admin, catalog-items/set-on-sale, the public reads) and its snake_case storage under the Registry runtime id; the native-only routes (catalog-items/set-manual-availability, catalog-items/set-feed-eligibility and the rest) are no longer called. Local dev and the demo are proved on the Registry build before Commerce removes anything.",
+          "from": "implemented",
+          "implementation_ref": "pr:dinkuskit/template-store#184;file:.grilltrack/proof/template-one-build-registry-20261031/PROOF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
         }
       ],
       "id": "template-one-build-registry-20261031",
-      "implementation_ref": null,
+      "implementation_ref": "pr:dinkuskit/template-store#184;file:.grilltrack/proof/template-one-build-registry-20261031/PROOF.md",
       "question": "Which Commerce build do the Template Store's local dev, public demo, playground and CI browser tests run?",
       "rationale": "Ronald: 'lock it', 31 Oct 2026.",
       "repair_required": false,
@@ -5247,10 +5275,10 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
+      "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-10-31T13:30:08+00:00",
-      "verification_ref": null
+      "updated_at": "2026-10-31T15:14:48+00:00",
+      "verification_ref": "file:.grilltrack/proof/template-one-build-registry-20261031/PROOF.md"
     }
   ],
   "last_activation": {
@@ -5273,5 +5301,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-10-31T13:30:08+00:00"
+  "updated_at": "2026-10-31T15:14:48+00:00"
 }
