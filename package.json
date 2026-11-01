@@ -51,6 +51,7 @@
     "verify:playground-config": "node scripts/verify-playground-config.mjs",
     "verify:playground-http": "pnpm prepare:sources && node scripts/verify-playground-checkout-http.mjs",
     "verify:playground-account-http": "pnpm prepare:sources && node scripts/verify-playground-account-http.mjs",
+    "verify:playground-cutover": "pnpm prepare:sources && node scripts/verify-playground-store-cutover.mjs",
     "search:upgrade": "node scripts/upgrade-storefront-search.ts",
     "verify:quick": "bin/verify-web quick",
     "verify:full": "bin/verify-web full",

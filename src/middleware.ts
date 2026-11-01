@@ -20,6 +20,7 @@ import {
 } from "./features/store-shell/index.js";
 import { storefrontUpgrader } from "./features/store-shell/storefront-upgrades.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
+import { madeBeforeRegistryCommerce, restartPlaygroundStore } from "./features/playground/store-generation.js";
 import {
   ensureDemoShopperOrder,
   isPlaygroundLeadStorageConfigured,
@@ -225,6 +226,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const runtime = context.locals.emdash as unknown as CommerceSeedRuntime | undefined;
     if (session && !seededPlaygroundSessions.has(session) && typeof runtime?.handlePluginApiRoute === "function") {
       const db = (context.locals as { __playgroundDb: Parameters<typeof ensurePlaygroundDemoCatalog>[0] }).__playgroundDb;
+      // A store the playground made before it ran Commerce's Registry build starts over (Ronald, 1 Nov 2026).
+      if (await madeBeforeRegistryCommerce(db).catch(() => false)) {
+        const restarted = restartPlaygroundStore(context.request);
+        applySecurityHeaders(restarted.headers);
+        return restarted;
+      }
       seededPlaygroundSessions.add(session);
       await ensurePlaygroundDemoCatalog(db, { runtime, origin: context.url.origin }).catch((error: unknown) => {
         // A fresh store builds Commerce's indexes on its first requests; the next request tries again.

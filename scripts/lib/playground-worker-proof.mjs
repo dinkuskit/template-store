@@ -17,11 +17,11 @@ const serverDir = join(root, "dist/server");
 /** The store origin the Worker sees: wrangler dev forwards to the config's route over https. */
 export const PLAYGROUND_PROOF_SITE = "https://playground.dinkuskit.com";
 
-/** Builds the playground Worker unless the caller asks to reuse the current build. */
-export function buildPlaygroundWorker({ skip = process.argv.includes("--no-build") } = {}) {
+/** Builds the playground Worker (in `cwd`, this checkout by default) unless the caller asks to reuse the build. */
+export function buildPlaygroundWorker({ skip = process.argv.includes("--no-build"), cwd = root } = {}) {
   if (skip) return;
-  const built = spawnSync(process.execPath, [cli("astro", "bin/astro.mjs"), "build", "--config", "astro.playground.config.mjs"], {
-    cwd: root, stdio: ["ignore", "inherit", "inherit"], env: process.env,
+  const built = spawnSync(process.execPath, [join(cwd, "node_modules/astro/bin/astro.mjs"), "build", "--config", "astro.playground.config.mjs"], {
+    cwd, stdio: ["ignore", "inherit", "inherit"], env: process.env,
   });
   if (built.status !== 0) throw new Error(`playground build failed (${built.status})`);
 }
@@ -34,17 +34,18 @@ process.on("exit", () => {
 });
 
 /**
- * Serves the build on 127.0.0.1:`port` with the built config's vars plus `vars` (a null value removes one), and
- * appends its output to `log`. Returns the running server with its output and a stop().
+ * Serves the build in `buildDir` (this checkout's `dist/server` by default) on 127.0.0.1:`port` with the built
+ * config's vars plus `vars` (a null value removes one), and appends its output to `log`. Returns the running server
+ * with its output and a stop().
  */
-export async function startPlaygroundWorker({ name, port, vars, persistTo, log = `${persistTo}-${name}.log` }) {
-  const built = JSON.parse(readFileSync(join(serverDir, "wrangler.json"), "utf8"));
+export async function startPlaygroundWorker({ name, port, vars, persistTo, log = `${persistTo}-${name}.log`, buildDir = serverDir }) {
+  const built = JSON.parse(readFileSync(join(buildDir, "wrangler.json"), "utf8"));
   const merged = { ...built.vars };
   for (const [key, value] of Object.entries(vars)) {
     if (value === null) delete merged[key];
     else merged[key] = value;
   }
-  const config = join(serverDir, `wrangler.${name}.json`);
+  const config = join(buildDir, `wrangler.${name}.json`);
   writeFileSync(config, JSON.stringify({ ...built, vars: merged }, null, 2));
   const child = spawn(process.execPath, [cli("wrangler", "bin/wrangler.js"), "dev", "--config", config, "--ip", "127.0.0.1", "--port", String(port),
     "--local-protocol", "http", "--upstream-protocol", "https", "--persist-to", persistTo], {
