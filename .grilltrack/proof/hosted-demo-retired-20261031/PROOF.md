@@ -41,8 +41,8 @@ retired demo plans kept for history.
 | Demo files and `pnpm build` are gone | decision text; owner task | `git ls-files` has no `wrangler.jsonc` or `scripts/build-demo.mjs`; `package.json` has no `build` / `prebuild` | n/a | any checkout | observed in this branch |
 | Registry Git build still builds shipping with LOADER | `docs/implementation/registry-git-build.md`; FEATURE_MAP | `tests/workflows/registry-build.test.mjs` (config, env, refusal) | missing inputs refuse before a build | Node 24.22.0 | 11/11 pass in session; a real `build:registry` run needs the full install (CI / Workers Builds) |
 | No Cloudflare build falls back to a default config | decision; DEPLOY.md | `build:registry` sets `DINKUS_WRANGLER_CONFIG` | Cloudflare build with no config throws | full install | planned: CI; not run in session |
-| Access wildcard audit still covers a committed Worker config | DEPLOY.md rule 2 | exact routes report `wildcardPluginBypass: false` | wildcard in `wrangler.playground.jsonc` reports `true` | full install (`typescript`) | planned: CI `access-route-policy.test.mjs`; blocked in session |
-| Nothing else regresses | AGENTS.md required checks | `bin/verify-web quick`, `pnpm verify` | n/a | full install, desktop + mobile Chromium | **not run in session** (see below) |
+| Access wildcard audit still covers a committed Worker config | DEPLOY.md rule 2 | exact routes report `wildcardPluginBypass: false` | wildcard in `wrangler.playground.jsonc` reports `true` | full install (`typescript`) | passed in CI full run; blocked in session |
+| Nothing else regresses | AGENTS.md required checks | `bin/verify-web full` | n/a | CI, desktop + mobile Chromium | passed in CI on cc974d9 (see below); not run in session |
 
 ## Observed in this session
 
@@ -60,5 +60,22 @@ retired demo plans kept for history.
 - `node --check` passes for the edited scripts and `astro.config.mjs`.
 - `./scripts/grilltrack --project . validate`: valid.
 
-`bin/verify-web quick` and `pnpm verify` have **not** run: skips are not passes.
-They need a session with `dinkuskit/inventory` attached, or the PR's CI.
+`bin/verify-web quick` and `pnpm verify` did not run in the session.
+
+## Observed in CI (PR #200, head cc974d9)
+
+CI run 41350582949 on the exact implementation head:
+
+- Store verification (desktop): `bin/verify-web full` passed. This covers
+  `astro check`, vitest, `node --test tests/workflows/*.test.mjs` (so
+  `access-route-policy` with the new playground-config wildcard case and
+  `registry-access` ran here), `check-features`, `astro build`, and Playwright
+  `shipping-chromium-desktop` (65 passed, 4 skipped). `verify-site` passed with
+  0 failures and 2 sitemap skips on the test origin.
+- Store verification (phone): Playwright `shipping-chromium-mobile` passed
+  (64 passed, 5 skipped); `verify-web: browser passed`.
+- Workflow validation, Test plan, Playground build: success.
+
+Skipped tests are not passes. This proves source integration only. It does
+not prove a real `build:registry` Workers Builds run, deployment, or released
+artifact readiness.

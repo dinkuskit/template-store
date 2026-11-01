@@ -230,3 +230,4 @@
 {"action": "decision_implemented", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "903ac4f7-8e6e-4ca0-bc20-986d8e49013a"}
 {"action": "decision_verified", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "4f4f7a01-7be2-4bd4-b48f-3a09e8bfb880"}
 {"action": "decision_implemented", "at": "2026-11-01T21:09:26+00:00", "data": {"decision_id": "hosted-demo-retired-20261031"}, "event_id": "6cae596d-2630-4aa3-98be-fd62d24a13bc"}
+{"action": "decision_verified", "at": "2026-11-01T22:07:18+00:00", "data": {"decision_id": "hosted-demo-retired-20261031"}, "event_id": "ee70f878-5482-448b-8a88-63e15b7626d0"}
