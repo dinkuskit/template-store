@@ -61,22 +61,32 @@ const pairedCommerce = pairedCommerceDir
   : undefined;
 const accessOptions = selectedRegistryAccessOptions(process.env);
 
+// The store has no default Wrangler file: the demo Worker's wrangler.jsonc was retired with the hosted demo
+// (hosted-demo-retired-20261031). A Cloudflare build names its config, which pnpm run build:registry writes;
+// the playground builds from astro.playground.config.mjs.
+const wranglerConfig = process.env.DINKUS_WRANGLER_CONFIG?.trim() || undefined;
+if (isCloudflare && !wranglerConfig) {
+  throw new Error(
+    "A Cloudflare build needs DINKUS_WRANGLER_CONFIG; use pnpm run build:registry " +
+    "(docs/implementation/registry-git-build.md). The demo Worker's wrangler.jsonc is retired.",
+  );
+}
+
 // EmDash 1.4.0's sandbox() only reads the default Wrangler file. Keep a
 // dedicated deployment's runner aligned with the adapter's selected config, and
 // refuse to build a Worker that mounts Commerce without the Worker Loader it needs.
 function cloudflareSandbox() {
-  const configPath = process.env.DINKUS_WRANGLER_CONFIG ?? "wrangler.jsonc";
+  const configPath = wranglerConfig;
   const config = unstable_readConfig({
     config: configPath,
     ...(process.env.CLOUDFLARE_ENV ? { env: process.env.CLOUDFLARE_ENV } : {}),
   }, { hideWarnings: true });
   if (!config.worker_loaders?.some(({ binding }) => binding === "LOADER")) {
     if (pairedCommerce) throw new Error(`${configPath} must bind LOADER (worker_loaders) to run the paired Commerce Registry build.`);
-    if (process.env.DINKUS_WRANGLER_CONFIG) throw new Error("The selected Cloudflare config must provide LOADER for Registry plugins.");
-    return sandbox();
+    throw new Error("The selected Cloudflare config must provide LOADER for Registry plugins.");
   }
   // Every Cloudflare host of the installed Commerce gets the Registry profile's subrequest budget
-  // (registry-sandbox-budget-002): the demo mounts the same plugin.
+  // (registry-sandbox-budget-002), including one that mounts the paired build.
   return selectedRegistrySandboxRunner(process.env) ?? (pairedCommerce ? registrySandboxRunner() : sandbox());
 }
 
@@ -84,11 +94,7 @@ export default defineConfig({
   output: "server",
   trailingSlash: "never",
   adapter: isCloudflare
-    ? cloudflare({
-        ...(process.env.DINKUS_WRANGLER_CONFIG
-          ? { configPath: process.env.DINKUS_WRANGLER_CONFIG }
-          : {}),
-      })
+    ? cloudflare({ configPath: wranglerConfig })
     : node({ mode: "standalone" }),
   integrations: [
     react(),

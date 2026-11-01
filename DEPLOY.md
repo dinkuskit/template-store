@@ -1,12 +1,10 @@
 # Deployment and Cloudflare Access
 
-> **The demo Worker is retired.** `dinkuskit-template-demo` (demo.dinkuskit.com) was retired on 18 Oct 2026 ([dinkuskit/dinkuskit#51](https://github.com/dinkuskit/dinkuskit/pull/51); GrillTrack `hosted-demo-retired-20261031`). The public store is the playground (`astro.playground.config.mjs`, `wrangler.playground.jsonc`) and the live test store is beta.sm0ky.dev, built by `pnpm build:registry`. `wrangler.jsonc`, `pnpm build` and the demo rules below describe the retired Worker until a follow-up PR removes them.
+> **The demo Worker is retired.** `dinkuskit-template-demo` (demo.dinkuskit.com) was retired on 18 Oct 2026 ([dinkuskit/dinkuskit#51](https://github.com/dinkuskit/dinkuskit/pull/51); GrillTrack `hosted-demo-retired-20261031`). The public store is the playground (`astro.playground.config.mjs`, `wrangler.playground.jsonc`) and the live test store is beta.sm0ky.dev, built by `pnpm build:registry`. The demo Worker's `wrangler.jsonc`, `scripts/build-demo.mjs` and `pnpm build` are removed; the repository has no default Wrangler config, and a Cloudflare build of `astro.config.mjs` refuses to run unless `DINKUS_WRANGLER_CONFIG` names one (`pnpm build:registry` writes it).
 
 This repository does not change a store's live Cloudflare Access applications.
 
-Workers.dev and preview URLs stay disabled (`workers_dev: false`, `preview_urls: false` in `wrangler.jsonc`) so the demo is served only on its Access-protected custom domain.
-
-The demo Worker runs the pinned Commerce's Registry build the way a Registry store installs it (GrillTrack `template-one-build-registry-20261031`): `pnpm build` fetches and builds that pin (`scripts/lib/paired-commerce.mjs`) and mounts it through EmDash's `sandboxed: [...]`, which on Cloudflare runs in EmDash's sandbox and needs the Worker Loader. `wrangler.jsonc` therefore binds `LOADER` (`worker_loaders`), which the Workers paid plan provides; the demo's account already runs Workers with that binding. A deploy of this config is a change to the live Worker's bindings and needs the owner's approval like any deployment. The demo catalog seeds itself through the installed Commerce on the first signed-in request after a fresh deploy (open the admin once).
+A Registry store's generated config (`runs/registry/wrangler.jsonc`, [Registry builds from Git](docs/implementation/registry-git-build.md)) keeps Workers.dev and preview URLs disabled (`workers_dev: false`, `preview_urls: false`) and binds `LOADER` (`worker_loaders`), which runs the installed Commerce in EmDash's sandbox and which the Workers paid plan provides.
 
 ## Rule
 
@@ -95,7 +93,7 @@ Commerce pin until upstream issue #79 adds the missing admin declaration and
 published route manifest. This is a release prerequisite, not permission to
 interpret an undeclared route as public. The policy checker audits only the
 actual deployment-policy inputs at the repository root: `DEPLOY.md` and
-`wrangler.jsonc`. It rejects concrete named-plugin wildcard paths (for
+`wrangler.playground.jsonc`, the one committed Worker config. It rejects concrete named-plugin wildcard paths (for
 example, a named plugin followed by `/*`); tests, proof, and source fixtures
 are outside this audit scope.
 

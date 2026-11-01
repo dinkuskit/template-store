@@ -38,8 +38,6 @@
     "predev": "pnpm prepare:sources",
     "dev": "astro dev",
     "dev:fresh": "bash scripts/dev-fresh.sh",
-    "prebuild": "pnpm prepare:sources",
-    "build": "node scripts/build-demo.mjs",
     "build:registry": "pnpm prepare:sources && node scripts/build-registry.mjs",
     "pretypecheck": "pnpm prepare:sources",
     "typecheck": "astro check",
