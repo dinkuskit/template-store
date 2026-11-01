@@ -135,7 +135,8 @@ if (import.meta.main) {
         mkdirSync(dirname(configPath), { recursive: true });
         writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
         if (!args.includes("--config-only")) {
-          const build = spawnSync(process.execPath, [resolve(root, "scripts/build-demo.mjs")], {
+          // registryBuildEnv carries the shipping vars and selects this config; Astro reads both.
+          const build = spawnSync("pnpm", ["exec", "astro", "build"], {
             cwd: root, env: registryBuildEnv(process.env, config),
             stdio: args.includes("--json") ? ["ignore", process.stderr, process.stderr] : "inherit",
           });

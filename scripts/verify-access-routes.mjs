@@ -90,7 +90,8 @@ function wildcardBypassExists() {
   const policyRoot = process.env.ACCESS_ROUTES_POLICY_ROOT
     ? resolve(process.env.ACCESS_ROUTES_POLICY_ROOT)
     : root;
-  const policyFiles = ["DEPLOY.md", "wrangler.jsonc"];
+  // The committed Worker config is the playground's; the demo Worker's wrangler.jsonc is retired.
+  const policyFiles = ["DEPLOY.md", "wrangler.playground.jsonc"];
   const wildcard = /\/_emdash\/api\/plugins\/(?:\*|(?:[a-z0-9_-]+|<plugin>|\{plugin\})\/\*)/u;
   return policyFiles.some((file) => {
     const path = resolve(policyRoot, file);

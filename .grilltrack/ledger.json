@@ -5672,10 +5672,38 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T21:09:26+00:00",
+          "choice": "demo.dinkuskit.com, the dinkuskit-template-demo Worker, was retired on 18 Oct 2026: dinkuskit/dinkuskit#51 (merged 19 Oct) moved Try the demo and the Demo store link to playground.dinkuskit.com, and nothing on dinkuskit.com links to the demo since. The Template Store's public store is the playground, where every visitor gets a throwaway store with its own reset, and its live test store is beta.sm0ky.dev, where the live journeys prove every Registry release (release-branches-079). hosted-demo-007 and v1-demo-003 are superseded; docs/deployment/demo-refresh-plan.md and demo-reset-plan.md are retired plans kept for history; the demo Worker's wrangler.jsonc, scripts/build-demo.mjs, pnpm build and their tests go in a follow-up PR. The one-build cutover (template-one-build-registry-20261031) has no populated demo to migrate: the demo seed serves pnpm dev:fresh and the CI proof store.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T22:07:18+00:00",
+          "choice": "demo.dinkuskit.com, the dinkuskit-template-demo Worker, was retired on 18 Oct 2026: dinkuskit/dinkuskit#51 (merged 19 Oct) moved Try the demo and the Demo store link to playground.dinkuskit.com, and nothing on dinkuskit.com links to the demo since. The Template Store's public store is the playground, where every visitor gets a throwaway store with its own reset, and its live test store is beta.sm0ky.dev, where the live journeys prove every Registry release (release-branches-079). hosted-demo-007 and v1-demo-003 are superseded; docs/deployment/demo-refresh-plan.md and demo-reset-plan.md are retired plans kept for history; the demo Worker's wrangler.jsonc, scripts/build-demo.mjs, pnpm build and their tests go in a follow-up PR. The one-build cutover (template-one-build-registry-20261031) has no populated demo to migrate: the demo seed serves pnpm dev:fresh and the CI proof store.",
+          "from": "implemented",
+          "implementation_ref": ".grilltrack/proof/hosted-demo-retired-20261031/PROOF.md (Ronald, 1 Nov 2026: 'remove the retired demo Worker's wrangler.jsonc, scripts/build-demo.mjs, pnpm build and their tests')",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
         }
       ],
       "id": "hosted-demo-retired-20261031",
-      "implementation_ref": null,
+      "implementation_ref": ".grilltrack/proof/hosted-demo-retired-20261031/PROOF.md (Ronald, 1 Nov 2026: 'remove the retired demo Worker's wrangler.jsonc, scripts/build-demo.mjs, pnpm build and their tests')",
       "question": "Where does the Template Store run in public now that demo.dinkuskit.com is gone, and what happens to the demo Worker's plans and config?",
       "rationale": "Ronald, 31 Oct 2026: 'agreed' (recording the retirement, superseding hosted-demo-007 and the two demo plans, and dropping the demo-Worker claims from #184).",
       "repair_required": false,
@@ -5684,10 +5712,10 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
+      "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-10-31T16:24:14+00:00",
-      "verification_ref": null
+      "updated_at": "2026-11-01T22:07:18+00:00",
+      "verification_ref": ".grilltrack/proof/hosted-demo-retired-20261031/PROOF.md (CI run 41350582949 on cc974d9: verify-web full desktop + mobile browser passed)"
     },
     {
       "baseline_ref": "git:b6032ff",
@@ -6049,7 +6077,7 @@
       "candidate_refs": [],
       "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
       "context_ref": null,
-      "created_at": "2026-11-01T22:16:15+00:00",
+      "created_at": "2026-11-01T23:55:49+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -6058,7 +6086,7 @@
       "domain": "One product screen, product states and plugin sidebar folders",
       "history": [
         {
-          "at": "2026-11-01T22:16:19+00:00",
+          "at": "2026-11-01T23:55:50+00:00",
           "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
           "from": "proposed",
           "implementation_ref": null,
@@ -6072,7 +6100,7 @@
           "verification_ref": null
         },
         {
-          "at": "2026-11-01T22:37:02+00:00",
+          "at": "2026-11-01T23:55:50+00:00",
           "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
           "from": "locked",
           "implementation_ref": null,
@@ -6086,7 +6114,7 @@
           "verification_ref": null
         },
         {
-          "at": "2026-11-01T22:37:02+00:00",
+          "at": "2026-11-01T23:55:50+00:00",
           "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
           "from": "implemented",
           "implementation_ref": ".grilltrack/proof/template-drop-older-store-box-20261101/PROOF.md",
@@ -6112,7 +6140,7 @@
       "review_source_identity": null,
       "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-11-01T22:37:02+00:00",
+      "updated_at": "2026-11-01T23:55:50+00:00",
       "verification_ref": ".grilltrack/proof/template-drop-older-store-box-20261101/PROOF.md"
     }
   ],
@@ -6136,5 +6164,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-01T22:37:02+00:00"
+  "updated_at": "2026-11-01T23:55:50+00:00"
 }

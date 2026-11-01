@@ -1,10 +1,13 @@
 # Registry builds from Git
 
-Use a dedicated Worker for this branch. Plain `pnpm build` selects the default
-Node shipping profile; it does not select Cloudflare. A Cloudflare build using
-the default `wrangler.jsonc` selects the separate native demo. Neither is this
-dedicated Registry deployment path. Keep automatic builds disabled until the
-target resources, build inputs and commands are configured.
+Use a dedicated Worker for this branch. `pnpm run build:registry` is the only
+Cloudflare build of this store: the repository has no default Wrangler config
+(the retired demo Worker's `wrangler.jsonc` and `pnpm build` are removed,
+GrillTrack `hosted-demo-retired-20261031`), and a Cloudflare build of
+`astro.config.mjs` refuses to start unless `DINKUS_WRANGLER_CONFIG` names one.
+The playground is a separate Worker built from `astro.playground.config.mjs`.
+Keep automatic builds disabled until the target resources, build inputs and
+commands are configured.
 
 ## Cloudflare Workers Builds settings
 
@@ -40,7 +43,7 @@ existing behavior and do not acquire a new Git requirement.
 below, writes ignored `runs/registry/wrangler.jsonc`, and builds with that exact
 config. It forces the shipping profile, Inventory/proof mode off, LOADER on,
 and a shared build/runtime site origin. Missing inputs fail before a build;
-there is no fallback to the demo config. The command does not provision,
+there is no fallback config. The command does not provision,
 deploy, install plugins, or contact a credential manager.
 
 Cloudflare build variables are distinct from runtime variables. These
@@ -109,8 +112,8 @@ describe build/deploy commands and the separation of build and runtime variables
 Only the generated Registry configuration supports this opt-in. Set build
 variables `DINKUS_REGISTRY_ACCESS_ENABLED=1` and
 `DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN=<team>.cloudflareaccess.com`. The generated
-config carries that selection into the build and runtime; default Node and
-native demo builds keep their existing authentication. Leave the flag unset
+config carries that selection into the build and runtime; Node builds keep
+their existing authentication. Leave the flag unset
 or `0` to retain passkeys.
 
 Provision `CF_ACCESS_AUDIENCE` as a runtime secret using the approved process.

@@ -161,8 +161,8 @@ refused.
 
 ### Disposable playground
 
-The public playground is a separate Worker application; the retired demo
-Worker's `wrangler.jsonc` plays no part in it:
+The public playground is a separate Worker application with its own
+`wrangler.playground.jsonc`; the store has no other committed Wrangler config:
 
 ```bash
 pnpm prepare:sources
@@ -244,7 +244,7 @@ is approved. Wrangler deploys the build's generated
 `dist/server/wrangler.json` (from `wrangler.playground.jsonc`, whose `main`
 stays `src/playground-worker.ts` so the Astro build can resolve it).
 
-The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build`,
+The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build:registry`,
 and the verifiers prepare Commerce's exact source in an ignored checkout, then
 resolve Commerce and Inventory through their package-root source entries because
 neither has an installable release yet. See
