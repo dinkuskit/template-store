@@ -87,8 +87,10 @@ test("merchant product prices drive public listing and survive an admin reload",
   await page.goto("/");
   await expect(card).toHaveCount(0);
   expect((await request.get(`/shop/${id}`)).status()).toBe(404);
-  // Commerce 0.7.0 says so in the panel.
-  await expect(panel.getByText("Published: off the shop · SKU MERCHANT-" + testInfo.project.name, { exact: false })).toBeVisible();
+  // Commerce's status grid says so in the panel.
+  await expect(panel.getByText("Published: off the shop", { exact: true }).first()).toBeVisible();
+  // Commerce 0.8.0 shows the SKU as it stores it, in capitals.
+  await expect(panel.getByText(new RegExp(`^MERCHANT-${testInfo.project.name}$`, "i")).first()).toBeVisible();
   await admin.screenshot({ path: resolve(root, "admin-unpriced-retained.png"), fullPage: true, animations: "disabled" });
   await page.screenshot({ path: resolve(root, "public-hidden.png"), fullPage: true, animations: "disabled" });
   await context.close();

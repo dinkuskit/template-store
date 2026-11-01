@@ -66,7 +66,7 @@ export async function pageProductId(request: APIRequestContext, pageId: string):
 }
 
 /**
- * Gives a page a new Commerce product, linked to it as the page's Add price and stock does. It stays a Draft
+ * Gives a page a new Commerce product, linked to it as the panel's first Save does. It stays a Draft
  * until the page is published.
  */
 export async function addPageProduct(request: APIRequestContext, pageId: string, { name, sku }: { name: string; sku: string }): Promise<string> {
@@ -98,7 +98,8 @@ export async function openPanel(admin: Page) {
   // EmDash remembers an open panel across visits.
   if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
   const panel = trigger.locator("xpath=..");
-  await expect(panel.getByText(/Not a product yet|SKU /).first()).toBeVisible({ timeout: 30_000 });
+  // Commerce 0.8.0: a page with no product opens on its price form, a linked page on its status grid.
+  await expect(panel.getByText(/^Save makes the product as a Draft\.|^Draft: publish to sell it|^On sale$|^Published: off the shop|^Archived: off the shop/).first()).toBeVisible({ timeout: 30_000 });
   return panel;
 }
 
@@ -110,7 +111,7 @@ export async function openProductPage(admin: Page, pageId: string) {
 }
 
 /**
- * A new Content > Products page whose panel adds price and stock: the Commerce product is a Draft
+ * A new Content > Products page whose panel's first Save makes its product: the Commerce product is a Draft
  * (off the shop) until the page is published.
  */
 export async function draftProductPage(admin: Page, { title, sku, slug }: { title: string; sku: string; slug?: string }) {
@@ -120,8 +121,8 @@ export async function draftProductPage(admin: Page, { title, sku, slug }: { titl
   const created = (await response.json()).data;
   const pageId: string = (created.item ?? created).id;
   const panel = await openProductPage(admin, pageId);
-  await panel.getByRole("textbox", { name: "SKU (optional)", exact: true }).fill(sku);
-  await panel.getByRole("button", { name: "Add price and stock", exact: true }).click();
+  await panel.getByRole("textbox", { name: "SKU", exact: true }).fill(sku);
+  await panel.getByRole("button", { name: "Save", exact: true }).click();
   // Commerce keeps the link itself; the editor is never asked to change the page.
   await expect((await openPanel(admin)).getByText(/^Draft: publish to sell it/)).toBeVisible({ timeout: 30_000 });
   await expect(admin.getByRole("dialog", { name: "Review proposed changes" })).toHaveCount(0);
@@ -144,8 +145,8 @@ export async function publishProductPage(admin: Page, pageId: string) {
     const body = (await (await admin.request.get("/_emdash/api/content/products/" + pageId, { headers })).json()).data;
     return (body.item ?? body).status;
   }, { timeout: 30_000 }).toBe("published");
-  // Commerce 0.7.0 says an unpriced product it put on sale is published but off the shop.
-  await expect((await openPanel(admin)).getByText(/^(?:On sale|Published: off the shop) · SKU /)).toBeVisible({ timeout: 30_000 });
+  // Commerce's status grid says an unpriced product it put on sale is published but off the shop.
+  await expect((await openPanel(admin)).getByText(/^(?:On sale|Published: off the shop)$/).first()).toBeVisible({ timeout: 30_000 });
 }
 
 // EmDash 1.4 renders a Block Kit form block as a group of fields named after
