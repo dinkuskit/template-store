@@ -16,33 +16,24 @@ the published `/products/{entry id}` path. 404, removed, and unavailable
 (503) routes emit no Product block. The preview builder keeps valid published
 editorial pages truthful without requiring a fabricated Commerce identifier.
 
-`/shipping` and `/returns` render the same Commerce policy revision that
-JSON-LD embeds. When a policy record is configured, `/shipping` and `/returns`
-pair the authoritative Commerce `<dl data-shipping-policy>` /
-`<dl data-return-policy>` summary box with the merchant-authored EmDash CMS
-`entry.data.content` (`PortableText`) policy body (`[data-policy-body]`).
-Both policy pages are exposed in the global Store Footer (`StoreFooter.astro`)
-under **Policies & Care** (`aria-label="Policies & Care"`). Native development
-has no mounted `policies/public` route, so that profile reads
-`readPublicStorePoliciesFromStorage` from
-`@dinkuskit/commerce/features/store-policies` after the public route is
-unavailable. An installed or shipping profile does not open policy storage. An
-invalid public payload still fails. With no policy records, both pages fail
-closed—rendering only `[data-shipping-policy-unset]` /
-`[data-return-policy-unset]` without `[data-policy-body]` or fabricated dollar
-amounts, country codes, or day counts—and JSON-LD omits `shippingDetails` and
-`hasMerchantReturnPolicy`. Seeds stay neutral.
-
-The policy consumer validates amount/mode consistency, configured country
-lists, day bounds, URLs, and known return enums before returning either record.
-It reuses Commerce's exported money validation. Null policies and omitted
-optional fields remain valid; malformed fields follow the existing failure
-path instead of reaching policy text or JSON-LD. Native-development reads pass
-through the same validation.
-
-Return categories display as `Limited return window`, `Returns not accepted`,
-or `Unlimited return window`. The original Commerce enum remains in the
-`data-return-category` attribute for policy and JSON-LD verification.
+`/shipping` and `/returns` are the store's policies: EmDash pages the merchant
+writes, which always show their own `PortableText` body (`[data-policy-body]`),
+or `[data-shipping-policy-unset]` / `[data-return-policy-unset]` when the page
+has no text (GrillTrack `policy-pages-content-20261031`, superseding this
+decision's policy part; Commerce `policy-pages-are-content-20261031` retires
+its policy records). There is no Commerce facts box and no policy read. Both
+pages are exposed in the global Store Footer (`StoreFooter.astro`) under
+**Policies & Care** (`aria-label="Policies & Care"`). Product JSON-LD carries no
+`shippingDetails` or `hasMerchantReturnPolicy`: structured shipping and return
+terms are deferred, and shipping markup will derive from Commerce's checkout
+settings and shipping destinations when it comes. A published returns page with
+text names itself as the store-wide return policy by link only: one
+`OnlineStore` block whose `hasMerchantReturnPolicy` is a `MerchantReturnPolicy`
+with `merchantReturnLink` set to the page's canonical URL
+(`storeReturnPolicyJsonLd`); Google reads a store-wide return policy from that
+link alone, and a merchant's Search Console or Merchant Center settings take
+precedence over markup. Seeds stay neutral: no rates, country codes or day
+counts.
 
 JSON-LD embedded with `set:html` escapes `<` so a merchant description cannot
 close the script tag.
@@ -62,8 +53,7 @@ The exact Commerce `0.3.0` source pin is
 `288199275f61aec084c0e1e72b370ec74ea35369`. Its `catalog/public` and
 `catalog/public/item` projections carry `feedChannels`; the existing parser
 passes a non-empty projection to the feed builders and excludes missing or
-empty eligibility. Native-development may still use its explicitly isolated
-storage fallback. Shipping and registry profiles do not open that collection.
+empty eligibility; no profile opens Commerce storage.
 Primary and gallery media ids resolve through the same approved media lookup
 as storefront images. Only resolved public image URLs enter the Commerce feed
 builders; payload-supplied URLs and unreadable or unsafe media are omitted.

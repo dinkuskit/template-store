@@ -7,7 +7,7 @@ const { onRequest } = await import("../../src/middleware.js");
 const { COMMERCE_REGISTRY_RUNTIME_ID } = await import("../../src/features/guest-cart/checkout-protocol.js");
 const { playgroundCheckoutAdmission } = await import("../../src/features/playground-checkout/index.js");
 const { storeBannerText } = await import("../../src/features/store-shell/checkout-copy.js");
-const { playgroundCheckoutConfigured } = await import("../../src/features/playground-checkout/payments-port.js");
+const { playgroundCheckoutConfigured, playgroundEnvOf } = await import("../../src/features/playground-checkout/payments-port.js");
 
 const registryStart = `/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/start`;
 const nativeStart = "/_emdash/api/plugins/dinkus-commerce/checkout/guest/start";
@@ -37,7 +37,8 @@ async function call(path: string, opts: { playground?: boolean; ip?: string | nu
     locals.__playgroundDb = {};
     locals.__playgroundCheckoutLimiter = "limiter" in opts ? opts.limiter : { limit: async () => ({ success: true }) };
   }
-  const next = vi.fn(async () => new Response("native", { status: 200 }));
+  // The visitor's own Commerce (its Registry build, installed in the store) answers behind next().
+  const next = vi.fn(async () => Response.json({ success: true, data: { forwardedBody: await request.text() } }));
   const response = await (onRequest as unknown as (c: unknown, n: unknown) => Promise<Response>)({
     url: new URL(request.url), request, locals, cookies: { get: () => ({ value: "pg-session" }) },
   }, next);
@@ -69,24 +70,28 @@ describe("playground sandbox checkout gates", () => {
       const { response, next } = await call(registryStart);
       expect(response.status).toBe(503);
       expect(next).not.toHaveBeenCalled();
+      // With the visitor's Commerce installed, its checkout routes are still never reached.
+      for (const path of [registryStart, registryStart.replace("/start", "/prepare")]) {
+        const installed = await call(path, { commerce: true, raw: path.endsWith("/prepare") ? "{}" : undefined });
+        expect(installed.response.status, `${missing} ${path}`).toBe(503);
+        expect(installed.next).not.toHaveBeenCalled();
+      }
       expect((await call(nativeStart)).response.status).toBe(405);
     }
   });
 
   it("open only for a configured playground session, after validation, IP and limiter", async () => {
     Object.assign(process.env, READY);
-    // The cart's Registry-path call is served by the playground's native
-    // Commerce route through EmDash's public plugin boundary, body intact.
+    // The cart's Registry-path call reaches the visitor's own Commerce (template-one-build-registry-20261031),
+    // with the body the guard validated still unread.
     const ok = await call(registryStart, { commerce: true });
     expect(ok.response.status).toBe(200);
-    expect(ok.next).not.toHaveBeenCalled();
-    expect(ok.dispatch).toHaveBeenCalledTimes(1);
-    expect(ok.dispatch.mock.calls[0].slice(0, 3)).toEqual(["dinkus-commerce", "POST", "checkout/guest/start"]);
-    expect(await ok.response.json()).toEqual({ success: true,
-      data: { forwardedBody: body, forwardedUrl: `https://playground.example${nativeStart}` } });
+    expect(ok.next).toHaveBeenCalledTimes(1);
+    expect(ok.dispatch).not.toHaveBeenCalled();
+    expect(await ok.response.json()).toEqual({ success: true, data: { forwardedBody: body } });
     const streamed = await call(registryStart, { omitContentLength: true, commerce: true });
     expect(streamed.response.status).toBe(200);
-    expect(streamed.dispatch.mock.calls[0].slice(0, 3)).toEqual(["dinkus-commerce", "POST", "checkout/guest/start"]);
+    expect(streamed.next).toHaveBeenCalledTimes(1);
     expect((await call(registryStart, { raw: JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1, price: 1 }] }) })).response.status).toBe(400);
     expect((await call(registryStart, { ip: null })).response.status).toBe(400);
     expect((await call(registryStart, { limiter: { limit: async () => ({ success: false }) } })).response.status).toBe(429);
@@ -123,6 +128,12 @@ describe("playground sandbox checkout gates", () => {
     expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "http://localhost:4397", DINKUS_LOCAL_PROOF: "1" })).toBe(true);
     expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "http://playground.example", DINKUS_LOCAL_PROOF: "1" })).toBe(false);
     expect(playgroundCheckoutConfigured({ ...payments, EMDASH_SITE_URL: "https://playground.example" })).toBe(true);
+    // Pages judge the playground on the environment the checkout routes are gated on, not on the Site URL the
+    // Worker derives into process.env for EmDash.
+    Object.assign(process.env, { ...payments, EMDASH_SITE_URL: "https://playground.example" });
+    expect(playgroundCheckoutConfigured(playgroundEnvOf({ __playgroundEnv: payments }))).toBe(false);
+    expect(playgroundCheckoutConfigured(playgroundEnvOf({}))).toBe(true);
+    delete process.env.EMDASH_SITE_URL;
 
     // The live gates stay closed too: no Commerce dispatch for the cart's checkout calls.
     Object.assign(process.env, payments);
@@ -210,22 +221,5 @@ describe("playground status recovery visitor context", () => {
     process.env.DINKUS_CHECKOUT_ENABLED = "0";
     await statusCall(true).catch(() => undefined);
     expect(seen).toEqual([]);
-  });
-});
-
-describe("native Commerce dispatch envelope", () => {
-  it("relays Commerce refusals with EmDash's plugin-route status and envelope", async () => {
-    Object.assign(process.env, READY);
-    const request = new Request(`https://playground.example${registryStart}`, {
-      method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7" }, body });
-    const dispatch = vi.fn(async () => ({ success: false, status: 403, error: { code: "ORIGIN_DENIED", message: "Guest checkout origin is missing or invalid" } }));
-    const response = await (onRequest as unknown as (c: unknown, n: unknown) => Promise<Response>)({
-      url: new URL(request.url), request,
-      locals: { emdash: { handlePublicPluginApiRoute: dispatch }, __playgroundDb: {}, __playgroundCheckoutLimiter: { limit: async () => ({ success: true }) } },
-      cookies: { get: () => ({ value: "pg-session" }) },
-    }, vi.fn());
-    expect(response.status).toBe(403);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
-    expect(await response.json()).toEqual({ success: false, error: { code: "ORIGIN_DENIED", message: "Guest checkout origin is missing or invalid" } });
   });
 });

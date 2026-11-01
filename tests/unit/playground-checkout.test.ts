@@ -82,7 +82,8 @@ describe("checkout body validation", () => {
     expect(checkoutRouteKind(startPath)).toBe("start");
     expect(checkoutRouteKind(startPath.replace("start", "prepare"))).toBe("prepare");
     expect(checkoutRouteKind(`${startPath}/x`)).toBeNull();
-    expect(checkoutRouteKind("/_emdash/api/plugins/dinkus-commerce/checkout/guest/start")).toBe("start");
+    // The retired native copy's path is no checkout route (template-one-build-registry-20261031).
+    expect(checkoutRouteKind("/_emdash/api/plugins/dinkus-commerce/checkout/guest/start")).toBeNull();
     expect(checkoutRouteKind("/_emdash/api/plugins/other/checkout/guest/start")).toBeNull();
     expect(checkoutRouteKind("/cart")).toBeNull();
   });
@@ -135,7 +136,7 @@ describe("checkout body validation", () => {
   it("guards checkout routes in middleware before seeding the playground DB", () => {
     const middleware = readFileSync("src/middleware.ts", "utf8");
     expect(middleware.indexOf("guardSandboxCheckout(context.request"))
-      .toBeLessThan(middleware.indexOf("await ensurePlaygroundDemoCatalog(db, { playground: true })"));
+      .toBeLessThan(middleware.indexOf("await ensurePlaygroundDemoCatalog(db, { runtime, origin: context.url.origin })"));
     expect(middleware.indexOf("guardSandboxCheckout(context.request"))
       .toBeLessThan(middleware.indexOf("withCheckoutVisitor("));
   });

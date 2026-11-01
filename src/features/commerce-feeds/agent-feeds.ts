@@ -1,8 +1,6 @@
 import { formatMinorUnitsAsDecimal } from "@dinkuskit/commerce/features/structured-data";
 import type { ProductFeedFacts } from "@dinkuskit/commerce/features/feeds";
-import { COMMERCE_NATIVE_PLUGIN_ID } from "../commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
-import { readInstalledCommercePolicies } from "../commerce-policies/index.js";
 import { STORE_TITLE } from "../store-shell/index.js";
 import { canonicalUrl } from "../store-shell/structured-data.js";
 import { buildInstalledCommerceFeedFacts, type CommerceFeedContext } from "./index.js";
@@ -439,43 +437,11 @@ export async function buildInstalledStorefrontAgentFeedOptions(
   context: CommerceFeedContext,
 ): Promise<StorefrontAgentFeedOptions> {
   const facts = await buildInstalledCommerceFeedFacts(context);
-  const pluginId =
-    process.env.DINKUS_CATALOG_PROFILE === "native-development"
-      ? COMMERCE_NATIVE_PLUGIN_ID
-      : COMMERCE_REGISTRY_RUNTIME_ID;
-  const policies = await readInstalledCommercePolicies(
-    { runtime: context.runtime, request: context.request },
-    pluginId,
-  ).catch(() => null);
+  const pluginId = COMMERCE_REGISTRY_RUNTIME_ID;
   const origin = context.site?.origin ?? new URL(context.request.url).origin;
-
-  const shippingPolicy = policies?.shipping;
-  const shipping: StorefrontShippingQuoteInput | null =
-    shippingPolicy && (shippingPolicy.mode === "free" || shippingPolicy.mode === "flat")
-      ? {
-          mode: shippingPolicy.mode,
-          ...(shippingPolicy.amount ? { amount: shippingPolicy.amount } : {}),
-          ...(shippingPolicy.freeOver ? { freeOver: shippingPolicy.freeOver } : {}),
-        }
-      : null;
-
-  const shippingSummaryText = shippingPolicy
-    ? shippingPolicy.mode === "free"
-      ? "Free shipping."
-      : shippingPolicy.amount
-        ? shippingPolicy.freeOver
-          ? `Flat shipping: $${formatMinorUnitsAsDecimal(shippingPolicy.amount)} USD (${shippingPolicy.amount.minor} minor units); free when discounted net merchandise (netMerchandise) is at least $${formatMinorUnitsAsDecimal(shippingPolicy.freeOver)} USD (>= ${shippingPolicy.freeOver.minor} minor units, inclusive, after coupon discounts).`
-          : `Flat shipping: $${formatMinorUnitsAsDecimal(shippingPolicy.amount)} USD (${shippingPolicy.amount.minor} minor units).`
-        : "Configured shipping rate."
-    : undefined;
-
-  const returnSummaryText = policies?.returns
-    ? policies.returns.returnPolicyCategory === "MerchantReturnNotPermitted"
-      ? "Returns are not accepted."
-      : policies.returns.merchantReturnDays !== undefined
-        ? `${policies.returns.merchantReturnDays}-day return window.`
-        : "Store return policy applies."
-    : undefined;
+  // A store's policies are its EmDash pages; Commerce keeps no policy records (GrillTrack
+  // policy-pages-content-20261031). Agents get the page links; checkout prices shipping when it starts.
+  const shipping: StorefrontShippingQuoteInput | null = null;
 
   const enrichedProducts: AgentProductFeedFacts[] = facts.map((item) => ({
     ...item,
@@ -483,8 +449,6 @@ export async function buildInstalledStorefrontAgentFeedOptions(
       ...item.content,
       aiProjection: {
         ...(item.content.description ? { summary: item.content.description } : {}),
-        ...(shippingSummaryText ? { shippingSummary: shippingSummaryText } : {}),
-        ...(returnSummaryText ? { returnPolicySummary: returnSummaryText } : {}),
       },
     },
   }));
@@ -494,13 +458,11 @@ export async function buildInstalledStorefrontAgentFeedOptions(
       slug: "shipping",
       title: "Shipping policy",
       url: canonicalUrl("/shipping", context.site, context.request.url),
-      ...(shippingSummaryText ? { body: shippingSummaryText } : {}),
     },
     {
       slug: "returns",
       title: "Returns policy",
       url: canonicalUrl("/returns", context.site, context.request.url),
-      ...(returnSummaryText ? { body: returnSummaryText } : {}),
     },
   ];
 

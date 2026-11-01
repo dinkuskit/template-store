@@ -3,13 +3,10 @@ import StoreFooter from "../../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { GuestCheckout } from "../../features/guest-cart/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
-import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
-import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import SandboxCheckoutNotice from "../../features/playground-checkout/SandboxCheckoutNotice.astro";
 import { isCheckoutEnabled, playgroundCheckoutAdmission, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
-import { playgroundCheckoutConfigured } from "../../features/playground-checkout/payments-port.js";
+import { playgroundCheckoutConfigured, playgroundEnvOf } from "../../features/playground-checkout/payments-port.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../../features/playground/flat-rate-shipping.js";
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
@@ -25,15 +22,11 @@ const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__pl
 const gate = { profile, isPlayground, isDemo: isDemoCatalogProfile(), checkoutEnabled: isCheckoutEnabled() };
 const sandboxCheckout = showsSandboxCheckoutNotice(gate);
 // Only a configured playground session admits checkout; everything else stays closed.
-const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured());
+const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)));
 const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
-const installedPolicies = isPlayground
-  ? null
-  : await readInstalledCommercePolicies(
-      { runtime: Astro.locals.emdash, request: Astro.request },
-      process.env.DINKUS_CATALOG_PROFILE === "native-development" ? COMMERCE_NATIVE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
-    ).catch(() => null);
-const shipping = isPlayground ? PLAYGROUND_FLAT_RATE_SHIPPING : installedPolicies?.shipping ?? null;
+// The playground shows its flat rate before checkout starts; elsewhere Commerce prices shipping when checkout
+// starts (Commerce keeps no policy records: GrillTrack policy-pages-content-20261031).
+const shipping = isPlayground ? PLAYGROUND_FLAT_RATE_SHIPPING : null;
 const shippingMode = shipping?.mode === "flat" || shipping?.mode === "free" ? shipping.mode : null;
 const shippingMinor = shipping?.amount?.minor ?? null;
 ---

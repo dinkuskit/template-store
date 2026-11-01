@@ -336,13 +336,6 @@ describe("anonymous installed admission", () => {
     expect(admission?.pluginId).toBe(COMMERCE_REGISTRY_RUNTIME_ID);
   });
 
-  it("never pairs a native-development catalog with Registry checkout", async () => {
-    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
-    const runtime = createValidRuntime();
-    expect(await acquireGuestCheckoutAdmission({ runtime, request: new Request(`${SITE}/cart`) })).toBeNull();
-    expect(runtime.handlePublicPluginApiRoute).not.toHaveBeenCalled();
-  });
-
   it("fails closed when optional runtime metadata throws", async () => {
     const runtime = createValidRuntime({ getPluginRouteMeta: () => { throw new Error("runtime unavailable"); } });
     await expect(acquireGuestCheckoutAdmission({ runtime, request: new Request(`${SITE}/cart`) })).resolves.toBeNull();

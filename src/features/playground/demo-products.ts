@@ -60,5 +60,5 @@ export function buildDemoProductEntries(links: readonly DemoCatalogLink[]) {
  * (template-one-build-registry-20261031). A shipping store never matches.
  */
 export function isDemoCatalogProfile(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.DINKUS_STOREFRONT_PROFILE === "proof" && env.DINKUS_CATALOG_PROFILE !== "native-development";
+  return env.DINKUS_STOREFRONT_PROFILE === "proof";
 }

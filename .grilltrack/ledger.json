@@ -3975,6 +3975,20 @@
           "review_source_identity": null,
           "to": "verified",
           "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/VERIFIER-OWNER-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/owner-pass-after.log;file:runs/structured-data-policy-feed-035-runs/owner-pass-pnpm-verify.log"
+        },
+        {
+          "at": "2026-11-01T13:55:18+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs; render EmDash shipping and return pages using Commerce policy facts; expose a stable no-slash Commerce feed through the approved public boundary; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "verified",
+          "implementation_ref": "file:src/pages/products/[id].astro;file:tests/e2e/product-pages.spec.ts;file:tests/e2e/structured-data-policy-feed.spec.ts",
+          "note": "Ronald, 31 Oct 2026 (\"What I recommend \u2014 agreed\"): the policy pages show their own EmDash text, with no Commerce policy facts; product JSON-LD and feeds carry over unchanged.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/VARIANT-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/variant-after-rerun.log;file:runs/structured-data-policy-feed-035-runs/variant-pnpm-verify.log"
         }
       ],
       "id": "structured-data-policy-feed-035",
@@ -4033,9 +4047,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "verified",
-      "superseded_by": null,
-      "updated_at": "2026-10-21T01:11:59+00:00",
+      "status": "superseded",
+      "superseded_by": "policy-pages-content-20261031",
+      "updated_at": "2026-11-01T13:55:18+00:00",
       "verification_ref": "file:.grilltrack/proof/structured-data-policy-feed-035/PROOF.md;file:.grilltrack/proof/structured-data-policy-feed-035/VARIANT-REPAIR.md;file:.grilltrack/proof/structured-data-policy-feed-035/source-manifest.sha256;file:runs/structured-data-policy-feed-035-runs/variant-after-rerun.log;file:runs/structured-data-policy-feed-035-runs/variant-pnpm-verify.log"
     },
     {
@@ -4485,6 +4499,20 @@
           "review_source_identity": null,
           "to": "deferred",
           "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:55:08+00:00",
+          "choice": "Keep the development Commerce copy (with the playground's working 4242 test checkout) until part 2. Part 2 (playground-pretend-connected-20261022) switches the playground to the released Registry Commerce, so the admin matches a real store, and seeds the sample orders (one paid and waiting to ship, one shipped) then, because the development copy has no Orders page. Part 1 ships Payments, Ship and the welcome card without sample orders.",
+          "from": "deferred",
+          "implementation_ref": null,
+          "note": "Part 2's switch is done: the playground's development Commerce copy is gone and the playground runs Commerce's Registry build in-store, with the sample orders seeded through Commerce's own routes.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
         }
       ],
       "id": "playground-commerce-until-part-2-20261022",
@@ -4497,9 +4525,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "deferred",
-      "superseded_by": null,
-      "updated_at": "2026-11-01T04:28:00+00:00",
+      "status": "superseded",
+      "superseded_by": "playground-commerce-in-store-20261031",
+      "updated_at": "2026-11-01T13:55:08+00:00",
       "verification_ref": null
     },
     {
@@ -4698,6 +4726,20 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:55:08+00:00",
+          "choice": "In two steps. First, the playground's Commerce source pin moves from the development copy c42597b to the released tag v0.5.0 (6ff63ef), in the same in-store setup, so the 4242 test checkout keeps working; package.json is the only place the pin lives, and the Update playground plugins button moves it to each new stable Commerce release along with Payments and Ship. Second, in its own PR after the guided tour, the playground switches to the released Registry Commerce plugin as playground-commerce-until-part-2-20261022 calls for, so the admin matches a real store.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "Its second step is done: the playground runs Commerce's Registry build in-store under r_gshdrqaldna3r7sn (Ronald, 31 Oct 2026: \"Commerce goes in the same way as a third in-store plugin under r_gshdrqaldna3r7sn \u2014 Agreed.\"). The pin stays in package.json and moves with the Update playground plugins button.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
         }
       ],
       "id": "playground-commerce-050-source-first-20261023",
@@ -4710,9 +4752,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
-      "superseded_by": null,
-      "updated_at": "2026-10-23T03:10:41+00:00",
+      "status": "superseded",
+      "superseded_by": "playground-commerce-in-store-20261031",
+      "updated_at": "2026-11-01T13:55:08+00:00",
       "verification_ref": null
     },
     {
@@ -5789,6 +5831,218 @@
       "superseded_by": null,
       "updated_at": "2026-11-01T13:26:37+00:00",
       "verification_ref": "file:.grilltrack/proof/template-product-trash-keeps-link-20261101/PROOF.md"
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+      "context_ref": "thread:one-commerce-build-20261031",
+      "created_at": "2026-11-01T13:55:08+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-one-build-registry-20261031",
+        "playground-plugins-in-store-20261023"
+      ],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-11-01T13:55:08+00:00",
+          "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:55:08+00:00",
+          "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:55:08+00:00",
+          "choice": "Commerce goes in the same way as Payments and Ship: a third in-store plugin under its Registry id r_gshdrqaldna3r7sn, the store's pinned Registry build (the package.json pin, prepared beside Payments and Ship). Each visitor's store is seeded through Commerce's own routes and connected to the pretend DinkusKit.com, which answers Commerce's checkout settings and pass only when the playground's checkout is fully configured; every Payments call Commerce makes passes the playground's checkout guard (session and lookup only, visitor IP, attempt bound to the visitor session). The native Commerce entry, its playground checkout host and DINKUS_CATALOG_PROFILE=native-development leave the playground. Real stores are unchanged.",
+          "from": "implemented",
+          "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-commerce-in-store-20261031",
+      "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u",
+      "question": "How does the playground run Commerce once Commerce keeps one build?",
+      "rationale": "Ronald, 31 Oct 2026: \"Commerce goes in the same way as a third in-store plugin under r_gshdrqaldna3r7sn \u2014 Agreed.\" Completes template-one-build-registry-20261031 for the playground and is the switch playground-commerce-until-part-2-20261022 and playground-commerce-050-source-first-20261023 planned, so the playground's admin is a real store's.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-11-01T13:55:08+00:00",
+      "verification_ref": "file:.grilltrack/proof/playground-commerce-in-store-20261031/PROOF.md"
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+      "context_ref": "thread:policy-pages-20261031",
+      "created_at": "2026-11-01T13:55:17+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-11-01T13:55:17+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:55:18+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:55:18+00:00",
+          "choice": "Render Commerce-produced Product JSON-LD matching visible product facts and canonical URLs, without shipping or return terms (structured terms are deferred; shipping markup will derive from Commerce's checkout settings and shipping destinations when it comes). /shipping and /returns are EmDash pages the merchant writes and always show their own text; there is no Commerce facts box and no policy read. A published returns page with text names itself as the store-wide return policy by link only: an OnlineStore whose MerchantReturnPolicy is given by merchantReturnLink. Expose the stable no-slash Commerce feeds through the approved public boundary as before; prove desktop and mobile behavior without channel connection or deployment.",
+          "from": "implemented",
+          "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "policy-pages-content-20261031",
+      "implementation_ref": "branch:dinkuskit/template-store@claude/adoring-clarke-m3xl6u",
+      "question": "How will the starter publish truthful product metadata, store policies and feeds, now that a store's policies are its EmDash pages?",
+      "rationale": "Ronald, 31 Oct 2026, on the recommendation: \"What I recommend \u2014 agreed\"; earlier: \"The page would always show its EmDash text \u2014 I think this was my intended design.\" Commerce keeps no policy records (Commerce policy-pages-are-content-20261031). Google reads a store-wide return policy from merchantReturnLink alone, and Search Console and Merchant Center settings take precedence over markup.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-11-01T13:55:18+00:00",
+      "verification_ref": "file:.grilltrack/proof/policy-pages-content-20261031/PROOF.md"
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "It starts over on a fresh store, as if its hour had run out: its edits, shopper sign-in and orders and any pending TEST checkout end with it, and nothing half-broken is shown. A store whose Commerce data sits under the native dinkus-commerce id answers a page load with a redirect to /playground and every other request with 409 PLAYGROUND_RESTARTED, clearing its session cookie; the visitor's next visit gets a new store. Stores are neither migrated nor drained.",
+      "context_ref": "pr:dinkuskit/template-store#195",
+      "created_at": "2026-11-01T15:06:48+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "playground-commerce-in-store-20261031"
+      ],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-11-01T15:06:48+00:00",
+          "choice": "It starts over on a fresh store, as if its hour had run out: its edits, shopper sign-in and orders and any pending TEST checkout end with it, and nothing half-broken is shown. A store whose Commerce data sits under the native dinkus-commerce id answers a page load with a redirect to /playground and every other request with 409 PLAYGROUND_RESTARTED, clearing its session cookie; the visitor's next visit gets a new store. Stores are neither migrated nor drained.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T15:06:48+00:00",
+          "choice": "It starts over on a fresh store, as if its hour had run out: its edits, shopper sign-in and orders and any pending TEST checkout end with it, and nothing half-broken is shown. A store whose Commerce data sits under the native dinkus-commerce id answers a page load with a redirect to /playground and every other request with 409 PLAYGROUND_RESTARTED, clearing its session cookie; the visitor's next visit gets a new store. Stores are neither migrated nor drained.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T15:06:48+00:00",
+          "choice": "It starts over on a fresh store, as if its hour had run out: its edits, shopper sign-in and orders and any pending TEST checkout end with it, and nothing half-broken is shown. A store whose Commerce data sits under the native dinkus-commerce id answers a page load with a redirect to /playground and every other request with 409 PLAYGROUND_RESTARTED, clearing its session cookie; the visitor's next visit gets a new store. Stores are neither migrated nor drained.",
+          "from": "implemented",
+          "implementation_ref": "pr:dinkuskit/template-store#195;file:src/features/playground/store-generation.ts",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "playground-cutover-fresh-store-20261101",
+      "implementation_ref": "pr:dinkuskit/template-store#195;file:src/features/playground/store-generation.ts",
+      "question": "When the playground switches to Commerce's Registry build, what happens to a visitor store made before the switch that is still within its hour?",
+      "rationale": "Ronald, 1 Nov 2026, choosing between a fresh store, doing nothing (a re-seeded shop over vanished changes for up to an hour) and migrating each store's Commerce data: \"Fresh store (Recommended)\" \u2014 \"A visitor whose store came from the old playground gets a brand-new store on their next click, exactly as if their hour had run out.\" Playground stores are disposable and expire within an hour.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-11-01T15:06:48+00:00",
+      "verification_ref": "file:.grilltrack/proof/playground-commerce-in-store-20261031/PROOF.md"
     }
   ],
   "last_activation": {
@@ -5811,5 +6065,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-01T13:26:37+00:00"
+  "updated_at": "2026-11-01T15:06:48+00:00"
 }
