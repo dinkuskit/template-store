@@ -51,6 +51,28 @@ admin is now a real store's.
 | `pnpm verify:playground-account-http` (built Worker) | `PASS_PLAYGROUND_HTTP_SHOPPER_ACCOUNT`, 26 cases: instant demo account, profile save, verified OTP sign-in with opt-in and durable lead capture (a second verification after a restart), sign-out; foreign, reset, cross-origin and signed-out sessions refused with nothing disclosed; a missing account origin closes the instant demo account |
 | Built-Worker smoke (fresh visitor) | home `data-catalog-guidance-state="ready"`; Commerce Settings "Connected to DinkusKit.com, store playground."; Commerce Orders lists the two TEST sample orders; the tour widget shows its next step; Ship opens on Connect |
 
+## Review follow-ups (1 Nov 2026, #195)
+
+- **A wrong or expired PIN** reached shoppers as a 503 "Could not record
+  verified email opt-in": the playground's account wrapper took Commerce's
+  in-band refusal for a verified sign-in with no email. Refusals now go back as
+  Commerce gave them and record no lead. `tests/unit/playground-account-wrapper.test.ts`
+  fails with the 503 without the fix; the account HTTP proof now sends a wrong
+  PIN first and gets `CODE_INVALID` (HTTP 200, in-band), and the lead's
+  verification count stays 1.
+- **Visitors mid-hour at the switch.** Ronald, 1 Nov 2026, chose a fresh
+  store: a visitor store made before the switch (Commerce rows under the native
+  `dinkus-commerce` id) starts over, as if its hour had run out
+  (`src/features/playground/store-generation.ts`).
+  `pnpm verify:playground-cutover` (`scripts/verify-playground-store-cutover.mjs`)
+  builds the playground at main `74a31c2` in a worktree, makes a visitor store
+  there (9 native products, shop ready), then serves this build on the same
+  visitor databases: that visitor's API call gets 409 `PLAYGROUND_RESTARTED` and
+  their page load a 302 to `/playground`, both clearing the old session cookie;
+  their next visit gets a new session on a fresh store seeded through Registry
+  Commerce (9 products, shop ready), which then serves normally.
+  `PASS_PLAYGROUND_STORE_CUTOVER`.
+
 Commerce's Registry routes refuse in-band (`{ ok: false, error }`, HTTP 200),
 as in every store, and the account page reads the profile with the orders;
 the account proof checks exactly that. Commerce keeps its own clock: its
