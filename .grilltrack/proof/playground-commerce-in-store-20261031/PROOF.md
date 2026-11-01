@@ -60,8 +60,9 @@ admin is now a real store's.
   fails with the 503 without the fix; the account HTTP proof now sends a wrong
   PIN first and gets `CODE_INVALID` (HTTP 200, in-band), and the lead's
   verification count stays 1.
-- **Visitors mid-hour at the switch.** Ronald, 1 Nov 2026, chose a fresh
-  store: a visitor store made before the switch (Commerce rows under the native
+- **Visitors mid-hour at the switch** (`playground-cutover-fresh-store-20261101`).
+  Ronald, 1 Nov 2026, chose a fresh store over doing nothing or migrating each
+  store's data: a visitor store made before the switch (Commerce rows under the native
   `dinkus-commerce` id) starts over, as if its hour had run out
   (`src/features/playground/store-generation.ts`).
   `pnpm verify:playground-cutover` (`scripts/verify-playground-store-cutover.mjs`)

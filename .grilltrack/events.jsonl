@@ -225,3 +225,7 @@
 {"action": "decision_superseded", "at": "2026-11-01T13:55:18+00:00", "data": {"affected": [], "decision_id": "structured-data-policy-feed-035", "replacement_id": "policy-pages-content-20261031"}, "event_id": "fd39265e-28df-47bb-b4ed-41020ca73300"}
 {"action": "decision_implemented", "at": "2026-11-01T13:55:18+00:00", "data": {"decision_id": "policy-pages-content-20261031"}, "event_id": "e3adb811-a05a-45f0-b09d-e988511175be"}
 {"action": "decision_verified", "at": "2026-11-01T13:55:18+00:00", "data": {"decision_id": "policy-pages-content-20261031"}, "event_id": "0906ba49-0bab-4063-aa38-3850a2aee22f"}
+{"action": "decision_proposed", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "288ac4d2-b884-40ea-a3d0-f5c06d61cce1"}
+{"action": "decision_locked", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "c185b9ee-2e3d-429f-895e-7dba8f7e1888"}
+{"action": "decision_implemented", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "903ac4f7-8e6e-4ca0-bc20-986d8e49013a"}
+{"action": "decision_verified", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "4f4f7a01-7be2-4bd4-b48f-3a09e8bfb880"}
