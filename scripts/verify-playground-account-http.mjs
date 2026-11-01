@@ -241,6 +241,14 @@ const otpCode = proofEmailBody?.email?.code;
 if (!/^[0-9]{6}$/.test(String(otpCode ?? ""))) {
   throw new Error(`proof endpoint did not return 6-digit OTP code: ${JSON.stringify(proofEmailBody)}`);
 }
+// A wrong PIN comes back as Commerce's own in-band refusal, not a lead-storage failure, and records no lead.
+await callAccount({
+  label: "live:registry:otp-verify:wrong-code",
+  method: "POST",
+  path: `${REGISTRY_PREFIX}/sign-in/verify`,
+  cookie: cookieA,
+  body: { email: leadEmail, code: otpCode === "000000" ? "111111" : "000000", optInUpdates: true },
+});
 const verifiedOtp = await callAccount({
   label: "live:registry:otp-verify:with-optin",
   method: "POST",
@@ -557,6 +565,9 @@ if (
 
 if (cases["live:registry:otp-start:without-optin-refused"]?.status !== 400) {
   failures.push(`OTP start without opt-in must return 400 -> ${JSON.stringify(cases["live:registry:otp-start:without-optin-refused"])}`);
+}
+if (!refused(cases["live:registry:otp-verify:wrong-code"], "CODE_INVALID")) {
+  failures.push(`a wrong PIN must be Commerce's CODE_INVALID refusal -> ${JSON.stringify(cases["live:registry:otp-verify:wrong-code"])}`);
 }
 if (cases["live:registry:otp-verify:with-optin"]?.status !== 200) {
   failures.push(`OTP verify with opt-in must return 200 -> ${JSON.stringify(cases["live:registry:otp-verify:with-optin"])}`);

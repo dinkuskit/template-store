@@ -671,6 +671,11 @@ async function dispatchPlaygroundShopperAccount(
     const status = result?.status ?? (code === "NOT_FOUND" ? 404 : 400);
     return Response.json({ success: false, error: { code, message } }, { status, headers });
   }
+  // Commerce's Registry routes refuse in-band ({ ok: false, error }), as in every store: a wrong or expired
+  // PIN, a rate limit or a denied session goes back to the shopper as Commerce gave it, and records no lead.
+  if ((result.data as { ok?: unknown } | null | undefined)?.ok === false) {
+    return Response.json({ success: true, data: result.data }, { status: 200, headers });
+  }
   if (kind === "sign-in/verify" && result.data && typeof result.data === "object") {
     const profile = (result.data as { profile?: { email?: unknown } }).profile;
     const capability = (result.data as { capability?: { sessionId?: unknown } }).capability;
