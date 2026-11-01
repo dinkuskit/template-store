@@ -28,6 +28,7 @@ import {
   strictStripeCheckoutUrl,
   guestCheckoutRetryUrl,
   settleGuestCheckoutCart,
+  installStorefrontWebMcp,
   type GuestCartCatalogSnapshot,
   type GuestCartIntent,
   type GuestCartReadNotice,
@@ -60,6 +61,8 @@ let snapshots: GuestCartCatalogSnapshot[] | null = null;
 let snapshotFailed = false;
 let pending = false;
 let retrying = false;
+let queuedSnapshotRefresh = false;
+let queuedSnapshotRoot: Element | undefined;
 let pendingCheckout = false;
 let checkoutRecovery = false;
 let checkoutController: ReturnType<typeof createGuestCheckoutController> | null = null;
@@ -418,6 +421,23 @@ function renderCart(root: Element): void {
       retrying,
       shippingPolicy,
     });
+    breakdown.setAttribute("data-checkout-currency", breakdownView.currency);
+    breakdown.setAttribute("data-checkout-tax-minor", breakdownView.taxMinor);
+    if (breakdownView.subtotalMinor !== null) {
+      breakdown.setAttribute("data-checkout-subtotal-minor", breakdownView.subtotalMinor);
+    } else {
+      breakdown.removeAttribute("data-checkout-subtotal-minor");
+    }
+    if (breakdownView.shippingMinor !== null) {
+      breakdown.setAttribute("data-checkout-shipping-minor", breakdownView.shippingMinor);
+    } else {
+      breakdown.removeAttribute("data-checkout-shipping-minor");
+    }
+    if (breakdownView.totalMinor !== null) {
+      breakdown.setAttribute("data-checkout-total-minor", breakdownView.totalMinor);
+    } else {
+      breakdown.removeAttribute("data-checkout-total-minor");
+    }
     const shippingAmount = breakdown.querySelector("[data-checkout-shipping-amount]");
     if (shippingAmount instanceof HTMLElement) {
       shippingAmount.textContent = breakdownView.shippingText;
@@ -604,12 +624,18 @@ async function recoverGuestCheckout(root: Element, quiet = false): Promise<void>
 }
 
 async function refreshSnapshot(root?: Element): Promise<void> {
-  if (pending) return;
+  if (pending) {
+    queuedSnapshotRefresh = true;
+    if (root) queuedSnapshotRoot = root;
+    return;
+  }
   if (session.intent.lines.length === 0) {
     snapshots = [];
     snapshotFailed = false;
     retrying = false;
     pending = false;
+    queuedSnapshotRefresh = false;
+    queuedSnapshotRoot = undefined;
     if (root) renderCart(root);
     else renderNav();
     return;
@@ -623,23 +649,40 @@ async function refreshSnapshot(root?: Element): Promise<void> {
   snapshotFailed = false;
   if (root) renderCart(root);
   else renderNav();
+  const requestedIds = session.intent.lines.map((line) => line.id).join(",");
   try {
-    const ids = session.intent.lines.map((line) => line.id).join(",");
-    const response = await fetch(`/api/guest-cart/snapshot?ids=${encodeURIComponent(ids)}`, {
+    const response = await fetch(`/api/guest-cart/snapshot?ids=${encodeURIComponent(requestedIds)}`, {
       headers: { accept: "application/json" },
       signal: AbortSignal.timeout(SNAPSHOT_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error("snapshot-http");
     const parsed = parseGuestCartSnapshotResponse(await response.json());
     if (!parsed) throw new Error("snapshot-shape");
-    snapshots = parsed;
-    snapshotFailed = false;
+    const currentIds = session.intent.lines.map((line) => line.id).join(",");
+    if (currentIds !== requestedIds) {
+      queuedSnapshotRefresh = true;
+      if (root) queuedSnapshotRoot = root;
+    } else {
+      snapshots = parsed;
+      snapshotFailed = false;
+    }
   } catch {
-    snapshotFailed = true;
+    const currentIds = session.intent.lines.map((line) => line.id).join(",");
+    if (currentIds !== requestedIds) {
+      queuedSnapshotRefresh = true;
+      if (root) queuedSnapshotRoot = root;
+    } else {
+      snapshotFailed = true;
+    }
   } finally {
     pending = false;
     retrying = false;
-    if (root) {
+    if (queuedSnapshotRefresh) {
+      const nextRoot = queuedSnapshotRoot ?? root;
+      queuedSnapshotRefresh = false;
+      queuedSnapshotRoot = undefined;
+      void refreshSnapshot(nextRoot);
+    } else if (root) {
       renderCart(root);
       if (retryHadFocus && snapshotFailed) {
         const retry = root.querySelector("[data-guest-cart-retry]");
@@ -680,7 +723,6 @@ function commitAddToCartMutation(
     return false;
   }
   applyIntent(result.intent, session.notice);
-  document.dispatchEvent(new CustomEvent("guest-cart-updated"));
   if (persistFailed()) {
     setAddToCartStatus(
       container,
@@ -688,6 +730,7 @@ function commitAddToCartMutation(
       true,
     );
   } else {
+    document.dispatchEvent(new CustomEvent("guest-cart-updated"));
     setAddToCartStatus(container, "Added to cart.", false);
   }
   return true;
@@ -706,8 +749,11 @@ function isSingleAddBlocked(button: HTMLButtonElement, container: Element | null
 let hydrateListenerRegistered = false;
 
 export function hydrateGuestCartControls(): void {
-  session = loadSession();
+  if (!persistFailed()) {
+    session = loadSession();
+  }
   renderNav();
+  installStorefrontWebMcp();
   if (!hydrateListenerRegistered && typeof document.addEventListener === "function") {
     hydrateListenerRegistered = true;
     document.addEventListener("dinkus:guest-cart-hydrate", () => {
@@ -745,6 +791,9 @@ export function hydrateGuestCartControls(): void {
         }
         quantity = parsed;
       }
+      if (!persistFailed()) {
+        session = loadSession();
+      }
       commitAddToCartMutation(container, addGuestCartLine(session.intent, id, quantity));
       button.disabled = false;
     });
@@ -778,6 +827,10 @@ export function hydrateGuestCartPage(): void {
   checkoutProbePending = false;
   checkoutResumeUrl = null;
   snapshots = null;
+  pending = false;
+  retrying = false;
+  queuedSnapshotRefresh = false;
+  queuedSnapshotRoot = undefined;
   const retry = root.querySelector("[data-guest-cart-retry]");
   retry?.addEventListener("click", () => {
     if (pending) return;
@@ -850,6 +903,9 @@ export function hydrateGuestCartPage(): void {
     const removeId = target.getAttribute("data-guest-cart-remove");
     if (!removeId) return;
     if (checkoutLocked()) return;
+    if (!persistFailed()) {
+      session = loadSession();
+    }
     const result = removeGuestCartLine(session.intent, removeId);
     if (!result.accepted) {
       mutationNotice = result.reason;
@@ -877,6 +933,9 @@ export function hydrateGuestCartPage(): void {
       setStatus(root, mutationNotice, true);
       return;
     }
+    if (!persistFailed()) {
+      session = loadSession();
+    }
     const result = setGuestCartLineQuantity(session.intent, id, quantity);
     if (!result.accepted) {
       mutationNotice = result.reason;
@@ -886,7 +945,12 @@ export function hydrateGuestCartPage(): void {
     mutationNotice = null;
     applyIntent(result.intent, session.notice, root);
   });
-  document.addEventListener("guest-cart-updated", () => void probeGuestCheckout(root));
+  document.addEventListener("guest-cart-updated", () => {
+    session = loadSession();
+    renderCart(root);
+    void refreshSnapshot(root);
+    void probeGuestCheckout(root);
+  });
   if (guestReturnQueryIsPresent(window.location.search)) {
     mutationNotice = null;
   }

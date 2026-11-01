@@ -24,9 +24,14 @@ vi.mock("emdash/runtime", () => ({
 
 import { getEmDashCollection } from "emdash";
 import {
+  buildAgentCatalogFeed,
   buildGoogleMerchantFeed,
   buildInstalledCommerceFeedFacts,
+  buildInstalledStorefrontAgentFeedOptions,
   buildMetaCatalogFeed,
+  buildStorefrontAgentsMd,
+  buildStorefrontLlmsFullTxt,
+  buildStorefrontLlmsTxt,
 } from "../../src/features/commerce-feeds/index.js";
 
 const getCollection = vi.mocked(getEmDashCollection);
@@ -188,5 +193,116 @@ describe("installed Commerce feed facts", () => {
       .toEqual(["https://media.example.test/main.jpg"]);
     const unsafe = { ...ctx, runtime: { ...ctx.runtime, getPublicMediaUrl: () => "javascript:alert(1)" } };
     expect((await buildInstalledCommerceFeedFacts(unsafe))[0]!.content.imageUrls).toBeUndefined();
+  });
+
+  it("builds storefront /llms.txt, /llms-full.txt, and /agents.md from installed catalog facts", async () => {
+    const facts = await buildInstalledCommerceFeedFacts(context([
+      catalogItem("commerce-hat", { gtin: "4006381333931", feedChannels: ["google-merchant"] }),
+      catalogItem("commerce-cap", {
+        price: undefined,
+        availability: { status: "in-stock", sellable: false, listable: true },
+        feedChannels: ["meta-catalog"],
+        variants: {
+          schema: "dinkuskit.commerce.product-variants/v1",
+          productId: "commerce-cap",
+          options: [{ optionId: "size", label: "Size", values: [{ valueId: "sm", label: "Small" }, { valueId: "lg", label: "Large" }] }],
+          members: [
+            {
+              catalogItemId: "commerce-cap-sm",
+              selections: [{ optionId: "size", optionLabel: "Size", valueId: "sm", valueLabel: "Small" }],
+              price: { currency: "USD", minor: "1800" },
+              availability: { status: "in-stock", sellable: true, listable: true },
+              fulfillment: "physical",
+            },
+            {
+              catalogItemId: "commerce-cap-lg",
+              selections: [{ optionId: "size", optionLabel: "Size", valueId: "lg", valueLabel: "Large" }],
+              price: { currency: "USD", minor: "2200" },
+              availability: { status: "out-of-stock", sellable: false, listable: true },
+              fulfillment: "physical",
+            },
+          ],
+        },
+      }),
+      catalogItem("commerce-mug", { availability: { status: "out-of-stock", sellable: false, listable: true } }),
+    ]));
+    const options = {
+      products: facts,
+      storeName: "Dinkus Store",
+      siteOrigin: "https://shop.example.test",
+      description: "Agent-ready store.",
+      checkoutBreakdownSelector: "[data-checkout-breakdown]",
+      policies: [
+        { slug: "shipping", title: "Shipping policy", url: "https://shop.example.test/shipping", body: "Ships in 2 business days." },
+        { slug: "returns", title: "Returns policy", url: "https://shop.example.test/returns", body: "30-day returns." },
+      ],
+    };
+    const agentFeed = buildAgentCatalogFeed(options);
+    expect(agentFeed.virtualCardSizing.taxMinor).toBe("0");
+    expect(agentFeed.products.map((item) => [item.id, item.availability.sellable])).toEqual([
+      ["commerce-hat", true],
+      ["commerce-cap", true],
+    ]);
+    expect(agentFeed.products[1]?.variants?.members.map((member) => [member.catalogItemId, member.price.minor])).toEqual([
+      ["commerce-cap-sm", "1800"],
+      ["commerce-cap-lg", "2200"],
+    ]);
+
+    const llmsTxt = buildStorefrontLlmsTxt(options);
+    expect(llmsTxt).toContain("# Dinkus Store");
+    expect(llmsTxt).toContain("https://shop.example.test/llms-full.txt");
+    expect(llmsTxt).toContain("https://shop.example.test/agents.md");
+    expect(llmsTxt).toContain("[commerce-hat](https://shop.example.test/products/hat)");
+    expect(llmsTxt).toContain("[commerce-cap](https://shop.example.test/products/cap): from $18.00 USD");
+    expect(llmsTxt).not.toContain("commerce-mug");
+
+    const llmsFullTxt = buildStorefrontLlmsFullTxt(options);
+    expect(llmsFullTxt).toContain("## Detailed Product Projections");
+    expect(llmsFullTxt).toContain("- GTIN: `4006381333931`");
+    expect(llmsFullTxt).toContain("`catalogItemId: \"commerce-cap-sm\"` (Size: Small)");
+    expect(llmsFullTxt).toContain("## Store Policies Corpus");
+
+    const agentsMd = buildStorefrontAgentsMd(options);
+    expect(agentsMd).toContain("# Shopping Agent & Virtual Card Contract — Dinkus Store");
+    expect(agentsMd).toContain("data-checkout-tax-minor=\"0\"");
+    expect(agentsMd).toContain("tax: { currency: \"USD\", minor: \"0\" }");
+    expect(agentsMd).toContain("/api/guest-cart/snapshot?ids=<id1,id2>");
+    expect(agentsMd).not.toContain("/catalog/public");
+    expect(agentsMd).toContain("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare");
+    expect(agentsMd).toContain("data.capability.capability");
+    expect(agentsMd).toContain("payload = body.success === true ? body.data : body");
+    expect(agentsMd).toContain("payload.checkout.retryAfter === payload.checkout.attemptId");
+    expect(agentsMd).toContain("recoverable-failure");
+    expect(agentsMd).toContain("Pre-Start Checkout DOM Estimate Attributes");
+    expect(agentsMd).toContain("exclusively from Commerce's authoritative frozen `data.checkout.pricing.finalTotal.minor`");
+  });
+
+  it("links agents to the store's EmDash policy pages and reads no Commerce policy records", async () => {
+    // A store's policies are its EmDash pages; Commerce keeps no policy records (GrillTrack policy-pages-content-20261031).
+    const items = [catalogItem("commerce-hat", { feedChannels: ["google-merchant"] })];
+    const dispatch = vi.fn(async (_pluginId: string, _method: string, path: string) => {
+      if (path === "policies/public") throw new Error("Commerce keeps no policy records");
+      return { success: true, data: { products: items } };
+    });
+    const installedOptions = await buildInstalledStorefrontAgentFeedOptions({
+      request: new Request("http://internal.invalid/llms-full.txt"),
+      site: new URL("https://shop.example.test"),
+      runtime: { getPluginRouteMeta: () => ({ public: true, methods: ["GET"] }), handlePublicPluginApiRoute: dispatch },
+    });
+    expect(dispatch.mock.calls.map((call) => call[2])).not.toContain("policies/public");
+    expect(installedOptions.shipping).toBeNull();
+    expect(installedOptions.policies).toEqual([
+      { slug: "shipping", title: "Shipping policy", url: "https://shop.example.test/shipping" },
+      { slug: "returns", title: "Returns policy", url: "https://shop.example.test/returns" },
+    ]);
+    expect(buildStorefrontLlmsTxt(installedOptions)).toContain("Calculated at checkout");
+  });
+
+  it("states a free-over threshold when a shipping quote is given", () => {
+    const text = buildStorefrontLlmsTxt({
+      storeName: "Shop", siteOrigin: "https://shop.example.test", products: [],
+      shipping: { mode: "flat", amount: { currency: "USD", minor: "500" }, freeOver: { currency: "USD", minor: "5000" } },
+    });
+    expect(text).toContain("free when discounted net merchandise (netMerchandise) is at least $50.00 USD (>= 5000 minor units, inclusive, after coupon discounts)");
   });
 });

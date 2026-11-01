@@ -203,15 +203,25 @@ test("publishing a product page sells its Commerce product, only for someone who
   expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
   await expect.poll(() => onShop(request)).toEqual([shopName]);
 
-  // 8. Trashing the page takes the product off sale and lets go of it, so another page can sell it.
+  // 8. Trash is reversible: keep the product linked and off sale, then restore the same page as a draft.
   expect((await request.delete(`/_emdash/api/content/products/${pageId}`, { headers })).ok()).toBe(true);
+  expect(product(itemId)).toMatchObject({ offSale: true, pageId });
+  expect(await onShop(request)).toEqual([]);
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/restore`, { headers })).ok()).toBe(true);
+  expect(await pageStatus(request, pageId)).toBe("draft");
+  expect(product(itemId)).toMatchObject({ offSale: true, pageId });
+  expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
+  await expect.poll(() => onShop(request)).toEqual([shopName]);
+  // Only irreversible deletion releases it. The older paired Commerce still offers the unclaimed product below.
+  expect((await request.delete(`/_emdash/api/content/products/${pageId}`, { headers })).ok()).toBe(true);
+  expect((await request.delete(`/_emdash/api/content/products/${pageId}/permanent`, { headers })).ok()).toBe(true);
   expect(product(itemId).offSale).toBe(true);
   expect(product(itemId)).not.toHaveProperty("pageId");
   expect(await onShop(request)).toEqual([]);
   await page.goto(`/_emdash/admin/plugins/${commerce}/settings`);
   await expect(page.getByRole("heading", { name: "Products without a page" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(shopName).first()).toBeVisible();
-  await capture(page, "8-trashed-product-without-page");
+  await capture(page, "8-permanently-deleted-product-without-page");
 
   // 9-12. Authority and links changed inside one request, through the same real routes. SQLite triggers land each
   // change at an exact point between this request's own writes: when EmDash writes the page, or when Commerce

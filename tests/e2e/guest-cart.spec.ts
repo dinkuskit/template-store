@@ -393,6 +393,328 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("3");
   await expect(subtotal).toHaveText("Subtotal $84.00");
 
+  // Exercise progressive WebMCP tool registration, additive cart synchronization, unknown pre-checkout totalMinor,
+  // price-change review invalidation, and explicit reviewFingerprint confirmation on the live compiled storefront.
+  const webMcpSetup = await shopper.evaluate(() => {
+    const registered: Array<{
+      name: string;
+      annotations: { untrustedContentHint: boolean; consequentialHint: boolean };
+      execute: (args?: Record<string, unknown>) => Promise<unknown>;
+    }> = [];
+    Object.defineProperty(navigator, "modelContext", {
+      configurable: true,
+      value: {
+        registerTool(tool: (typeof registered)[number]) {
+          registered.push(tool);
+        },
+      },
+    });
+    (window as unknown as { __webMcpTools?: typeof registered }).__webMcpTools = registered;
+    document.dispatchEvent(new CustomEvent("dinkus:guest-cart-hydrate"));
+    const dinkus = (window as unknown as { Dinkus?: { actions?: Record<string, unknown> } }).Dinkus;
+    return {
+      hasFrozenActions: Boolean(dinkus && Object.isFrozen(dinkus) && dinkus.actions && Object.isFrozen(dinkus.actions)),
+      toolNames: registered.map((tool) => tool.name),
+      allUntrusted: registered.every((tool) => tool.annotations.untrustedContentHint === true),
+    };
+  });
+  expect(webMcpSetup).toEqual({
+    hasFrozenActions: true,
+    toolNames: [
+      "get_cart",
+      "add_to_cart",
+      "update_cart_lines",
+      "cancel_cart",
+      "get_checkout_preview",
+      "proceed_to_checkout",
+    ],
+    allUntrusted: true,
+  });
+
+  // Additive add_to_cart increments existing line quantity (3 -> 4) and synchronizes the live /cart DOM.
+  const addResult = await shopper.evaluate(async (productId) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const addTool = tools.find((tool) => tool.name === "add_to_cart")!;
+    return (await addTool.execute({ id: productId, quantity: 1 })) as {
+      ok: boolean;
+      cart: { itemCount: number; subtotalMinor: number; reviewFingerprint: string };
+    };
+  }, xlId);
+  expect(addResult.ok).toBe(true);
+  expect(addResult.cart.itemCount).toBe(4);
+  expect(addResult.cart.subtotalMinor).toBe(11200);
+  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("4");
+  await expect(subtotal).toHaveText("Subtotal $112.00");
+  await shopper.screenshot({ path: resolve(root, "cart-webmcp-synced.png"), fullPage: true, animations: "disabled" });
+
+  // Regression 1: when an initial snapshot request for product A (xlId) is still in flight while an agent action
+  // adds product B (id), and a native shopper quantity edit on A also occurs while the agent's catalog read is in flight,
+  // both lines and the native quantity edit (A=2, B=1 -> $74.00) are preserved and priced.
+  const concurrentUpdateResult = await shopper.evaluate(
+    async ({ productA, productB }) => {
+      const tools = (window as unknown as {
+        __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+      }).__webMcpTools;
+      const addTool = tools.find((tool) => tool.name === "add_to_cart")!;
+      const replaceTool = tools.find((tool) => tool.name === "update_cart_lines")!;
+      await replaceTool.execute({ lines: [{ id: productA, quantity: 1 }] });
+
+      const originalFetch = window.fetch.bind(window);
+      let releaseDelayedAOnly!: () => void;
+      const delayedAOnlyGate = new Promise<void>((resolveGate) => {
+        releaseDelayedAOnly = resolveGate;
+      });
+      let notifyDelayedAOnlyStarted!: () => void;
+      const delayedAOnlyStarted = new Promise<void>((resolveStarted) => {
+        notifyDelayedAOnlyStarted = resolveStarted;
+      });
+      let releaseDelayedAB!: () => void;
+      const delayedABGate = new Promise<void>((resolveGate) => {
+        releaseDelayedAB = resolveGate;
+      });
+      let notifyDelayedABStarted!: () => void;
+      const delayedABStarted = new Promise<void>((resolveStarted) => {
+        notifyDelayedABStarted = resolveStarted;
+      });
+      let interceptedAOnly = false;
+      let interceptedAB = false;
+
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        const decoded = decodeURIComponent(url);
+        if (!interceptedAOnly && url.includes("/api/guest-cart/snapshot") && !decoded.includes(productB)) {
+          interceptedAOnly = true;
+          notifyDelayedAOnlyStarted();
+          const res = await originalFetch(input, init);
+          await delayedAOnlyGate;
+          return res;
+        }
+        if (
+          !interceptedAB &&
+          url.includes("/api/guest-cart/snapshot") &&
+          decoded.includes(productA) &&
+          decoded.includes(productB)
+        ) {
+          interceptedAB = true;
+          notifyDelayedABStarted();
+          const res = await originalFetch(input, init);
+          await delayedABGate;
+          return res;
+        }
+        return originalFetch(input, init);
+      };
+
+      try {
+        document.dispatchEvent(new CustomEvent("guest-cart-updated"));
+        await delayedAOnlyStarted;
+        const addPromise = addTool.execute({ id: productB, quantity: 1 }) as Promise<{
+          ok: boolean;
+          cart: { itemCount: number; subtotalMinor: number; lines: Array<{ id: string; quantity: number }> };
+        }>;
+        await delayedABStarted;
+        // Native shopper edits productA quantity (1 -> 2) while add_to_cart(productB) is still awaiting catalog I/O.
+        const qtyInput = document.querySelector<HTMLInputElement>(`[data-guest-cart-qty="${productA}"]`)!;
+        qtyInput.value = "2";
+        qtyInput.dispatchEvent(new Event("change", { bubbles: true }));
+        releaseDelayedAOnly();
+        releaseDelayedAB();
+        return await addPromise;
+      } finally {
+        window.fetch = originalFetch;
+      }
+    },
+    { productA: xlId, productB: id },
+  );
+  expect(concurrentUpdateResult.ok).toBe(true);
+  expect(concurrentUpdateResult.cart.itemCount).toBe(3);
+  expect(concurrentUpdateResult.cart.subtotalMinor).toBe(7400);
+  await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveValue("2");
+  await expect(shopper.locator(`[data-guest-cart-qty="${id}"]`)).toHaveValue("1");
+  await expect(subtotal).toHaveText("Subtotal $74.00");
+
+  // Regression: when localStorage writes fail during a native cart edit, consecutive native edits on /cart
+  // preserve the unsaved in-memory cart state instead of reloading older persisted lines.
+  await shopper.evaluate((key) => {
+    const original = Storage.prototype.setItem;
+    (window as unknown as { __origSetItem?: typeof original }).__origSetItem = original;
+    Storage.prototype.setItem = function setItem(name: string, value: string) {
+      if (name === key) throw new Error("storage blocked");
+      return original.call(this, name, value);
+    };
+  }, GUEST_CART_STORAGE_KEY);
+  try {
+    await shopper.locator(`[data-guest-cart-remove="${xlId}"]`).click();
+    await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveCount(0);
+    await expect(shopper.locator("[data-guest-cart-status]")).toContainText("Leave or reload this page");
+
+    const remainingQty = shopper.locator(`[data-guest-cart-qty="${id}"]`);
+    await remainingQty.fill("2");
+    await remainingQty.dispatchEvent("change");
+    await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveCount(0);
+    await expect(remainingQty).toHaveValue("2");
+    await expect(subtotal).toHaveText("Subtotal $36.00");
+    await expect(shopper.locator("[data-guest-cart-status]")).toContainText("Leave or reload this page");
+  } finally {
+    await shopper.evaluate(() => {
+      const orig = (window as unknown as { __origSetItem?: typeof Storage.prototype.setItem }).__origSetItem;
+      if (orig) Storage.prototype.setItem = orig;
+    });
+  }
+
+  // Restore the 4x XL cart line for the checkout review flow assertions below.
+  await shopper.evaluate(async (productA) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const replaceTool = tools.find((tool) => tool.name === "update_cart_lines")!;
+    await replaceTool.execute({ lines: [{ id: productA, quantity: 4 }] });
+  }, xlId);
+  await expect(subtotal).toHaveText("Subtotal $112.00");
+
+  // Step 1: proceed_to_checkout pauses at buyer_review_required with totalMinor: null and blocks missing fingerprint.
+  // Regression 2: if a native shopper quantity edit (4 -> 3) happens while the confirming proceed_to_checkout call
+  // is awaiting its snapshot read, confirmation is rejected and stays on /cart with buyer_review_required.
+  const reviewFlowBeforePriceChange = await shopper.evaluate(async (productA) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const proceedTool = tools.find((tool) => tool.name === "proceed_to_checkout")!;
+    const replaceTool = tools.find((tool) => tool.name === "update_cart_lines")!;
+    const step1 = (await proceedTool.execute({})) as {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+      totals: { subtotalMinor: number; totalMinor: number | null };
+    };
+    const missingFp = (await proceedTool.execute({ buyerConfirmed: true })) as {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+    };
+
+    const originalFetch = window.fetch.bind(window);
+    let releaseConfirmFetch!: () => void;
+    const confirmFetchGate = new Promise<void>((resolveGate) => {
+      releaseConfirmFetch = resolveGate;
+    });
+    let notifyConfirmFetchStarted!: () => void;
+    const confirmFetchStarted = new Promise<void>((resolveStarted) => {
+      notifyConfirmFetchStarted = resolveStarted;
+    });
+    let interceptedConfirm = false;
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (!interceptedConfirm && url.includes("/api/guest-cart/snapshot")) {
+        interceptedConfirm = true;
+        notifyConfirmFetchStarted();
+        const res = await originalFetch(input, init);
+        await confirmFetchGate;
+        return res;
+      }
+      return originalFetch(input, init);
+    };
+
+    let confirmDuringNativeEdit: {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+      totals: { subtotalMinor: number; totalMinor: number | null };
+    };
+    try {
+      const confirmPromise = proceedTool.execute({
+        buyerConfirmed: true,
+        reviewFingerprint: step1.reviewFingerprint,
+      }) as Promise<typeof confirmDuringNativeEdit>;
+      await confirmFetchStarted;
+      const qtyInput = document.querySelector<HTMLInputElement>(`[data-guest-cart-qty="${productA}"]`)!;
+      qtyInput.value = "3";
+      qtyInput.dispatchEvent(new Event("change", { bubbles: true }));
+      releaseConfirmFetch();
+      confirmDuringNativeEdit = await confirmPromise;
+    } finally {
+      window.fetch = originalFetch;
+    }
+
+    // Restore 4x XL and re-run step1 so the subsequent authoritative price-change test starts from a reviewed 4x XL quote.
+    await replaceTool.execute({ lines: [{ id: productA, quantity: 4 }] });
+    const restoredStep1 = (await proceedTool.execute({})) as typeof step1;
+    return {
+      step1: restoredStep1,
+      missingFp,
+      confirmDuringNativeEdit,
+      path: window.location.pathname,
+    };
+  }, xlId);
+  expect(reviewFlowBeforePriceChange.step1.status).toBe("buyer_review_required");
+  expect(reviewFlowBeforePriceChange.step1.totals.subtotalMinor).toBe(11200);
+  expect(reviewFlowBeforePriceChange.step1.totals.totalMinor).toBeNull();
+  expect(reviewFlowBeforePriceChange.missingFp.status).toBe("buyer_review_required");
+  expect(reviewFlowBeforePriceChange.confirmDuringNativeEdit.status).toBe("buyer_review_required");
+  expect(reviewFlowBeforePriceChange.confirmDuringNativeEdit.totals.subtotalMinor).toBe(8400);
+  expect(reviewFlowBeforePriceChange.path).toBe("/cart");
+
+  // Authoritative price change ($28 -> $30) invalidates the previous reviewFingerprint.
+  await setStockStatus(admin.request, xlId, "in-stock", { regular: "30", sale: "" });
+  const staleAndConfirmedFlow = await shopper.evaluate(async (oldFingerprint) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const proceedTool = tools.find((tool) => tool.name === "proceed_to_checkout")!;
+    const staleAttempt = (await proceedTool.execute({
+      buyerConfirmed: true,
+      reviewFingerprint: oldFingerprint,
+    })) as {
+      ok: boolean;
+      status: string;
+      reviewFingerprint: string;
+      totals: { subtotalMinor: number; totalMinor: number | null };
+    };
+    const pathAfterStale = window.location.pathname;
+    // Intercept window.location.assign so we verify navigation target without leaving /cart mid-test.
+    const navigatedPaths: string[] = [];
+    const dinkus = (window as unknown as {
+      Dinkus: {
+        actions: {
+          proceedToCheckout: (input: { buyerConfirmed: boolean; reviewFingerprint: string }) => Promise<{
+            ok: boolean;
+            status: string;
+            continueUrl: string;
+          }>;
+        };
+      };
+    }).Dinkus;
+    return {
+      staleAttempt,
+      pathAfterStale,
+      hasProceedAction: typeof dinkus.actions.proceedToCheckout === "function",
+      navigatedPaths,
+    };
+  }, reviewFlowBeforePriceChange.step1.reviewFingerprint);
+  expect(staleAndConfirmedFlow.staleAttempt.status).toBe("buyer_review_required");
+  expect(staleAndConfirmedFlow.staleAttempt.reviewFingerprint).not.toBe(
+    reviewFlowBeforePriceChange.step1.reviewFingerprint,
+  );
+  expect(staleAndConfirmedFlow.staleAttempt.totals.subtotalMinor).toBe(12000);
+  expect(staleAndConfirmedFlow.staleAttempt.totals.totalMinor).toBeNull();
+  expect(staleAndConfirmedFlow.pathAfterStale).toBe("/cart");
+
+  // Confirming with the new matching reviewFingerprint escalates to /checkout.
+  await shopper.evaluate(async (newFingerprint) => {
+    const tools = (window as unknown as {
+      __webMcpTools: Array<{ name: string; execute: (args?: Record<string, unknown>) => Promise<unknown> }>;
+    }).__webMcpTools;
+    const proceedTool = tools.find((tool) => tool.name === "proceed_to_checkout")!;
+    await proceedTool.execute({
+      buyerConfirmed: true,
+      reviewFingerprint: newFingerprint,
+    });
+  }, staleAndConfirmedFlow.staleAttempt.reviewFingerprint);
+  await expect(shopper).toHaveURL(/\/checkout$/);
+  await shopper.goto("/cart");
+
   await shopperContext.addInitScript(() => {
     Storage.prototype.getItem = function getItem() {
       throw new Error("storage blocked");
@@ -419,6 +741,12 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
         inventoryRequests: inventoryRequests.length,
         pdpOneAddToCart: true,
         pdpUnavailableVariantSoldOut: true,
+        webMcpRegisteredTools: webMcpSetup.toolNames.length,
+        webMcpAdditiveIncrement: true,
+        webMcpUnknownTotalMinor: null,
+        webMcpPriceChangeInvalidatesReview: true,
+        webMcpRequiresExplicitFingerprint: true,
+        webMcpOverlappingSnapshotRefreshCoalesced: true,
       },
       null,
       2,

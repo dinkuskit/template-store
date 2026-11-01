@@ -144,7 +144,7 @@ describe("product page publish check tells Commerce", () => {
     warn.mockRestore();
   });
 
-  it("takes the product off sale before and after unpublish, and drops the link after trash", async () => {
+  it("takes the product off sale before and after unpublish or soft trash, keeping its link", async () => {
     const rt = runtime({ commerce_item_id: "item-1" });
     const order: string[] = [];
     rt.handlePluginApiRoute.mockImplementation(async (_p: string, _m: string, _path: string, request: Request) => {
@@ -158,7 +158,7 @@ describe("product page publish check tells Commerce", () => {
       'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
       'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}',
       'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
-      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false,"deleted":true}',
+      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}',
     ]);
   });
 
@@ -776,7 +776,7 @@ describe("a page whose product Commerce holds", () => {
       { entryId: "01PAGE", onSale: false },
       { entryId: "01PAGE", onSale: false },
       { entryId: "01PAGE", onSale: false },
-      { entryId: "01PAGE", onSale: false, deleted: true },
+      { entryId: "01PAGE", onSale: false },
     ]);
   });
 

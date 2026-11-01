@@ -35,4 +35,3 @@ in Commerce's ledger: Commerce keeps no policy records.
 | `pnpm exec astro check` | 0 errors, 0 warnings |
 | `pnpm exec playwright test tests/e2e/structured-data-policy-feed.spec.ts tests/e2e/store-header-nav.spec.ts tests/e2e/shipping-storefront-profile.spec.ts --project=chromium-desktop --project=shipping-chromium-desktop` | 5 passed: both pages show their seeded EmDash text with no unset state on the Registry proof store and the shipping store; `/returns` carries exactly the link-only `OnlineStore` block, `/shipping` none; product JSON-LD has no shipping or return terms |
 | `node scripts/check-features.mjs`, `node scripts/check-worktree-text.mjs` | clean |
-
