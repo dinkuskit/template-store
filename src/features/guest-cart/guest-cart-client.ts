@@ -706,7 +706,6 @@ function commitAddToCartMutation(
     return false;
   }
   applyIntent(result.intent, session.notice);
-  document.dispatchEvent(new CustomEvent("guest-cart-updated"));
   if (persistFailed()) {
     setAddToCartStatus(
       container,
@@ -714,6 +713,7 @@ function commitAddToCartMutation(
       true,
     );
   } else {
+    document.dispatchEvent(new CustomEvent("guest-cart-updated"));
     setAddToCartStatus(container, "Added to cart.", false);
   }
   return true;
@@ -732,7 +732,9 @@ function isSingleAddBlocked(button: HTMLButtonElement, container: Element | null
 let hydrateListenerRegistered = false;
 
 export function hydrateGuestCartControls(): void {
-  session = loadSession();
+  if (!persistFailed()) {
+    session = loadSession();
+  }
   renderNav();
   installStorefrontWebMcp();
   if (!hydrateListenerRegistered && typeof document.addEventListener === "function") {
@@ -772,7 +774,9 @@ export function hydrateGuestCartControls(): void {
         }
         quantity = parsed;
       }
-      session = loadSession();
+      if (!persistFailed()) {
+        session = loadSession();
+      }
       commitAddToCartMutation(container, addGuestCartLine(session.intent, id, quantity));
       button.disabled = false;
     });
@@ -882,7 +886,9 @@ export function hydrateGuestCartPage(): void {
     const removeId = target.getAttribute("data-guest-cart-remove");
     if (!removeId) return;
     if (checkoutLocked()) return;
-    session = loadSession();
+    if (!persistFailed()) {
+      session = loadSession();
+    }
     const result = removeGuestCartLine(session.intent, removeId);
     if (!result.accepted) {
       mutationNotice = result.reason;
@@ -910,7 +916,9 @@ export function hydrateGuestCartPage(): void {
       setStatus(root, mutationNotice, true);
       return;
     }
-    session = loadSession();
+    if (!persistFailed()) {
+      session = loadSession();
+    }
     const result = setGuestCartLineQuantity(session.intent, id, quantity);
     if (!result.accepted) {
       mutationNotice = result.reason;

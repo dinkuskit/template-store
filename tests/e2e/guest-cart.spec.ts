@@ -534,6 +534,35 @@ test("guest cart persists shopper intent and stays honest when checkout is unava
   await expect(shopper.locator(`[data-guest-cart-qty="${id}"]`)).toHaveValue("1");
   await expect(subtotal).toHaveText("Subtotal $74.00");
 
+  // Regression: when localStorage writes fail during a native cart edit, consecutive native edits on /cart
+  // preserve the unsaved in-memory cart state instead of reloading older persisted lines.
+  await shopper.evaluate((key) => {
+    const original = Storage.prototype.setItem;
+    (window as unknown as { __origSetItem?: typeof original }).__origSetItem = original;
+    Storage.prototype.setItem = function setItem(name: string, value: string) {
+      if (name === key) throw new Error("storage blocked");
+      return original.call(this, name, value);
+    };
+  }, GUEST_CART_STORAGE_KEY);
+  try {
+    await shopper.locator(`[data-guest-cart-remove="${xlId}"]`).click();
+    await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveCount(0);
+    await expect(shopper.locator("[data-guest-cart-status]")).toContainText("Leave or reload this page");
+
+    const remainingQty = shopper.locator(`[data-guest-cart-qty="${id}"]`);
+    await remainingQty.fill("2");
+    await remainingQty.dispatchEvent("change");
+    await expect(shopper.locator(`[data-guest-cart-qty="${xlId}"]`)).toHaveCount(0);
+    await expect(remainingQty).toHaveValue("2");
+    await expect(subtotal).toHaveText("Subtotal $36.00");
+    await expect(shopper.locator("[data-guest-cart-status]")).toContainText("Leave or reload this page");
+  } finally {
+    await shopper.evaluate(() => {
+      const orig = (window as unknown as { __origSetItem?: typeof Storage.prototype.setItem }).__origSetItem;
+      if (orig) Storage.prototype.setItem = orig;
+    });
+  }
+
   // Restore the 4x XL cart line for the checkout review flow assertions below.
   await shopper.evaluate(async (productA) => {
     const tools = (window as unknown as {
