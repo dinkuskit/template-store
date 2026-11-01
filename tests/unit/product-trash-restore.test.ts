@@ -80,6 +80,14 @@ describe("product page Trash and irreversible deletion", () => {
     expect(s.state).toMatchObject({ product: null, offSale: true });
   });
 
+  it("uses the CMS-confirmed entry ID when permanent deletion was requested by slug", async () => {
+    const s = store();
+    const url = new URL("https://shop.example.test/_emdash/api/content/products/notebook/permanent");
+    const input = { ...s.input("DELETE", "/permanent"), url, request: new Request(url, { method: "DELETE" }) };
+    await withProductOnSale(input, async () => new Response(JSON.stringify({ data: { deleted: true, id: "page-1" } })));
+    expect(s.writes.map(({ body }) => body)).toEqual([{ entryId: "page-1", onSale: false, deleted: true }]);
+  });
+
   it.each([403, 409, 500])("keeps the binding when permanent deletion is refused (%s)", async (status) => {
     const s = store();
     const response = await withProductOnSale(s.input("DELETE", "/permanent"), async () => new Response(null, { status }));

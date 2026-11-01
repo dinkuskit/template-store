@@ -271,10 +271,13 @@ export async function withProductOnSale(
     // a refusal keeps the binding, and the gone page cannot be read through the normal content API.
     const response = await next();
     if (response.ok) {
+      // The content API also accepts a slug. Its answer holds the canonical ID even after deletion.
+      const answer = await response.clone().json().catch(() => null) as { data?: { deleted?: unknown; id?: unknown } } | null;
+      const entryId = answer?.data?.deleted === true && typeof answer.data.id === "string" ? answer.data.id : change.entryId;
       const fresh = await current();
       if (may(fresh)) {
         const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, fresh,
-          { entryId: change.entryId, onSale: false, deleted: true });
+          { entryId, onSale: false, deleted: true });
         if (failed) console.warn("[product-on-sale] the deleted page's link stays:", failed);
       }
     }
