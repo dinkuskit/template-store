@@ -3,7 +3,7 @@
  * pnpm dev:fresh and the proof store the browser tests use. Everything goes through the
  * installed plugin's own private routes, as the owner's product panel and the CLI do (catalog-api-20261027),
  * so the seed proves the Registry build and opens no plugin storage itself: each demo product's page first,
- * then the product created for that page, its choices, its prices and stock status, and the sale the page's
+ * then the product created for that page, its options, its prices and stock status, and the sale the page's
  * publish would record. Create-only-if-missing, keyed by SKU; nothing here resets a product someone edited.
  */
 import { applySeed, type SeedFile } from "emdash/seed";
@@ -74,9 +74,9 @@ export async function callCommerceRoute<T>(runtime: CommerceSeedRuntime, pluginI
 }
 
 /**
- * The demo member a Commerce member is, by its option values. While later choices are still to be added,
+ * The demo member a Commerce member is, by its option values. While later options are still to be added,
  * a member stands for the demo member that takes the first value of each of them (as demoVariantOptionInput
- * builds the choices).
+ * builds the options).
  */
 function memberSku(product: DemoProductSeed, member: VariantMember): string {
   const options = product.variant?.options ?? [];
@@ -91,7 +91,7 @@ async function createProduct(runtime: CommerceSeedRuntime, pluginId: string, ori
   const { catalogItemId } = await op<{ catalogItemId: string }>({ op: "create", commandId: product.commandId, name: product.name, sku: product.sku, entryId });
   const items = new Map<string, string>([[catalogItemId, product.sku]]);
   if (product.variant) {
-    // Commerce adds one choice at a time; each later choice names the revision it read.
+    // Commerce adds one option at a time; each later option names the revision it read.
     let variant: VariantProduct | undefined;
     for (const [index] of product.variant.options.entries()) {
       const existing = new Map<string, string>();
@@ -99,7 +99,7 @@ async function createProduct(runtime: CommerceSeedRuntime, pluginId: string, ori
         if (member.catalogItemId !== catalogItemId) existing.set(memberSku(product, member).toUpperCase(), member.catalogItemId);
       }
       const input = demoVariantOptionInput(product, index, catalogItemId, existing, index === 0 ? undefined : variant?.revision);
-      variant = (await op<{ product: VariantProduct }>({ op: "choice", ...input })).product;
+      variant = (await op<{ product: VariantProduct }>({ op: "option", ...input })).product;
     }
     for (const member of variant?.members ?? []) items.set(member.catalogItemId, memberSku(product, member));
   }

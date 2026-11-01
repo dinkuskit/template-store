@@ -43,7 +43,7 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
     // The owner's steps, through the private catalog route the CLI and agents use: a product, a Size choice
     // (Small is the product itself, Large a new version), a price for each, Large sold out.
     const { catalogItemId: small } = await catalog({ op: "create", commandId: `sized-${slug}`, name: "Sized hoodie", sku, entryId: pageId });
-    const choice = await catalog({ op: "choice", productId: small, optionId: "size", optionLabel: "Size", values: [
+    const choice = await catalog({ op: "option", productId: small, optionId: "size", optionLabel: "Size", values: [
       { valueId: "small", label: "Small", member: { catalogItemId: small, fulfillment: "physical" } },
       { valueId: "large", label: "Large", member: { commandId: `sized-${slug}-large`, name: "Sized hoodie", sku: `${sku}-L`, fulfillment: "physical" } },
     ] });
@@ -123,7 +123,7 @@ test("a digital choice checks out with no delivery address, and a physical one a
   try {
     // Print is the product itself (physical); PDF is a digital version of it.
     const { catalogItemId: print } = await catalog({ op: "create", commandId: `guide-${slug}`, name: "Grow guide", sku, entryId: pageId });
-    const choice = await catalog({ op: "choice", productId: print, optionId: "format", optionLabel: "Format", values: [
+    const choice = await catalog({ op: "option", productId: print, optionId: "format", optionLabel: "Format", values: [
       { valueId: "print", label: "Print", member: { catalogItemId: print, fulfillment: "physical" } },
       { valueId: "pdf", label: "PDF", member: { commandId: `guide-${slug}-pdf`, name: "Grow guide", sku: `${sku}-PDF`, fulfillment: "digital" } },
     ] });

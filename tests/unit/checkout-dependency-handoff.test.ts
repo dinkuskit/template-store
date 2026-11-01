@@ -182,7 +182,6 @@ describe("checkout dependency handoff contracts", () => {
     // Forward host input containing checkout option, typed via Parameters<typeof createPlugin>[0]
     const hostOptions: Parameters<typeof createPlugin>[0] = {
       siteUrl,
-      enableLocalStockManagement: false,
       checkout: {
         paymentBindingRef: "fixture-binding",
         resolvePayments: async () => null,
@@ -193,7 +192,6 @@ describe("checkout dependency handoff contracts", () => {
     const descriptor = dinkusCommerce(hostOptions as Parameters<typeof dinkusCommerce>[0]);
     expect(descriptor.id).toBe("dinkus-commerce");
     expect(descriptor.options?.siteUrl).toBe(siteUrl);
-    expect(descriptor.options?.enableLocalStockManagement).toBe(false);
     expect(Object.hasOwn(descriptor.options ?? {}, "checkout")).toBe(false);
     expect("routes" in descriptor).toBe(false);
 

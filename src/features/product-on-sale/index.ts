@@ -294,7 +294,7 @@ export async function withProductOnSale(
     return change.action === "publish" ? next() : refuse(503, "COMMERCE_UNAVAILABLE", "The page could not be checked for a product, so nothing was changed. Try again.");
   }
   if (found === "unlinked" && change.action === "publish") {
-    return refuse(422, "PUBLISH_REJECTED", "This page has no product yet. Add price and stock in the Dinkus Commerce panel, then publish.");
+    return refuse(422, "PUBLISH_REJECTED", "This page has no product yet. Save its price in the Dinkus Commerce panel, then publish.");
   }
   const page = sold(found);
   if (!page) return next();
