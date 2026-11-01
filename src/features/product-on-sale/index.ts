@@ -23,11 +23,11 @@ export const SET_ON_SALE_ROUTE = "catalog-items/set-on-sale";
 export const CATALOG_ROUTE = "catalog";
 
 const PRODUCTS = "products";
-const CONTENT_PATH = /^\/_emdash\/api\/content\/([^/]+)\/([^/]+)(?:\/(publish|unpublish))?$/;
+const CONTENT_PATH = /^\/_emdash\/api\/content\/([^/]+)\/([^/]+)(?:\/(publish|unpublish|permanent))?$/;
 
-export type ProductPageChange = { entryId: string; action: "publish" | "unpublish" | "trash" };
+export type ProductPageChange = { entryId: string; action: "publish" | "unpublish" | "trash" | "permanent" };
 
-/** Which products-page change this request makes: publish, unpublish or trash, or null. */
+/** Which products-page sale or deletion change this request makes, or null. */
 export function productPageChange(method: string, pathname: string): ProductPageChange | null {
   const match = pathname.match(CONTENT_PATH);
   if (!match || match[1] !== PRODUCTS) return null;
@@ -38,8 +38,10 @@ export function productPageChange(method: string, pathname: string): ProductPage
     return null;
   }
   if (!entryId || entryId.length > 1024) return null;
-  if (method === "POST" && match[3]) return { entryId, action: match[3] as "publish" | "unpublish" };
-  if (method === "DELETE" && !match[3]) return { entryId, action: "trash" };
+  const action = match[3];
+  if (method === "POST" && (action === "publish" || action === "unpublish")) return { entryId, action };
+  if (method === "DELETE" && action === "permanent") return { entryId, action };
+  if (method === "DELETE" && !action) return { entryId, action: "trash" };
   return null;
 }
 
@@ -229,7 +231,8 @@ function refuse(status: number, code: string, message: string): Response {
  * - Publish names the product from the published page title. A title that an
  *   overlapping publish changed meanwhile is caught up with title-only writes,
  *   which never change whether the product is for sale.
- * - Trash drops the page's link afterwards.
+ * - Soft trash keeps the page's product link, so restoring the page reopens
+ *   the same product. Only successful permanent deletion drops the link.
  * - If the page change fails after Commerce took the product off sale, the
  *   product goes back on sale; a page that cannot be read is not unpublished.
  *
@@ -263,6 +266,23 @@ export async function withProductOnSale(
   if (typeof permission !== "string") return next();
   const may = (who: unknown) => !!who && hasPermission(who as Parameters<typeof hasPermission>[0], permission as Parameters<typeof hasPermission>[1]);
   const current = async () => (input.currentUser ? await input.currentUser().catch(() => null) : input.user);
+  if (change.action === "permanent") {
+    // EmDash alone authorizes irreversible deletion. Release Commerce's link only after it succeeds;
+    // a refusal keeps the binding, and the gone page cannot be read through the normal content API.
+    const response = await next();
+    if (response.ok) {
+      // The content API also accepts a slug. Its answer holds the canonical ID even after deletion.
+      const answer = await response.clone().json().catch(() => null) as { data?: { deleted?: unknown; id?: unknown } } | null;
+      const entryId = answer?.data?.deleted === true && typeof answer.data.id === "string" ? answer.data.id : change.entryId;
+      const fresh = await current();
+      if (may(fresh)) {
+        const { failed } = await setOnSale(runtime, input.commercePluginId, input.url, fresh,
+          { entryId, onSale: false, deleted: true });
+        if (failed) console.warn("[product-on-sale] the deleted page's link stays:", failed);
+      }
+    }
+    return response;
+  }
   const locale = input.url.searchParams.get("locale") ?? undefined;
   // The person as last read; writes that only take a product off sale again after an allowed write carry them.
   let authorized: unknown = input.user;
@@ -354,13 +374,11 @@ export async function withProductOnSale(
     throw error;
   }
   if (!response.ok) await undo();
-  else if (change.action === "trash") {
-    const dropped = await tell({ onSale: false, deleted: true });
-    if (dropped) console.warn("[product-on-sale] the trashed page's link stays:", dropped);
-  } else {
+  else {
+    // Soft trash, like unpublish, withdraws the offer without losing the product on a later restore.
     // Off sale again after the page change, so an on-sale write that overlapped it cannot be the last word.
     const failed = await tell({ onSale: false });
-    if (failed) console.warn("[product-on-sale] the product could not be taken off sale again after unpublish:", failed);
+    if (failed) console.warn("[product-on-sale] the product could not be taken off sale again after the page change:", failed);
   }
   return response;
 }
