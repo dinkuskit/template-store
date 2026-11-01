@@ -296,6 +296,12 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
       if (add instanceof HTMLButtonElement) add.disabled = !view.sellable;
       add.textContent = view.buttonLabel;
     }
+    // The earlier Add belongs to the previous selection; keep actionable persistence alerts.
+    const addStatus = document.querySelector<HTMLElement>("[data-add-to-cart-status]");
+    if (addStatus?.getAttribute("role") === "status") {
+      addStatus.hidden = true;
+      addStatus.textContent = "";
+    }
   }
   for (const input of choices) input.addEventListener("change", update);
 
