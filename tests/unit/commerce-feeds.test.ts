@@ -273,6 +273,8 @@ describe("installed Commerce feed facts", () => {
     expect(agentsMd).toContain("payload = body.success === true ? body.data : body");
     expect(agentsMd).toContain("payload.checkout.retryAfter === payload.checkout.attemptId");
     expect(agentsMd).toContain("recoverable-failure");
+    expect(agentsMd).toContain("Pre-Start Checkout DOM Estimate Attributes");
+    expect(agentsMd).toContain("exclusively from Commerce's authoritative frozen `data.checkout.pricing.finalTotal.minor`");
   });
 
   it("preserves freeOver shipping threshold in buildInstalledStorefrontAgentFeedOptions", async () => {

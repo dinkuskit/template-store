@@ -381,13 +381,14 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
   const domLines = domSelector
     ? [
         "",
-        "### Checkout DOM Attributes (`/checkout`)",
-        `On the \`/checkout\` page, \`${domSelector}\` exposes live integer minor-unit attributes alongside formatted USD strings:`,
+        "### Pre-Start Checkout DOM Estimate Attributes (`/checkout`)",
+        `On the \`/checkout\` page, \`${domSelector}\` exposes browser-side pre-start **estimate** attributes in integer minor units alongside formatted USD strings (reflecting cart line subtotals and the base flat/free shipping rate before Commerce applies coupons, free-shipping thresholds, or authoritative start pricing):`,
         "- `data-checkout-currency=\"USD\"`",
-        "- `data-checkout-subtotal-minor=\"<integer-cents>\"`",
-        "- `data-checkout-shipping-minor=\"<integer-cents>\"`",
+        "- `data-checkout-subtotal-minor=\"<estimated-subtotal-cents>\"`",
+        "- `data-checkout-shipping-minor=\"<estimated-shipping-cents>\"`",
         "- `data-checkout-tax-minor=\"0\"`",
-        "- `data-checkout-total-minor=\"<integer-cents>\"`",
+        "- `data-checkout-total-minor=\"<estimated-total-cents>\"`",
+        "- **Important**: Treat these DOM attributes strictly as pre-start browser estimates (for example, a physical 5000-cent basket with a 500-cent flat rate publishes `data-checkout-total-minor=\"5500\"` in the DOM estimate even when a 5000-cent free-shipping threshold applies at start). Provision single-use virtual cards exclusively from Commerce's authoritative frozen `data.checkout.pricing.finalTotal.minor` returned by `POST .../checkout/guest/start`.",
       ]
     : [];
   return [
@@ -403,7 +404,7 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
     `- **Meta Catalog CSV Feed**: \`GET ${feed.siteOrigin}/feeds/meta-catalog.csv\``,
     "",
     "## 2. Deterministic Virtual Card Sizing (`USD` Minor Units)",
-    "Agents provisioning single-use virtual payment cards (Stripe Issuing, Privacy, Lithic, Ramp, or consumer agent wallets) can compute the exact payable total in USD minor units (cents) before or during checkout:",
+    "Agents provisioning single-use virtual payment cards (Stripe Issuing, Privacy, Lithic, Ramp, or consumer agent wallets) must set the final card limit exclusively from Commerce's authoritative frozen `data.checkout.pricing.finalTotal.minor` returned by `POST .../checkout/guest/start` (and can pre-estimate totals in USD minor units before starting checkout using the rules below):",
     `- **Currency**: \`${feed.virtualCardSizing.currency}\``,
     `- **Tax**: Always \`${feed.virtualCardSizing.taxMinor}\` minor units (\`tax: { currency: "USD", minor: "0" }\`). Tax is not added at payment session creation.`,
     `- **Shipping**: ${shippingSummaryLine(feed.virtualCardSizing.shipping)}`,
