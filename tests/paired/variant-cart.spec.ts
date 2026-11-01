@@ -72,6 +72,40 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
       await expect.poll(() => shopper.evaluate((key) => localStorage.getItem(key), CART_KEY)).toContain(small);
       await capture(shopper, "1-product-page-small");
 
+      // A confirmation belongs to the Size just added, not the newly selected sold-out Size.
+      const notice = shopper.locator("[data-add-to-cart-status]");
+      await expect(notice).toHaveText("Added to cart.");
+      await sizes.getByRole("radio", { name: "Large" }).check();
+      await expect(add).toBeDisabled();
+      await expect(add).toHaveText("Sold out");
+      await expect(notice).toBeHidden();
+      await expect(notice).toHaveText("");
+      expect(await shopper.evaluate((key) => JSON.parse(localStorage.getItem(key)!), CART_KEY))
+        .toEqual({ version: 1, lines: [{ id: small, quantity: 1 }] });
+      await sizes.getByRole("radio", { name: "Small" }).check();
+      await expect(add).toBeEnabled();
+      await expect(notice).toBeHidden();
+
+      // Do not hide persistence alerts when changing Size: an unsaved Add still needs its warning.
+      await shopper.evaluate((key) => {
+        const original = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (name: string, value: string) {
+          if (name === key) throw new Error("storage blocked");
+          return original.call(this, name, value);
+        };
+      }, CART_KEY);
+      await add.click();
+      await expect(notice).toHaveAttribute("role", "alert");
+      await expect(notice).toContainText("Leave or reload this page");
+      const warning = await notice.textContent();
+      await sizes.getByRole("radio", { name: "Large" }).check();
+      await expect(notice).toBeVisible();
+      await expect(notice).toHaveText(warning!);
+      expect(await shopper.evaluate((key) => JSON.parse(localStorage.getItem(key)!), CART_KEY))
+        .toEqual({ version: 1, lines: [{ id: small, quantity: 1 }] });
+      await capture(shopper, "1b-size-change-keeps-storage-alert");
+
+      // A full navigation restores the prototype and reloads the persisted (not the unsaved) intent.
       // The cart prices the chosen Size from Commerce; before #181 it said the product had left the catalog.
       await shopper.goto("/cart");
       const line = shopper.locator(`[data-guest-cart-line="${small}"]`);
