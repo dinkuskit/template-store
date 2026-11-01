@@ -61,6 +61,11 @@ export type GuestCheckoutBreakdownView = Readonly<{
   shippingText: string;
   taxText: string;
   totalText: string;
+  subtotalMinor: string | null;
+  shippingMinor: string | null;
+  taxMinor: "0";
+  totalMinor: string | null;
+  currency: "USD";
 }>;
 
 export type GuestCartLineReason =
@@ -433,6 +438,11 @@ export function presentGuestCheckoutBreakdown(options: {
     shippingText,
     taxText,
     totalText,
+    subtotalMinor: subtotalMinor !== null ? subtotalMinor.toString() : null,
+    shippingMinor: shippingMinor !== null ? shippingMinor.toString() : null,
+    taxMinor: "0",
+    totalMinor: totalMinor !== null ? totalMinor.toString() : null,
+    currency: "USD",
   };
 }
 

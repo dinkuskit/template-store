@@ -497,6 +497,11 @@ describe("guest cart snapshot presentation", () => {
       shippingText: "$5.00",
       taxText: "Calculated at checkout",
       totalText: "$53.00",
+      subtotalMinor: "4800",
+      shippingMinor: "500",
+      taxMinor: "0",
+      totalMinor: "5300",
+      currency: "USD",
     });
     expect(
       presentGuestCheckoutBreakdown({
@@ -509,6 +514,11 @@ describe("guest cart snapshot presentation", () => {
       shippingText: "Free",
       taxText: "Calculated at checkout",
       totalText: "$48.00",
+      subtotalMinor: "4800",
+      shippingMinor: "0",
+      taxMinor: "0",
+      totalMinor: "4800",
+      currency: "USD",
     });
     expect(
       presentGuestCheckoutBreakdown({
@@ -521,6 +531,11 @@ describe("guest cart snapshot presentation", () => {
       shippingText: "Calculated at checkout",
       taxText: "Calculated at checkout",
       totalText: "Calculated at checkout",
+      subtotalMinor: "4800",
+      shippingMinor: null,
+      taxMinor: "0",
+      totalMinor: null,
+      currency: "USD",
     });
 
     const digitalIntent = addGuestCartLine(emptyGuestCartIntent(), "guide-1", 1).intent;
@@ -546,6 +561,11 @@ describe("guest cart snapshot presentation", () => {
       shippingText: "Free",
       taxText: "Calculated at checkout",
       totalText: "$12.00",
+      subtotalMinor: "1200",
+      shippingMinor: "0",
+      taxMinor: "0",
+      totalMinor: "1200",
+      currency: "USD",
     });
   });
 });
