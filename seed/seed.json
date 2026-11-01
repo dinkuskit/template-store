@@ -327,7 +327,7 @@
             {
               "_type": "span",
               "_key": "policy-support-heading-span",
-              "text": "Policy provenance",
+              "text": "About these policies",
               "marks": []
             }
           ]
@@ -341,7 +341,7 @@
             {
               "_type": "span",
               "_key": "policy-support-authority-span",
-              "text": "Authoritative shipping charges, handling windows, and return eligibility come directly from the connected Commerce store.",
+              "text": "This store writes its shipping and returns policies on these pages. The shipping charge for an order is shown at checkout.",
               "marks": []
             }
           ]
@@ -449,7 +449,7 @@
                 {
                   "_type": "span",
                   "_key": "shipping-cutoff-body-span",
-                  "text": "Authoritative shipping charges, destination regions, handling windows, and transit estimates come from the connected Commerce shipping policy summary above. Edit this page in EmDash to publish your store's dispatch schedule or fulfillment guidance."
+                  "text": "Describe when orders are packed and sent, any order cut-off, and where you ship. Shoppers see the shipping charge for their order at checkout. Edit this page in EmDash to publish your store's dispatch schedule or fulfillment guidance."
                 }
               ]
             },
@@ -507,7 +507,7 @@
                 {
                   "_type": "span",
                   "_key": "returns-eligibility-body-span",
-                  "text": "Authoritative return eligibility, return window length, return method, and fee terms come from the connected Commerce return policy summary above. Edit this page in EmDash to publish your store's item-condition requirements or category notes."
+                  "text": "Describe which items can be returned, how long shoppers have, what condition items must be in, and who pays for return shipping. Edit this page in EmDash to publish your store's item-condition requirements or category notes."
                 }
               ]
             },

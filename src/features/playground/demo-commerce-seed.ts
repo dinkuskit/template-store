@@ -1,41 +1,26 @@
 /**
- * Playground-only Commerce catalog seed.
+ * Playground-only setup of each visitor's store. The playground runs Commerce's Registry build, the one build
+ * Commerce keeps (template-one-build-registry-20261031), inside the visitor's store beside Payments and Ship
+ * (playground-plugins-in-store-20261023), so everything Commerce holds is set up through Commerce itself:
  *
- * EmDash's playground middleware applies seed/seed.json to each per-visitor
- * Durable Object database, but that seed only covers CMS content. Commerce
- * catalog items live in plugin storage, so a fresh playground DB had none and
- * the storefront fell back to "The catalog is unavailable right now." This
- * creates the simple synthetic demo items from `pnpm seed:demo`, create-only-
- * if-missing (keyed by SKU), and never touches checkout configuration.
+ * - its storage indexes, which EmDash builds only on a scheduler tick a visitor's database never gets;
+ * - the store's merchant settings (United States, as a real store's owner would choose);
+ * - the demo catalog through Commerce's own private routes, as the proof store's seed does;
+ * - Commerce connected to the pretend DinkusKit through its own Settings buttons, so checkout is set up
+ *   before the visitor's first click (playground-pretend-connected-20261022);
+ * - the playground's own pages and the two sample orders.
+ *
+ * Create-only-if-missing throughout: nothing here changes what the visitor has edited.
  */
-import {
-  addCatalogVariantOption,
-  createCatalogItem,
-  createPlugin,
-  listCatalogProducts,
-  setCatalogItemManualAvailability,
-  setCatalogItemRegularPrice,
-  setCatalogItemSalePrice,
-  CATALOG_COLLECTION,
-  CATALOG_MANUAL_AVAILABILITY_COLLECTION,
-  CATALOG_PRICES_COLLECTION,
-  COMMERCE_PLUGIN_ID,
-  PRODUCT_PAGES_COLLECTION,
-  setProductPageOnSale,
-  loadMerchantStoreSettings,
-  saveMerchantStoreSettings,
-  type CatalogManualAvailabilityRecord,
-  type CatalogPriceRecord,
-  type CatalogStorageRecord,
-} from "@dinkuskit/commerce";
 import { createSettingsAccess, OptionsRepository, PluginStorageRepository } from "emdash";
 import { applySeed, type SeedFile } from "emdash/seed";
 import { sql } from "kysely";
+import { loadMerchantStoreSettings, saveMerchantStoreSettings } from "@dinkuskit/commerce";
 
-import { DEMO_PRODUCTS, demoAvailabilityForSku, demoRegularMinorForSku, demoVariantOptionInput, type DemoProductSeed } from "../../../scripts/demo-seed-policy.js";
-import { ensureStorefrontSearchSupport } from "../store-shell/index.js";
-import { buildDemoProductEntries, demoProductPages } from "./demo-products.js";
+import { DEMO_PRODUCTS } from "../../../scripts/demo-seed-policy.js";
+import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "../playground-plugins/registry-plugins.mjs";
 import { ensurePlaygroundSampleOrders } from "./demo-orders.js";
+import { callCommerceRoute, ensureDemoCatalogThroughCommerce, type CommerceSeedRuntime } from "./demo-registry-seed.js";
 import { PLAYGROUND_TOUR_PAGE_ENTRY } from "../playground-tour/copy.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
@@ -44,24 +29,13 @@ interface StorageDeclaration {
   uniqueIndexes?: Array<string | string[]>;
 }
 
-function repository<T>(db: Db, collection: string, declaration: StorageDeclaration | undefined) {
-  return new PluginStorageRepository<T>(db, COMMERCE_PLUGIN_ID, collection, [
-    ...(declaration?.indexes ?? []),
-    ...(declaration?.uniqueIndexes ?? []),
-  ]);
-}
+/** The installed Commerce's storage declarations, from its Registry manifest (the playground config defines them). */
+declare const __PLAYGROUND_COMMERCE_STORAGE__: Record<string, StorageDeclaration> | undefined;
+const commerceStorage = (): Record<string, StorageDeclaration> =>
+  typeof __PLAYGROUND_COMMERCE_STORAGE__ === "undefined" ? {} : __PLAYGROUND_COMMERCE_STORAGE__;
 
-export function playgroundCommerceStorage(db: Db) {
-  const declarations = createPlugin().storage as Record<string, StorageDeclaration> | undefined;
-  return {
-    catalog: repository<CatalogStorageRecord>(db, CATALOG_COLLECTION, declarations?.[CATALOG_COLLECTION]),
-    prices: repository<CatalogPriceRecord>(db, CATALOG_PRICES_COLLECTION, declarations?.[CATALOG_PRICES_COLLECTION]),
-    availability: repository<CatalogManualAvailabilityRecord>(
-      db, CATALOG_MANUAL_AVAILABILITY_COLLECTION, declarations?.[CATALOG_MANUAL_AVAILABILITY_COLLECTION],
-    ),
-    pages: repository<{ entryId: string; catalogItemId: string }>(db, PRODUCT_PAGES_COLLECTION, declarations?.[PRODUCT_PAGES_COLLECTION]),
-  };
-}
+/** The id the playground installs Commerce under: its Registry runtime id. */
+export const PLAYGROUND_COMMERCE_ID: string = PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce;
 
 const SAFE = /^[A-Za-z0-9_-]+$/;
 
@@ -72,8 +46,11 @@ const SAFE = /^[A-Za-z0-9_-]+$/;
  * its unique indexes are proven, so create the declared indexes here using
  * EmDash's naming and SQLite expression form (playground DBs are SQLite).
  */
-export async function ensureCommerceStorageIndexes(db: Db): Promise<void> {
-  const declarations = (createPlugin().storage ?? {}) as Record<string, StorageDeclaration>;
+export async function ensureCommerceStorageIndexes(
+  db: Db,
+  pluginId: string = PLAYGROUND_COMMERCE_ID,
+  declarations: Record<string, StorageDeclaration> = commerceStorage(),
+): Promise<void> {
   for (const [collection, declaration] of Object.entries(declarations)) {
     const norm = (list: Array<string | string[]> | undefined) => (list ?? []).map((i) => (Array.isArray(i) ? i : [i]));
     const unique = norm(declaration.uniqueIndexes);
@@ -83,65 +60,17 @@ export async function ensureCommerceStorageIndexes(db: Db): Promise<void> {
       ...unique.map((fields) => ({ fields, unique: true })),
     ];
     for (const { fields, unique: isUnique } of entries) {
-      if (![COMMERCE_PLUGIN_ID, collection, ...fields].every((part) => SAFE.test(part))) {
+      if (![pluginId, collection, ...fields].every((part) => SAFE.test(part))) {
         throw new Error(`Unsafe Commerce storage index declaration for ${collection}`);
       }
-      const name = `${isUnique ? "uidx" : "idx"}_plugin_${COMMERCE_PLUGIN_ID}_${collection}_${fields.join("_")}`.substring(0, 128);
+      const name = `${isUnique ? "uidx" : "idx"}_plugin_${pluginId}_${collection}_${fields.join("_")}`.substring(0, 128);
       const expressions = fields.map((field) => `json_extract(data, '$.${field}')`).join(", ");
       await sql`${sql.raw(isUnique ? "CREATE UNIQUE INDEX" : "CREATE INDEX")} IF NOT EXISTS ${sql.ref(name)}
         ON _plugin_storage(plugin_id, collection, ${sql.raw(expressions)})`.execute(db);
       await db.insertInto("_plugin_indexes" as never).values({
-        plugin_id: COMMERCE_PLUGIN_ID, collection, index_name: name, fields: JSON.stringify(fields),
+        plugin_id: pluginId, collection, index_name: name, fields: JSON.stringify(fields),
       } as never).onConflict((oc) => oc.columns(["plugin_id", "collection", "index_name"] as never).doNothing()).execute();
     }
-  }
-}
-
-type Storage = ReturnType<typeof playgroundCommerceStorage>;
-
-async function createProduct(storage: Storage, product: DemoProductSeed): Promise<void> {
-  const variant = product.variant;
-  const created = await createCatalogItem(storage.catalog, {
-    commandId: product.commandId,
-    manageStock: false,
-    ...(variant ? { fulfillment: "physical" as const } : {}),
-    name: product.name,
-    sku: product.sku,
-  });
-  const parentId = created.item.itemId;
-  const items = [{ catalogItemId: parentId, sku: product.sku }];
-  if (variant) {
-    // Commerce adds one option at a time; each later option names the revision it read.
-    const readVariant = async () => {
-      const parent = await storage.catalog.get(parentId) as {
-        variantProduct?: { revision: number; members: { catalogItemId: string }[] };
-      } | null;
-      const members = new Map<string, string>();
-      for (const member of parent?.variantProduct?.members ?? []) {
-        if (member.catalogItemId === parentId) continue;
-        const record = await storage.catalog.get(member.catalogItemId);
-        if (record?.sku) members.set(record.sku.toUpperCase(), member.catalogItemId);
-      }
-      return { revision: parent?.variantProduct?.revision, members };
-    };
-    for (const [index] of variant.options.entries()) {
-      const read = await readVariant();
-      await addCatalogVariantOption(
-        { catalog: storage.catalog },
-        demoVariantOptionInput(product, index, parentId, read.members, index === 0 ? undefined : read.revision),
-        { collection: CATALOG_COLLECTION, pluginId: COMMERCE_PLUGIN_ID },
-      );
-    }
-    for (const [sku, catalogItemId] of (await readVariant()).members) items.push({ catalogItemId, sku });
-  }
-  for (const { catalogItemId, sku } of items) {
-    await setCatalogItemRegularPrice(storage, {
-      catalogItemId, amount: { currency: "USD", minor: demoRegularMinorForSku(product, sku) },
-    });
-    if (product.saleMinor !== null) {
-      await setCatalogItemSalePrice(storage, { catalogItemId, amount: { currency: "USD", minor: product.saleMinor } });
-    }
-    await setCatalogItemManualAvailability(storage, { catalogItemId, status: demoAvailabilityForSku(product, sku) });
   }
 }
 
@@ -165,77 +94,68 @@ export const PLAYGROUND_CONNECT_PAGE_ENTRY = {
   },
 };
 
-/**
- * Commerce holds which page sells each demo item (template-no-commerce-box-20261029). A page with no sale recorded
- * yet is recorded as the publish check records one, so its item stays on sale with its page.
- */
-async function linkDemoProductPages(db: Db, storage: Storage, pages: ReturnType<typeof demoProductPages>): Promise<void> {
-  if (pages.length === 0) return;
-  const rows = await sql<{ id: string; slug: string }>`
-    select id, slug from ec_products
-    where slug in (${sql.join(pages.map((page) => page.slug))}) and status = 'published' and deleted_at is null`.execute(db as never);
-  const ids = new Map(rows.rows.map((row) => [row.slug, row.id]));
-  for (const { slug, catalogItemId } of pages) {
-    const entryId = ids.get(slug);
-    if (!entryId || await storage.pages.get(`p:${entryId}`)) continue;
-    await setProductPageOnSale({ catalog: storage.catalog, pages: storage.pages }, { entryId, catalogItemId, onSale: true });
-  }
-}
-
 /** Every demo product, including the color and size hoodie. */
 export const PLAYGROUND_DEMO_PRODUCTS = DEMO_PRODUCTS;
 
-/** Creates missing demo catalog items and product entries. Existing SKUs and entries are left untouched. */
-export async function ensurePlaygroundDemoCatalog(db: Db, options: { playground?: boolean } = {}): Promise<{ created: string[] }> {
+/** The store's merchant settings, saved once: a later pass never replaces what the visitor saved. */
+async function ensureMerchantSettings(db: Db): Promise<void> {
+  const settings = createSettingsAccess(new OptionsRepository(db), PLAYGROUND_COMMERCE_ID);
+  const current = await loadMerchantStoreSettings(settings);
+  if (current.revision !== null) return;
+  await saveMerchantStoreSettings(settings, {
+    expectedRevision: current.revision,
+    storeCountry: "US",
+    shippingCountries: ["US"],
+    requirePhoneNumber: false,
+  });
+}
+
+type ConnectView = { blocks?: { type?: string; text?: string }[] };
+const isConnected = (view: ConnectView) =>
+  (view.blocks ?? []).some((block) => block.type === "context" && /^Connected to DinkusKit\.com/u.test(block.text ?? ""));
+
+/**
+ * Commerce connected to the pretend DinkusKit, through the same Settings buttons an owner presses: Connect,
+ * then Check, which finds the pretend Approve done and fetches the playground's checkout settings. Commerce
+ * connects only on an https store, as on a real one; elsewhere the store stays unconnected and checkout closed.
+ */
+async function ensureCommerceConnected(runtime: CommerceSeedRuntime, origin: string): Promise<boolean> {
+  const press = (action_id: string) => callCommerceRoute<ConnectView>(runtime, PLAYGROUND_COMMERCE_ID, origin, "admin",
+    { type: "block_action", action_id, page: "/settings" });
+  if (isConnected(await callCommerceRoute<ConnectView>(runtime, PLAYGROUND_COMMERCE_ID, origin, "admin", { type: "page_load", page: "/settings" }))) {
+    return true;
+  }
+  if (!origin.startsWith("https://")) return false;
+  await press("connect");
+  return isConnected(await press("connect.check"));
+}
+
+/**
+ * Sets up a visitor's store, create-only-if-missing. Needs EmDash's full runtime (a visitor's requests are an
+ * Administrator's), since Commerce is set up through its own private routes.
+ */
+export async function ensurePlaygroundDemoCatalog(
+  db: Db,
+  options: { runtime: CommerceSeedRuntime; origin: string },
+): Promise<{ created: string[]; connected: boolean }> {
   await ensureCommerceStorageIndexes(db);
-  const settings = createSettingsAccess(new OptionsRepository(db), COMMERCE_PLUGIN_ID);
-  const currentSettings = await loadMerchantStoreSettings(settings);
-  // A null revision means the settings record does not exist. Empty country
-  // lists are valid saved values and must never be replaced on a later seed
-  // pass, including after a Worker isolate is replaced.
-  if (currentSettings.revision === null) {
-    await saveMerchantStoreSettings(settings, {
-      expectedRevision: currentSettings.revision,
-      storeCountry: "US",
-      sellingCountries: ["US"],
-      shippingCountries: ["US"],
-      requirePhoneNumber: false,
-    });
-  }
-  const storage = playgroundCommerceStorage(db);
-  const existing = new Set((await listCatalogProducts(storage)).products.map((p) => p.sku.toUpperCase()));
-  const created: string[] = [];
-  for (const product of PLAYGROUND_DEMO_PRODUCTS) {
-    if (existing.has(product.sku.toUpperCase())) continue;
-    await createProduct(storage, product);
-    created.push(product.sku);
-  }
-  // Link each demo Commerce item to a published EmDash product page.
-  // onConflict "skip" never changes or republishes an existing entry.
-  const links = (await listCatalogProducts(storage)).products
-    .map((p) => ({ sku: p.sku, catalogItemId: p.catalogItemId }));
-  const entries = buildDemoProductEntries(links);
-  if (entries.length > 0) {
-    await applySeed(db as Parameters<typeof applySeed>[0], { version: "1", content: { products: entries } } as SeedFile, {
-      includeContent: true, onConflict: "skip", skipMediaDownload: true,
-    });
-    await linkDemoProductPages(db, storage, demoProductPages(links));
-  }
-  await ensureStorefrontSearchSupport(db as never);
-  if (!options.playground) return { created };
+  await ensureMerchantSettings(db);
+  const { created } = await ensureDemoCatalogThroughCommerce(options.runtime, PLAYGROUND_COMMERCE_ID, options.origin);
+  const connected = await ensureCommerceConnected(options.runtime, options.origin);
   await applySeed(db as Parameters<typeof applySeed>[0], { version: "1", content: { pages: [PLAYGROUND_CONNECT_PAGE_ENTRY, PLAYGROUND_TOUR_PAGE_ENTRY] } } as SeedFile, {
     includeContent: true, onConflict: "skip", skipMediaDownload: true,
   });
   // Sizes are catalog items of their own, so read every item's SKU, not just listed products.
+  const catalog = new PluginStorageRepository<{ itemId: string; sku: string }>(db, PLAYGROUND_COMMERCE_ID, "catalog_items", []);
   const skus = new Map<string, string>();
   let cursor: string | undefined;
   do {
-    const page = await storage.catalog.query({ limit: 100, ...(cursor ? { cursor } : {}) });
-    for (const row of page.items) skus.set(row.data.sku.toUpperCase(), row.data.itemId);
+    const page = await catalog.query({ limit: 100, ...(cursor ? { cursor } : {}) });
+    for (const row of page.items) if (row.data.sku) skus.set(row.data.sku.toUpperCase(), row.data.itemId);
     cursor = page.cursor;
   } while (cursor);
   await ensurePlaygroundSampleOrders(db, skus);
-  return { created };
+  return { created, connected };
 }
 
 export { PLAYGROUND_FLAT_RATE_SHIPPING } from "./flat-rate-shipping.js";

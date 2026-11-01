@@ -106,7 +106,7 @@ test("the seeded main menu leads from every store page to the shop and its categ
   );
   await expect(
     page.locator('[data-policy-support-section="policy-support-note"] h3'),
-  ).toHaveText("Policy provenance");
+  ).toHaveText("About these policies");
 
   // /search route renders <LiveSearch> and SSR FTS5 results, while excluding draft content.
   await page.goto("/search?q=Everyday");

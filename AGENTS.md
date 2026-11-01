@@ -57,8 +57,9 @@ outputs must be original and public-safe.
   demo and the browser tests mount the pinned Commerce's Registry bundle through
   EmDash's `sandboxed: [...]` (`scripts/lib/paired-commerce.mjs`,
   `DINKUS_PAIRED_COMMERCE_DIR`). Commerce's native copy and
-  `DINKUS_CATALOG_PROFILE=native-development` are retired; only the playground
-  still runs the native copy until its own switch to the Registry build.
+  `DINKUS_CATALOG_PROFILE=native-development` are retired. The playground runs
+  the same Registry build in each visitor's store, as it runs Payments and Ship
+  (`playground-commerce-in-store-20261031`).
 - The authorized guest-cart extension consumes Commerce authority. Browser
   identity/quantity persistence is untrusted intent/cache, never a price, stock,
   checkout or order backend. Guest checkout and return states depend on the

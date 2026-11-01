@@ -1,21 +1,14 @@
 /**
- * Host-side Payments port for the playground's native Commerce plugin.
+ * The playground's checkout guard for the visitor's Commerce.
  *
- * Commerce's own trusted TEST payment port does the request shaping and
- * outcome validation; this module only supplies its credential (a store pass
- * minted from PAYMENTS_STORE_KEY) and a scoped fetch that adds the playground
- * headers. Everything resolves at request time from Worker env, so a missing
- * flag or value leaves Commerce without a payment port (checkout unavailable).
+ * Every visitor's store runs Commerce's Registry build (template-one-build-registry-20261031); its calls to the
+ * real Payments service carry the pass the playground's own checkout key gets (see the pretend DinkusKit,
+ * dinkuskit-stand-in.ts) and pass through `playgroundPaymentsFetch` here: the playground tenant serves session
+ * and lookup only, Commerce's binding check is answered with the fixed playground binding, the visitor's IP is
+ * forwarded, and each attempt is bound to the visitor session that started it. Everything resolves at request
+ * time from Worker env, so a missing flag or value leaves checkout unavailable.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
-import {
-  CHECKOUT_PRICING_SCHEMA,
-  createTrustedTestPaymentPort,
-  type CheckoutPaymentPort,
-  type GuestCheckoutHostOptions,
-  type TrustedShippingConfiguration,
-} from "@dinkuskit/commerce/features/checkout";
-import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../playground/flat-rate-shipping.js";
 import {
   playgroundNow,
   type PlaygroundCheckoutBindingStore,
@@ -24,34 +17,20 @@ export { playgroundAttemptBelongsToVisitor } from "./binding-auth.js";
 export { playgroundCheckoutBindingStore } from "./binding-store.js";
 export type { PlaygroundCheckoutBindingStore } from "./binding-auth.js";
 import {
-  getStorePass,
   isCheckoutEnabled,
   readStripeAccount,
   PAYMENTS_CLIENT_IP_HEADER,
-  PAYMENTS_PLAYGROUND_SITE,
   readPaymentsConfig,
 } from "./index.js";
 
 export const PAYMENTS_PLAYGROUND_BINDING_REF = "playground";
-export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured } from "./index.js";
-/** Stands in for the store origin Payments takes from the pass; the port never sends it. */
-const PLAYGROUND_COMMERCE_ORIGIN = "https://playground.dinkuskit.com";
+export { PAYMENTS_STRIPE_ACCOUNT_ENV, playgroundCheckoutConfigured, playgroundEnvOf } from "./index.js";
 const MAX_PAYMENTS_RESPONSE_BYTES = 128 * 1024;
-function playgroundCommerceOrigin(env: EnvLike): string {
-  return typeof env.DINKUS_LOCAL_PROOF_SITE_URL === "string"
-    ? env.DINKUS_LOCAL_PROOF_SITE_URL
-    : PLAYGROUND_COMMERCE_ORIGIN;
-}
 
 type EnvLike = Record<string, unknown>;
 /** Per-request visitor context, set by the store middleware around checkout routes. */
 type VisitorContext = { clientIp: string; sessionId: string; bindings?: PlaygroundCheckoutBindingStore };
 const visitor = new AsyncLocalStorage<VisitorContext>();
-/** Missing bindings fail closed; only the exact Payments expiry authorizes lookup. */
-export function createPlaygroundAttemptId(): string {
-  return crypto.randomUUID();
-}
-
 export function withCheckoutVisitor<T>(
   clientIp: string,
   sessionId: string,
@@ -191,59 +170,4 @@ export async function readBoundedPaymentsResponse(response: Response): Promise<U
     offset += chunk.byteLength;
   }
   return bytes;
-}
-
-/** Commerce's port for binding ref "playground", or null (fail closed) when not configured. */
-export function resolvePlaygroundPayments(
-  env: EnvLike = process.env,
-  deps: { fetchImpl?: typeof fetch; passFetchImpl?: typeof fetch } = {},
-): CheckoutPaymentPort | null {
-  const config = readPaymentsConfig(env);
-  const account = stripeAccount(env);
-  if (!isCheckoutEnabled(env) || !config || !account) return null;
-  const port = createTrustedTestPaymentPort({
-    paymentsOrigin: config.baseUrl,
-    siteId: PAYMENTS_PLAYGROUND_SITE,
-    commerceOrigin: playgroundCommerceOrigin(env),
-    bindingRef: PAYMENTS_PLAYGROUND_BINDING_REF,
-    providerId: "stripe",
-    stripeAccountId: account,
-    pricingSchema: CHECKOUT_PRICING_SCHEMA,
-    credentialResolver: async () => {
-      const current = readPaymentsConfig(env);
-      let pass: string | null = null;
-      try {
-        pass = current ? await getStorePass(current, { fetchImpl: deps.passFetchImpl }) : null;
-      } catch {}
-      if (!pass) throw new Error("Payments credential unavailable");
-      return pass;
-    },
-    fetch: playgroundPaymentsFetch(env, deps),
-  });
-  return {
-    ...port,
-    ensureSession: port.ensureSession,
-    lookup: port.lookup,
-  };
-}
-
-/** Build-time checkout options for the playground's native Commerce plugin. */
-export function playgroundCheckoutHostOptions(env: EnvLike = process.env): GuestCheckoutHostOptions {
-  return {
-    ...(env.DINKUS_LOCAL_PROOF === "1" && typeof env.DINKUS_LOCAL_PROOF_SITE_URL === "string"
-      ? { siteUrl: env.DINKUS_LOCAL_PROOF_SITE_URL }
-      : {}),
-    paymentBindingRef: PAYMENTS_PLAYGROUND_BINDING_REF,
-    createAttemptId: () => createPlaygroundAttemptId(),
-    resolvePayments: async (bindingRef: string) => {
-      if (bindingRef !== PAYMENTS_PLAYGROUND_BINDING_REF) return null;
-      const activeEnv = (globalThis as { __dinkusPlaygroundEnv?: EnvLike }).__dinkusPlaygroundEnv ?? env;
-      return resolvePlaygroundPayments(activeEnv);
-    },
-    pricing: {
-      paymentPricingSchema: CHECKOUT_PRICING_SCHEMA,
-      resolveShippingConfiguration: async () =>
-        structuredClone(PLAYGROUND_FLAT_RATE_SHIPPING) as TrustedShippingConfiguration,
-    },
-  };
 }

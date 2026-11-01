@@ -12,16 +12,18 @@ import { tourBlocks } from "../../src/features/playground-tour/tour-plugin.js";
 import { retargetPlaygroundDeployLink, START_REAL_STORE_URL } from "../../src/features/playground/contract.js";
 
 describe("Playground Payments, Ship and tour", () => {
-  it("installs the released Payments and Ship Registry bundles under their Registry ids", () => {
-    const pins = JSON.parse(readFileSync("package.json", "utf8")).dinkuskit.playgroundPlugins;
+  it("installs the pinned Commerce and the released Payments and Ship Registry bundles under their Registry ids", () => {
+    const { sourcePins, playgroundPlugins: pins } = JSON.parse(readFileSync("package.json", "utf8")).dinkuskit;
     const plugins = playgroundRegistryPlugins();
     expect(plugins.map((plugin) => [plugin.id, plugin.version])).toEqual([
+      [PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce, sourcePins.commerce.tag.slice(1)],
       [PLAYGROUND_INSTALLED_PLUGIN_IDS.payments, pins.payments.tag.slice(1)],
       [PLAYGROUND_INSTALLED_PLUGIN_IDS.ship, pins.ship.tag.slice(1)],
     ]);
+    expect(PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce).toBe("r_gshdrqaldna3r7sn");
     for (const plugin of plugins) {
       expect(plugin.format).toBe("standard");
-      expect(plugin.entrypoint).toMatch(/\.artifacts\/playground-plugins\/(payments|ship)\/package\/backend\.js$/);
+      expect(plugin.entrypoint).toMatch(/\.artifacts\/playground-plugins\/(commerce|payments|ship)\/package\/backend\.js$/);
       expect(plugin.adminPages.length).toBeGreaterThan(0);
     }
   });
@@ -80,13 +82,18 @@ describe("Playground Payments, Ship and tour", () => {
       expect(network).not.toHaveBeenCalled();
     });
 
-    it("leaves a real store key and real passes to the real services", async () => {
+    it("leaves a real store key and other hosts to the real services, and guards every real-pass Payments call", async () => {
       network.mockClear();
       await post("https://dinkuskit.com/api/store-passes", { site_id: "s", scope: "payments:checkout", audience: "dinkus-payments" },
         { authorization: "Bearer dk_store_real" });
-      await standIn("https://payments.dinkuskit.com/v1/checkout", { headers: { authorization: "Bearer real.pass.token" } });
       await standIn("https://example.com/");
-      expect(network).toHaveBeenCalledTimes(3);
+      expect(network).toHaveBeenCalledTimes(2);
+      // Without the playground's Payments tenant configured, the guard refuses before the network.
+      const guarded = await standIn("https://payments.dinkuskit.com/v1/checkout/session", {
+        method: "POST", headers: { authorization: "Bearer real.pass.token" }, body: new TextEncoder().encode("{}"),
+      });
+      expect(guarded.status).toBe(503);
+      expect(network).toHaveBeenCalledTimes(2);
     });
   });
 
