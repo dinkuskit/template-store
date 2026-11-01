@@ -44,6 +44,9 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/_emdash/api/media/file/hero.png").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/favicon.ico").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/robots.txt").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/llms.txt").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/llms-full.txt").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/agents.md").allowed).toBe(true);
   });
 
   it("identifies only scoped slash variants for 301 redirects", () => {

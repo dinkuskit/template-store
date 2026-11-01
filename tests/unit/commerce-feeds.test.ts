@@ -24,9 +24,14 @@ vi.mock("emdash/runtime", () => ({
 
 import { getEmDashCollection } from "emdash";
 import {
+  buildAgentCatalogFeed,
   buildGoogleMerchantFeed,
   buildInstalledCommerceFeedFacts,
+  buildInstalledStorefrontAgentFeedOptions,
   buildMetaCatalogFeed,
+  buildStorefrontAgentsMd,
+  buildStorefrontLlmsFullTxt,
+  buildStorefrontLlmsTxt,
 } from "../../src/features/commerce-feeds/index.js";
 
 const getCollection = vi.mocked(getEmDashCollection);
@@ -188,5 +193,128 @@ describe("installed Commerce feed facts", () => {
       .toEqual(["https://media.example.test/main.jpg"]);
     const unsafe = { ...ctx, runtime: { ...ctx.runtime, getPublicMediaUrl: () => "javascript:alert(1)" } };
     expect((await buildInstalledCommerceFeedFacts(unsafe))[0]!.content.imageUrls).toBeUndefined();
+  });
+
+  it("builds storefront /llms.txt, /llms-full.txt, and /agents.md from installed catalog facts", async () => {
+    const facts = await buildInstalledCommerceFeedFacts(context([
+      catalogItem("commerce-hat", { gtin: "4006381333931", feedChannels: ["google-merchant"] }),
+      catalogItem("commerce-cap", {
+        price: undefined,
+        availability: { status: "in-stock", sellable: false, listable: true },
+        feedChannels: ["meta-catalog"],
+        variants: {
+          schema: "dinkuskit.commerce.product-variants/v1",
+          productId: "commerce-cap",
+          options: [{ optionId: "size", label: "Size", values: [{ valueId: "sm", label: "Small" }, { valueId: "lg", label: "Large" }] }],
+          members: [
+            {
+              catalogItemId: "commerce-cap-sm",
+              selections: [{ optionId: "size", optionLabel: "Size", valueId: "sm", valueLabel: "Small" }],
+              price: { currency: "USD", minor: "1800" },
+              availability: { status: "in-stock", sellable: true, listable: true },
+              fulfillment: "physical",
+            },
+            {
+              catalogItemId: "commerce-cap-lg",
+              selections: [{ optionId: "size", optionLabel: "Size", valueId: "lg", valueLabel: "Large" }],
+              price: { currency: "USD", minor: "2200" },
+              availability: { status: "out-of-stock", sellable: false, listable: true },
+              fulfillment: "physical",
+            },
+          ],
+        },
+      }),
+      catalogItem("commerce-mug", { availability: { status: "out-of-stock", sellable: false, listable: true } }),
+    ]));
+    const options = {
+      products: facts,
+      storeName: "Dinkus Store",
+      siteOrigin: "https://shop.example.test",
+      description: "Agent-ready store.",
+      checkoutBreakdownSelector: "[data-checkout-breakdown]",
+      policies: [
+        { slug: "shipping", title: "Shipping policy", url: "https://shop.example.test/shipping", body: "Ships in 2 business days." },
+        { slug: "returns", title: "Returns policy", url: "https://shop.example.test/returns", body: "30-day returns." },
+      ],
+    };
+    const agentFeed = buildAgentCatalogFeed(options);
+    expect(agentFeed.virtualCardSizing.taxMinor).toBe("0");
+    expect(agentFeed.products.map((item) => [item.id, item.availability.sellable])).toEqual([
+      ["commerce-hat", true],
+      ["commerce-cap", true],
+    ]);
+    expect(agentFeed.products[1]?.variants?.members.map((member) => [member.catalogItemId, member.price.minor])).toEqual([
+      ["commerce-cap-sm", "1800"],
+      ["commerce-cap-lg", "2200"],
+    ]);
+
+    const llmsTxt = buildStorefrontLlmsTxt(options);
+    expect(llmsTxt).toContain("# Dinkus Store");
+    expect(llmsTxt).toContain("https://shop.example.test/llms-full.txt");
+    expect(llmsTxt).toContain("https://shop.example.test/agents.md");
+    expect(llmsTxt).toContain("[commerce-hat](https://shop.example.test/products/hat)");
+    expect(llmsTxt).toContain("[commerce-cap](https://shop.example.test/products/cap): from $18.00 USD");
+    expect(llmsTxt).not.toContain("commerce-mug");
+
+    const llmsFullTxt = buildStorefrontLlmsFullTxt(options);
+    expect(llmsFullTxt).toContain("## Detailed Product Projections");
+    expect(llmsFullTxt).toContain("- GTIN: `4006381333931`");
+    expect(llmsFullTxt).toContain("`catalogItemId: \"commerce-cap-sm\"` (Size: Small)");
+    expect(llmsFullTxt).toContain("## Store Policies Corpus");
+
+    const agentsMd = buildStorefrontAgentsMd(options);
+    expect(agentsMd).toContain("# Shopping Agent & Virtual Card Contract — Dinkus Store");
+    expect(agentsMd).toContain("data-checkout-tax-minor=\"0\"");
+    expect(agentsMd).toContain("tax: { currency: \"USD\", minor: \"0\" }");
+    expect(agentsMd).toContain("/api/guest-cart/snapshot?ids=<id1,id2>");
+    expect(agentsMd).not.toContain("/catalog/public");
+    expect(agentsMd).toContain("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare");
+    expect(agentsMd).toContain("data.capability.capability");
+    expect(agentsMd).toContain("payload = body.success === true ? body.data : body");
+    expect(agentsMd).toContain("payload.checkout.retryAfter === payload.checkout.attemptId");
+    expect(agentsMd).toContain("recoverable-failure");
+    expect(agentsMd).toContain("Pre-Start Checkout DOM Estimate Attributes");
+    expect(agentsMd).toContain("exclusively from Commerce's authoritative frozen `data.checkout.pricing.finalTotal.minor`");
+  });
+
+  it("preserves freeOver shipping threshold in buildInstalledStorefrontAgentFeedOptions", async () => {
+    const items = [catalogItem("commerce-hat", { feedChannels: ["google-merchant"] })];
+    const ctx = {
+      request: new Request("http://internal.invalid/llms-full.txt"),
+      site: new URL("https://shop.example.test"),
+      runtime: {
+        getPluginRouteMeta: () => ({ public: true, methods: ["GET"] }),
+        handlePublicPluginApiRoute: vi.fn(async (_pluginId: string, _method: string, path: string) => {
+          if (path === "policies/public") {
+            return {
+              success: true,
+              data: {
+                shipping: {
+                  recordKind: "store-shipping-policy",
+                  recordId: "active",
+                  revision: 1,
+                  configurationId: "flat-500-free-5000",
+                  mode: "flat",
+                  amount: { currency: "USD", minor: "500" },
+                  freeOver: { currency: "USD", minor: "5000" },
+                  updatedAt: "2026-10-31T00:00:00.000Z",
+                },
+                returns: null,
+              },
+            };
+          }
+          return { success: true, data: { products: items } };
+        }),
+      },
+    };
+    const installedOptions = await buildInstalledStorefrontAgentFeedOptions(ctx);
+    expect(installedOptions.shipping).toEqual({
+      mode: "flat",
+      amount: { currency: "USD", minor: "500" },
+      freeOver: { currency: "USD", minor: "5000" },
+    });
+    expect(installedOptions.policies?.[0]?.body).toContain(
+      "free when discounted net merchandise (netMerchandise) is at least $50.00 USD (>= 5000 minor units, inclusive, after coupon discounts)",
+    );
   });
 });
