@@ -197,7 +197,32 @@ describe("installed Commerce feed facts", () => {
   it("builds storefront /llms.txt, /llms-full.txt, and /agents.md from installed catalog facts", async () => {
     const facts = await buildInstalledCommerceFeedFacts(context([
       catalogItem("commerce-hat", { gtin: "4006381333931", feedChannels: ["google-merchant"] }),
-      catalogItem("commerce-cap", { feedChannels: ["meta-catalog"] }),
+      catalogItem("commerce-cap", {
+        price: undefined,
+        availability: { status: "in-stock", sellable: false, listable: true },
+        feedChannels: ["meta-catalog"],
+        variants: {
+          schema: "dinkuskit.commerce.product-variants/v1",
+          productId: "commerce-cap",
+          options: [{ optionId: "size", label: "Size", values: [{ valueId: "sm", label: "Small" }, { valueId: "lg", label: "Large" }] }],
+          members: [
+            {
+              catalogItemId: "commerce-cap-sm",
+              selections: [{ optionId: "size", optionLabel: "Size", valueId: "sm", valueLabel: "Small" }],
+              price: { currency: "USD", minor: "1800" },
+              availability: { status: "in-stock", sellable: true, listable: true },
+              fulfillment: "physical",
+            },
+            {
+              catalogItemId: "commerce-cap-lg",
+              selections: [{ optionId: "size", optionLabel: "Size", valueId: "lg", valueLabel: "Large" }],
+              price: { currency: "USD", minor: "2200" },
+              availability: { status: "out-of-stock", sellable: false, listable: true },
+              fulfillment: "physical",
+            },
+          ],
+        },
+      }),
       catalogItem("commerce-mug", { availability: { status: "out-of-stock", sellable: false, listable: true } }),
     ]));
     const options = {
@@ -217,24 +242,33 @@ describe("installed Commerce feed facts", () => {
       ["commerce-hat", true],
       ["commerce-cap", true],
     ]);
+    expect(agentFeed.products[1]?.variants?.members.map((member) => [member.catalogItemId, member.price.minor])).toEqual([
+      ["commerce-cap-sm", "1800"],
+      ["commerce-cap-lg", "2200"],
+    ]);
 
     const llmsTxt = buildStorefrontLlmsTxt(options);
     expect(llmsTxt).toContain("# Dinkus Store");
     expect(llmsTxt).toContain("https://shop.example.test/llms-full.txt");
     expect(llmsTxt).toContain("https://shop.example.test/agents.md");
     expect(llmsTxt).toContain("[commerce-hat](https://shop.example.test/products/hat)");
+    expect(llmsTxt).toContain("[commerce-cap](https://shop.example.test/products/cap): from $18.00 USD");
     expect(llmsTxt).not.toContain("commerce-mug");
 
     const llmsFullTxt = buildStorefrontLlmsFullTxt(options);
     expect(llmsFullTxt).toContain("## Detailed Product Projections");
     expect(llmsFullTxt).toContain("- GTIN: `4006381333931`");
+    expect(llmsFullTxt).toContain("`catalogItemId: \"commerce-cap-sm\"` (Size: Small)");
     expect(llmsFullTxt).toContain("## Store Policies Corpus");
 
     const agentsMd = buildStorefrontAgentsMd(options);
     expect(agentsMd).toContain("# Shopping Agent & Virtual Card Contract — Dinkus Store");
     expect(agentsMd).toContain("data-checkout-tax-minor=\"0\"");
     expect(agentsMd).toContain("tax: { currency: \"USD\", minor: \"0\" }");
+    expect(agentsMd).toContain("/api/guest-cart/snapshot?ids=<id1,id2>");
+    expect(agentsMd).not.toContain("/catalog/public");
     expect(agentsMd).toContain("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare");
     expect(agentsMd).toContain("data.capability.capability");
+    expect(agentsMd).toContain("released-retry");
   });
 });

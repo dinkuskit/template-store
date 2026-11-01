@@ -55,6 +55,29 @@ async function nativeFeedEligibility(itemId: string): Promise<readonly ProductFe
 }
 
 function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["product"] {
+  const variants = product.variants?.length
+    ? {
+        schema: "dinkuskit.commerce.product-variants/v1" as const,
+        productId: product.id,
+        options: [],
+        members: product.variants.map((member) => ({
+          catalogItemId: member.id,
+          selections: member.selections.map(([optionLabel, valueLabel], index) => ({
+            optionId: optionLabel.toLowerCase().replace(/[^a-z0-9_-]+/g, "-") || `opt-${index}`,
+            optionLabel,
+            valueId: valueLabel.toLowerCase().replace(/[^a-z0-9_-]+/g, "-") || `val-${index}`,
+            valueLabel,
+          })),
+          price: { currency: "USD" as const, minor: member.unitMinor },
+          availability: {
+            status: member.availability.status,
+            sellable: member.availability.sellable,
+            listable: true,
+          },
+          fulfillment: member.fulfillment ?? "physical",
+        })),
+      }
+    : undefined;
   return {
     id: product.id,
     name: product.name,
@@ -69,6 +92,7 @@ function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["produ
     ...(product.price.unitMinor
       ? { price: { currency: "USD" as const, minor: product.price.unitMinor } }
       : {}),
+    ...(variants ? { variants } : {}),
     ...(product.gtin ? { gtin: product.gtin } : {}),
     ...(product.mpn ? { mpn: product.mpn } : {}),
     ...(product.brand ? { brand: product.brand } : {}),
