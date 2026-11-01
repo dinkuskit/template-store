@@ -210,3 +210,7 @@
 {"action": "decision_proposed", "at": "2026-11-01T05:23:38+00:00", "data": {"decision_id": "template-product-trash-keeps-link-20261101"}, "event_id": "bf16be34-ce5a-41d4-8d1a-84c88c20d444"}
 {"action": "shared_understanding_confirmed", "at": "2026-11-01T05:23:38+00:00", "data": {"summary": "Ronald agreed on 1 Nov 2026 at 04:57 UTC in the Review Dad's Commerce PRs thread: trash keeps the link, restore comes back as an off-sale draft, only a permanent delete releases it."}, "event_id": "e9c06467-f043-4932-826d-079e6b457e74"}
 {"action": "decision_locked", "at": "2026-11-01T05:23:38+00:00", "data": {"decision_id": "template-product-trash-keeps-link-20261101"}, "event_id": "172b9371-a7ef-4d67-ac93-665f7535397b"}
+{"action": "focus_started", "at": "2026-11-01T13:26:36+00:00", "data": {"cadence": "sequential", "domain": "One product screen, product states and plugin sidebar folders"}, "event_id": "8ea3aa45-0e38-4d14-b489-6ea8eb219da2"}
+{"action": "shared_understanding_confirmed", "at": "2026-11-01T13:26:37+00:00", "data": {"summary": "Ronald asked on 1 Nov 2026 at 13:24 UTC to record #191 as the implementation."}, "event_id": "51e7998c-903d-4747-bfd2-58e32c637369"}
+{"action": "decision_implemented", "at": "2026-11-01T13:26:37+00:00", "data": {"decision_id": "template-product-trash-keeps-link-20261101"}, "event_id": "835fb93b-776b-49cb-9653-1a307c995e67"}
+{"action": "decision_verified", "at": "2026-11-01T13:26:37+00:00", "data": {"decision_id": "template-product-trash-keeps-link-20261101"}, "event_id": "81e7f252-c203-4469-8ba2-568ec06e8b99"}
