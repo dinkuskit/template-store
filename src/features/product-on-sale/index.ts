@@ -8,15 +8,13 @@
  *
  * Commerce holds which product a page sells (template-no-commerce-box-20261029):
  * the store asks its private `catalog` route for the page's product and sends
- * set-on-sale the page alone. Only while an older store's page still has a
- * Commerce product field, and Commerce links that page to nothing, does the
- * store read the field and send its value, as it did before.
+ * set-on-sale the page alone. It never reads an older store's Commerce product
+ * field (template-drop-older-store-box-20261101).
  */
 
 import { hasPermission } from "@emdash-cms/auth";
 import { createKyselyAdapter } from "@emdash-cms/auth/adapters/kysely";
 
-import { withCommerceLinks } from "../product-url-plugin/index.js";
 import { SEEDED_PAGE_PRODUCTS } from "../store-shell/seeded-page-products.js";
 
 export const SET_ON_SALE_ROUTE = "catalog-items/set-on-sale";
@@ -86,8 +84,8 @@ export function productName(title: unknown): string | undefined {
 type ProductPage = {
   id: string;
   catalogItemId: string;
-  /** Read from an older store's Commerce product field because Commerce links the page to nothing. */
-  fromField: boolean;
+  /** The seed's demonstration id for the page, which Commerce does not have, because Commerce links the page to nothing. */
+  seeded: boolean;
   published: boolean;
   scheduled: boolean;
   name?: string;
@@ -123,8 +121,9 @@ export function commercePageLink(runtime: OnSaleRuntime, pluginId: string, url: 
 
 /**
  * The page's own id, the Commerce product it sells and, when published, the published title as the product's name.
- * Commerce's link comes first; an older store's field counts only while Commerce links the page to nothing or cannot
- * say. Null when the page does not exist, "unlinked" when it sells nothing, "unreadable" when that is unknown.
+ * Commerce's link comes first; a seeded demonstration page's own id counts only while Commerce links the page to
+ * nothing or cannot say. Null when the page does not exist, "unlinked" when it sells nothing, "unreadable" when that
+ * is unknown.
  */
 async function productPage(runtime: OnSaleRuntime, link: PageLink, entryId: string, locale?: string): Promise<PageRead> {
   const found = await runtime.handleContentGet(PRODUCTS, entryId, locale, { includeDrafts: true }).catch(() => null);
@@ -135,20 +134,20 @@ async function productPage(runtime: OnSaleRuntime, link: PageLink, entryId: stri
   const id = typeof item?.id === "string" ? item.id : entryId;
   const slug = typeof item?.slug === "string" ? item.slug : "";
   // The seed's demonstration pages name the template's own ids, which Commerce answers it does not have.
-  const field = (typeof fields?.commerce_item_id === "string" ? fields.commerce_item_id.trim() : "") || (SEEDED_PAGE_PRODUCTS[slug] ?? "");
+  const seeded = SEEDED_PAGE_PRODUCTS[slug] ?? "";
   const linked = await link(id);
   const scheduled = typeof item?.scheduledAt === "string" && item.scheduledAt !== "";
   const published = item?.status === "published";
   // A newer unpublished draft keeps the published values in liveData; only a published title names the product.
   const name = published ? productName((record(item?.liveData) ?? fields)?.title) : undefined;
   const page = { id, published, scheduled, ...(name ? { name } : {}) };
-  if (linked && linked !== "failed") return { ...page, catalogItemId: linked, fromField: false };
-  if (field && field.length <= 1024) return { ...page, catalogItemId: field, fromField: true };
+  if (linked && linked !== "failed") return { ...page, catalogItemId: linked, seeded: false };
+  if (seeded) return { ...page, catalogItemId: seeded, seeded: true };
   return linked === "failed" ? "unreadable" : "unlinked";
 }
 
-/** What set-on-sale is told: the page alone, or with the product an older store's field names. */
-const target = (page: ProductPage) => (page.fromField ? { catalogItemId: page.catalogItemId, entryId: page.id } : { entryId: page.id });
+/** What set-on-sale is told: the page alone, or with a seeded demonstration page's own id. */
+const target = (page: ProductPage) => (page.seeded ? { catalogItemId: page.catalogItemId, entryId: page.id } : { entryId: page.id });
 
 // Commerce answers these when it has no publish check for the page: the product or plugin is gone, or another
 // page sells the product (a sandboxed route carries those only in its message). Commerce 0.6.0 names a gone
@@ -221,7 +220,7 @@ function refuse(status: number, code: string, message: string): Response {
  * - A Commerce without the route (0.5.0) has no publish check, so its pages
  *   change exactly as before, Authors' own pages included.
  * - A publish of a page that sells nothing is refused and names the Dinkus
- *   Commerce panel, as an older store refused a page with no product id.
+ *   Commerce panel.
  * - Unpublish and trash take the product off sale first. If Commerce refuses
  *   or cannot be reached, the page change is refused too, so a product is never
  *   left buyable behind an unpublished or trashed page.
@@ -245,20 +244,11 @@ function refuse(status: number, code: string, message: string): Response {
  * last off-sale write, or its own read comes after the page change and sees
  * it. A late off-sale write can only leave a published page's product a Draft,
  * which never sells anything it should not, and publishing again fixes it.
- *
- * Any signed-in person's request also lets the product URL plugin's publish and
- * schedule hooks ask Commerce, as that person, which product a page sells, so
- * an older store's field never outranks Commerce's link there either.
  */
 export async function withProductOnSale(
   input: { request: Request; url: URL; runtime: OnSaleRuntime | undefined; user: unknown; commercePluginId: string; currentUser?: () => Promise<unknown>; pendingSales?: PendingSales },
   next: () => Promise<Response>,
 ): Promise<Response> {
-  if (input.runtime && input.user) {
-    const lookup = commercePageLink(input.runtime, input.commercePluginId, input.url, () => input.user);
-    const handle = next;
-    next = () => withCommerceLinks(lookup, handle);
-  }
   const change = productPageChange(input.request.method, input.url.pathname);
   if (!change || !input.runtime || !input.user) return next();
   const runtime = input.runtime;
@@ -407,18 +397,16 @@ async function listRetitle(pendingSales: PendingSales, entryId: string, catalogI
   await pendingSales.put(await listKey(RETITLE, entryId, catalogItemId), { retitle: true, entryId, catalogItemId });
 }
 
-// `itemId` is the product an older store's field named when the page was scheduled, while Commerce linked the page to
-// nothing; a page Commerce linked names none. It holds only while the page still sells by its field.
-type Grant = { by: string; role: number; itemId?: string };
+// Who scheduled the page and their role then; the sweep sells whatever Commerce links to the page.
+type Grant = { by: string; role: number };
 
 /** The record's confirmed grant once EmDash's scheduled publish succeeded, else null; and when it last changed. */
 function pendingSale(value: unknown): { grant: Grant | null; published: boolean; updatedAt: number } {
   const sale = record(value);
   const confirmed = record(sale?.confirmed);
   const by = typeof confirmed?.by === "string" ? confirmed.by : "";
-  const itemId = typeof confirmed?.itemId === "string" ? confirmed.itemId : "";
   const role = typeof confirmed?.role === "number" ? confirmed.role : NaN;
-  const grant = by && Number.isFinite(role) ? { by, role, ...(itemId ? { itemId } : {}) } : null;
+  const grant = by && Number.isFinite(role) ? { by, role } : null;
   const updatedAt = typeof sale?.updatedAt === "string" ? Date.parse(sale.updatedAt) : NaN;
   return { grant, published: sale?.state === "published", updatedAt };
 }
@@ -435,12 +423,10 @@ const PENDING_BATCH = 50;
  *
  * - Only schedules the product-url plugin recorded count, and only once EmDash
  *   stored the schedule and its own scheduled publish of the page succeeded. The
- *   grant names the person who scheduled it and their role then (and, on an
- *   older store's page with a Commerce product field, the product it named);
- *   they must have held the permission then and still hold it. An Author's
+ *   grant names the person who scheduled it and their role then; they must
+ *   have held the permission then and still hold it. An Author's
  *   schedule leaves the product a Draft, as their own publish does.
- * - The page must be published, sell a product (the granted one, if the grant
- *   names one) and not be scheduled again.
+ * - The page must be published, sell a product and not be scheduled again.
  *   A person's own publish, an unschedule, unpublish or trash removes the record.
  * - Before the write, the visitor is read again and the record must still be the
  *   one read (not removed or replaced meanwhile). After the write the page and
@@ -496,7 +482,7 @@ export async function sellScheduledPages(
       return may(visitor) ? visitor : null;
     };
     if (id.startsWith(TAKEBACK)) {
-      // A take-back names the product when an older store's field did; else Commerce takes off what the page last sold.
+      // A take-back names the product for a seeded demonstration page; else Commerce takes off what the page last sold.
       const takeback = record(stored.value);
       const visitor = await visitorNow();
       if (!visitor) return cursor;
@@ -552,8 +538,7 @@ export async function sellScheduledPages(
       continue;
     }
     const grant = sale.grant;
-    // A page Commerce links sells Commerce's product, whatever its field said when it was scheduled.
-    if (!grant || !page.published || (grant.itemId !== undefined && page.fromField && page.catalogItemId !== grant.itemId) || !may({ role: grant.role })) {
+    if (!grant || !page.published || !may({ role: grant.role })) {
       await drop();
       continue;
     }

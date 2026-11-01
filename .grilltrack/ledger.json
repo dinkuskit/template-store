@@ -6043,6 +6043,77 @@
       "superseded_by": null,
       "updated_at": "2026-11-01T15:06:48+00:00",
       "verification_ref": "file:.grilltrack/proof/playground-commerce-in-store-20261031/PROOF.md"
+    },
+    {
+      "baseline_ref": "git:ff99ad0",
+      "candidate_refs": [],
+      "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
+      "context_ref": null,
+      "created_at": "2026-11-01T22:16:15+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-no-commerce-box-20261029"
+      ],
+      "domain": "One product screen, product states and plugin sidebar folders",
+      "history": [
+        {
+          "at": "2026-11-01T22:16:19+00:00",
+          "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T22:37:02+00:00",
+          "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T22:37:02+00:00",
+          "choice": "No. The store finds a page's product only through Commerce's link (else the seed's demonstration slug). The publish check, storefront reads and product page never read commerce_item_id; the product-url plugin keeps no product claims and its schedule grants name no product, so the scheduled-sale sweep sells whatever Commerce links to the page. Storefront upgrade 005_commerce_box_off drops the field whenever it is still there, with no waiting conditions, and the upgrade runner's unused wait mechanism is removed. The paired older-store test goes.",
+          "from": "implemented",
+          "implementation_ref": ".grilltrack/proof/template-drop-older-store-box-20261101/PROOF.md",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-drop-older-store-box-20261101",
+      "implementation_ref": ".grilltrack/proof/template-drop-older-store-box-20261101/PROOF.md",
+      "question": "Does the template keep reading an older store's Commerce product box now that Commerce 0.8.0 makes every product for its page?",
+      "rationale": "Ronald picked 'Land 196 now, drop it next' on 1 Nov 2026: keep the box support through the Commerce 0.8.0 move (template-store#199, merged ff99ad0), then remove it. No real stores exist yet (only the beta store and the template), so nothing depends on the box.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-11-01T22:37:02+00:00",
+      "verification_ref": ".grilltrack/proof/template-drop-older-store-box-20261101/PROOF.md"
     }
   ],
   "last_activation": {
@@ -6065,5 +6136,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-01T15:06:48+00:00"
+  "updated_at": "2026-11-01T22:37:02+00:00"
 }

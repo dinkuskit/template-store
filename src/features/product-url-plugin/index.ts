@@ -1,26 +1,17 @@
-import { AsyncLocalStorage } from "node:async_hooks";
-
 import { definePlugin } from "emdash";
 
 const PRODUCTS = "products";
-
-type ProductClaim = {
-  entryId: string;
-  itemId: string;
-  path: string;
-};
 
 /**
  * Who may have a page's product put on sale when EmDash publishes it on a
  * schedule. EmDash publishes it later with nobody signed in, so the store's
  * publish check cannot sell then; the next allowed admin request does it from
  * this record (src/features/product-on-sale), checking that `by` could sell
- * with `role` when they scheduled it and still can. `itemId` is the product an
- * older store's Commerce product field named while Commerce linked the page to
- * nothing; Commerce holds a page's link now (template-no-commerce-box-20261029),
- * so a page Commerce links, or one without the field, names none.
+ * with `role` when they scheduled it and still can. It names no product: the
+ * store sells whatever Commerce links to the page (template-no-commerce-box-20261029,
+ * template-drop-older-store-box-20261101).
  */
-export type ScheduleGrant = { by: string; role: number; itemId?: string; scheduledAt: string };
+export type ScheduleGrant = { by: string; role: number; scheduledAt: string };
 /**
  * - `proposals`: every schedule asked for since the record was made, written
  *   before EmDash stores each (a schedule from no person proposes `by: ""`,
@@ -46,51 +37,9 @@ export type PendingSale = {
 export const PENDING_SALES = "pending_sales";
 export const PRODUCT_URL_PLUGIN_ID = "dinkus-template-product-urls";
 
-// EmDash 1.2.0 hands content-policy hooks the whole content item: id, slug and
-// status at the top level, the collection's fields under `data`. Only an older
-// store's page still has the Commerce product field.
-function itemIdOf(content: Record<string, unknown>): string {
-  const data = content.data;
-  const value =
-    data && typeof data === "object" && !Array.isArray(data)
-      ? (data as Record<string, unknown>).commerce_item_id
-      : content.commerce_item_id;
-  return typeof value === "string" ? value.trim() : "";
-}
-
-/**
- * The product Commerce links a page to, asked as the person whose request this is: its id, null when none, "failed"
- * when Commerce could not say. EmDash site hooks do not receive the installed plugin runtime, so the store's publish
- * check (src/features/product-on-sale) sets this for a signed-in person's request.
- */
-export type CommerceLinkLookup = (entryId: string) => Promise<string | null | "failed">;
-type LinkContext = AsyncLocalStorage<CommerceLinkLookup>;
-// One context per isolate, even when the dev server loads this module twice.
-const linkContext: LinkContext = ((globalThis as { __dinkusCommerceLinkContext?: LinkContext }).__dinkusCommerceLinkContext ??=
-  new AsyncLocalStorage<CommerceLinkLookup>());
-
-/** Runs `fn` with `lookup` as the way this request's content-policy hooks ask Commerce for a page's product. */
-export function withCommerceLinks<T>(lookup: CommerceLinkLookup, fn: () => T): T {
-  return linkContext.run(lookup, fn);
-}
-
-/**
- * Whether Commerce links the page to a product. Commerce's link comes first: an older store's field value counts only
- * while Commerce links the page to nothing, cannot say, or cannot be asked (no signed-in person).
- */
-async function commerceLinks(entryId: string): Promise<boolean> {
-  const lookup = linkContext.getStore();
-  const linked = lookup ? await lookup(entryId).catch(() => "failed" as const) : null;
-  return !!linked && linked !== "failed";
-}
-
+// EmDash hands content-policy hooks the whole content item: id, slug and status at the top level.
 function entryIdOf(content: Record<string, unknown>): string {
   return typeof content.id === "string" ? content.id : "";
-}
-
-function claimPath(content: Record<string, unknown>): string {
-  const slug = typeof content.slug === "string" ? content.slug.trim() : "";
-  return slug ? `/products/${slug}` : `/products/${entryIdOf(content)}`;
 }
 
 type PendingStore = {
@@ -136,7 +85,7 @@ export function grantFor(sale: Pick<PendingSale, "proposals" | "overflowed">, sc
 }
 
 const sameProposal = (a: ScheduleGrant, b: ScheduleGrant) =>
-  a.by === b.by && a.role === b.role && a.itemId === b.itemId && sameMoment(a.scheduledAt, b.scheduledAt);
+  a.by === b.by && a.role === b.role && sameMoment(a.scheduledAt, b.scheduledAt);
 
 export function createPlugin() {
   return definePlugin({
@@ -144,10 +93,6 @@ export function createPlugin() {
   version: "1.0.0",
   capabilities: ["content:read", "content:publish", "hooks.content-policy:register"],
   storage: {
-    claims: {
-      indexes: [],
-      uniqueIndexes: ["itemId"],
-    },
     [PENDING_SALES]: {
       indexes: [],
     },
@@ -157,45 +102,10 @@ export function createPlugin() {
       if (event.collection !== PRODUCTS) return;
 
       const entryId = entryIdOf(event.content);
-      const itemId = itemIdOf(event.content);
       if (!entryId) return { cancel: true, reason: "Product is missing its entry ID." };
-      if (itemId.length > 1024) {
-        return {
-          cancel: true,
-          reason: "The Commerce product ID can be at most 1,024 characters.",
-        };
-      }
-
-      // Commerce holds which product a page sells and refuses one another page
-      // sells; the store's publish check refuses a page with no product. Only an
-      // older store's field value is claimed here, one published page per value,
-      // and only while Commerce links the page to nothing: a page Commerce links
-      // sells Commerce's product whatever its field still says, so its field
-      // claims nothing. EmDash's scheduler publishes with nobody to ask Commerce
-      // as, so it keeps the claim the schedule made. The catalog item lookup is
-      // enforced at render time.
+      // Commerce holds which product a page sells and refuses one another page sells; the store's publish check
+      // refuses a page with no product, and the sweep sells whatever Commerce links to a scheduled page.
       const scheduler = event.origin?.source === "scheduler";
-      if (!scheduler) {
-        const claimed = itemId && !(await commerceLinks(entryId)) ? itemId : "";
-        if (!claimed) {
-          await ctx.storage.claims.delete(entryId);
-        } else {
-          try {
-            await ctx.storage.claims.put(entryId, {
-              entryId,
-              itemId: claimed,
-              path: claimPath(event.content),
-            } satisfies ProductClaim);
-          } catch {
-            const claims = await ctx.storage.claims.query();
-            const holder = claims.items.find((claim) => (claim.data as ProductClaim).itemId === claimed);
-            return {
-              cancel: true,
-              reason: `Commerce product is already published at ${(holder?.data as ProductClaim | undefined)?.path ?? `/products/${entryId}`}.`,
-            };
-          }
-        }
-      }
       // A person's own publish goes through the store's publish check, so it ends a schedule's grant. EmDash's
       // scheduled publish marks a confirmed grant as publishing; content:afterPublish completes it.
       await changePending(ctx.storage[PENDING_SALES], entryId, (current) =>
@@ -204,36 +114,10 @@ export function createPlugin() {
     "content:beforeSchedule": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
       const entryId = entryIdOf(event.content);
-      const itemId = itemIdOf(event.content);
       if (!entryId) return { cancel: true, reason: "Product is missing its entry ID." };
-      if (itemId.length > 1024) {
-        return {
-          cancel: true,
-          reason: "The Commerce product ID can be at most 1,024 characters.",
-        };
-      }
-      // As on publish, the field is claimed, and names the schedule's product, only while Commerce links the page to
-      // nothing; the store sells a page Commerce links by Commerce's link.
-      const claimed = itemId && !(await commerceLinks(entryId)) ? itemId : "";
-      if (!claimed) {
-        await ctx.storage.claims.delete(entryId);
-      } else {
-        try {
-          await ctx.storage.claims.put(entryId, {
-            entryId,
-            itemId: claimed,
-            path: claimPath(event.content),
-          } satisfies ProductClaim);
-        } catch {
-          return {
-            cancel: true,
-            reason: "Commerce product is already claimed by another scheduled or published product.",
-          };
-        }
-      }
       // Proposed before EmDash stores the schedule; content:afterSchedule grants from it only if that succeeded. A
       // proposal at the confirmed time can only weaken the grant, even if afterSchedule never runs.
-      const proposal = { by: event.actor?.id ?? "", role: event.actor?.id ? event.actor.role : 0, ...(claimed ? { itemId: claimed } : {}), scheduledAt: event.scheduledAt };
+      const proposal = { by: event.actor?.id ?? "", role: event.actor?.id ? event.actor.role : 0, scheduledAt: event.scheduledAt };
       await changePending(ctx.storage[PENDING_SALES], entryId, (current) => {
         const kept = current?.proposals ?? [];
         const known = kept.some((existing) => sameProposal(existing, proposal));
@@ -248,8 +132,7 @@ export function createPlugin() {
       const entryId = entryIdOf(event.content);
       if (!entryId) return;
       // The schedule EmDash holds now, read from the page (this event's copy may be older than a later schedule's). If
-      // it cannot be read, nothing is granted. (The product lives in the page's draft; the store checks that the
-      // published page names the granted product.)
+      // it cannot be read, nothing is granted.
       const page = await ctx.content?.get(PRODUCTS, entryId).catch(() => null);
       await changePending(ctx.storage[PENDING_SALES], entryId, (current) =>
         current ? { ...current, confirmed: page?.scheduledAt ? grantFor(current, page.scheduledAt) : null, state: "scheduled" } : undefined);
@@ -269,14 +152,10 @@ export function createPlugin() {
     "content:afterUnpublish": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
       const entryId = entryIdOf(event.content);
-      if (entryId) {
-        await ctx.storage.claims.delete(entryId);
-        await ctx.storage[PENDING_SALES].delete(entryId);
-      }
+      if (entryId) await ctx.storage[PENDING_SALES].delete(entryId);
     },
     "content:afterDelete": async (event, ctx) => {
       if (event.collection !== PRODUCTS) return;
-      await ctx.storage.claims.delete(event.id);
       await ctx.storage[PENDING_SALES].delete(event.id);
     },
   },

@@ -229,3 +229,7 @@
 {"action": "decision_locked", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "c185b9ee-2e3d-429f-895e-7dba8f7e1888"}
 {"action": "decision_implemented", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "903ac4f7-8e6e-4ca0-bc20-986d8e49013a"}
 {"action": "decision_verified", "at": "2026-11-01T15:06:48+00:00", "data": {"decision_id": "playground-cutover-fresh-store-20261101"}, "event_id": "4f4f7a01-7be2-4bd4-b48f-3a09e8bfb880"}
+{"action": "decision_proposed", "at": "2026-11-01T22:16:15+00:00", "data": {"decision_id": "template-drop-older-store-box-20261101"}, "event_id": "3f2f6124-3185-4700-a35f-d0fc085f70e3"}
+{"action": "decision_locked", "at": "2026-11-01T22:16:19+00:00", "data": {"decision_id": "template-drop-older-store-box-20261101"}, "event_id": "3e7c04eb-e523-41f8-99f7-2fc1ab7c3328"}
+{"action": "decision_implemented", "at": "2026-11-01T22:37:02+00:00", "data": {"decision_id": "template-drop-older-store-box-20261101"}, "event_id": "34674872-aacb-4109-b184-cfe945954a59"}
+{"action": "decision_verified", "at": "2026-11-01T22:37:02+00:00", "data": {"decision_id": "template-drop-older-store-box-20261101"}, "event_id": "50396e09-f924-4c2e-8a58-6854cac31845"}

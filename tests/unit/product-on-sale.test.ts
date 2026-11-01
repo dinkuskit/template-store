@@ -2,24 +2,43 @@ import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 import { productName, productPageChange, scheduledSaleSweeper, sellScheduledPages, withProductOnSale } from "../../src/features/product-on-sale/index.js";
-import { createPlugin } from "../../src/features/product-url-plugin/index.js";
 
 const user = { id: "u1", email: "owner@example.test", name: null, role: 50, createdAt: "2026-10-23T00:00:00.000Z" };
 
+/**
+ * A store whose Commerce links each page to a product. The page fixtures stand in for Commerce's answer with
+ * `sells`: the private `catalog` route's `get` answers, for the page just read, the product `sells` names (none when
+ * it is empty). Those lookups are kept in `lookups`; every other Commerce call goes to `commerce`, kept in `calls`.
+ * `ownCatalog` hands the catalog route to `commerce` too.
+ */
 function runtime(fields: Record<string, unknown> | null, result = { success: true, data: { changed: true } }, status = "published") {
   const calls: Array<{ pluginId: string; path: string; body: unknown; user: unknown }> = [];
-  return {
+  const lookups: Array<{ body: unknown; user: unknown }> = [];
+  const rt = {
     calls,
-    // Commerce 0.6.0 declares the route and its permission, native and sandboxed alike.
+    lookups,
+    ownCatalog: false,
+    // Commerce declares the publish check's route with its permission, and the private catalog route.
     getPluginRouteMeta: vi.fn((_pluginId: string, path: string): { public: boolean; permission?: string } | null =>
-      path === "catalog-items/set-on-sale" ? { public: false, permission: "content:publish_any" } : null),
+      path === "catalog-items/set-on-sale" || path === "catalog" ? { public: false, permission: "content:publish_any" } : null),
     handleContentGet: vi.fn(async (_collection: string, id: string) =>
       fields ? { success: true, data: { item: { id: "01PAGE", slug: id, status, data: fields } } } : { success: false, error: { code: "NOT_FOUND", message: "not found" } }),
-    handlePluginApiRoute: vi.fn(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
+    commerce: vi.fn(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
       calls.push({ pluginId, path, body: await request.json(), user: caller });
       return result;
     }),
+    async handlePluginApiRoute(pluginId: string, method: string, path: string, request: Request, caller: unknown) {
+      if (path !== "catalog" || rt.ownCatalog) return rt.commerce(pluginId, method, path, request, caller);
+      const body = await request.json();
+      lookups.push({ body, user: caller });
+      // The store reads the page, then asks Commerce for its product: answer for the page read last.
+      const read = await (rt.handleContentGet.mock.results.at(-1)?.value as Promise<unknown> | undefined)?.catch(() => null);
+      const item = (read as { data?: { item?: { data?: { sells?: unknown } } } } | null)?.data?.item;
+      const sells = typeof item?.data?.sells === "string" ? item.data.sells.trim() : "";
+      return { success: true, data: { product: sells ? { catalogItemId: sells, name: "Hat" } : null } };
+    },
   };
+  return rt;
 }
 
 function input(method: string, path: string, rt: ReturnType<typeof runtime>, caller: unknown = user) {
@@ -39,53 +58,53 @@ describe("product page publish check tells Commerce", () => {
   });
 
   it("puts the product on sale after a successful publish, as the person who published", async () => {
-    const rt = runtime({ commerce_item_id: " item-1 " });
+    const rt = runtime({ sells: " item-1 " });
     const response = await withProductOnSale(input("POST", "/_emdash/api/content/products/hat/publish", rt), async () => new Response("{}", { status: 200 }));
     expect(response.status).toBe(200);
-    expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { catalogItemId: "item-1", entryId: "01PAGE", onSale: true }, user }]);
+    expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { entryId: "01PAGE", onSale: true }, user }]);
   });
 
   it("names the product from the title EmDash just published (catalog-page-title-is-name-20261026)", async () => {
-    const rt = runtime({ commerce_item_id: "item-1", title: "Renamed mug" });
+    const rt = runtime({ sells: "item-1", title: "Renamed mug" });
     // Read before the publish, the page still shows its old title.
-    rt.handleContentGet.mockResolvedValueOnce({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { commerce_item_id: "item-1", title: "Old mug" } } } });
-    const published = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: " Renamed\tmug ", commerce_item_id: "item-1" } } } });
+    rt.handleContentGet.mockResolvedValueOnce({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { sells: "item-1", title: "Old mug" } } } });
+    const published = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: " Renamed\tmug ", sells: "item-1" } } } });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(published, { status: 200, headers: { "Content-Type": "application/json" } }));
-    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Renamed mug" }]);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "01PAGE", onSale: true, name: "Renamed mug" }]);
     // An answer with no readable title sends no name, never the title read before the publish; the read after
     // the write supplies the published one.
-    const quiet = runtime({ commerce_item_id: "item-1", title: "Renamed mug" });
-    quiet.handleContentGet.mockResolvedValueOnce({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { commerce_item_id: "item-1", title: "Old mug" } } } });
+    const quiet = runtime({ sells: "item-1", title: "Renamed mug" });
+    quiet.handleContentGet.mockResolvedValueOnce({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { sells: "item-1", title: "Old mug" } } } });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", quiet), async () => new Response("not json", { status: 200 }));
     expect(quiet.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
-      { catalogItemId: "item-1", entryId: "01PAGE", name: "Renamed mug" },
+      { entryId: "01PAGE", onSale: true },
+      { entryId: "01PAGE", name: "Renamed mug" },
     ]);
   });
 
   it("settles on the newest published title when an older publish's write lands last", async () => {
     // Publish A answered "Title A", but publish B ("Title B") landed meanwhile: A's read after its write sees B and
     // renames the product to B with a title-only write, so A's late write never leaves the older name.
-    const rt = runtime({ commerce_item_id: "item-1", title: "Title B" });
-    const answered = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: "Title A", commerce_item_id: "item-1" } } } });
+    const rt = runtime({ sells: "item-1", title: "Title B" });
+    const answered = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: "Title A", sells: "item-1" } } } });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(answered, { status: 200 }));
     expect(rt.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Title A" },
-      { catalogItemId: "item-1", entryId: "01PAGE", name: "Title B" },
+      { entryId: "01PAGE", onSale: true, name: "Title A" },
+      { entryId: "01PAGE", name: "Title B" },
     ]);
     // A title that keeps changing gets at most three title-only writes from one request; the rest is listed for
     // the sweep, which finishes it.
     let n = 0;
-    const churn = runtime({ commerce_item_id: "item-1" });
-    churn.handleContentGet.mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { commerce_item_id: "item-1", title: `T${n++}` } } } }));
+    const churn = runtime({ sells: "item-1" });
+    churn.handleContentGet.mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published", data: { sells: "item-1", title: `T${n++}` } } } }));
     const listed: Array<[string, unknown]> = [];
     const pendingSales = { put: async (id: string, value: unknown) => void listed.push([id, value]) } as never;
     await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/publish", churn), pendingSales }, async () => new Response(answered, { status: 200 }));
     expect(churn.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Title A" },
-      { catalogItemId: "item-1", entryId: "01PAGE", name: "T1" },
-      { catalogItemId: "item-1", entryId: "01PAGE", name: "T2" },
-      { catalogItemId: "item-1", entryId: "01PAGE", name: "T3" },
+      { entryId: "01PAGE", onSale: true, name: "Title A" },
+      { entryId: "01PAGE", name: "T1" },
+      { entryId: "01PAGE", name: "T2" },
+      { entryId: "01PAGE", name: "T3" },
     ]);
     expect(listed).toEqual([[`retitle:01PAGE:${createHash("sha256").update("item-1").digest("hex")}`, { retitle: true, entryId: "01PAGE", catalogItemId: "item-1" }]]);
   });
@@ -93,14 +112,14 @@ describe("product page publish check tells Commerce", () => {
   it("catches up a title only with title-only writes, which never put a product back on sale", async () => {
     // Publish A put the product on sale; an unpublish then took it off and an Author published the page again as
     // "Author title". A's read sees that title: it renames the product, and never writes onSale again.
-    const rt = runtime({ commerce_item_id: "item-1", title: "Author title" });
-    const answered = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: "Title A", commerce_item_id: "item-1" } } } });
+    const rt = runtime({ sells: "item-1", title: "Author title" });
+    const answered = JSON.stringify({ success: true, data: { item: { id: "01PAGE", status: "published", data: { title: "Title A", sells: "item-1" } } } });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(answered, { status: 200 }));
     expect(rt.calls.filter((call) => (call.body as { onSale?: boolean }).onSale === true)).toHaveLength(1);
-    expect(rt.calls.at(-1)?.body).toEqual({ catalogItemId: "item-1", entryId: "01PAGE", name: "Author title" });
+    expect(rt.calls.at(-1)?.body).toEqual({ entryId: "01PAGE", name: "Author title" });
     // Commerce 0.6.0 refuses title-only writes as INVALID_INPUT: nothing is listed and nothing else is written.
-    const old = runtime({ commerce_item_id: "item-1", title: "Title B" });
-    old.handlePluginApiRoute.mockImplementation(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
+    const old = runtime({ sells: "item-1", title: "Title B" });
+    old.commerce.mockImplementation(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
       const body = await request.json() as Record<string, unknown>;
       old.calls.push({ pluginId, path, body, user: caller });
       return body.onSale === undefined ? { success: false, error: { code: "INVALID_INPUT", message: "Invalid onSale" } } as never : { success: true, data: { changed: true } };
@@ -112,7 +131,7 @@ describe("product page publish check tells Commerce", () => {
     expect(listed).toEqual([]);
     // A sandboxed Commerce 0.6.0 carries the reason only in its message.
     old.calls.length = 0;
-    old.handlePluginApiRoute.mockImplementation(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
+    old.commerce.mockImplementation(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
       const body = await request.json() as Record<string, unknown>;
       old.calls.push({ pluginId, path, body, user: caller });
       return body.onSale === undefined ? { success: false, error: { code: "PLUGIN_ROUTE_ERROR", message: "Plugin r_commerce:0.6.0 route catalog-items/set-on-sale failed: Invalid onSale" } } as never : { success: true, data: { changed: true } };
@@ -133,21 +152,21 @@ describe("product page publish check tells Commerce", () => {
 
   it("puts a product back on sale under its live title, not a newer unsaved draft's", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const rt = runtime({ commerce_item_id: "item-1" });
+    const rt = runtime({ sells: "item-1" });
     rt.handleContentGet.mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", slug: "mug", status: "published",
-      data: { commerce_item_id: "item-1", title: "Draft title" }, liveData: { commerce_item_id: "item-1", title: "Live title" } } } }) as never);
+      data: { sells: "item-1", title: "Draft title" }, liveData: { sells: "item-1", title: "Live title" } } } }) as never);
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 409 }));
     expect(rt.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true, name: "Live title" },
+      { entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: true, name: "Live title" },
     ]);
     warn.mockRestore();
   });
 
   it("takes the product off sale before and after unpublish or soft trash, keeping its link", async () => {
-    const rt = runtime({ commerce_item_id: "item-1" });
+    const rt = runtime({ sells: "item-1" });
     const order: string[] = [];
-    rt.handlePluginApiRoute.mockImplementation(async (_p: string, _m: string, _path: string, request: Request) => {
+    rt.commerce.mockImplementation(async (_p: string, _m: string, _path: string, request: Request) => {
       order.push("commerce " + JSON.stringify(await request.json()));
       return { success: true, data: { changed: true } };
     });
@@ -155,39 +174,39 @@ describe("product page publish check tells Commerce", () => {
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), page);
     await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), page);
     expect(order).toEqual([
-      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
-      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}',
-      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}', "cms",
-      'commerce {"catalogItemId":"item-1","entryId":"01PAGE","onSale":false}',
+      'commerce {"entryId":"01PAGE","onSale":false}', "cms",
+      'commerce {"entryId":"01PAGE","onSale":false}',
+      'commerce {"entryId":"01PAGE","onSale":false}', "cms",
+      'commerce {"entryId":"01PAGE","onSale":false}',
     ]);
   });
 
   it("tells Commerce nothing when the page change failed, the page sells nothing, or nobody is signed in", async () => {
-    const rt = runtime({ commerce_item_id: "item-1" });
+    const rt = runtime({ sells: "item-1" });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), async () => new Response(null, { status: 409 }));
-    const empty = runtime({ commerce_item_id: "" });
+    const empty = runtime({ sells: "" });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", empty), async () => new Response(null, { status: 200 }));
-    const anonymous = runtime({ commerce_item_id: "item-1" });
+    const anonymous = runtime({ sells: "item-1" });
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", anonymous, null), async () => new Response(null, { status: 200 }));
     expect([...rt.calls, ...empty.calls, ...anonymous.calls]).toEqual([]);
     expect(anonymous.handleContentGet).not.toHaveBeenCalled();
   });
 
   it("refuses unpublish and trash, changing nothing, when Commerce refuses or is unavailable", async () => {
-    const refused = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } } as never);
+    const refused = runtime({ sells: "item-1" }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } } as never);
     const cms = vi.fn(async () => new Response(null, { status: 200 }));
     const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", refused), cms);
     expect(out.status).toBe(503);
     expect((await out.json()).error.code).toBe("COMMERCE_UNAVAILABLE");
-    const broken = runtime({ commerce_item_id: "item-1" });
-    broken.handlePluginApiRoute.mockRejectedValueOnce(new Error("down"));
+    const broken = runtime({ sells: "item-1" });
+    broken.commerce.mockRejectedValueOnce(new Error("down"));
     expect((await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", broken), cms)).status).toBe(503);
     expect(cms).not.toHaveBeenCalled();
   });
 
   it("lets a page that does not own its product, or whose product or plugin is gone, change freely", async () => {
     for (const code of ["PRODUCT_PAGE_CONFLICT", "NOT_FOUND", "CATALOG_ITEM_NOT_FOUND", "ROUTE_NOT_FOUND"]) {
-      const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code, message: code } } as never);
+      const rt = runtime({ sells: "item-1" }, { success: false, error: { code, message: code } } as never);
       const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
       expect(await out.text()).toBe("done");
     }
@@ -195,7 +214,7 @@ describe("product page publish check tells Commerce", () => {
 
   it("lets a sandboxed Commerce's conflict or gone product through by its reason", async () => {
     for (const message of ["Another page sells this product", "Product not found. Return to Products."]) {
-      const rt = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "ROUTE_ERROR", message } } as never);
+      const rt = runtime({ sells: "item-1" }, { success: false, error: { code: "ROUTE_ERROR", message } } as never);
       const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response("done", { status: 200 }));
       expect(out.status).toBe(200);
     }
@@ -203,69 +222,69 @@ describe("product page publish check tells Commerce", () => {
 
   it("puts the product back on sale when the page change fails after Commerce took it off", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const rt = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: true } });
+    const rt = runtime({ sells: "item-1" }, { success: true, data: { changed: true } });
     const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 409 }));
     expect(out.status).toBe(409);
     expect(rt.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+      { entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: true },
     ]);
     // A product that was already off sale is left alone.
-    const draft = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: false } });
+    const draft = runtime({ sells: "item-1" }, { success: true, data: { changed: false } });
     await withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", draft), async () => new Response(null, { status: 500 }));
-    expect(draft.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    expect(draft.calls.map((call) => call.body)).toEqual([{ entryId: "01PAGE", onSale: false }]);
     warn.mockRestore();
   });
 
   it("never undoes someone else's unpublish: the page is read again before the product goes back on sale", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const rt = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: true } });
+    const rt = runtime({ sells: "item-1" }, { success: true, data: { changed: true } });
     // Our unpublish fails, but by then another request has unpublished the page.
     const contentGet = rt.handleContentGet.getMockImplementation()!;
-    rt.handleContentGet.mockImplementationOnce(contentGet).mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { commerce_item_id: "item-1" } } } }) as never);
+    rt.handleContentGet.mockImplementationOnce(contentGet).mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { sells: "item-1" } } } }) as never);
     const out = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), async () => new Response(null, { status: 409 }));
     expect(out.status).toBe(409);
-    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "01PAGE", onSale: false }]);
     warn.mockRestore();
   });
 
   it("takes the product off sale again when the page was unpublished while it was being put on sale", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const draft = async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { commerce_item_id: "item-1" } } } }) as never;
+    const draft = async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { sells: "item-1" } } } }) as never;
     // Our publish succeeds; another request unpublishes the page before our on-sale write is read back.
-    const published = runtime({ commerce_item_id: "item-1" });
+    const published = runtime({ sells: "item-1" });
     published.handleContentGet.mockImplementationOnce(published.handleContentGet.getMockImplementation()!).mockImplementation(draft);
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", published), async () => new Response(null, { status: 200 }));
     expect(published.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: true },
+      { entryId: "01PAGE", onSale: false },
     ]);
     // Our unpublish fails and the page still reads as published, but another unpublish lands before our undo is read back.
-    const undone = runtime({ commerce_item_id: "item-1" });
+    const undone = runtime({ sells: "item-1" });
     const get = undone.handleContentGet.getMockImplementation()!;
     undone.handleContentGet.mockImplementationOnce(get).mockImplementationOnce(get).mockImplementation(draft);
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", undone), async () => new Response(null, { status: 409 }));
     expect(undone.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: true },
+      { entryId: "01PAGE", onSale: false },
     ]);
     warn.mockRestore();
   });
 
   it("puts the product back when the page handler throws, and rethrows", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const rt = runtime({ commerce_item_id: "item-1" }, { success: true, data: { changed: true } });
+    const rt = runtime({ sells: "item-1" }, { success: true, data: { changed: true } });
     await expect(withProductOnSale(input("DELETE", "/_emdash/api/content/products/01PAGE", rt), async () => { throw new Error("db gone"); })).rejects.toThrow("db gone");
     expect(rt.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
+      { entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: true },
     ]);
     warn.mockRestore();
   });
 
   it("refuses unpublish and trash when the page cannot be read, and lets a missing page through", async () => {
-    const rt = runtime({ commerce_item_id: "item-1" });
+    const rt = runtime({ sells: "item-1" });
     rt.handleContentGet.mockResolvedValue({ success: false, error: { code: "INTERNAL_ERROR", message: "db down" } } as never);
     const cms = vi.fn(async () => new Response(null, { status: 200 }));
     expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", rt), cms)).status).toBe(503);
@@ -280,11 +299,11 @@ describe("product page publish check tells Commerce", () => {
 
   it("keeps a publish when Commerce refuses or is unavailable; the product stays a Draft", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const refused = runtime({ commerce_item_id: "item-1" }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } } as never);
+    const refused = runtime({ sells: "item-1" }, { success: false, error: { code: "INTERNAL_ERROR", message: "boom" } } as never);
     const ok = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", refused), async () => new Response("published", { status: 200 }));
     expect(await ok.text()).toBe("published");
-    const broken = runtime({ commerce_item_id: "item-1" });
-    broken.handlePluginApiRoute.mockRejectedValueOnce(new Error("no route"));
+    const broken = runtime({ sells: "item-1" });
+    broken.commerce.mockRejectedValueOnce(new Error("no route"));
     const still = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", broken), async () => new Response(null, { status: 200 }));
     expect(still.status).toBe(200);
     expect(warn).toHaveBeenCalledTimes(2);
@@ -293,7 +312,7 @@ describe("product page publish check tells Commerce", () => {
 
   it("only someone who may publish all content changes a product's sale state", async () => {
     const author = { ...user, role: 30 };
-    const rt = runtime({ commerce_item_id: "item-1" });
+    const rt = runtime({ sells: "item-1" });
     const published = await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt, author), async () => new Response(null, { status: 200 }));
     expect(published.status).toBe(200);
     const cms = vi.fn(async () => new Response(null, { status: 200 }));
@@ -307,13 +326,14 @@ describe("product page publish check tells Commerce", () => {
     const author = { ...user, role: 30 };
     // Native Commerce 0.5.0 has no such route (null); a sandboxed 0.5.0 answers only that the plugin exists.
     for (const meta of [null, { public: false }]) {
-      const rt = runtime({ commerce_item_id: "item-1" });
+      const rt = runtime({ sells: "item-1" });
       rt.getPluginRouteMeta.mockReturnValue(meta);
       for (const [method, path] of [["POST", "/_emdash/api/content/products/01PAGE/unpublish"], ["DELETE", "/_emdash/api/content/products/01PAGE"], ["POST", "/_emdash/api/content/products/01PAGE/publish"]]) {
         const out = await withProductOnSale(input(method, path, rt, author), async () => new Response("done", { status: 200 }));
         expect(await out.text()).toBe("done");
       }
-      expect(rt.handlePluginApiRoute).not.toHaveBeenCalled();
+      expect(rt.commerce).not.toHaveBeenCalled();
+      expect(rt.lookups).toEqual([]);
       expect(rt.handleContentGet).not.toHaveBeenCalled();
     }
   });
@@ -322,39 +342,39 @@ describe("product page publish check tells Commerce", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const author = { ...user, role: 30 };
     // Admin when the publish starts, an Author by the time the product would go on sale.
-    const publish = runtime({ commerce_item_id: "item-1" });
+    const publish = runtime({ sells: "item-1" });
     const asPublished = [user, author];
     const out = await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/publish", publish), currentUser: async () => asPublished.shift() ?? author },
       async () => new Response(null, { status: 200 }));
     expect(out.status).toBe(200);
     expect(publish.calls).toEqual([]);
     // Disabled or deleted (no stored person) before an unpublish: refused, nothing changes.
-    const unpublish = runtime({ commerce_item_id: "item-1" });
+    const unpublish = runtime({ sells: "item-1" });
     const cms = vi.fn(async () => new Response(null, { status: 200 }));
     const refused = await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/unpublish", unpublish), currentUser: async () => null }, cms);
     expect(refused.status).toBe(403);
     expect(cms).not.toHaveBeenCalled();
     expect(unpublish.calls).toEqual([]);
     // Lost after the first off-sale write and a failed page change: the product is not put back on sale.
-    const undo = runtime({ commerce_item_id: "item-1" });
+    const undo = runtime({ sells: "item-1" });
     const asUndone = [user, user];
     await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/unpublish", undo), currentUser: async () => asUndone.shift() ?? null },
       async () => new Response(null, { status: 409 }));
-    expect(undo.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
+    expect(undo.calls.map((call) => call.body)).toEqual([{ entryId: "01PAGE", onSale: false }]);
     // Lost right after the on-sale write while the page was unpublished: taking it off sale again still runs.
-    const corrective = runtime({ commerce_item_id: "item-1" });
+    const corrective = runtime({ sells: "item-1" });
     corrective.handleContentGet.mockImplementationOnce(corrective.handleContentGet.getMockImplementation()!)
-      .mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { commerce_item_id: "item-1" } } } }) as never);
+      .mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "draft", data: { sells: "item-1" } } } }) as never);
     const asCorrected = [user, user];
     await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/publish", corrective), currentUser: async () => asCorrected.shift() ?? null },
       async () => new Response(null, { status: 200 }));
     expect(corrective.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: true },
+      { entryId: "01PAGE", onSale: false },
     ]);
     // Every write that does run carries the person as stored at that moment.
     const fresh = { ...user, name: "Stored now" };
-    const carried = runtime({ commerce_item_id: "item-1" });
+    const carried = runtime({ sells: "item-1" });
     await withProductOnSale({ ...input("POST", "/_emdash/api/content/products/01PAGE/publish", carried), currentUser: async () => fresh }, async () => new Response(null, { status: 200 }));
     expect(carried.calls.map((call) => call.user)).toEqual([fresh]);
     warn.mockRestore();
@@ -362,19 +382,19 @@ describe("product page publish check tells Commerce", () => {
 
   it("takes the product off sale again when the page was linked to another product while it was being put on sale", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const relinked = runtime({ commerce_item_id: "item-1" });
+    const relinked = runtime({ sells: "item-1" });
     relinked.handleContentGet.mockImplementationOnce(relinked.handleContentGet.getMockImplementation()!)
-      .mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "published", data: { commerce_item_id: "item-2" } } } }) as never);
+      .mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", status: "published", data: { sells: "item-2" } } } }) as never);
     await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", relinked), async () => new Response(null, { status: 200 }));
     expect(relinked.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: true },
-      { catalogItemId: "item-1", entryId: "01PAGE", onSale: false },
+      { entryId: "01PAGE", onSale: true },
+      { entryId: "01PAGE", onSale: false },
     ]);
     warn.mockRestore();
   });
 
   it("leaves every other request alone", async () => {
-    const rt = runtime({ commerce_item_id: "item-1" });
+    const rt = runtime({ sells: "item-1" });
     const next = vi.fn(async () => new Response(null, { status: 204 }));
     await withProductOnSale(input("GET", "/products/hat", rt), next);
     expect(next).toHaveBeenCalledOnce();
@@ -420,18 +440,18 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     `takeback:${entryId}:${createHash("sha256").update(itemId).digest("hex")}`;
   type Page = { status: string; scheduledAt?: string | null; item?: string; title?: string };
   function site(pages: Record<string, Page>, result: unknown = { success: true, data: { changed: true } }) {
-    const rt = runtime({ commerce_item_id: "item-1" }, result as never);
+    const rt = runtime({ sells: "item-1" }, result as never);
     rt.handleContentGet.mockImplementation(async (_collection: string, id: string) => {
       const page = pages[id];
       return page
-        ? { success: true, data: { item: { id, slug: id, status: page.status, scheduledAt: page.scheduledAt ?? null, data: { commerce_item_id: page.item ?? `item-${id}`, ...(page.title ? { title: page.title } : {}) } } } }
+        ? { success: true, data: { item: { id, slug: id, status: page.status, scheduledAt: page.scheduledAt ?? null, data: { sells: page.item ?? `item-${id}`, ...(page.title ? { title: page.title } : {}) } } } }
         : { success: false, error: { code: "NOT_FOUND", message: "not found" } };
     });
     return rt;
   }
   // A record as the product-url plugin leaves it once EmDash's scheduled publish succeeded.
   const sale = (id: string, by = "u1", role = 50, state = "published", updatedAt = "2026-10-25T11:59:00.000Z") =>
-    ({ entryId: id, proposed: null, confirmed: { by, role, itemId: `item-${id}`, scheduledAt: "2026-10-25T11:59:30.000Z" }, state, updatedAt });
+    ({ entryId: id, proposed: null, confirmed: { by, role, scheduledAt: "2026-10-25T11:59:30.000Z" }, state, updatedAt });
   const sweep = (rt: ReturnType<typeof runtime>, pending: Pending, extra: Record<string, unknown> = {}, cursor?: string) =>
     sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: pending, userById: async (id: string) => people[id] ?? null, ...extra }, now, () => true, cursor);
 
@@ -440,7 +460,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     pending.put("hat", sale("hat"));
     const rt = site({ hat: { status: "published" } });
     await sweep(rt, pending);
-    expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { catalogItemId: "item-hat", entryId: "hat", onSale: true }, user }]);
+    expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { entryId: "hat", onSale: true }, user }]);
     expect(pending.rows.size).toBe(0);
   });
 
@@ -449,7 +469,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     pending.put("hat", sale("hat"));
     const rt = site({ hat: { status: "published", title: "Sun hat" } });
     await sweep(rt, pending);
-    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-hat", entryId: "hat", onSale: true, name: "Sun hat" }]);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true, name: "Sun hat" }]);
   });
 
   it("writes a scheduled page's newer title when a publish renamed it during the sweep", async () => {
@@ -457,16 +477,16 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     pending.put("hat", sale("hat"));
     const pages = { hat: { status: "published", title: "Sun hat" } };
     const rt = site(pages);
-    const commerce = rt.handlePluginApiRoute.getMockImplementation()!;
-    rt.handlePluginApiRoute.mockImplementation(async (...args: Parameters<typeof commerce>) => {
+    const commerce = rt.commerce.getMockImplementation()!;
+    rt.commerce.mockImplementation(async (...args: Parameters<typeof commerce>) => {
       const answer = await commerce(...args);
       pages.hat.title = "Straw hat";
       return answer;
     });
     await sweep(rt, pending);
     expect(rt.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-hat", entryId: "hat", onSale: true, name: "Sun hat" },
-      { catalogItemId: "item-hat", entryId: "hat", name: "Straw hat" },
+      { entryId: "hat", onSale: true, name: "Sun hat" },
+      { entryId: "hat", name: "Straw hat" },
     ]);
     expect(pending.rows.size).toBe(0);
   });
@@ -476,8 +496,8 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     pending.put("hat", sale("hat"));
     const pages = { hat: { status: "published", title: "Sun hat" } };
     const rt = site(pages);
-    const commerce = rt.handlePluginApiRoute.getMockImplementation()!;
-    rt.handlePluginApiRoute.mockImplementation(async (...args: Parameters<typeof commerce>) => {
+    const commerce = rt.commerce.getMockImplementation()!;
+    rt.commerce.mockImplementation(async (...args: Parameters<typeof commerce>) => {
       const answer = await commerce(...args);
       pages.hat.title = "Straw hat";
       return answer;
@@ -486,14 +506,14 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     // The visitor is an admin for the first sale write and an Author by the correction.
     const demoted = async () => (reads++ === 0 ? user : { ...user, role: 30 });
     await sweep(rt, pending, { currentUser: demoted });
-    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-hat", entryId: "hat", onSale: true, name: "Sun hat" }]);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true, name: "Sun hat" }]);
     // The newer title is listed instead, and an allowed visitor's later sweep renames the product with it.
     const retitle = `retitle:hat:${createHash("sha256").update("item-hat").digest("hex")}`;
     expect([...pending.rows.keys()]).toEqual([retitle]);
     await sweep(rt, pending, { currentUser: demoted });
     expect(rt.calls).toHaveLength(1);
     await sweep(rt, pending);
-    expect(rt.calls.map((call) => call.body).at(-1)).toEqual({ catalogItemId: "item-hat", entryId: "hat", name: "Straw hat" });
+    expect(rt.calls.map((call) => call.body).at(-1)).toEqual({ entryId: "hat", name: "Straw hat" });
     expect(pending.rows.size).toBe(0);
   });
 
@@ -507,10 +527,10 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     const rt = site({ hat: { status: "published", title: "Straw hat" }, cap: { status: "draft", title: "Cap" }, mug: { status: "published", item: "other", title: "Mug" }, tee: { status: "published" } },
       { success: false, error: { code: "STORAGE_UNAVAILABLE", message: "down" } });
     await sweep(rt, pending);
-    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-hat", entryId: "hat", name: "Straw hat" }]);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", name: "Straw hat" }]);
     expect([...pending.rows.keys()]).toEqual([key("hat")]);
     // Commerce answers on a later sweep, and the listing goes.
-    rt.handlePluginApiRoute.mockImplementation(async () => ({ success: true, data: { changed: false } }));
+    rt.commerce.mockImplementation(async () => ({ success: true, data: { changed: false } }));
     await sweep(rt, pending);
     expect(pending.rows.size).toBe(0);
     warn.mockRestore();
@@ -566,12 +586,11 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     expect(pending.rows.size).toBe(1);
   });
 
-  it("drops records whose page is gone, unpublished, or sells another product", async () => {
+  it("drops records whose page is gone or unpublished", async () => {
     const pending = new Pending();
     pending.put("gone", sale("gone"));
-    pending.put("relinked", sale("relinked"));
     pending.put("draft", sale("draft"));
-    const rt = site({ relinked: { status: "published", item: "item-other" }, draft: { status: "draft" } });
+    const rt = site({ draft: { status: "draft" } });
     await sweep(rt, pending);
     expect(rt.calls).toEqual([]);
     expect(pending.rows.size).toBe(0);
@@ -601,7 +620,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     pending.put("cap", sale("cap"));
     const pages: Record<string, Page> = { hat: { status: "published" }, cap: { status: "published" } };
     const rt = site(pages);
-    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+    rt.commerce.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
       const body = await request.json() as { entryId: string; onSale: boolean };
       rt.calls.push({ pluginId, path, body, user: caller });
       // At the on-sale write: hat's record is removed (a person's own publish), cap is unpublished.
@@ -611,10 +630,10 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     });
     await sweep(rt, pending);
     expect(rt.calls.map((call) => call.body)).toEqual([
-      { catalogItemId: "item-hat", entryId: "hat", onSale: true },
-      { catalogItemId: "item-hat", entryId: "hat", onSale: false },
-      { catalogItemId: "item-cap", entryId: "cap", onSale: true },
-      { catalogItemId: "item-cap", entryId: "cap", onSale: false },
+      { entryId: "hat", onSale: true },
+      { entryId: "hat", onSale: false },
+      { entryId: "cap", onSale: true },
+      { entryId: "cap", onSale: false },
     ]);
     expect(pending.rows.size).toBe(0);
   });
@@ -624,14 +643,14 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     pending.put("hat", sale("hat"));
     pending.put("cap", sale("cap"));
     const rt = site({ hat: { status: "published" }, cap: { status: "published" } });
-    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+    rt.commerce.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
       const body = await request.json() as { entryId: string; onSale: boolean };
       rt.calls.push({ pluginId, path, body, user: caller });
       if (body.onSale) pending.rows.delete("cap");
       return { success: true, data: { changed: true } };
     });
     await sweep(rt, pending);
-    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-hat", entryId: "hat", onSale: true }]);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true }]);
   });
 
   it("keeps taking a product off sale again on later sweeps until Commerce confirms it, never selling it", async () => {
@@ -639,7 +658,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     const pending = new Pending();
     pending.put("hat", sale("hat"));
     const rt = site({ hat: { status: "published" } });
-    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+    rt.commerce.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
       const body = await request.json() as { onSale: boolean };
       rt.calls.push({ pluginId, path, body, user: caller });
       if (body.onSale) {
@@ -653,7 +672,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     // A later sweep retries only the off-sale write; it stays listed while Commerce refuses, then clears.
     await sweep(rt, pending);
     expect([...pending.rows.keys()]).toEqual([await takebackOf("hat", "item-hat")]);
-    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+    rt.commerce.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
       rt.calls.push({ pluginId, path, body: await request.json(), user: caller });
       return { success: true, data: { changed: true } };
     });
@@ -671,7 +690,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     pending.put(oldKey, { takeback: true, catalogItemId: "item-old", entryId: "hat" });
     pending.put(newKey, { takeback: true, catalogItemId: "item-new", entryId: "hat" });
     const rt = site({});
-    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+    rt.commerce.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
       const body = await request.json() as { catalogItemId: string };
       rt.calls.push({ pluginId, path, body, user: caller });
       // While the old product's write is in flight, another sweep lists the old product again, and the new
@@ -685,7 +704,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     await sweep(rt, pending);
     // The old write answered the first listing only; the newer listing and the refused one both stay.
     expect([...pending.rows.keys()].sort()).toEqual([newKey, oldKey].sort());
-    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
+    rt.commerce.mockImplementation(async (pluginId: string, _m: string, path: string, request: Request, caller: unknown) => {
       rt.calls.push({ pluginId, path, body: await request.json(), user: caller });
       return { success: true, data: { changed: true } };
     });
@@ -718,7 +737,7 @@ describe("pages EmDash published on a schedule go on sale on an allowed person's
     const sweeper = scheduledSaleSweeper(60_000);
     const base = { url: new URL("https://shop.example.test/"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: pending, userById: async (id: string) => people[id] ?? null };
     for (let minute = 0; minute < 3; minute += 1) await sweeper(base, now + minute * 60_001);
-    expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-live", entryId: "live", onSale: true }]);
+    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "live", onSale: true }]);
     expect([...pending.rows.keys()]).toEqual(["a", "b", "c", "d"]);
   });
 
@@ -741,11 +760,12 @@ describe("a page whose product Commerce holds", () => {
   // A Commerce with the catalog route: `links` is each page's product as Commerce answers it ("down" fails the read).
   function linked(links: Record<string, string | null | "down">, fields: Record<string, unknown> = {}, slug?: string) {
     const rt = runtime(fields);
+    rt.ownCatalog = true;
     const lookups: Array<{ body: unknown; user: unknown }> = [];
     rt.getPluginRouteMeta.mockImplementation((_pluginId: string, path: string) =>
       path === "catalog-items/set-on-sale" || path === "catalog" ? { public: false, permission: "content:publish_any" } : null);
     if (slug) rt.handleContentGet.mockImplementation(async () => ({ success: true, data: { item: { id: "01PAGE", slug, status: "published", data: fields } } }) as never);
-    rt.handlePluginApiRoute.mockImplementation(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
+    rt.commerce.mockImplementation(async (pluginId: string, _method: string, path: string, request: Request, caller: unknown) => {
       const body = await request.json() as { op?: string; entryId: string };
       if (path !== "catalog") {
         rt.calls.push({ pluginId, path, body, user: caller });
@@ -761,8 +781,7 @@ describe("a page whose product Commerce holds", () => {
   const done = async () => new Response("{}", { status: 200 });
 
   it("asks Commerce for the page's product as the person publishing, and sends set-on-sale the page alone", async () => {
-    // A stale field on an older store is ignored once Commerce links the page.
-    const rt = linked({ "01PAGE": "item-1" }, { commerce_item_id: "item-old" });
+    const rt = linked({ "01PAGE": "item-1" });
     expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), done)).status).toBe(200);
     expect(rt.lookups[0]).toEqual({ body: { op: "get", entryId: "01PAGE" }, user });
     expect(rt.calls).toEqual([{ pluginId: "r_commerce", path: "catalog-items/set-on-sale", body: { entryId: "01PAGE", onSale: true }, user }]);
@@ -795,19 +814,6 @@ describe("a page whose product Commerce holds", () => {
     expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt, author), cms)).status).toBe(422);
   });
 
-  it("reads an older store's field while Commerce links the page to nothing or cannot say", async () => {
-    const unlinked = linked({ "01PAGE": null }, { commerce_item_id: " item-1 " });
-    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", unlinked), done);
-    expect(unlinked.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: true }]);
-    const down = linked({ "01PAGE": "down" }, { commerce_item_id: "item-1" });
-    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/unpublish", down), done);
-    expect(down.calls.map((call) => call.body)).toEqual([{ catalogItemId: "item-1", entryId: "01PAGE", onSale: false }, { catalogItemId: "item-1", entryId: "01PAGE", onSale: false }]);
-    // A Commerce without the catalog route keeps no links, so it is never asked.
-    const old = runtime({ commerce_item_id: "item-1" });
-    await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", old), done);
-    expect(old.calls.map((call) => call.path)).toEqual(["catalog-items/set-on-sale"]);
-  });
-
   it("never runs an unpublish blind when Commerce cannot say what the page sells, and keeps the publish", async () => {
     const rt = linked({ "01PAGE": "down" });
     const cms = vi.fn(done);
@@ -819,7 +825,7 @@ describe("a page whose product Commerce holds", () => {
     expect(rt.calls).toEqual([]);
   });
 
-  it("sells the seed's demonstration pages by their slug, as their field did", async () => {
+  it("sells the seed's demonstration pages by their slug", async () => {
     const rt = linked({ "01PAGE": null }, {}, "everyday-tee");
     expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/publish", rt), done)).status).toBe(200);
     expect(rt.calls.map((call) => call.body)).toEqual([{ catalogItemId: "dinkus-template-managed-product", entryId: "01PAGE", onSale: true }]);
@@ -851,61 +857,4 @@ describe("a page whose product Commerce holds", () => {
     expect(pending.size).toBe(0);
   });
 
-  // While upgrade 005 waits, a page can keep an older field naming one product while Commerce links it to another.
-  it("sells a page scheduled under an older field by Commerce's link, and holds a grant to the field only while the field decides", async () => {
-    const pending = new Map<string, { value: unknown; revision: string }>();
-    let revision = 0;
-    const store = {
-      put: async (id: string, value: unknown) => void pending.set(id, { value, revision: `r${(revision += 1)}` }),
-      query: async () => ({ items: [...pending.keys()].map((id) => ({ id })) }),
-      getVersioned: async (id: string) => pending.get(id) ?? null,
-      compareAndDelete: async (id: string, at: string) => {
-        const applied = pending.get(id)?.revision === at;
-        if (applied) pending.delete(id);
-        return { applied };
-      },
-    };
-    const grant = (id: string) => ({ entryId: id, proposals: [], confirmed: { by: "u1", role: 50, itemId: "item-old", scheduledAt: "2026-10-25T11:59:30.000Z" }, state: "published", updatedAt: "2026-10-25T11:59:00.000Z" });
-    for (const id of ["hat", "cap", "mug"]) await store.put(id, grant(id));
-    const fields: Record<string, string> = { hat: "item-old", cap: "item-old", mug: "item-other" };
-    // Commerce links the hat page to a newer product; the cap and mug pages still sell by their field.
-    const rt = linked({ hat: "item-new", cap: null, mug: null });
-    rt.handleContentGet.mockImplementation(async (_collection: string, id: string) => ({ success: true, data: { item: { id, slug: id, status: "published", scheduledAt: null, data: { commerce_item_id: fields[id] } } } }) as never);
-    await sellScheduledPages({ url: new URL("https://shop.example.test/_emdash/admin"), runtime: rt, user, commercePluginId: "r_commerce", pendingSales: store as never,
-      userById: async (id: string) => (id === "u1" ? user : null) }, Date.parse("2026-10-25T12:00:00.000Z"), () => true);
-    // The mug's field changed after it was scheduled, so its grant sells nothing.
-    expect(rt.calls.map((call) => call.body)).toEqual([{ entryId: "hat", onSale: true }, { catalogItemId: "item-old", entryId: "cap", onSale: true }]);
-    expect(pending.size).toBe(0);
-  });
-
-  it("lets the product URL plugin's hooks ask Commerce for a page's product as the person, only inside the request", async () => {
-    const hooks = createPlugin().hooks as Record<string, { handler: (event: never, ctx: never) => Promise<unknown> }>;
-    const claims = new Map<string, unknown>();
-    const records = new Map<string, { value: unknown; revision: string }>();
-    const ctx = {
-      storage: {
-        claims: { put: async (id: string, data: unknown) => void claims.set(id, data), delete: async (id: string) => claims.delete(id), query: async () => ({ items: [] }) },
-        pending_sales: {
-          getVersioned: async (id: string) => records.get(id) ?? null,
-          compareAndSet: async (id: string, _at: string | null, value: unknown) => (records.set(id, { value, revision: "r" }), { applied: true }),
-          compareAndDelete: async (id: string) => ({ applied: records.delete(id) }),
-        },
-      },
-    } as never;
-    const scheduled = { collection: "products", content: { id: "01PAGE", slug: "hat", status: "draft", data: { commerce_item_id: "item-old" } },
-      scheduledAt: "2030-01-01T00:00:00Z", actor: { id: "u1", role: 50, source: "api" }, origin: { source: "api" } } as never;
-    const rt = linked({ "01PAGE": "item-new" });
-    const cms = async () => {
-      await hooks["content:beforeSchedule"]!.handler(scheduled, ctx);
-      return new Response("{}", { status: 200 });
-    };
-    expect((await withProductOnSale(input("POST", "/_emdash/api/content/products/01PAGE/schedule", rt), cms)).status).toBe(200);
-    expect(rt.lookups).toEqual([{ body: { op: "get", entryId: "01PAGE" }, user }]);
-    expect(claims.size).toBe(0);
-    expect((records.get("01PAGE")?.value as { proposals: Array<Record<string, unknown>> }).proposals[0]).not.toHaveProperty("itemId");
-    // Outside a signed-in person's request nobody is asked, and the field counts.
-    await hooks["content:beforeSchedule"]!.handler(scheduled, ctx);
-    expect(rt.lookups).toHaveLength(1);
-    expect(claims.get("01PAGE")).toMatchObject({ itemId: "item-old" });
-  });
 });

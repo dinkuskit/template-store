@@ -31,7 +31,7 @@ const productCollection = await getEmDashCollection<"products", Record<string, u
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
 // Commerce keeps which page sells each product (template-no-commerce-box-20261029): this page's product is
-// found by the page's entry id. A Commerce that cannot answer leaves an older store's field to name it.
+// found by the page's entry id; the store never reads an older store's field (template-drop-older-store-box-20261101).
 const pageEntry = products.entries.find((entry) => productPath(entry.id) === Astro.url.pathname);
 const pageEntryId = typeof pageEntry?.data.id === "string" ? pageEntry.data.id : "";
 let pageLookupFailed = false;
@@ -75,7 +75,7 @@ if (item && !linkedProduct && (profile === "shipping" || item.availabilitySource
       (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
       { runtime: Astro.locals.emdash, request: Astro.request },
     );
-    // An older store's field can still name a product Commerce now sells on another page; it is not this page's.
+    // A product Commerce sells on another page is not this page's.
     if (linkedProduct?.page && linkedProduct.page !== pageEntryId) linkedProduct = null;
   } catch {
     lookupUnavailable = profile === "shipping";
@@ -87,7 +87,7 @@ if (item && profile === "shipping" && item.availabilitySource !== "preview") {
 // A shipping store's page whose Commerce product left the catalog (archived)
 // is gone for shoppers, like Shopify and WooCommerce: a 404 that says so.
 const linkedItemId = item ? productLinks.products.find((product) => product.id === item.id)?.commerceItemId ?? "" : "";
-// A published page Commerce lists no product for, and no older field names, is gone for shoppers the same way.
+// A published page Commerce lists no product for is gone for shoppers the same way.
 const unlinkedPage = Boolean(pageEntry) && !linked && productLinks.unlinked.includes(pageEntry!.id);
 if (unlinkedPage && profile === "shipping" && pageLookupFailed) {
   lookupUnavailable = true;

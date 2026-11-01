@@ -234,8 +234,8 @@ export async function readInstalledCommerceProduct(
 /**
  * The product a published page sells, found by the page's entry id, which
  * Commerce keeps (template-no-commerce-box-20261029); null when that page
- * sells nothing on the shop. A Commerce that predates the lookup refuses it,
- * which throws, so the caller can fall back to an older store's field.
+ * sells nothing on the shop. A Commerce that cannot answer throws, and the
+ * caller treats the page as unavailable.
  */
 export async function readInstalledCommerceProductByPage(
   pageId: string,
