@@ -121,8 +121,7 @@ describe("demo EmDash product entries", () => {
     expect(isDemoCatalogProfile({ DINKUS_STOREFRONT_PROFILE: "proof", DINKUS_CATALOG_PROFILE: "shipping" })).toBe(true);
     expect(isDemoCatalogProfile({})).toBe(false);
     expect(isDemoCatalogProfile({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBe(false);
-    // The retired native copy never counts as the demo.
-    expect(isDemoCatalogProfile({ DINKUS_CATALOG_PROFILE: "native-development", DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(false);
+    // The proof storefront profile alone decides; the retired native copy has no profile left to opt out of.
     const middleware = readFileSync("src/middleware.ts", "utf8");
     expect(middleware).toMatch(/isPlayground\) \{[\s\S]*ensurePlaygroundDemoCatalog[\s\S]*isDemoCatalogProfile\(\)/);
   });

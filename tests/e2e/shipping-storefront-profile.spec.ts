@@ -127,14 +127,16 @@ test("shipping profile uses installed catalog and fail-closes without an install
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   expect((await request.get("/shipping")).status()).toBe(200);
   expect((await request.get("/returns")).status()).toBe(200);
+  // The policy pages are EmDash content and always show their own text, with or without Commerce
+  // (GrillTrack policy-pages-content-20261031).
   await page.goto("/shipping");
-  await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
-  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
+  await expect(page.locator("[data-shipping-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-shipping-policy-unset]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/);
   await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
   await page.goto("/returns");
-  await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
-  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
+  await expect(page.locator("[data-return-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-return-policy-unset]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\d+ days/);
   await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
   const googleFeed = await request.get("/feeds/google-merchant.xml");

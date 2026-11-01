@@ -140,8 +140,9 @@ describe("installed Commerce feed facts", () => {
     expect(meta).not.toContain("commerce-orphan");
   });
 
-  it("joins native eligibility when the public catalog omits feed channels", async () => {
-    process.env.DINKUS_CATALOG_PROFILE = "native-development";
+  it("puts a product the public catalog lists without feed channels in no feed", async () => {
+    // Commerce's public catalog carries each product's approved channels; the store never reads its storage
+    // for them (template-one-build-registry-20261031), so a stored eligibility the catalog omits counts for nothing.
     eligibility.set("commerce-hat", {
       recordKind: "product-feed-eligibility",
       channels: ["google-merchant"],
@@ -151,11 +152,10 @@ describe("installed Commerce feed facts", () => {
       catalogItem("commerce-cap"),
     ]));
     expect(facts.map((fact) => [fact.product.id, fact.eligibility])).toEqual([
-      ["commerce-hat", ["google-merchant"]],
+      ["commerce-hat", []],
       ["commerce-cap", []],
     ]);
-    expect(buildGoogleMerchantFeed(facts)).toContain("<g:id>commerce-hat</g:id>");
-    expect(buildGoogleMerchantFeed(facts)).not.toContain("commerce-cap");
+    expect(buildGoogleMerchantFeed(facts)).not.toContain("commerce-hat");
   });
 
   it("resolves approved primary and gallery images into absolute XML and CSV feed URLs", async () => {
@@ -277,44 +277,32 @@ describe("installed Commerce feed facts", () => {
     expect(agentsMd).toContain("exclusively from Commerce's authoritative frozen `data.checkout.pricing.finalTotal.minor`");
   });
 
-  it("preserves freeOver shipping threshold in buildInstalledStorefrontAgentFeedOptions", async () => {
+  it("links agents to the store's EmDash policy pages and reads no Commerce policy records", async () => {
+    // A store's policies are its EmDash pages; Commerce keeps no policy records (GrillTrack policy-pages-content-20261031).
     const items = [catalogItem("commerce-hat", { feedChannels: ["google-merchant"] })];
-    const ctx = {
+    const dispatch = vi.fn(async (_pluginId: string, _method: string, path: string) => {
+      if (path === "policies/public") throw new Error("Commerce keeps no policy records");
+      return { success: true, data: { products: items } };
+    });
+    const installedOptions = await buildInstalledStorefrontAgentFeedOptions({
       request: new Request("http://internal.invalid/llms-full.txt"),
       site: new URL("https://shop.example.test"),
-      runtime: {
-        getPluginRouteMeta: () => ({ public: true, methods: ["GET"] }),
-        handlePublicPluginApiRoute: vi.fn(async (_pluginId: string, _method: string, path: string) => {
-          if (path === "policies/public") {
-            return {
-              success: true,
-              data: {
-                shipping: {
-                  recordKind: "store-shipping-policy",
-                  recordId: "active",
-                  revision: 1,
-                  configurationId: "flat-500-free-5000",
-                  mode: "flat",
-                  amount: { currency: "USD", minor: "500" },
-                  freeOver: { currency: "USD", minor: "5000" },
-                  updatedAt: "2026-10-31T00:00:00.000Z",
-                },
-                returns: null,
-              },
-            };
-          }
-          return { success: true, data: { products: items } };
-        }),
-      },
-    };
-    const installedOptions = await buildInstalledStorefrontAgentFeedOptions(ctx);
-    expect(installedOptions.shipping).toEqual({
-      mode: "flat",
-      amount: { currency: "USD", minor: "500" },
-      freeOver: { currency: "USD", minor: "5000" },
+      runtime: { getPluginRouteMeta: () => ({ public: true, methods: ["GET"] }), handlePublicPluginApiRoute: dispatch },
     });
-    expect(installedOptions.policies?.[0]?.body).toContain(
-      "free when discounted net merchandise (netMerchandise) is at least $50.00 USD (>= 5000 minor units, inclusive, after coupon discounts)",
-    );
+    expect(dispatch.mock.calls.map((call) => call[2])).not.toContain("policies/public");
+    expect(installedOptions.shipping).toBeNull();
+    expect(installedOptions.policies).toEqual([
+      { slug: "shipping", title: "Shipping policy", url: "https://shop.example.test/shipping" },
+      { slug: "returns", title: "Returns policy", url: "https://shop.example.test/returns" },
+    ]);
+    expect(buildStorefrontLlmsTxt(installedOptions)).toContain("Calculated at checkout");
+  });
+
+  it("states a free-over threshold when a shipping quote is given", () => {
+    const text = buildStorefrontLlmsTxt({
+      storeName: "Shop", siteOrigin: "https://shop.example.test", products: [],
+      shipping: { mode: "flat", amount: { currency: "USD", minor: "500" }, freeOver: { currency: "USD", minor: "5000" } },
+    });
+    expect(text).toContain("free when discounted net merchandise (netMerchandise) is at least $50.00 USD (>= 5000 minor units, inclusive, after coupon discounts)");
   });
 });

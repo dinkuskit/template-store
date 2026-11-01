@@ -1,17 +1,8 @@
-import { handleMediaGet, PluginStorageRepository } from "emdash";
+import { handleMediaGet } from "emdash";
 import { getDb } from "emdash/runtime";
-import {
-  CATALOG_COLLECTION,
-  COMMERCE_PLUGIN_ID,
-  PRODUCT_FEED_ELIGIBILITY_COLLECTION,
-  type CatalogStorageRecord,
-} from "@dinkuskit/commerce";
 import {
   buildGoogleMerchantFeed,
   buildMetaCatalogFeed,
-  loadProductFeedEligibility,
-  type ProductFeedChannel,
-  type ProductFeedEligibilityRecord,
   type ProductFeedFacts,
 } from "@dinkuskit/commerce/features/feeds";
 import {
@@ -42,18 +33,6 @@ async function publishedLinks(links: ReadonlyMap<string, string>) {
  * `catalog-items/set-feed-eligibility` route writes. Shipping/registry stays
  * on the public projection and does not open this collection.
  */
-async function nativeFeedEligibility(itemId: string): Promise<readonly ProductFeedChannel[]> {
-  const db = await getDb();
-  const storage = new PluginStorageRepository<ProductFeedEligibilityRecord>(
-    db,
-    COMMERCE_PLUGIN_ID,
-    PRODUCT_FEED_ELIGIBILITY_COLLECTION,
-    [],
-  );
-  const catalog = new PluginStorageRepository<CatalogStorageRecord>(db, COMMERCE_PLUGIN_ID, CATALOG_COLLECTION, []);
-  return loadProductFeedEligibility(storage, itemId, catalog);
-}
-
 function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["product"] {
   const variants = product.variants?.length
     ? {
@@ -122,17 +101,13 @@ export async function buildInstalledCommerceFeedFacts(
   // Commerce keeps which page sells each product (template-no-commerce-box-20261029).
   const links = await publishedLinks(commercePageLinks(products));
   const byCommerceId = new Map(links.map((entry) => [entry.commerceItemId, entry]));
-  const nativeEligibility = process.env.DINKUS_CATALOG_PROFILE === "native-development";
   const facts: ProductFeedFacts[] = [];
   for (const product of products) {
     const entry = byCommerceId.get(product.id);
     // A catalog item with no published CMS page has no canonical storefront URL.
     if (!entry) continue;
-    const eligibility = product.feedChannels !== undefined
-      ? product.feedChannels
-      : nativeEligibility
-        ? await nativeFeedEligibility(product.id)
-        : [];
+    // Commerce's public catalog carries each product's approved channels; none means no feed.
+    const eligibility = product.feedChannels ?? [];
     const imageUrls = await publicImageUrls(product, context);
     facts.push({
       product: catalogProduct(product),

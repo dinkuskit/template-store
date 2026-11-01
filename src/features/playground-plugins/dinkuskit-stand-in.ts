@@ -11,13 +11,18 @@
  */
 import { OptionsRepository, PluginStorageRepository } from "emdash";
 import { getRequestContext } from "emdash/request-context";
-import { readStripeAccount } from "../playground-checkout/index.js";
+import { CHECKOUT_PRICING_SCHEMA } from "@dinkuskit/commerce/features/checkout";
+import { getStorePass, playgroundCheckoutConfigured, readPaymentsConfig, readStripeAccount } from "../playground-checkout/index.js";
+import { PAYMENTS_PLAYGROUND_BINDING_REF, playgroundPaymentsFetch } from "../playground-checkout/payments-port.js";
+import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../playground/flat-rate-shipping.js";
+import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "./registry-plugins.mjs";
 
 export const STAND_IN_KID = "dinkuskit-playground-stand-in";
 export const PLAYGROUND_SITE_ID = "playground";
 const ISSUER = "https://dinkuskit.com/account";
 const CONNECT_URL = "https://dinkuskit.com/api/store-connections";
 const STORE_PASSES_URL = "https://dinkuskit.com/api/store-passes";
+const COMMERCE_SETTINGS_PATH = "/api/commerce-settings";
 const JWKS_URL = "https://dinkuskit.com/account/.well-known/jwks.json";
 const PAYMENTS_ORIGIN = "https://payments.dinkuskit.com";
 const SHIP_ORIGIN = "https://ship.dinkuskit.com";
@@ -138,7 +143,17 @@ async function connectToken(init: RequestInit | undefined): Promise<Response> {
   });
 }
 
-async function storePass(authorization: string | null, init: RequestInit | undefined): Promise<Response | null> {
+/** Seconds a real pass has left, from its own exp claim; 0 when unreadable. */
+function passSecondsLeft(pass: string): number {
+  try {
+    const claims = JSON.parse(atob(pass.split(".")[1]!.replaceAll("-", "+").replaceAll("_", "/"))) as { exp?: unknown };
+    return typeof claims.exp === "number" ? Math.max(0, Math.floor(claims.exp - Date.now() / 1000)) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function storePass(authorization: string | null, init: RequestInit | undefined, env: Record<string, unknown>): Promise<Response | null> {
   const presented = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
   let clientId: ClientId | undefined;
   for (const candidate of Object.keys(SERVICES) as ClientId[]) {
@@ -150,7 +165,64 @@ async function storePass(authorization: string | null, init: RequestInit | undef
   if (body.site_id !== PLAYGROUND_SITE_ID) return json({ error: "site_mismatch" }, 403);
   const allowed = SERVICES[clientId].passes.some(([scope, audience]) => scope === body.scope && audience === body.audience);
   if (!allowed) return json({ error: "service_not_enabled" }, 403);
+  // Commerce's checkout pass goes to the real Payments service, which accepts only real passes: it is the
+  // pass the playground's own checkout key gets from the real DinkusKit.com, as the playground's checkout
+  // always used (site "playground", binding "playground", Stripe test mode). Checkout off: no pass.
+  if (clientId === "dinkus-commerce-emdash" && body.scope === "payments:checkout") {
+    const config = readPaymentsConfig(env);
+    if (!playgroundCheckoutConfigured(env) || !config) return json({ error: "service_not_enabled" }, 403);
+    const pass = await getStorePass(config);
+    if (!pass) return json({ error: "temporarily_unavailable" }, 503);
+    return json({ access_token: pass, token_type: "Bearer", expires_in: passSecondsLeft(pass) });
+  }
   return json({ access_token: await token(body.audience as string, body.scope as string), token_type: "Bearer", expires_in: PASS_SECONDS });
+}
+
+// ---------------------------------------------------------------------------
+// Set up Commerce at DinkusKit.com: the playground's checkout settings.
+
+/**
+ * What a real store's Set up Commerce at DinkusKit.com hands Commerce, for the playground: Stripe TEST checkout
+ * through the real Payments service under binding "playground", with the playground's flat-rate shipping. With
+ * checkout off (no flag, key, Payments origin, Stripe test account or trusted store origin: the same test the
+ * middleware admits checkout by) it is the documented turned-off settings, so Commerce's checkout stays unavailable. The store origin is the one EmDash gives the plugins.
+ */
+function commerceSettings(env: Record<string, unknown>, origin: string): Response {
+  const config = readPaymentsConfig(env), account = readStripeAccount(env);
+  if (!playgroundCheckoutConfigured(env) || !config || !account) {
+    return json({ schema: "dinkuskit.commerce.registry-checkout/v1", enabled: false });
+  }
+  return json({
+    schema: "dinkuskit.commerce.registry-checkout/v1",
+    enabled: true,
+    commerceOrigin: origin,
+    siteId: PLAYGROUND_SITE_ID,
+    paymentsOrigin: config.baseUrl,
+    bindingRef: PAYMENTS_PLAYGROUND_BINDING_REF,
+    providerId: "stripe",
+    stripeAccountId: account,
+    mode: "test",
+    pricingSchema: CHECKOUT_PRICING_SCHEMA,
+    issuer: ISSUER,
+    audience: "dinkus-payments",
+    shipping: structuredClone(PLAYGROUND_FLAT_RATE_SHIPPING),
+  });
+}
+
+/**
+ * Commerce's own calls to the real Payments service (they carry a real pass) pass through the playground's
+ * checkout guard: the playground tenant answers session and lookup only, Commerce's binding check is
+ * answered with the fixed playground binding, and each attempt is bound to the visitor that started it.
+ */
+async function guardedPayments(realFetch: typeof fetch, env: Record<string, unknown>, href: string, init: RequestInit | undefined): Promise<Response> {
+  // EmDash hands a plugin's request body over as bytes; the guard reads the attempt id from its text.
+  const raw = init?.body;
+  const body = raw instanceof ArrayBuffer || ArrayBuffer.isView(raw) ? new TextDecoder().decode(raw) : raw;
+  try {
+    return await playgroundPaymentsFetch(env, { fetchImpl: realFetch })(href, { ...init, body });
+  } catch {
+    return json({ error: { code: "UNAVAILABLE", message: "Playground checkout is unavailable." } }, 503);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +245,8 @@ function payments(path: string, method: string, env: Record<string, unknown>): R
 // ---------------------------------------------------------------------------
 // Ship: the store's paid orders, with free practice labels.
 
-const COMMERCE = "dinkus-commerce";
+/** Commerce's orders, under the id the playground installs it with. */
+const COMMERCE = PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce;
 /** Where the stand-in keeps each playground store's practice labels. */
 export const STAND_IN_STORAGE = { pluginId: "dinkuskit-playground", labels: "labels" } as const;
 const STAND_IN = STAND_IN_STORAGE.pluginId;
@@ -366,6 +439,12 @@ export async function playgroundPluginSettingsKey(env: Record<string, unknown>):
 }
 
 const DOH_ORIGIN = "https://cloudflare-dns.com";
+
+/** The store origin EmDash gives the plugins (the Worker sets it from the first request), else this request's. */
+function playgroundSiteOrigin(requestOrigin: string): string {
+  const configured = typeof process !== "undefined" ? process.env.EMDASH_SITE_URL : undefined;
+  try { return configured ? new URL(configured).origin : requestOrigin; } catch { return requestOrigin; }
+}
 const STAND_IN_HOSTS = new Set(["dinkuskit.com", "payments.dinkuskit.com", "ship.dinkuskit.com"]);
 
 /**
@@ -397,9 +476,13 @@ export function playgroundDinkusKitFetch(
       if (url.href === CONNECT_URL && method === "POST") return connect(init);
       if (url.href === `${CONNECT_URL}/token` && method === "POST") return connectToken(init);
       if (url.href === JWKS_URL) return json({ keys: [(await key()).jwk] });
-      if (url.href === STORE_PASSES_URL && method === "POST") return (await storePass(authorization, init)) ?? realFetch(input, init);
+      if (url.href === STORE_PASSES_URL && method === "POST") return (await storePass(authorization, init, options.env())) ?? realFetch(input, init);
+      if (url.pathname === COMMERCE_SETTINGS_PATH && method === "GET" && signedHere(authorization)) {
+        return commerceSettings(options.env(), playgroundSiteOrigin(options.origin()));
+      }
     }
     if (url.origin === PAYMENTS_ORIGIN && signedHere(authorization)) return payments(url.pathname, method, options.env());
+    if (url.origin === PAYMENTS_ORIGIN && typeof input === "string") return guardedPayments(realFetch, options.env(), url.href, init);
     if (url.origin === SHIP_ORIGIN && signedHere(authorization)) return ship(url.pathname, method, init, options.origin());
     return realFetch(input, init);
   };

@@ -11,16 +11,9 @@ import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js
 const ROUTE = "catalog/public";
 const ITEM_ROUTE = "catalog/public/item";
 const STATUSES = new Set(["in-stock", "low-stock", "out-of-stock", "available-on-backorder", "availability-unavailable"]);
-/**
- * The retired native copy's id. Only the playground still runs that copy, until its own switch to the Registry
- * build; every other store mounts or installs the Registry build (template-one-build-registry-20261031).
- */
-export const COMMERCE_NATIVE_PLUGIN_ID = "dinkus-commerce";
-
+/** Every store, the playground included, runs Commerce's Registry build (template-one-build-registry-20261031). */
 function installedPluginId(): string {
-  return process.env.DINKUS_CATALOG_PROFILE === "native-development"
-    ? COMMERCE_NATIVE_PLUGIN_ID
-    : COMMERCE_REGISTRY_RUNTIME_ID;
+  return COMMERCE_REGISTRY_RUNTIME_ID;
 }
 
 export interface InstalledCatalogContext {
