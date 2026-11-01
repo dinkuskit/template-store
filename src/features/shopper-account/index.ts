@@ -441,6 +441,18 @@ export function formatOrderMoney(money: Readonly<{ currency: string; minor: stri
   return `$${(minor / 100).toFixed(2)}`;
 }
 
+/** Only definitive authentication failure invalidates a browser capability.
+ * The SDK transports Commerce business denials inside an HTTP 200 envelope;
+ * callers must unwrap it first. Other business, transport and server errors
+ * do not establish that the session has been revoked.
+ */
+export function isShopperSessionDenied(status: number, body: unknown): boolean {
+  return status === 401 || (
+    status === 200 && isRecord(body) && body.ok === false &&
+    isRecord(body.error) && body.error.code === "SESSION_DENIED"
+  );
+}
+
 export function unwrapPluginEnvelope(payload: unknown): Record<string, unknown> | null {
   if (!isRecord(payload)) return null;
   if (typeof payload.success === "boolean") {
