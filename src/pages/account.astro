@@ -5,7 +5,7 @@ import { ShopperAccount } from "../features/shopper-account/ui.ts";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
 import { playgroundCheckoutAdmission } from "../features/playground-checkout/index.js";
-import { playgroundCheckoutConfigured } from "../features/playground-checkout/payments-port.js";
+import { playgroundCheckoutConfigured, playgroundEnvOf } from "../features/playground-checkout/payments-port.js";
 import { storeBannerText } from "../features/store-shell/checkout-copy.js";
 import {
   isPlaygroundPreviewHost,
@@ -20,7 +20,7 @@ const checkoutAdmission = await acquireGuestCheckoutAdmission({
   request: Astro.request,
 }).catch(() => null);
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
-const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured());
+const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)));
 const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
 // The instant demo account and captured-PIN sign-in are the playground's (shopper-accounts-playground-20261020);
 // a store running Commerce's Registry build signs shoppers in through the installed plugin itself.

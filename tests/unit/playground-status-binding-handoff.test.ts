@@ -25,7 +25,6 @@ const READY = {
   PAYMENTS_STORE_KEY: `dk_store_${"k".repeat(43)}`,
   PAYMENTS_STRIPE_ACCOUNT_ID: "acct_TEST1",
   EMDASH_SITE_URL: site,
-  DINKUS_CATALOG_PROFILE: "native-development",
 };
 const projection = { schema: "dinkuskit.commerce.guest-checkout-projection/v1", state: "pending",
   attemptId: null, redirectUrl: null, order: null, retryAfter: null };
@@ -67,8 +66,8 @@ async function viaMiddleware(path: string, visitor: string, body: unknown, next:
 }
 
 /**
- * Native Commerce start, reached from the cart's Registry-path call through the
- * middleware: Commerce's Payments transport creates the session for this visitor.
+ * Commerce's Registry start, served by EmDash behind the middleware: Commerce's
+ * own Payments call passes the playground guard, which binds the attempt to this visitor.
  */
 async function startCheckout(visitor: string, attemptId: string) {
   const scoped = playgroundPaymentsFetch(process.env, { fetchImpl: (async (url: string, init: RequestInit) => {
@@ -77,17 +76,13 @@ async function startCheckout(visitor: string, attemptId: string) {
     return Response.json({ outcome: "open", attemptId: sent.attemptId,
       session: { expiresAt: Math.floor(Date.now() / 1000) + 1800 } });
   }) as never });
-  const statusAnswer = dispatch.getMockImplementation();
-  dispatch.mockImplementationOnce(async (pluginId: string, _method: string, path: string) => {
-    expect([pluginId, path]).toEqual(["dinkus-commerce", "checkout/guest/start"]);
-    await scoped("https://payments.local.test/v1/checkout/session", { method: "POST", body: JSON.stringify({ attemptId }) });
-    return { success: true, data: { ok: true, capabilityId: "cap", checkout: { ...projection, state: "open", attemptId } } };
-  });
   const response = await viaMiddleware("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start", visitor,
-    { lines: [{ catalogItemId: "fixture", quantity: 1 }] }, async () => { throw new Error("start must not use an Astro rewrite"); });
+    { lines: [{ catalogItemId: "fixture", quantity: 1 }] }, async () => {
+      await scoped("https://payments.local.test/v1/checkout/session", { method: "POST", body: JSON.stringify({ attemptId }) });
+      return Response.json({ success: true, data: { ok: true, capabilityId: "cap", checkout: { ...projection, state: "open", attemptId } } });
+    });
   expect(response.status).toBe(200);
-  if (statusAnswer) dispatch.mockImplementation(statusAnswer);
-  dispatch.mockClear();
+  expect(dispatch).not.toHaveBeenCalled();
 }
 
 /** The browser's paid return: /api/checkout/status served by the real route behind the middleware. */

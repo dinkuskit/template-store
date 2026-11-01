@@ -4,23 +4,28 @@ import react from "@astrojs/react";
 import { playgroundDatabase } from "@emdash-cms/cloudflare";
 import { defineConfig } from "astro/config";
 import emdash from "emdash/astro";
-import { dinkusCommerce } from "./.artifacts/source-deps/commerce/src/index.ts";
-import { playgroundRegistryPlugins } from "./src/features/playground-plugins/registry-plugins.mjs";
+import { pairedCommercePin, pairedCommerceProfile } from "./scripts/lib/paired-commerce.mjs";
+import { commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
+import { playgroundPluginManifest, playgroundRegistryPlugins } from "./src/features/playground-plugins/registry-plugins.mjs";
 
-// The playground always serves the synthetic native catalog; the playground
-// middleware seeds it into each per-visitor DB. Sandbox checkout stays closed
-// unless DINKUS_CHECKOUT_ENABLED="1" and the Payments env and the trusted
-// return origin (EMDASH_SITE_URL) are present; then the native Commerce plugin
-// gets the playground's host-side Payments port.
+// The playground runs Commerce's Registry build, the one build Commerce keeps
+// (template-one-build-registry-20261031), inside each visitor's store beside
+// Payments and Ship, and seeds the synthetic demo catalog through Commerce's own
+// routes. Its pretend DinkusKit connects Commerce and hands it the playground's
+// checkout settings; sandbox checkout stays closed unless DINKUS_CHECKOUT_ENABLED="1"
+// and the Payments env and the trusted return origin (EMDASH_SITE_URL) are present.
+
+// The Commerce package the pin is (a release is the stable package), as the store's own config chooses it.
+process.env.DINKUS_COMMERCE_PROFILE ??= pairedCommerceProfile(pairedCommercePin());
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
 );
-const playgroundCommerceEntry = fileURLToPath(
-  new URL("./src/features/playground-checkout/commerce-entry.ts", import.meta.url),
-);
 const tourEntry = fileURLToPath(
   new URL("./src/features/playground-tour/tour-plugin.ts", import.meta.url),
+);
+const mailEntry = fileURLToPath(
+  new URL("./src/features/playground-plugins/mail-plugin.ts", import.meta.url),
 );
 const productUrlEntry = fileURLToPath(
   new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
@@ -50,10 +55,6 @@ export default defineConfig({
           version: "1.0.0",
           entrypoint: productUrlEntry,
         },
-        // Commerce's own descriptor, served through the playground entry that
-        // adds build-time checkout options (binding "playground", flat-rate
-        // shipping, host-side Payments port). Commerce is unchanged.
-        { ...dinkusCommerce({ enableLocalStockManagement: false }), entrypoint: playgroundCommerceEntry },
         // Playground-only tour: a card on the admin dashboard and its own admin page.
         {
           id: "dinkus-playground-tour",
@@ -62,7 +63,9 @@ export default defineConfig({
           adminWidgets: [{ id: "tour", size: "full", title: "Playground tour" }],
           adminPages: [{ path: "/tour", label: "Playground tour", icon: "compass" }],
         },
-        // Payments and Ship: their released Registry bundles, run inside the
+        // The playground's email provider: Commerce emails a shopper's sign-in code through it.
+        { id: "dinkus-playground-mail", version: "1.0.0", entrypoint: mailEntry },
+        // Commerce, Payments and Ship: their Registry bundles, run inside the
         // visitor's own store. EmDash's sandbox saves plugin data only to a
         // regular store database, never to a playground visitor's store.
         ...playgroundRegistryPlugins(),
@@ -70,6 +73,11 @@ export default defineConfig({
     }),
   ],
   vite: {
+    define: {
+      ...commerceProfileDefine(process.env),
+      // The seed builds the installed Commerce's storage indexes from its own Registry manifest.
+      __PLAYGROUND_COMMERCE_STORAGE__: JSON.stringify(playgroundPluginManifest("commerce").storage ?? {}),
+    },
     resolve: {
       alias: {
         "@dinkuskit/commerce/features/checkout": fileURLToPath(

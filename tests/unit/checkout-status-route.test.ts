@@ -68,11 +68,8 @@ describe("installed public status dispatcher", () => {
     const response = await POST({ request: request(), locals: host === undefined ? undefined : { emdash: host } } as never);
     expect(response.status).toBe(503); expect(dispatch).not.toHaveBeenCalled(); expect(globalThis.fetch).not.toHaveBeenCalled();
   });
-  it("preserves the installed guest route metadata and native-development gates", async () => {
+  it("preserves the installed guest route metadata", async () => {
     runtime.getPluginRouteMeta.mockImplementation((_id, path) => ({ public: path !== "checkout/guest/start", methods: ["POST"] }));
-    expect((await call()).status).toBe(503);
-    runtime.getPluginRouteMeta.mockReturnValue({ public: true, methods: ["POST"] });
-    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
     expect((await call()).status).toBe(503); expect(dispatch).not.toHaveBeenCalled();
   });
   it.each([null, { success: true }, { success: true, data: { ok: true } }, { success: true, data: { ok: true, capabilityId: "cap", checkout: { ...projection, private: "x".repeat(65537) } } }])("bounds and validates HandlerResponse: %j", async value => {
@@ -120,7 +117,10 @@ describe("original caller and body bounds", () => {
   });
 });
 
-describe("playground native status recovery", () => {
+// The playground runs Commerce's Registry build too (template-one-build-registry-20261031): status recovery
+// dispatches to the visitor's own Commerce under its Registry id, and a configured playground shows a terminal
+// status only to the visitor whose session started that payment.
+describe("playground status recovery", () => {
   const READY = {
     DINKUS_CHECKOUT_ENABLED: "1",
     PAYMENTS_URL: "https://payments.local.test",
@@ -130,20 +130,18 @@ describe("playground native status recovery", () => {
   function playgroundCall(req = request()) {
     return POST({ request: req, locals: { emdash: runtime, __playgroundDb: {} } } as never);
   }
-  it("dispatches a configured playground session to its native Commerce status route", async () => {
-    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+  it("dispatches a configured playground session to the visitor's Commerce status route", async () => {
     for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
     const response = await playgroundCall(request({ cookie: "emdash_playground=s1", "cf-connecting-ip": "203.0.113.7" }));
     expect(response.status).toBe(200);
     const [id, method, path, forwarded] = dispatch.mock.calls[0];
-    expect([id, method, path]).toEqual(["dinkus-commerce", "POST", "checkout/guest/status"]);
-    expect(forwarded.url).toBe(site + "/_emdash/api/plugins/dinkus-commerce/checkout/guest/status");
+    expect([id, method, path]).toEqual(["r_gshdrqaldna3r7sn", "POST", "checkout/guest/status"]);
+    expect(forwarded.url).toBe(site + "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status");
     expect(Object.fromEntries(forwarded.headers)).toEqual({ accept: "application/json", "content-type": "application/json",
       origin: site, "x-commerce-guest-capability": "cap.synthetic" });
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
   it("requires the resolved terminal attempt to remain bound to the visitor", async () => {
-    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
     for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
     dispatch.mockResolvedValue({
       success: true,
@@ -175,15 +173,15 @@ describe("playground native status recovery", () => {
     } as never);
     expect(foreign.status).toBe(403);
   });
-  it("keeps capability and origin checks, and stays on the Registry gates when not configured", async () => {
-    vi.stubEnv("DINKUS_CATALOG_PROFILE", "native-development");
+  it("keeps capability and origin checks, and leaves an unconfigured playground to Commerce's own answer", async () => {
     for (const [key, value] of Object.entries(READY)) vi.stubEnv(key, value);
     const missing = request(); missing.headers.delete("x-commerce-guest-capability");
     expect((await playgroundCall(missing)).status).toBe(400);
     expect((await playgroundCall(request({ origin: "https://foreign.example.test" }))).status).toBe(403);
-    vi.stubEnv("DINKUS_CHECKOUT_ENABLED", "0");
-    expect((await playgroundCall()).status).toBe(503);
-    expect((await call()).status).toBe(503);
     expect(dispatch).not.toHaveBeenCalled();
+    // Checkout off: Commerce's own settings say so; the route still reaches the installed Commerce only.
+    vi.stubEnv("DINKUS_CHECKOUT_ENABLED", "0");
+    expect((await playgroundCall()).status).toBe(200);
+    expect(dispatch.mock.calls.at(-1)?.[0]).toBe("r_gshdrqaldna3r7sn");
   });
 });
