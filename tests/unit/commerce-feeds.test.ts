@@ -27,6 +27,7 @@ import {
   buildAgentCatalogFeed,
   buildGoogleMerchantFeed,
   buildInstalledCommerceFeedFacts,
+  buildInstalledStorefrontAgentFeedOptions,
   buildMetaCatalogFeed,
   buildStorefrontAgentsMd,
   buildStorefrontLlmsFullTxt,
@@ -269,6 +270,49 @@ describe("installed Commerce feed facts", () => {
     expect(agentsMd).not.toContain("/catalog/public");
     expect(agentsMd).toContain("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare");
     expect(agentsMd).toContain("data.capability.capability");
-    expect(agentsMd).toContain("released-retry");
+    expect(agentsMd).toContain("payload = body.success === true ? body.data : body");
+    expect(agentsMd).toContain("payload.checkout.retryAfter === payload.checkout.attemptId");
+    expect(agentsMd).toContain("recoverable-failure");
+  });
+
+  it("preserves freeOver shipping threshold in buildInstalledStorefrontAgentFeedOptions", async () => {
+    const items = [catalogItem("commerce-hat", { feedChannels: ["google-merchant"] })];
+    const ctx = {
+      request: new Request("http://internal.invalid/llms-full.txt"),
+      site: new URL("https://shop.example.test"),
+      runtime: {
+        getPluginRouteMeta: () => ({ public: true, methods: ["GET"] }),
+        handlePublicPluginApiRoute: vi.fn(async (_pluginId: string, _method: string, path: string) => {
+          if (path === "policies/public") {
+            return {
+              success: true,
+              data: {
+                shipping: {
+                  recordKind: "store-shipping-policy",
+                  recordId: "active",
+                  revision: 1,
+                  configurationId: "flat-500-free-5000",
+                  mode: "flat",
+                  amount: { currency: "USD", minor: "500" },
+                  freeOver: { currency: "USD", minor: "5000" },
+                  updatedAt: "2026-10-31T00:00:00.000Z",
+                },
+                returns: null,
+              },
+            };
+          }
+          return { success: true, data: { products: items } };
+        }),
+      },
+    };
+    const installedOptions = await buildInstalledStorefrontAgentFeedOptions(ctx);
+    expect(installedOptions.shipping).toEqual({
+      mode: "flat",
+      amount: { currency: "USD", minor: "500" },
+      freeOver: { currency: "USD", minor: "5000" },
+    });
+    expect(installedOptions.policies?.[0]?.body).toContain(
+      "free when discounted net merchandise (netMerchandise) is at least $50.00 USD (>= 5000 minor units, inclusive, after coupon discounts)",
+    );
   });
 });

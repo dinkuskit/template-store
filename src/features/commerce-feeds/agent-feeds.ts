@@ -411,7 +411,7 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
     ...domLines,
     "",
     "## 3. Guest Checkout API Protocol",
-    "For every guest checkout call, verify HTTP status 200, the EmDash transport wrapper `success === true`, and Commerce's `data.ok === true` before reading `data`.",
+    `For direct plugin calls (\`POST ${pluginBase}/checkout/guest/*\`), verify HTTP status 200, the EmDash transport wrapper \`success === true\`, and Commerce's \`data.ok === true\` before reading \`data\`. For the storefront status route (\`POST ${feed.siteOrigin}/api/checkout/status\`), the response is unwrapped (\`{ ok: true, capabilityId, checkout }\`): verify HTTP status 200 and top-level \`ok === true\`, then read \`checkout\` directly (or normalize both envelopes via \`payload = body.success === true ? body.data : body\`).`,
     `1. **Prepare Capability**: \`POST ${pluginBase}/checkout/guest/prepare\` with an empty JSON body \`{}\` and same-origin \`Origin\` header (\`sec-fetch-site: same-origin\`). Retain the capability token string at \`data.capability.capability\` from the JSON response and send it on subsequent requests via the \`x-commerce-guest-capability\` header. Also inspect \`data.contactRequirements.requirePhoneNumber\` to determine whether \`contact.phone\` is required.`,
     `2. **Start Checkout & Freeze Pricing**: \`POST ${pluginBase}/checkout/guest/start\` with header \`x-commerce-guest-capability: <token>\`, \`lines: [{ catalogItemId, quantity }]\` (for products with options, use the chosen sellable member's \`catalogItemId\` from \`variants.members\`), optional \`couponCode\` on self-hosted stores only (omit \`couponCode\` on Registry stores, where coupon codes are refused with \`COUPON_UNAVAILABLE\`), and \`contact\`:`,
     "   - `email` (required)",
@@ -426,9 +426,10 @@ export function buildStorefrontAgentsMd(options: StorefrontAgentFeedOptions): st
     "     - `tax: { currency: \"USD\", minor: \"0\" }`",
     "     - `finalTotal: { currency: \"USD\", minor: \"...\" }`",
     "   - Size the virtual card to `data.checkout.pricing.finalTotal.minor` (in USD cents) and navigate to `data.checkout.redirectUrl` (when `data.checkout.state === \"pending\"` and `data.checkout.redirectUrl` is non-null; zero-total checkouts complete immediately with `data.checkout.state === \"paid\"`).",
-    `3. **Poll Status / Receipt**: \`POST ${pluginBase}/checkout/guest/status\` (or storefront wrapper \`POST ${feed.siteOrigin}/api/checkout/status\`) with header \`x-commerce-guest-capability: <token>\` and JSON body \`{}\` (or \`{ "attemptId": "<data.checkout.attemptId>" }\`). Bound pending-status checks (at most 5 checks per attempt):`,
-    "   - When `data.checkout.state === \"paid\"`, read `data.checkout.order` (`orderId`, `receiptId`, `lines`, `total`, `pricing`).",
-    "   - When `data.checkout.state === \"released-retry\"` or `\"recoverable-failure\"`, stop polling that attempt immediately; retain the existing `x-commerce-guest-capability` token and issue a fresh `POST .../checkout/guest/start` before polling again.",
+    `3. **Poll Status / Receipt**: \`POST ${pluginBase}/checkout/guest/status\` (wrapped \`data.checkout\`) or storefront wrapper \`POST ${feed.siteOrigin}/api/checkout/status\` (top-level \`checkout\`; normalized below as \`payload = body.success === true ? body.data : body\`) with header \`x-commerce-guest-capability: <token>\` and JSON body \`{}\` (or \`{ "attemptId": "<payload.checkout.attemptId>" }\`). Bound pending-status checks (at most 5 checks per attempt):`,
+    "   - When `payload.checkout.state === \"paid\"`, read `payload.checkout.order` (`orderId`, `receiptId`, `lines`, `total`, `pricing`).",
+    "   - When `payload.checkout.state === \"recoverable-failure\"`, do not treat the attempt as released or issue a fresh `checkout/guest/start`; preserve the active `attemptId`, stop tight polling, and if `payload.checkout.redirectUrl` is a valid Stripe Checkout URL (`https://checkout.stripe.com/...`), resume hosted payment at that `redirectUrl` for the same attempt.",
+    "   - When `payload.checkout.state === \"released-retry\"` and `payload.checkout.retryAfter === payload.checkout.attemptId` (authoritative release fence), stop polling the released attempt; retain the existing `x-commerce-guest-capability` token and issue a successor `POST .../checkout/guest/start` before polling the new attempt.",
     "",
   ].join("\n");
 }
@@ -453,6 +454,7 @@ export async function buildInstalledStorefrontAgentFeedOptions(
       ? {
           mode: shippingPolicy.mode,
           ...(shippingPolicy.amount ? { amount: shippingPolicy.amount } : {}),
+          ...(shippingPolicy.freeOver ? { freeOver: shippingPolicy.freeOver } : {}),
         }
       : null;
 
@@ -460,7 +462,9 @@ export async function buildInstalledStorefrontAgentFeedOptions(
     ? shippingPolicy.mode === "free"
       ? "Free shipping."
       : shippingPolicy.amount
-        ? `Flat shipping: $${formatMinorUnitsAsDecimal(shippingPolicy.amount)} USD (${shippingPolicy.amount.minor} minor units).`
+        ? shippingPolicy.freeOver
+          ? `Flat shipping: $${formatMinorUnitsAsDecimal(shippingPolicy.amount)} USD (${shippingPolicy.amount.minor} minor units); free when discounted net merchandise (netMerchandise) is at least $${formatMinorUnitsAsDecimal(shippingPolicy.freeOver)} USD (>= ${shippingPolicy.freeOver.minor} minor units, inclusive, after coupon discounts).`
+          : `Flat shipping: $${formatMinorUnitsAsDecimal(shippingPolicy.amount)} USD (${shippingPolicy.amount.minor} minor units).`
         : "Configured shipping rate."
     : undefined;
 
