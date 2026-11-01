@@ -497,11 +497,12 @@
   }
 
   .store-footer__stamp-card,
-  .store-footer__widgets :where(.widget[data-widget-type="component"]) {
+  .store-footer__widgets :where(.widget) {
     padding: 1.15rem 1.25rem;
     border: 1.5px solid color-mix(in srgb, var(--store-vault-ink) 22%, var(--store-vault-line));
     border-radius: var(--store-radius-card);
-    background: color-mix(in srgb, var(--store-vault-bg) 78%, transparent);
+    /* Keep muted copy readable even above the brightest part of the pigment wash. */
+    background: color-mix(in srgb, var(--store-vault-bg) 90%, transparent);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     box-shadow: 4px 4px 0 var(--store-accent);
@@ -511,7 +512,7 @@
     padding: 0.9rem 1.05rem;
     border: 1px solid color-mix(in srgb, var(--store-vault-ink) 16%, transparent);
     border-radius: var(--store-radius-card);
-    background: color-mix(in srgb, var(--store-vault-bg) 62%, transparent);
+    background: color-mix(in srgb, var(--store-vault-bg) 90%, transparent);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -519,7 +520,7 @@
   .store-footer__eyebrow {
     display: block;
     margin: 0 0 0.45rem;
-    color: var(--store-accent);
+    color: var(--store-vault-ink);
     font-family: var(--font-mono);
     font-size: 0.68rem;
     font-weight: 700;
@@ -559,7 +560,7 @@
   .store-footer__heading,
   .store-footer :where(.widget__title) {
     margin: 0 0 0.65rem;
-    color: var(--store-accent);
+    color: var(--store-vault-ink);
     font-family: var(--font-mono);
     font-size: 0.72rem;
     font-weight: 700;
