@@ -25,7 +25,9 @@ export interface InstalledPoliciesContext {
 }
 
 export interface PublicCommercePolicies {
-  shipping: StoreShippingPolicyRecord | null;
+  shipping: (StoreShippingPolicyRecord & {
+    readonly freeOver?: { readonly currency: "USD"; readonly minor: string };
+  }) | null;
   returns: StoreReturnPolicyRecord | null;
 }
 
@@ -83,6 +85,7 @@ function validPolicy(value: unknown, kind: "shipping" | "returns"): boolean {
       value.recordId === "active" &&
       typeof value.configurationId === "string" && value.configurationId.trim().length > 0 && value.configurationId.length <= 1024 &&
       (value.mode === "free" || value.mode === "flat") && shippingAmount(value.amount, value.mode) &&
+      optional(value.freeOver, (entry) => shippingAmount(entry, "flat")) &&
       optional(value.shippingDestinationCountries, countries) &&
       optional(value.handlingTimeDays, dayBounds) && optional(value.transitTimeDays, dayBounds) &&
       optional(value.policyPageUrl, policyUrl)

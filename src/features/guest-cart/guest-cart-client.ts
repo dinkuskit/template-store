@@ -421,6 +421,23 @@ function renderCart(root: Element): void {
       retrying,
       shippingPolicy,
     });
+    breakdown.setAttribute("data-checkout-currency", breakdownView.currency);
+    breakdown.setAttribute("data-checkout-tax-minor", breakdownView.taxMinor);
+    if (breakdownView.subtotalMinor !== null) {
+      breakdown.setAttribute("data-checkout-subtotal-minor", breakdownView.subtotalMinor);
+    } else {
+      breakdown.removeAttribute("data-checkout-subtotal-minor");
+    }
+    if (breakdownView.shippingMinor !== null) {
+      breakdown.setAttribute("data-checkout-shipping-minor", breakdownView.shippingMinor);
+    } else {
+      breakdown.removeAttribute("data-checkout-shipping-minor");
+    }
+    if (breakdownView.totalMinor !== null) {
+      breakdown.setAttribute("data-checkout-total-minor", breakdownView.totalMinor);
+    } else {
+      breakdown.removeAttribute("data-checkout-total-minor");
+    }
     const shippingAmount = breakdown.querySelector("[data-checkout-shipping-amount]");
     if (shippingAmount instanceof HTMLElement) {
       shippingAmount.textContent = breakdownView.shippingText;

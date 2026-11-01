@@ -119,7 +119,7 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
         <a href="/cart" data-checkout-edit-cart>Edit cart</a>
       </div>
       <div class="guest-checkout-manifest__lines" data-guest-cart-lines></div>
-      <dl class="guest-checkout-breakdown" data-checkout-breakdown hidden>
+      <dl class="guest-checkout-breakdown" data-checkout-breakdown data-checkout-currency="USD" data-checkout-tax-minor="0" hidden>
         <div class="guest-checkout-breakdown__row" data-guest-cart-subtotal hidden>
           <dt>Subtotal</dt>
           <dd><strong data-guest-cart-subtotal-amount></strong></dd>
