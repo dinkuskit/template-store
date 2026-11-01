@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-11-01T05:23:38+00:00",
+    "confirmed_at": "2026-11-01T13:26:37+00:00",
     "domain": "One product screen, product states and plugin sidebar folders",
-    "started_at": "2026-11-01T05:23:38+00:00",
+    "started_at": "2026-11-01T13:26:36+00:00",
     "status": "confirmed",
-    "summary": "Ronald agreed on 1 Nov 2026 at 04:57 UTC in the Review Dad's Commerce PRs thread: trash keeps the link, restore comes back as an off-sale draft, only a permanent delete releases it."
+    "summary": "Ronald asked on 1 Nov 2026 at 13:24 UTC to record #191 as the implementation."
   },
   "decisions": [
     {
@@ -5745,10 +5745,38 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:26:37+00:00",
+          "choice": "Moving a product page to the trash takes its Commerce product off sale but keeps Commerce's page-to-product link (the publish check sends set-on-sale with onSale false and no deleted flag). Restoring the page from the trash brings it back as a draft that stays off sale until an editor publishes it again, as any draft does. Only a successful permanent delete of the page (EmDash's DELETE content/products/:id/permanent) releases the link: the store then sends set-on-sale with deleted true for the canonical page id EmDash returns. A refused or failed permanent delete releases nothing.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-01T13:26:37+00:00",
+          "choice": "Moving a product page to the trash takes its Commerce product off sale but keeps Commerce's page-to-product link (the publish check sends set-on-sale with onSale false and no deleted flag). Restoring the page from the trash brings it back as a draft that stays off sale until an editor publishes it again, as any draft does. Only a successful permanent delete of the page (EmDash's DELETE content/products/:id/permanent) releases the link: the store then sends set-on-sale with deleted true for the canonical page id EmDash returns. A refused or failed permanent delete releases nothing.",
+          "from": "implemented",
+          "implementation_ref": "pr:dinkuskit/template-store#191;commit:146f312",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
         }
       ],
       "id": "template-product-trash-keeps-link-20261101",
-      "implementation_ref": null,
+      "implementation_ref": "pr:dinkuskit/template-store#191;commit:146f312",
       "question": "When an editor moves a product page to the trash, does the page keep its Commerce product link?",
       "rationale": "Trash is reversible in EmDash, so treating it as a delete threw away the product link and a restored page came back with no product. Keeping the link until the page is gone for good matches how trash works elsewhere in the admin, keeps the shop correct while the page is in the trash (off sale), and narrows template-product-states-20261023's 'release on delete' to permanent delete.",
       "repair_required": false,
@@ -5757,10 +5785,10 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
+      "status": "verified",
       "superseded_by": null,
-      "updated_at": "2026-11-01T05:23:38+00:00",
-      "verification_ref": null
+      "updated_at": "2026-11-01T13:26:37+00:00",
+      "verification_ref": "file:.grilltrack/proof/template-product-trash-keeps-link-20261101/PROOF.md"
     }
   ],
   "last_activation": {
@@ -5783,5 +5811,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-01T05:23:38+00:00"
+  "updated_at": "2026-11-01T13:26:37+00:00"
 }
