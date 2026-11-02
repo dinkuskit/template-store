@@ -101,6 +101,15 @@ export function renderOrderItemMarkup(
   const label = order.number !== null ? `Order #${order.number}` : `Order ${order.orderId}`;
   const statusText = order.status === "completed" ? "Completed" : "Processing";
   const paidDate = order.paidAt ? order.paidAt.slice(0, 10) : "Paid";
+  const completion = order.status === "completed" && isRecord(order.completed) ? order.completed : null;
+  const carrier = typeof completion?.carrier === "string" ? completion.carrier.trim() : "";
+  const tracking = typeof completion?.tracking === "string" ? completion.tracking.trim() : "";
+  const shipmentMarkup = carrier || tracking
+    ? `<div data-account-order-shipment>
+        ${carrier ? `<p class="account-order-card__meta" data-account-order-carrier>Carrier: ${escapeHtml(carrier)}</p>` : ""}
+        ${tracking ? `<p class="account-order-card__meta" data-account-order-tracking>Tracking number: ${escapeHtml(tracking)}</p>` : ""}
+      </div>`
+    : "";
   const linesMarkup = order.lines
     .map((line) => {
       const resolved = resolveOrderLinePresentation(line, {
@@ -148,6 +157,7 @@ export function renderOrderItemMarkup(
     <p class="account-order-card__meta">Placed <span data-account-order-date>${escapeHtml(paidDate)}</span> · Total <strong data-account-order-total>${escapeHtml(formatOrderMoney(order.total))}</strong></p>
     <ul class="account-order-card__lines">${linesMarkup}</ul>
     <p class="account-order-card__delivery" data-account-order-delivery>Ships to: ${escapeHtml(deliveryText)}</p>
+    ${shipmentMarkup}
   </article>`;
 }
 
