@@ -44,7 +44,7 @@ const products = [
       title: "Hat",
       description: "A <hat> for the shop",
       visual_label: "CAP",
-      commerce_item_id: "commerce-hat",
+      id: "01HAT",
       categories: ["tees"],
     },
   },
@@ -54,7 +54,7 @@ const products = [
       title: "Cap",
       description: "A cap",
       visual_label: "CAP",
-      commerce_item_id: "commerce-cap",
+      id: "01CAP",
       categories: ["tees"],
     },
   },
@@ -64,15 +64,18 @@ const products = [
       title: "Mug",
       description: "A mug",
       visual_label: "TEE",
-      commerce_item_id: "commerce-mug",
+      id: "01MUG",
       categories: ["tees"],
     },
   },
 ];
 
+// The page Commerce links each product to (template-no-commerce-box-20261029); the orphan has none.
+const PAGES: Record<string, string> = { "commerce-hat": "01HAT", "commerce-cap": "01CAP", "commerce-mug": "01MUG" };
 function catalogItem(id: string, extra: Record<string, unknown> = {}) {
   return {
     id,
+    ...(PAGES[id] ? { page: PAGES[id] } : {}),
     name: id,
     sku: id.toUpperCase(),
     price: { currency: "USD", minor: "1250" },

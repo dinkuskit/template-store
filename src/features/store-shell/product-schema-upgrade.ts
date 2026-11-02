@@ -1,6 +1,5 @@
 import { BlockTypeRegistry, SchemaRegistry, type ApplySeedBlockTypeInput, type CreateFieldInput } from "emdash";
 import { sql, type Kysely } from "kysely";
-import { commerceProfile } from "../commerce-profile/profiles.mjs";
 
 /** The seed's old label for the placeholder-art field, replaced only while a store still has it. */
 const LEGACY_VISUAL_LABEL = "Illustration style (TEE, HOODIE, CAP, or BEANIE)";
@@ -145,114 +144,14 @@ export async function ensureStorefrontPageAddresses(db: unknown): Promise<void> 
 /** The products field older seeds made for the Commerce product a page sells (template-no-commerce-box-20261029). */
 export const COMMERCE_PRODUCT_FIELD = "commerce_item_id";
 
-// Commerce's storage, as the store's own database keeps it: the native install and either Registry install.
-const REGISTRY_COMMERCE_IDS = [commerceProfile("stable").runtimeId, commerceProfile("beta").runtimeId];
-const COMMERCE_PLUGIN_IDS = ["dinkus-commerce", ...REGISTRY_COMMERCE_IDS];
-const COMMERCE_CATALOG_COLLECTIONS = ["catalogItems", "catalog_items"];
-
 /**
- * The first Commerce that holds which page sells each product (catalog-page-link-in-commerce-20261029). An older
- * one links a page only through the page's Commerce product field.
+ * Takes the Commerce product box off a store set up from an older seed. Commerce
+ * holds which page sells which product (template-no-commerce-box-20261029), and
+ * the store no longer reads the field at all (template-drop-older-store-box-20261101),
+ * so the field goes whatever it still says. A store without the field is not changed.
  */
-export const LINK_HOLDING_COMMERCE = "0.7.0-beta.3";
-
-function semver(version: string) {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+.*)?$/.exec(version.trim());
-  return match ? { core: match.slice(1, 4).map(Number), pre: match[4]?.split(".") ?? [] } : null;
-}
-
-/** Whether `version` comes before `floor` by semver order; a version that is not semver counts as older. */
-export function olderVersion(version: string, floor: string): boolean {
-  const a = semver(version), b = semver(floor);
-  if (!a || !b) return true;
-  for (let i = 0; i < 3; i += 1) if (a.core[i] !== b.core[i]) return a.core[i]! < b.core[i]!;
-  // A release comes after its prereleases.
-  if (!a.pre.length || !b.pre.length) return a.pre.length > b.pre.length;
-  for (let i = 0; i < Math.min(a.pre.length, b.pre.length); i += 1) {
-    const x = a.pre[i]!, y = b.pre[i]!;
-    if (x === y) continue;
-    const nx = /^\d+$/.test(x), ny = /^\d+$/.test(y);
-    if (nx && ny) return Number(x) < Number(y);
-    return nx !== ny ? nx : x < y;
-  }
-  return a.pre.length < b.pre.length;
-}
-
-/**
- * The store's Registry installs of Commerce older than LINK_HOLDING_COMMERCE, as `id@version`. A Commerce the
- * store's own config installs (native, or a proof's built bundle) is the one the template pins.
- */
-export async function commerceNeedingTheBox(db: unknown): Promise<string[]> {
-  const rows = await sql<{ plugin_id: string; version: string }>`
-    select plugin_id, version from _plugin_state
-    where plugin_id in (${sql.join(REGISTRY_COMMERCE_IDS.map((id) => sql`${id}`))})
-      and source in ('registry', 'marketplace')
-    order by plugin_id`.execute(db as Kysely<never>);
-  return rows.rows.filter((row) => olderVersion(row.version, LINK_HOLDING_COMMERCE)).map((row) => `${row.plugin_id}@${row.version}`);
-}
-
-/**
- * The product pages whose Commerce product field is the only record of which
- * product they sell: it names a Commerce product that Commerce links to no
- * page, neither in its `product_pages` (the panel's pick `e:`, a publish
- * check's sale `p:`) nor as the product's own `pageId`. Drafts, scheduled pages
- * and pages in the trash count as well as published ones, since publishing or
- * restoring one later still needs its product, and so does an archived
- * product, which can be restored. A value naming no Commerce product (a typed
- * "123", the seed's demonstration ids) sells nothing, and one naming a product
- * another page sells (a duplicated page's copy) can't sell it, so neither
- * counts.
- */
-export async function pagesWithoutCommerceLink(db: unknown): Promise<{ id: string; slug: string | null; itemId: string }[]> {
-  const kyselyDb = db as Kysely<never>;
-  const plugins = sql.join(COMMERCE_PLUGIN_IDS.map((id) => sql`${id}`));
-  const rows = await sql<{ id: string; slug: string | null; itemId: string }>`
-    select page.id, page.slug, trim(page.commerce_item_id) as "itemId"
-    from ec_products page
-    where trim(coalesce(page.commerce_item_id, '')) != ''
-      and exists (
-        select 1 from _plugin_storage item
-        where item.plugin_id in (${plugins})
-          and item.collection in (${sql.join(COMMERCE_CATALOG_COLLECTIONS.map((name) => sql`${name}`))})
-          and item.id = trim(page.commerce_item_id)
-          and coalesce(json_extract(item.data, '$.pageId'), page.id) = page.id
-      )
-      and not exists (
-        select 1 from _plugin_storage link
-        where link.plugin_id in (${plugins})
-          and link.collection = 'product_pages'
-          and (link.id in ('e:' || page.id, 'p:' || page.id)
-            or json_extract(link.data, '$.catalogItemId') = trim(page.commerce_item_id))
-      )
-    order by page.id`.execute(kyselyDb);
-  return rows.rows;
-}
-
-/**
- * Takes the Commerce product box off an older store's product pages
- * (template-no-commerce-box-20261029). Commerce holds which page sells which
- * product, so the field is removed, but only once no page needs it: while a
- * page's field is the only record of its product (pagesWithoutCommerceLink),
- * the field stays, those pages are logged, and the step answers "wait" to be
- * tried again later. Publishing such a page, or picking its product in its
- * Dinkus Commerce panel, records the link; clearing its field, or deleting it
- * from the trash for good, lets the product go. It also
- * waits while the store runs a Registry Commerce older than the one that holds
- * links, which still links a page only through the field. A store without the
- * field is not changed.
- */
-export async function removeStorefrontCommerceBox(db: unknown): Promise<"wait" | void> {
+export async function removeStorefrontCommerceBox(db: unknown): Promise<void> {
   const registry = new SchemaRegistry(db as never);
   if (!(await registry.getCollection("products")) || !(await registry.getField("products", COMMERCE_PRODUCT_FIELD))) return;
-  const older = await commerceNeedingTheBox(db);
-  if (older.length > 0) {
-    console.warn(`[storefront-upgrade] the Commerce product box stays until Commerce is updated to ${LINK_HOLDING_COMMERCE} or newer: ${older.join(", ")}`);
-    return "wait";
-  }
-  const waiting = await pagesWithoutCommerceLink(db);
-  if (waiting.length > 0) {
-    console.warn(`[storefront-upgrade] the Commerce product box stays until Commerce links these pages to their products (publish each, or pick its product in its Dinkus Commerce panel; or clear its box, or delete it from the trash for good): ${waiting.map((page) => page.slug ?? page.id).join(", ")}`);
-    return "wait";
-  }
   await registry.deleteField("products", COMMERCE_PRODUCT_FIELD);
 }
