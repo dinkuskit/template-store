@@ -108,6 +108,16 @@ function feedChannels(value: Record<string, unknown>): PublicFeedChannel[] | "in
   return channels.sort();
 }
 
+/** A product without choices still has one concrete member in Commerce's v1 projection. */
+function simpleFulfillment(variants: unknown, id: string): "physical" | "digital" {
+  if (!object(variants) || variants.schema !== "dinkuskit.commerce.product-variants/v1" || variants.productId !== id ||
+      !Array.isArray(variants.options) || variants.options.length !== 0 ||
+      !Array.isArray(variants.members) || variants.members.length !== 1) return "physical";
+  const member = variants.members[0];
+  return object(member) && member.catalogItemId === id && Array.isArray(member.selections) && member.selections.length === 0 &&
+    member.fulfillment === "digital" ? "digital" : "physical";
+}
+
 function product(value: unknown): ProductResult {
   const id = object(value) && typeof value.id === "string" && /^[a-zA-Z0-9_-]+$/.test(value.id) ? value.id : null;
   const fail = (reason: string): ProductResult => ({ id, reason });
@@ -135,10 +145,9 @@ function product(value: unknown): ProductResult {
     ...(typeof value.mpn === "string" && value.mpn ? { mpn: value.mpn } : {}),
     ...(typeof value.brand === "string" && value.brand ? { brand: value.brand } : {}),
     ...(channels !== undefined ? { feedChannels: channels } : {}),
-    // Commerce's installed public projection does not expose simple-item
-    // fulfillment yet; fail closed to physical so checkout never omits a
-    // required delivery address.
-    fulfillment: "physical",
+    // Keep the concrete default member's explicit fulfillment, without inventing a
+    // variant picker. Older or ambiguous projections still require delivery.
+    fulfillment: simpleFulfillment(value.variants, id),
     // Commerce projects customerPays only; never reconstruct a regular/sale pair.
     price: { listable: true, regularText, saleText: null, ...(unitMinor ? { unitMinor } : {}) },
     availability: {
