@@ -111,6 +111,38 @@ describe("installed Commerce public catalog consumer", () => {
     });
   });
 
+  const simpleDigital = () => ({ ...item("guide"), variants: {
+    schema: "dinkuskit.commerce.product-variants/v1", productId: "guide", options: [],
+    members: [{ catalogItemId: "guide", selections: [], fulfillment: "digital",
+      price: item().price, availability: item().availability }],
+  } });
+
+  it("preserves the sole zero-option member's fulfillment on list, detail and cart lookups", async () => {
+    const [listed] = await readInstalledCommerceCatalog(context([{ products: [simpleDigital()] }]));
+    const detail = await readInstalledCommerceProduct("guide", context([simpleDigital()]));
+    const cart = (await readInstalledCommerceProducts(["guide"], context([simpleDigital()]))).get("guide");
+    for (const product of [listed, detail, cart]) {
+      expect(product).toMatchObject({ id: "guide", name: "Neutral product", sku: "NEUTRAL", fulfillment: "digital",
+        price: { unitMinor: "125" }, availability: { sellable: true } });
+      expect(product?.variants ?? []).toEqual([]);
+    }
+  });
+
+  it.each([
+    undefined,
+    { ...simpleDigital().variants, schema: "unknown" },
+    { ...simpleDigital().variants, productId: "another" },
+    { ...simpleDigital().variants, options: [{}] },
+    { ...simpleDigital().variants, members: [] },
+    { ...simpleDigital().variants, members: [...simpleDigital().variants.members, ...simpleDigital().variants.members] },
+    { ...simpleDigital().variants, members: [{ catalogItemId: "another", selections: [], fulfillment: "digital" }] },
+    { ...simpleDigital().variants, members: [{ catalogItemId: "guide", selections: [{}], fulfillment: "digital" }] },
+    { ...simpleDigital().variants, members: [{ catalogItemId: "guide", selections: [], fulfillment: "unknown" }] },
+  ])("requires an unambiguous matching default member before omitting delivery", async (variants) => {
+    const product = await readInstalledCommerceProduct("guide", context([{ ...item("guide"), variants }]));
+    expect(product?.fulfillment).toBe("physical");
+  });
+
   const hoodie = (members: { id: string; minor: string }[]) => ({
     id: "hoodie", name: "Demo hoodie", sku: "DEMO-HOODIE",
     availability: { status: "in-stock", sellable: false, listable: true },
