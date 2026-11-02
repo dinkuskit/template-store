@@ -102,6 +102,20 @@ After building, use `pnpm exec wrangler deploy --dry-run --config
 dist/server/wrangler.json` for a credential-free bundle check. A build or dry-run
 does not establish deployment, Registry installation, or a successful payment.
 
+## Credential-free CI compilation
+
+The `Registry build` CI job runs the actual `pnpm run build:registry` command
+with synthetic non-secret resource identities, then inspects the adapter's
+emitted `dist/server/wrangler.json` for `LOADER`, the shipping catalog and proof
+mode off. The aggregate `Store verification` check requires this job as well as
+the desktop and phone checks. This covers the Cloudflare compilation path that
+the Node-adapter browser jobs do not exercise.
+
+The job has no deployment credentials and never provisions, deploys or installs
+plugins. It is not a real Workers Builds run, a resource-permission check or
+installed-store proof. The live Workers Builds acceptance in #203 and its
+separate deployment gate remain unchanged.
+
 Configuration follows the installed EmDash 1.2.0 / Cloudflare adapter and
 Wrangler 4.145.0 schemas. Cloudflare's [Workers Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
 describe build/deploy commands and the separation of build and runtime variables.
