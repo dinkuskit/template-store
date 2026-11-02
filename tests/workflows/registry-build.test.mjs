@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { assertBuildSource, registryBuildEnv, registryConfig } from "../../scripts/build-registry.mjs";
+import { assertRegistryBuild } from "../../.github/scripts/assert-registry-build.mjs";
 
 const env = {
   CLOUDFLARE_ACCOUNT_ID: "a".repeat(32), DINKUS_WORKER_NAME: "test-registry-store",
@@ -32,6 +33,24 @@ function checkout() {
       cwd: directory, encoding: "utf8", env: { PATH: process.env.PATH, ...source, ...overrides },
     }) };
 }
+
+test("compiled Registry artifact requires LOADER, shipping catalog and proof mode off", () => {
+  // Issue203's artifact requirements are independent of the input generator.
+  const artifact = {
+    worker_loaders: [{ binding: "LOADER" }],
+    vars: { DINKUS_CATALOG_PROFILE: "shipping", DINKUS_PROOF_MODE: "0" },
+  };
+  assert.doesNotThrow(() => assertRegistryBuild(artifact));
+  for (const worker_loaders of [undefined, [], [{ binding: "OTHER" }]]) {
+    assert.throws(() => assertRegistryBuild({ ...artifact, worker_loaders }), /must bind LOADER/);
+  }
+  for (const DINKUS_CATALOG_PROFILE of [undefined, "native-development"]) {
+    assert.throws(() => assertRegistryBuild({ ...artifact, vars: { ...artifact.vars, DINKUS_CATALOG_PROFILE } }), /shipping catalog/);
+  }
+  for (const DINKUS_PROOF_MODE of [undefined, "1"]) {
+    assert.throws(() => assertRegistryBuild({ ...artifact, vars: { ...artifact.vars, DINKUS_PROOF_MODE } }), /disable proof mode/);
+  }
+});
 
 test("non-CI builds need no Git checkout or source pins", () => {
   assert.equal(assertBuildSource({}, "/missing-checkout"), undefined);

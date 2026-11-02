@@ -170,24 +170,60 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
+  # Compile the Registry store's Cloudflare path too; the browser jobs build
+  # the Node adapter. These synthetic resource IDs are never provisioned or deployed.
+  build-registry:
+    name: Registry build
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+        with:
+          run_install: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Compile Registry store and inspect emitted configuration
+        env:
+          CLOUDFLARE_ACCOUNT_ID: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          DINKUS_WORKER_NAME: test-registry-store
+          DINKUS_D1_DATABASE_NAME: test-registry-content
+          DINKUS_D1_DATABASE_ID: 11111111-1111-1111-1111-111111111111
+          DINKUS_R2_BUCKET_NAME: test-registry-media
+          DINKUS_SESSION_KV_ID: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          DINKUS_RATE_LIMIT_NAMESPACE_ID: '12345'
+          EMDASH_SITE_URL: https://store.example.test
+        run: |
+          pnpm run build:registry
+          node .github/scripts/assert-registry-build.mjs
+
   # Keeps the single "Store verification" check that reviewers, ClawSweeper
   # and playground deployment wait on. It runs even when a side fails, so a
   # failed half shows as a failed check instead of a skipped (passing) one.
   verify:
     name: Store verification
-    needs: [verify-desktop, verify-phone]
+    needs: [verify-desktop, verify-phone, build-registry]
     if: ${{ !cancelled() && github.event.action != 'closed' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require desktop and phone verification
+      - name: Require desktop, phone and Registry build verification
         env:
           DESKTOP: ${{ needs.verify-desktop.result }}
           PHONE: ${{ needs.verify-phone.result }}
+          REGISTRY: ${{ needs.build-registry.result }}
         run: |
-          echo "desktop=${DESKTOP} phone=${PHONE}"
+          echo "desktop=${DESKTOP} phone=${PHONE} registry=${REGISTRY}"
           test "$DESKTOP" = success
           test "$PHONE" = success
+          test "$REGISTRY" = success
 
   # A build check that starts beside verification. Playground deployment below
   # still waits for Store verification to pass.
