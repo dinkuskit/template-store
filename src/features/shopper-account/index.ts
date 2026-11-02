@@ -100,6 +100,8 @@ export type ShopperOrderItem = Readonly<{
   variantSelections?: readonly ShopperOrderVariantChoice[];
   delivery: ShopperDeliveryAddress | null;
   phone: string | null;
+  /** Commerce's current completion; older account projections may omit it. */
+  completed?: Readonly<{ at: string; carrier?: string; tracking?: string }> | null;
 }>;
 
 export type ShopperOrderCatalogSnapshot = Readonly<{
