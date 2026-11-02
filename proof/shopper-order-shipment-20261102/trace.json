@@ -1,0 +1,85 @@
+[
+  {
+    "step": "admin orders list",
+    "status": 200,
+    "orders": [
+      {
+        "orderId": "playground-sample-shipped",
+        "number": 1003,
+        "email": "jordan.rivers@example.com",
+        "status": "completed",
+        "version": 2
+      },
+      {
+        "orderId": "playground-sample-paid",
+        "number": 1004,
+        "email": "sam.okafor@example.com",
+        "status": "processing",
+        "version": 1
+      }
+    ]
+  },
+  {
+    "step": "admin order show",
+    "status": 200,
+    "orderId": "playground-sample-paid",
+    "email": "sam.okafor@example.com",
+    "statusText": "processing",
+    "version": 1
+  },
+  {
+    "step": "shopper sign-in start",
+    "status": 200,
+    "ok": true
+  },
+  {
+    "step": "shopper sign-in verify",
+    "status": 200,
+    "ok": true
+  },
+  {
+    "step": "admin complete with carrier and tracking",
+    "status": 200,
+    "result": "saved"
+  },
+  {
+    "step": "shopper account/orders after complete",
+    "status": 200,
+    "ok": true,
+    "orderStatus": "completed",
+    "completed": {
+      "carrier": "USPS",
+      "tracking": "9400111899223344556677",
+      "at": true
+    }
+  },
+  {
+    "step": "browser desktop /account after complete",
+    "status": "Completed",
+    "carrier": "Carrier: USPS",
+    "tracking": "Tracking number: 9400111899223344556677",
+    "noHorizontalScroll": true
+  },
+  {
+    "step": "browser mobile /account after complete",
+    "status": "Completed",
+    "carrier": "Carrier: USPS",
+    "tracking": "Tracking number: 9400111899223344556677",
+    "noHorizontalScroll": true
+  },
+  {
+    "step": "admin reopen",
+    "status": 200,
+    "result": "saved"
+  },
+  {
+    "step": "browser desktop /account after reopen",
+    "status": "Processing",
+    "shipmentElements": 0
+  },
+  {
+    "step": "browser mobile /account after reopen",
+    "status": "Processing",
+    "shipmentElements": 0
+  }
+]
