@@ -1,0 +1,88 @@
+{
+  "overall_behavior": "satisfies_contract",
+  "observed_at": "2026-11-06T19:03:17.752855+00:00",
+  "source_blind": true,
+  "source_contamination": false,
+  "target": {
+    "repository": "dinkuskit/template-store",
+    "branch": "codex/ci-playground-build-reuse-20261106",
+    "assigned_base": "baf1e31876733f6c1fc97238c59b83a86358b841",
+    "head_observed": "369642f330c9929c3148d26b453e54f85a5d493a",
+    "helper_sha256": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611"
+  },
+  "fixture_source_sha": "12743875d264e03bcbb9dd12a51211469ba7f8ac",
+  "environment": {
+    "node": "v24.22.0",
+    "pnpm": "11.9.0",
+    "platform": "linux",
+    "architecture": "arm64"
+  },
+  "case_suite": {
+    "total": 44,
+    "passed": 44,
+    "failed": [],
+    "pack_interface_checks_pass": true
+  },
+  "identity_after": {
+    "target_helper_sha256_final": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+    "all_control_hashes_unchanged": true,
+    "observed_at": "2026-11-06T19:03:17.752855+00:00"
+  },
+  "checks": [
+    {
+      "contract_clause": "pack-interface",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "populated-restore",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "external-manifest-trust",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "source-repository-run-workflow-control-context",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "producer-attempt-and-retry",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "payload-integrity-and-stage-destination-preservation",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "protected-file-refusal-and-no-content-read",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "session-and-output-closure",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "wrong-toolchain-context",
+      "status": "pass"
+    },
+    {
+      "contract_clause": "live-github-cloudflare-browser-billing",
+      "status": "out_of_scope"
+    }
+  ],
+  "blockers": [],
+  "limits": [
+    "Synthetic local Git/artifact fixtures only; no real product build claimed.",
+    "Five targeted restore cases use self-consistent simulated producer manifests, explicitly distinct from actual pack-output digest cases; no GitHub authenticity claim.",
+    "Wrong runtime context represented by mismatched simulated producer metadata; actual execution remained exact qualified Node and pnpm.",
+    "Protected filename coverage is the assigned representative set; no arbitrary filename universe claimed.",
+    "No implementation, diff, internal test or developer implementation explanation used as evidence."
+  ],
+  "evidence_files": [
+    "results.json",
+    "boundaries.json",
+    "simulated-producer.json",
+    "pack-interface-checks.json"
+  ],
+  "publication_note": "Sanitized product-only proof: local execution paths and command locations omitted; no source implementation or test code inspected by validator."
+}

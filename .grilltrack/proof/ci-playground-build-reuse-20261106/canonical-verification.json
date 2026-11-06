@@ -1,0 +1,39 @@
+{
+  "implementation_source": "369642f330c9929c3148d26b453e54f85a5d493a",
+  "publication_limit": "Following commit is proof-only; final-head hosted CI remains required.",
+  "environment": {
+    "node": "24.22.0",
+    "pnpm": "11.9.0",
+    "os": "linux",
+    "architecture": "arm64",
+    "ci_context": "explicit synthetic context; not a hosted run"
+  },
+  "command": "pnpm verify",
+  "result": {
+    "exit": 0,
+    "wall_seconds": 650.2934922910026,
+    "timed_out": false,
+    "finished_at": "2026-11-06T19:11:43.148074+00:00",
+    "outer_pid_present": false
+  },
+  "checks": {
+    "astro_check": "pass",
+    "unit_passes": 578,
+    "workflow_passes": 115,
+    "workflow_skips": 2,
+    "browser_passes": 131,
+    "browser_skips": 9,
+    "browser_projects": [
+      "chromium-desktop",
+      "chromium-mobile",
+      "shipping-chromium-desktop",
+      "shipping-chromium-mobile"
+    ],
+    "site_crawl_urls": 32,
+    "site_crawl_failures": 0,
+    "site_crawl_skips": 2
+  },
+  "tracked_generated_source_returned_to_original": true,
+  "owned_command_handles": 21,
+  "owned_process_identities_live": 0
+}

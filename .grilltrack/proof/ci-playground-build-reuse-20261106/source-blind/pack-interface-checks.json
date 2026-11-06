@@ -1,0 +1,24 @@
+{
+  "checks": {
+    "pack_exit_zero": true,
+    "stdout_is_json": true,
+    "file_count_matches_independent_expectation": true,
+    "bytes_match_independent_expectation": true,
+    "manifest_sha256_matches_bytes": true,
+    "github_output_digest_matches_stdout": true,
+    "github_output_producer_attempt": true,
+    "github_output_artifact_name_nonempty": true
+  },
+  "pass": true,
+  "runtime": {
+    "node": "v24.22.0",
+    "pnpm": "11.9.0",
+    "platform": "linux",
+    "architecture": "arm64"
+  },
+  "output_fields": {
+    "manifest_sha256": "4ac0cabc62d6cd50da951695f4c463b70e237153d92d83bd560d79665a5c958f",
+    "producer_attempt": "1",
+    "artifact_name": "playground-build-192000001-1-12743875d264e03bcbb9dd12a51211469ba7f8ac"
+  }
+}
