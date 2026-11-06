@@ -1,0 +1,252 @@
+{
+  "repository": "dinkuskit/template-store",
+  "source": "d267be86e97ac8ef2ee8856d0c964b315095c80a",
+  "environment": {
+    "node": "24.22.0",
+    "pnpm": "11.9.0",
+    "platform": "linux",
+    "architecture": "arm64"
+  },
+  "pairs": 1,
+  "order": [
+    "baseline",
+    "candidate"
+  ],
+  "common_inputs": {
+    "root_dependencies": "existing frozen-lockfile installation, independently reflink-copied into fresh source checkouts",
+    "root_install_reexecuted": false,
+    "verify_playground_config_reexecuted": false,
+    "source_preparation": "cold canonical prepare:sources, including pinned public Commerce npm ci",
+    "cache_state": "fresh separate HOME/XDG/npm/tmp and no prepared source or plugin-build cache in each sample",
+    "execution_path": "identical namespace path across samples",
+    "source_pins": {
+      "sourcePins": {
+        "commerce": {
+          "repository": "https://github.com/dinkuskit/commerce.git",
+          "tag": "v0.8.0",
+          "commit": "35f80f218776dac5e7954ed3740b201c086a2d20"
+        }
+      },
+      "playgroundPlugins": {
+        "payments": {
+          "repository": "https://github.com/dinkuskit/payments.git",
+          "tag": "v0.5.0",
+          "commit": "4589ac818017b5a65cdde29a60aaec23aca5f795"
+        },
+        "ship": {
+          "repository": "https://github.com/dinkuskit/ship.git",
+          "tag": "v0.3.1",
+          "commit": "b032a1d689baf6674b900a3c9c57c191d64733e6"
+        }
+      }
+    },
+    "lock_sha256": "9f7a5b8f2b85049c6e0c9025293a073d7e5160e0772f1157099723ed000ccd73",
+    "installed_pnpm_lock_sha256": "9f7a5b8f2b85049c6e0c9025293a073d7e5160e0772f1157099723ed000ccd73"
+  },
+  "commands": {
+    "prepare": "pnpm prepare:sources",
+    "compile": "pnpm exec astro build --config astro.playground.config.mjs",
+    "session_removal": "unchanged Remove unused Astro session binding workflow step",
+    "pack": "node .github/scripts/playground-build-artifact.mjs pack",
+    "restore": "node .github/scripts/playground-build-artifact.mjs restore --artifact-dir .artifacts/playground-ci-downloaded",
+    "dry_run": "pnpm exec wrangler deploy --dry-run --config dist/server/wrangler.json --outdir .artifacts/paired-dry-run"
+  },
+  "boundary_seconds": {
+    "baseline": {
+      "common_setup_seconds": 2.637756308999087,
+      "consumer_seconds": 74.24463250600093,
+      "full_boundary_seconds": 76.88238881500001,
+      "local_artifact_extraction_seconds": 0
+    },
+    "candidate": {
+      "common_setup_seconds": 2.6915397819975624,
+      "consumer_seconds": 12.617072119999648,
+      "full_boundary_seconds": 15.30861190199721,
+      "local_artifact_extraction_seconds": 0.25470305899943924
+    }
+  },
+  "observed_consumer_difference_seconds": 61.5737769130028,
+  "separate_added_local_costs": {
+    "producer_pack_seconds": 1.2175211760004458,
+    "zip_creation_seconds": 1.5115295570030867,
+    "zip_bytes": 12080233,
+    "not_part_of_consumer_boundary": true
+  },
+  "producer_artifact": {
+    "mode": "pack",
+    "manifestSha256": "4c703085617ec9ad174e50d31c7e6863f1a49d7e734b73555067a78293cb0ffd",
+    "bytes": 39365638,
+    "files": 823
+  },
+  "inventories": {
+    "producer": {
+      "sha256_of_retained_inventory_json": "7b9aec26ee2da92735597ab3507668ad48f036e66c1abeb5a20919e1eb95d675",
+      "entries": 831,
+      "regular_files": 823,
+      "file_bytes": 39365638
+    },
+    "baseline": {
+      "sha256_of_retained_inventory_json": "a2b35bf1d3e39452679c031139905b3e846afe18d02288edf589b8e8133722e6",
+      "entries": 831,
+      "regular_files": 823,
+      "file_bytes": 39365638
+    },
+    "candidate": {
+      "sha256_of_retained_inventory_json": "7b9aec26ee2da92735597ab3507668ad48f036e66c1abeb5a20919e1eb95d675",
+      "entries": 831,
+      "regular_files": 823,
+      "file_bytes": 39365638
+    }
+  },
+  "candidate_exactly_matches_producer": true,
+  "baseline_raw_inventory_equal": false,
+  "baseline_changed_inventory_entries": 5,
+  "stop": "first pair stopped on raw output difference; no additional pair",
+  "difference_explanation": [
+    "EmDash buildTime uses Date.now; the only raw difference in the substantial middleware body is this numeric literal.",
+    "Content-hash middleware names and their references change accordingly; entry changes are exactly these module references.",
+    "Astro creates a per-build AES-GCM key when ASTRO_KEY is absent. The virtual manifest has one changed base64-shaped key, one changed module reference, and reordered unchanged literals."
+  ],
+  "reference_only_substitution_check": "entry.mjs differences are exactly the observed middleware filenames; raw inventories remain unequal",
+  "source_evidence": [
+    {
+      "path": "node_modules/astro/dist/core/build/index.js",
+      "sha256": "6d0b368b548e72e05d67f028351f4c1443e27c97b850aae2b0f1be48af6f3ebd"
+    },
+    {
+      "path": "node_modules/astro/dist/core/encryption.js",
+      "sha256": "a10a578f8a39af16a69acdef3a933332b7445557aaf0c2b5fa8dd66806bb1245"
+    },
+    {
+      "path": "node_modules/emdash/src/astro/integration/vite-config.ts",
+      "sha256": "4324b584eb027bab5711dc65db7852e7cb0b01320c6f61ea5b939f91727dbd15"
+    },
+    {
+      "path": "node_modules/emdash/src/astro/integration/virtual-modules.ts",
+      "sha256": "257d070bc769009978856341ecaa8657faef24faab0cd0563eedaae573515408"
+    }
+  ],
+  "control_hashes": {
+    ".github/scripts/playground-build-artifact.mjs": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+    ".github/workflows/ci.yml": "498e2c62eb4fefb69ed3d8723d3e2afa328b7aaf1ed08358e9d46fcd928358af",
+    ".nvmrc": "a1c56e968c358e10872d64220b3ae759ffe7feaffc4da95fae425dbcca43fe44",
+    "package.json": "ec91a4e9ea5c5146d953202b29921dbc234e15dc2438c521d66254a21421573e",
+    "pnpm-lock.yaml": "9f7a5b8f2b85049c6e0c9025293a073d7e5160e0772f1157099723ed000ccd73",
+    "pnpm-workspace.yaml": "a38cda442d150eb705624dc1f628fcc3938776d15eb1251a324b14ed8f02676d",
+    "astro.playground.config.mjs": "d5fa8e7c8b44a43c7ac488a731bfe7b4734817234e18409fa51f558972839b9b",
+    "wrangler.playground.jsonc": "2a738cc65a148750f137bfac04f0944a5f22d0f014aa7f70347a163d44519b15",
+    "scripts/prepare-source-deps.mjs": "b2cfc6bd5e0a034af5d7f1fb6ceb14d518108fac723556a8519b33ae82a91f67",
+    "scripts/prepare-playground-plugins.mjs": "db5e91033dce8e94182bacfad59fe8c1d81f225ce0cc32e489cf4936e154a234",
+    "scripts/lib/paired-commerce.mjs": "2d96bcf72825cda066ba64be450ed2bedccb046390bd925c80286ba4b14ed42a",
+    "src/features/commerce-profile/profiles.mjs": "b0086ce80e66204350fa1b3d1130196878b89864bcad23b87bab90a932eca20b",
+    "src/features/playground-plugins/registry-plugins.mjs": "7188c4e362f42e983e56e25af1a383798cc95c4ea2b36da5d765fdc90b9b3eb4"
+  },
+  "phase_receipts": {
+    "producer-checkout": {
+      "exit": 0,
+      "seconds": 0.316423185999156,
+      "timed_out": false,
+      "terminal": true
+    },
+    "producer-locked-deps": {
+      "exit": 0,
+      "seconds": 2.374403069999971,
+      "timed_out": false,
+      "terminal": true
+    },
+    "producer-prepare": {
+      "exit": 0,
+      "seconds": 103.7141912579973,
+      "timed_out": false,
+      "terminal": true
+    },
+    "producer-compile": {
+      "exit": 0,
+      "seconds": 7.8778748830009135,
+      "timed_out": false,
+      "terminal": true
+    },
+    "producer-session": {
+      "exit": 0,
+      "seconds": 0.06756876299914438,
+      "timed_out": false,
+      "terminal": true
+    },
+    "producer-pack": {
+      "exit": 0,
+      "seconds": 1.2175211760004458,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-baseline-checkout": {
+      "exit": 0,
+      "seconds": 0.3661759690003237,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-baseline-locked-deps": {
+      "exit": 0,
+      "seconds": 2.2715803399987635,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-baseline-prepare": {
+      "exit": 0,
+      "seconds": 63.96581577699908,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-baseline-compile": {
+      "exit": 0,
+      "seconds": 7.429885945002752,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-baseline-session": {
+      "exit": 0,
+      "seconds": 0.06679073600025731,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-baseline-dry-run": {
+      "exit": 0,
+      "seconds": 2.7739075229983428,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-candidate-checkout": {
+      "exit": 0,
+      "seconds": 0.3172380569994857,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-candidate-locked-deps": {
+      "exit": 0,
+      "seconds": 2.3743017249980767,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-candidate-restore": {
+      "exit": 0,
+      "seconds": 1.6191278730002523,
+      "timed_out": false,
+      "terminal": true
+    },
+    "pair1-candidate-dry-run": {
+      "exit": 0,
+      "seconds": 10.74023613800091,
+      "timed_out": false,
+      "terminal": true
+    }
+  },
+  "limits": [
+    "Raw inventories were not normalized into a passing equality claim.",
+    "No new runtime/browser equivalence was exercised across the separately rebuilt artifacts.",
+    "Public network and fresh per-sample npm/cache conditions affect timing; one pair only.",
+    "Root lock-installed dependency tree was reflink-copied; root pnpm install and verify:playground-config were shared prequalified inputs, not reexecuted.",
+    "Hosted pack/upload/download timings are cross-environment context only, not subtracted to claim local or invoiced savings."
+  ],
+  "original_tracked_source_unchanged": true,
+  "original_generated_types_unchanged": true,
+  "all_16_phase_handles_terminal": true
+}
