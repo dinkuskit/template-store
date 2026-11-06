@@ -1,0 +1,492 @@
+{
+  "observed_at": "2026-11-06T18:59:13.696792+00:00",
+  "helper_sha256_fixture": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "helper_sha256_target_after": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "source_sha": "12743875d264e03bcbb9dd12a51211469ba7f8ac",
+  "results": [
+    {
+      "case": "valid-reopen",
+      "expectation": "populated exact restore",
+      "pass": true,
+      "receipt": {
+        "exit": 0,
+        "stdout": "{\"mode\":\"restore\",\"manifestSha256\":\"4ac0cabc62d6cd50da951695f4c463b70e237153d92d83bd560d79665a5c958f\",\"files\":6}\n",
+        "stderr": ""
+      },
+      "before": {},
+      "after": {
+        "dist": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client/.assetsignore": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 15,
+          "sha256": "171b5adb36aa21cf4ec3f0fd9ffa5e10fe17e5c781e0df408b4146069808028b"
+        },
+        "dist/client/assets": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client/assets/data.bin": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 256,
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        },
+        "dist/client/empty": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client/index.html": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 49,
+          "sha256": "6f576e36a87289f16d7aeb55e4e60202af3c8f3e7dc0c2d69d6d8719db2bc336"
+        },
+        "dist/server": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/server/entry.mjs": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 70,
+          "sha256": "2486924561e6a4c21114cc3064fa0f545181464d6f7facb349f69c167824b7f5"
+        },
+        "dist/server/executable.sh": {
+          "type": "file",
+          "mode": 493,
+          "bytes": 17,
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+        },
+        "dist/server/wrangler.json": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 78,
+          "sha256": "7de2a54442c65f3958a4d43172d7123b4a225b8470952267aa10aa71a00c8620"
+        }
+      },
+      "snapshot_matches_expected": true
+    },
+    {
+      "case": "retry-attempt-two",
+      "expectation": "populated exact restore",
+      "pass": true,
+      "receipt": {
+        "exit": 0,
+        "stdout": "{\"mode\":\"restore\",\"manifestSha256\":\"4ac0cabc62d6cd50da951695f4c463b70e237153d92d83bd560d79665a5c958f\",\"files\":6}\n",
+        "stderr": ""
+      },
+      "before": {},
+      "after": {
+        "dist": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client/.assetsignore": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 15,
+          "sha256": "171b5adb36aa21cf4ec3f0fd9ffa5e10fe17e5c781e0df408b4146069808028b"
+        },
+        "dist/client/assets": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client/assets/data.bin": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 256,
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        },
+        "dist/client/empty": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/client/index.html": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 49,
+          "sha256": "6f576e36a87289f16d7aeb55e4e60202af3c8f3e7dc0c2d69d6d8719db2bc336"
+        },
+        "dist/server": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/server/entry.mjs": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 70,
+          "sha256": "2486924561e6a4c21114cc3064fa0f545181464d6f7facb349f69c167824b7f5"
+        },
+        "dist/server/executable.sh": {
+          "type": "file",
+          "mode": 493,
+          "bytes": 17,
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+        },
+        "dist/server/wrangler.json": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 78,
+          "sha256": "7de2a54442c65f3958a4d43172d7123b4a225b8470952267aa10aa71a00c8620"
+        }
+      },
+      "snapshot_matches_expected": true
+    },
+    {
+      "case": "future-producer",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Invalid trusted producer attempt\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-producer-retry",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "missing-sha",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Missing trusted producer manifest SHA\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "bad-sha",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact manifest does not match trusted producer output\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "missing-producer",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Invalid trusted producer attempt\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-source",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Checkout does not match SOURCE_SHA\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-repository",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Unexpected repository identity\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-repository-id",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Unexpected repository identity\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-run",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-workflow-sha",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-workflow-ref",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-event",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-source-repo",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "wrong-pr",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "corrupt-payload",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact files are missing, additional or corrupt\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "missing-payload",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact files are missing, additional or corrupt\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "extra-payload",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact files are missing, additional or corrupt\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "mutated-manifest",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact manifest does not match trusted producer output\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "symlink-payload",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a link or unsupported file type\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "protected-payload",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "existing-destination",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Restore destination already contains dist\n"
+      },
+      "before": {
+        "dist": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/preserve.txt": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 34,
+          "sha256": "b0baadcebe2c30e86758f9d535d31c32c01c68dd0ea41c11e5d91d3fa8e60933"
+        }
+      },
+      "after": {
+        "dist": {
+          "type": "dir",
+          "mode": 493
+        },
+        "dist/preserve.txt": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 34,
+          "sha256": "b0baadcebe2c30e86758f9d535d31c32c01c68dd0ea41c11e5d91d3fa8e60933"
+        }
+      },
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "changed-control",
+      "expectation": "refuse before destination mutation",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Unable to verify clean checkout identity\n"
+      },
+      "before": {},
+      "after": {},
+      "snapshot_matches_expected": false
+    },
+    {
+      "case": "pack-symlink",
+      "expectation": "refuse without artifact stage",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a link or unsupported file type\n"
+      },
+      "artifact_exists": false,
+      "controlled_content_exposed": false
+    },
+    {
+      "case": "pack-protected",
+      "expectation": "refuse without artifact stage",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "artifact_exists": false,
+      "controlled_content_exposed": false,
+      "protected_file_access_observed": false
+    },
+    {
+      "case": "pack-existing-stage",
+      "expectation": "refuse and preserve stage",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact staging directory already exists\n"
+      },
+      "stage_unchanged": true
+    }
+  ]
+}

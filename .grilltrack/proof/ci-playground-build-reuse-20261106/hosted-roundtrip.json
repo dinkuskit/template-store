@@ -1,0 +1,37 @@
+{
+  "repository": "dinkuskit/template-store",
+  "source": "d267be86e97ac8ef2ee8856d0c964b315095c80a",
+  "run_id": 42277988720,
+  "job_id": 128099241083,
+  "url": "https://github.com/dinkuskit/template-store/actions/runs/42277988720/job/128099241083",
+  "conclusion": "success",
+  "job_envelope_seconds": 98,
+  "rounded_step_seconds": {
+    "prepare_sources": 37,
+    "build": 15,
+    "package": 1,
+    "upload": 3,
+    "download": 2,
+    "restore_plus_credential_free_dryrun": 4
+  },
+  "added_proof_steps_seconds": 10,
+  "output": {
+    "files": 823,
+    "bytes": 39348043,
+    "manifest_sha256": "676b6b8592b8bebc356ccdcb8fba8f45ad8f1e0af65f9646a0491aae2e428c1c"
+  },
+  "pack_and_restore_manifest_sha_match": true,
+  "artifact_download_succeeded": true,
+  "restored_wrangler_dry_run": {
+    "passed": true,
+    "upload_kib": 20140.37,
+    "gzip_kib": 5211.66
+  },
+  "restore_group_to_json_receipt_seconds_approx": 0.719,
+  "limits": [
+    "Step timestamps are rounded; group-to-JSON elapsed time includes command launch and is not a process timer.",
+    "This is the real artifact-service roundtrip in the non-deploying producer job, not a fresh consumer deployment or partial-rerun exercise.",
+    "The added 10-second proof path includes the dry-run; normal eligible deployment omits that extra proof dry-run.",
+    "No paired whole-workflow or invoiced savings claim."
+  ]
+}
