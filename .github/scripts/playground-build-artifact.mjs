@@ -41,6 +41,13 @@ function safePath(path) {
   return path;
 }
 
+function buildContext(env) {
+  return { repository: env.GITHUB_REPOSITORY, repositoryId: env.GITHUB_REPOSITORY_ID,
+    run: env.GITHUB_RUN_ID, attempt: env.GITHUB_RUN_ATTEMPT, event: env.GITHUB_EVENT_NAME,
+    workflowRef: env.GITHUB_WORKFLOW_REF, workflowSha: env.GITHUB_WORKFLOW_SHA,
+    source: env.SOURCE_SHA, sourceRepository: env.SOURCE_REPOSITORY, pullRequest: env.SOURCE_PR_NUMBER };
+}
+
 export function buildInputs(root, env) {
   root = realpathSync(root);
   const source = env.SOURCE_SHA;
@@ -71,10 +78,7 @@ export function buildInputs(root, env) {
   if (Object.keys(env).some((key) => /^(?:PUBLIC_|VITE_)/u.test(key))) refuse("Unsupported public build environment override");
   if (readdirSync(root).some((name) => /^\.env(?:\..*)?$/u.test(name))) refuse("Checkout contains unqualified environment files");
   return {
-    context: { repository: env.GITHUB_REPOSITORY, repositoryId: env.GITHUB_REPOSITORY_ID,
-      run: env.GITHUB_RUN_ID, attempt: env.GITHUB_RUN_ATTEMPT, event: env.GITHUB_EVENT_NAME,
-      workflowRef: env.GITHUB_WORKFLOW_REF, workflowSha: env.GITHUB_WORKFLOW_SHA,
-      source, sourceRepository: env.SOURCE_REPOSITORY, pullRequest: env.SOURCE_PR_NUMBER },
+    context: buildContext(env),
     toolchain: { node: process.version, pnpm, platform: process.platform, architecture: process.arch },
     buildEnvironment: { commerceProfile: profile, wranglerConfig: "wrangler.playground.jsonc", nodeEnv: "production" },
     pins: pkg.dinkuskit,
@@ -154,7 +158,10 @@ export function restoreBuild(root, artifact, destination, env, expectedSha) {
   const manifest = JSON.parse(raw);
   // Failed-job-only reruns may reuse a successful producer from an earlier attempt.
   // Its attempt comes from the same trusted job outputs as the manifest SHA/name.
-  if (manifest.schema !== 1 || !isDeepStrictEqual(manifest.inputs, buildInputs(root, { ...env, GITHUB_RUN_ATTEMPT: producerAttempt }))) refuse("Artifact source, run, trust, toolchain or build inputs differ");
+  const producerEnv = { ...env, GITHUB_RUN_ATTEMPT: producerAttempt };
+  // A mismatch cannot be restored; matching context still requires every local check.
+  if (manifest?.schema !== 1 || !isDeepStrictEqual(manifest.inputs?.context, buildContext(producerEnv)) ||
+      !isDeepStrictEqual(manifest.inputs, buildInputs(root, producerEnv))) refuse("Artifact source, run, trust, toolchain or build inputs differ");
   if (!Array.isArray(manifest.entries) || !manifest.entries.length || manifest.entries.length > 20000) refuse("Invalid artifact inventory");
   const names = new Set();
   for (const row of manifest.entries) {

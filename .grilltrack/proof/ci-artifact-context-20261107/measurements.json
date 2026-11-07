@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "base": "b9eecb7aea06b27b88a984d6731e97fa2534a2a7",
+  "withdrawal_parent": "e06c8e1d6f0638918164ff2fa1f2f4b69d695d7e",
+  "baseline_helper_sha256": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "candidate_helper_sha256": "1a9a62f80e0b32c0f62517a2261fc195fbd974c14329efcb93f148bf3d7f856d",
+  "measured_test_file_sha256": "dd9a5faa2a1710c3c31eaceb7207a6fbab561f294d6c8bf618ba4f63880abff9",
+  "final_test_file_sha256": "3de5151e7003239487a1998ebba02f84ea39d139811cd2dbae7537860f70f9b3",
+  "case_names_sha256": "2129f062404a80da8e4b1c6a0235cf3db018e95f025506649ef0b4174ee4800f",
+  "command": [
+    "node",
+    "--test",
+    "tests/workflows/playground-build-artifact.test.mjs"
+  ],
+  "node": "24.22.0",
+  "pnpm": "11.9.0",
+  "acceptance": {
+    "minimum_median_elapsed_reduction_seconds": 1,
+    "minimum_median_elapsed_reduction_percent": 5,
+    "maximum_systematic_cpu_regression_percent": 5,
+    "preserve_all_test_cases": 11
+  },
+  "samples": [
+    {
+      "sample": "baseline-1",
+      "wall_seconds": 9.381970750997425,
+      "resources": {
+        "user_seconds": 9.930651,
+        "system_seconds": 2.762744,
+        "max_rss": 154072,
+        "max_rss_unit": "KiB",
+        "aggregation": "waited-children"
+      },
+      "exit": {
+        "raw": 0,
+        "normalized": 0,
+        "signal": null
+      },
+      "cases": 11,
+      "pass": 11,
+      "fail": 0
+    },
+    {
+      "sample": "candidate-1",
+      "wall_seconds": 7.7072210109981825,
+      "resources": {
+        "user_seconds": 8.287305,
+        "system_seconds": 2.208384,
+        "max_rss": 154008,
+        "max_rss_unit": "KiB",
+        "aggregation": "waited-children"
+      },
+      "exit": {
+        "raw": 0,
+        "normalized": 0,
+        "signal": null
+      },
+      "cases": 11,
+      "pass": 11,
+      "fail": 0
+    },
+    {
+      "sample": "candidate-2",
+      "wall_seconds": 7.573016444999666,
+      "resources": {
+        "user_seconds": 8.31072,
+        "system_seconds": 2.221024,
+        "max_rss": 153780,
+        "max_rss_unit": "KiB",
+        "aggregation": "waited-children"
+      },
+      "exit": {
+        "raw": 0,
+        "normalized": 0,
+        "signal": null
+      },
+      "cases": 11,
+      "pass": 11,
+      "fail": 0
+    },
+    {
+      "sample": "baseline-2",
+      "wall_seconds": 9.015472327999305,
+      "resources": {
+        "user_seconds": 9.93831,
+        "system_seconds": 2.505916,
+        "max_rss": 154160,
+        "max_rss_unit": "KiB",
+        "aggregation": "waited-children"
+      },
+      "exit": {
+        "raw": 0,
+        "normalized": 0,
+        "signal": null
+      },
+      "cases": 11,
+      "pass": 11,
+      "fail": 0
+    }
+  ],
+  "paired_result": {
+    "sequence": [
+      "artifact-baseline-1",
+      "artifact-candidate-1",
+      "artifact-candidate-2",
+      "artifact-baseline-2"
+    ],
+    "baseline_median_seconds": 9.198721539498365,
+    "candidate_median_seconds": 7.640118727998924,
+    "median_saved_seconds": 1.5586028114994406,
+    "median_reduction_percent": 16.94368945518092,
+    "paired_saved_seconds": [
+      1.6747497399992426,
+      1.4424558829996386
+    ],
+    "baseline_median_cpu_seconds": 12.5688105,
+    "candidate_median_cpu_seconds": 10.513716500000001,
+    "median_cpu_reduction_percent": 16.350743771656028,
+    "test_identities_equal": true,
+    "pass_each": 11,
+    "fail_each": 0
+  },
+  "final_assertions_run": {
+    "wall_seconds": 7.3871556270023575,
+    "pass": 11,
+    "fail": 0,
+    "source": [
+      "wrong context rejects before dirty-source verification",
+      "matching context still rejects dirty source",
+      "trusted null/missing/null-context manifests fail closed"
+    ]
+  },
+  "full_verification": "pending on frozen committed head",
+  "subprocess_counts": {
+    "qualification": "source-derived for the unchanged measured workload; not an observed process trace",
+    "pnpm_before": 31,
+    "pnpm_after": 26,
+    "git_before": 212,
+    "git_after": 175
+  },
+  "limits": [
+    "Same checkout and pinned tools; exact baseline helper overlaid read-only. Fresh synthetic Git fixtures per test; package and operating-system caches warm.",
+    "The original11-case test file was byte-identical throughout paired measurements; final extra assertions were validated separately.",
+    "No network, installation or deploy in the measured command.",
+    "Matching-context restores still perform full validation; no improvement claimed for successful production restore, total CI wall time or billing."
+  ]
+}
