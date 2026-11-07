@@ -171,7 +171,7 @@ jobs:
           retention-days: 3
 
   # Compile the Registry store's Cloudflare path too; the browser jobs build
-  # the Node adapter in the desktop job. These synthetic resource IDs are never provisioned or deployed.
+  # the Node adapter. These synthetic resource IDs are never provisioned or deployed.
   build-registry:
     name: Registry build
     if: github.event.action != 'closed'

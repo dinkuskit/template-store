@@ -29,19 +29,10 @@ if [[ "$MODE" != "quick" ]]; then
   node scripts/prepare-paired-commerce.mjs
 fi
 
-# browser runs the browser tests and any required production build; the phone
-# CI job uses it beside a full run that owns every other check.
+# browser runs only the build and the browser tests; the phone CI job uses it
+# beside a full run that owns every other check.
 if [[ "$MODE" == "browser" ]]; then
-  # This exact CI selection only uses the two fresh astro dev servers. Keep
-  # production builds for every other selector and configured build override.
-  build_overrides="${DINKUS_HOSTING_PROFILE+x}${ASTRO_ADAPTER+x}${CLOUDFLARE_E2E+x}${DINKUS_WRANGLER_CONFIG+x}"
-  build_overrides+="${DINKUS_PAIRED_COMMERCE_DIR+x}${DINKUS_COMMERCE_PROFILE+x}${DINKUS_CATALOG_PROFILE+x}"
-  build_overrides+="${DINKUS_TEMPLATE_DB_URL+x}${DINKUS_TEMPLATE_UPLOADS_DIR+x}${EMDASH_SITE_URL+x}"
-  if [[ "${VERIFY_E2E_PROJECTS:-}" == "chromium-mobile,shipping-chromium-mobile" && -z "$build_overrides" ]]; then
-    echo "verify-web: mobile projects use fresh dev servers; no production build required"
-  else
-    pnpm exec astro build
-  fi
+  pnpm exec astro build
   pnpm exec playwright test ${PLAYWRIGHT_PROJECT_ARGS[@]+"${PLAYWRIGHT_PROJECT_ARGS[@]}"}
   echo "verify-web: ${MODE} passed"
   exit 0

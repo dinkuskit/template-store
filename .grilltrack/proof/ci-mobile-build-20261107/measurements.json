@@ -1,0 +1,68 @@
+{
+  "status": "withdrawn: elapsed improvement unqualified",
+  "base": "b9eecb7aea06b27b88a984d6731e97fa2534a2a7",
+  "measured_candidate": "816bae8787afc1ea96a3f9c5abc86d4385a30ee5",
+  "command": [
+    "bin/verify-web",
+    "browser"
+  ],
+  "project_selector": "chromium-mobile,shipping-chromium-mobile",
+  "node": "24.22.0",
+  "pnpm": "11.9.0",
+  "samples": [
+    {
+      "sample": "baseline-1",
+      "wall_seconds": 344.1461386759984,
+      "user_seconds": 163.487042,
+      "system_seconds": 54.541739,
+      "production_builds": 1,
+      "cases": 70,
+      "passed": 65,
+      "skipped": 5,
+      "case_identity_match": true
+    },
+    {
+      "sample": "candidate-1-qualified",
+      "wall_seconds": 325.3383048830001,
+      "user_seconds": 156.169557,
+      "system_seconds": 57.815051,
+      "production_builds": 0,
+      "cases": 70,
+      "passed": 65,
+      "skipped": 5,
+      "case_identity_match": true
+    },
+    {
+      "sample": "candidate-2",
+      "wall_seconds": 325.1248157000009,
+      "user_seconds": 148.616426,
+      "system_seconds": 51.923156,
+      "production_builds": 0,
+      "cases": 70,
+      "passed": 65,
+      "skipped": 5,
+      "case_identity_match": true
+    },
+    {
+      "sample": "baseline-2",
+      "wall_seconds": 302.59284680599376,
+      "user_seconds": 164.514031,
+      "system_seconds": 50.39905,
+      "production_builds": 1,
+      "cases": 70,
+      "passed": 65,
+      "skipped": 5,
+      "case_identity_match": true
+    }
+  ],
+  "baseline_median_seconds": 323.36949274099607,
+  "candidate_median_seconds": 325.2315602915005,
+  "median_saved_seconds": -1.8620675505044346,
+  "limitations": [
+    "Same candidate checkout with exact base verifier-file overlay, not two clean-commit executions.",
+    "Shared locked dependencies, prepared source/plugins and warm non-dist caches; dist absent before each sample; canonical startup resets both profile stores.",
+    "Candidate1 followed an interrupted13.727s unmeasured attempt that completed preparation and started server setup but reached no cases.",
+    "A third baseline was cancelled after32.427s and is excluded.",
+    "No cold-start, hosted critical-path or billing improvement established."
+  ]
+}

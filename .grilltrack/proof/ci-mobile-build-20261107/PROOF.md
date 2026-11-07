@@ -1,11 +1,40 @@
-# Mobile-only production build qualification
+# Mobile production-build experiment: withdrawn
 
-Base: `b9eecb7aea06b27b88a984d6731e97fa2534a2a7`. Prepared candidate; no gain claimed.
+Base: `b9eecb7aea06b27b88a984d6731e97fa2534a2a7`. Measured candidate:
+`816bae8787afc1ea96a3f9c5abc86d4385a30ee5`. The candidate is reverted;
+normal mobile verification again performs its existing production build.
 
-## Acceptance declared before candidate measurement
+The declared acceptance required at least 5s median paired elapsed improvement,
+no systematic CPU increase above 5%, and unchanged cases. The exact command was
+`bin/verify-web browser`, with
+`VERIFY_E2E_PROJECTS=chromium-mobile,shipping-chromium-mobile`, Node24.22.0 and
+pnpm11.9.0. The controlled overlay used the same candidate checkout and locked
+runtime/dependencies, substituting only the exact base verifier for baselines.
+This was not a pair of clean-commit executions.
 
-Compare the exact `bin/verify-web browser` command with `VERIFY_E2E_PROJECTS=chromium-mobile,shipping-chromium-mobile`, Node24.22.0/pnpm11.9.0 and the same locked dependencies. Start two interleaved pairs (baseline,candidate,candidate,baseline) on the same isolated checkout. Remove only this task's generated dist before every sample; canonical startup recreates both profile stores. Record shared prepared source/cache inputs and each capture's elapsed/CPU/RSS, production-build count, selected case identities and outcomes, including startup/warming work. Do not delete shared caches.
+| Sequential sample | Wall seconds | User + system CPU seconds | Production builds |
+| --- | ---: | ---: | ---: |
+| Baseline1 | 344.146 | 218.029 | 1 |
+| Candidate1 | 325.338 | 213.985 | 0 |
+| Candidate2 | 325.125 | 200.540 | 0 |
+| Baseline2 | 302.593 | 214.913 | 1 |
 
-Require every sample to retain70case identities,65passes/5expectedskips, one worker and zero retries. Candidate samples must keep dist absent through normal mobile execution; full/desktop/unset/unknown/special-adapter/Cloudflare paths must retain production build. A passing candidate requires at least5s median paired elapsed improvement with no systematic CPU increase above5%; mixed signs or warming shifts make the initial result inconclusive and require a bounded third pair before any gain claim. Report this as phone-job work, not workflow critical-path or billing improvement.
+All four completed with the same 70 unique case identities, 65 passes and five
+expected skips, one worker and zero retries. Candidate runs kept `dist` absent.
+Focused guard tests passed 5/5 on the candidate. Shared source/plugin preparation
+and one build warmup preceded measurement. Non-dist Astro, migration and default
+Vite/database caches remained warm; canonical startup recreated both profile
+stores for each sample. CPU is the capture helper's waited-child measurement.
 
-Focused command-contract tests, capture-helper failing-command proof and the full canonical verifier remain required. No source/Commerce preparation, product/fixture semantics, assertions or pins change. Measurement and validation results pending.
+Pair1 saved 18.808s; pair2 regressed 22.532s. Baselines varied by 41.553s, much
+more than the 5.32s internal build phase observed in baseline1. Median command
+time increased 1.862s. Removing one build did not establish a reliable net
+elapsed benefit. Candidate1 additionally followed an interrupted13.727s attempt
+that reached preparation/server setup but no test case; its possible warming
+is retained as a qualification. A third baseline was cancelled after32.427s
+and excluded; no further timing was used to select a favorable result.
+
+Full cold-start qualification was not completed for this withdrawn patch.
+No hosted workflow, critical-path or invoice improvement is claimed. Original
+verifier behavior, workflow comment and test inventory are restored. Compact
+exact values and limitations are in [measurements.json](measurements.json).
