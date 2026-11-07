@@ -68,6 +68,11 @@ test("restore binds repository, source, run, attempt, event, workflow and toolch
   }
   const badToolchain = mutateManifest(f.root, (m) => { m.inputs.toolchain.node = "v22.0.0"; });
   assert.throws(() => f.restore(badToolchain), /inputs differ/u);
+  const restoredToolchain = mutateManifest(f.root, (m) => { m.inputs.toolchain.node = process.version; });
+  writeFileSync(join(f.root, "astro.playground.config.mjs"), "changed");
+  assert.throws(() => f.restore(restoredToolchain, { GITHUB_RUN_ID: "124" }), /inputs differ/u);
+  assert.throws(() => f.restore(restoredToolchain), /clean checkout/u);
+  assert.equal(existsSync(join(f.root, "restored/dist")), false);
 });
 
 test("external trusted manifest hash is mandatory and checked before manifest parsing", (t) => {
@@ -76,6 +81,12 @@ test("external trusted manifest hash is mandatory and checked before manifest pa
   assert.throws(() => f.restore("0".repeat(64)), /trusted producer output/u);
   writeFileSync(join(f.root, "artifact/manifest.json"), "invalid JSON");
   assert.throws(() => f.restore(manifestSha256), /trusted producer output/u);
+  for (const manifest of [null, {}, { schema: 1 }, { schema: 1, inputs: null }, { schema: 1, inputs: { context: null } }]) {
+    const bytes = JSON.stringify(manifest);
+    writeFileSync(join(f.root, "artifact/manifest.json"), bytes);
+    const trustedHash = createHash("sha256").update(bytes).digest("hex");
+    assert.throws(() => f.restore(trustedHash), /inputs differ/u);
+  }
   assert.equal(existsSync(join(f.root, "restored/dist")), false);
 });
 
