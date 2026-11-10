@@ -959,7 +959,12 @@ export function hydrateGuestCartPage(): void {
     if (!id) return;
     const quantity = parseGuestCartQuantityInput(target.value);
     if (quantity === null) {
-      mutationNotice = "Quantity must be a whole number from 1 to 99.";
+      // Restore the reviewed intent, including unsaved in-memory edits. A
+      // rejected draft must not remain visible beside the previous totals.
+      const line = session.intent.lines.find((candidate) => candidate.id === id);
+      if (line) target.value = String(line.quantity);
+      else renderCart(root);
+      mutationNotice = "Quantity must be a whole number from 1 to 99. Your cart has not changed.";
       setStatus(root, mutationNotice, true);
       return;
     }

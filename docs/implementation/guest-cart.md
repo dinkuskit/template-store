@@ -53,6 +53,10 @@ requests with a five-second timeout.
 
 Cache limits are presentation safeguards: 40 distinct product lines, quantities
 from 1 through 99, safe bounded identities and a bounded raw string before JSON
-parsing. They do not define stock or fulfillment rules. If browser persistence
-fails, the existing saved cache stays intact and visible notices explain that
-unsaved intent is lost when leaving or reloading the page.
+parsing. They do not define stock or fulfillment rules. An invalid quantity
+change restores the current cart quantity and explains that the cart has not
+changed, so a visible rejected edit cannot disagree with the reviewed totals.
+This uses the in-memory cart when a previous save failed, not an older persisted
+quantity. If browser persistence fails, the existing saved cache stays intact
+and visible notices explain that unsaved intent is lost when leaving or
+reloading the page.
