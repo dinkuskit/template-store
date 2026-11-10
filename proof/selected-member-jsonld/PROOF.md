@@ -18,6 +18,8 @@ Node 24.22.0, EmDash 1.4.0, local SQLite and actual sandbox workerd Registry bun
 - Same targeted tests with `DINKUS_PAIRED_COMMERCE_DIR` pointing to Commerce PR260 at 73d852316f9982b06d89b2fa0e5bb4292bd12015: phone passes; desktop passes on isolated rerun after a cold-seed resource failure. This is paired source development proof, not a released Registry artifact. Candidate backend 129357 bytes, under 131072-byte Registry limit (owning PR260 checks).
 - `pnpm build:registry` passes with the repository's dummy CI resource settings, no credentials, provisioning or deployment. This builds a Registry store with no Commerce mounted, as required. No plugin code or package pin changed here.
 
+The first CI run caught stale expectations in `structured-data-policy-feed.spec.ts` that still required the old borrowed-SKU Offer. Those assertions now compare to the public member projection, like the targeted product-page spec. Local reruns of that longer admin/policy scenario crash before the changed assertions during the post-admin reload, even with a single proof server; that scenario is not claimed as a local pass. The complete quick suite passes again after the test correction; the runtime code and successful Registry build are unchanged.
+
 The unrelated full admin/browser matrix is left to CI; unchanged upstream already times out on this 1-vCPU/2-GB host (Backroad Bum baseline evidence, November 10). Initial too-small heap checks and cold-seed retries are test-host limitations, not store incidents. No payment, order, label, CMS mutation, indexing eligibility or hosted readiness is established by these checks.
 
 ## Scope
