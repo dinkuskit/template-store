@@ -413,6 +413,9 @@ for (const scenario of [
   { name: "decimal numeric SKU entity", linked: true, attribute: "A&#38;B", sku: "A&B", pass: true },
   { name: "hexadecimal numeric SKU entity", linked: true, attribute: "A&#x26;B", sku: "A&B", pass: true },
   { name: "apostrophe within a double-quoted SKU attribute", linked: true, attribute: "A'B", sku: "A'B", pass: true },
+  { name: "older variant preview without a borrowed SKU", linked: true, variant: true, preview: true, pass: true },
+  { name: "selected member SKU distinct from the visible parent", linked: true, variant: true, sku: "BAG-L", offer: true, pass: true },
+  { name: "variant Offer without member SKU", linked: true, variant: true, preview: true, offer: true, pass: false },
   { name: "a genuine decoded SKU mismatch", linked: true, attribute: "A&amp;B", sku: "DIFFERENT", pass: false, mismatch: true },
 ]) {
   test(`feed and SKU verification handles ${scenario.name}`, async () => {
@@ -425,9 +428,11 @@ for (const scenario of [
       if (path === "/sitemap.xml") return res.writeHead(200, { "content-type": "application/xml" })
         .end(`<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url><url><loc>${origin}/products/linked</loc></url></urlset>`);
       if (path === "/products/linked") {
-        const product = { "@type": "Product", name: "Bag", url: origin + path, ...(scenario.linked ? { sku: scenario.sku ?? "BAG-1" } : {}) };
+        const product = { "@type": "Product", name: "Bag", url: origin + path,
+          ...(scenario.linked && !scenario.preview ? { sku: scenario.sku ?? "BAG-1" } : {}),
+          ...(scenario.offer ? { offers: { url: origin + path, price: "10.00" } } : {}) };
         const attribute = scenario.linked ? `data-product-sku="${scenario.attribute ?? "BAG-1"}"` : "";
-        return res.writeHead(200, { "content-type": "text/html" }).end(`<!doctype html><link rel="canonical" href="${origin}${path}"><article ${attribute}><h1>Bag</h1></article><script type="application/ld+json">${JSON.stringify(product)}</script>`);
+        return res.writeHead(200, { "content-type": "text/html" }).end(`<!doctype html><link rel="canonical" href="${origin}${path}"><article ${attribute}><h1>Bag</h1></article>${scenario.variant ? '<script type="application/json" data-variant-members>[]</script>' : ''}<script type="application/ld+json">${JSON.stringify(product)}</script>`);
       }
       if (path === "/feeds/google-merchant.xml" || path === "/feeds/meta-catalog.csv") {
         const facts = [{
@@ -445,6 +450,7 @@ for (const scenario of [
       const result = await runVerifier(origin);
       assert.equal(result.status === 0, scenario.pass, result.stdout + result.stderr);
       if (scenario.mismatch) assert.match(result.stdout, /JSON-LD sku DIFFERENT does not match visible SKU A&B/);
+      else if (scenario.variant && !scenario.pass) assert.match(result.stdout, /variant metadata must pair an Offer with a member SKU, or omit both/);
       else assert.match(result.stdout, scenario.pass ? /PASS Feeds/ : /FAIL Feeds/);
     } finally {
       await new Promise((done) => server.close(done));
