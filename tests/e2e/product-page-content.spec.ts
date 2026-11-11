@@ -59,7 +59,7 @@ async function upload(request: APIRequestContext, name: string, rgb: [number, nu
 const span = (key: string, text: string, marks: string[] = []) => ({ _type: "span", _key: key, text, marks });
 const block = (key: string, children: unknown[], markDefs: unknown[] = []) => ({ _type: "block", _key: key, style: "normal", markDefs, children });
 
-test("a product of any kind shows its rich summary, sections and gallery", async ({ page, request }, testInfo) => {
+test("a product of any kind shows its rich summary, sections and gallery", async ({ page, request, browser }, testInfo) => {
   test.setTimeout(180_000);
   const root = resolve("runs/product-page-content/browser", testInfo.project.name);
   await mkdir(root, { recursive: true });
@@ -141,13 +141,68 @@ test("a product of any kind shows its rich summary, sections and gallery", async
     expect(frame.overflow).toBe("hidden");
     expect(frame.shadow).not.toBe("none");
     const firstSrc = await main.getAttribute("src");
-    await thumbs.nth(2).click();
+    const metadata = await page.locator('script[type="application/ld+json"]').textContent();
+    const storage = await page.evaluate(() => JSON.stringify(localStorage));
+    await expect(thumbs.first()).toBeVisible();
+    await expect(page.locator("[data-gallery-open]")).toHaveCount(0);
+    await thumbs.nth(2).focus();
+    await page.keyboard.press("Space");
     await expect(thumbs.nth(2)).toHaveAttribute("aria-pressed", "true");
     await expect(thumbs.first()).toHaveAttribute("aria-pressed", "false");
     await expect(main).not.toHaveAttribute("src", firstSrc ?? "");
     await expect(main).toHaveAttribute("alt", `seeds-${suffix}`);
+    await expect(main).toHaveAttribute("srcset", (await thumbs.nth(2).getAttribute("data-srcset"))!);
+    await expect(main).toHaveAttribute("width", "8");
+    await expect(main).toHaveAttribute("height", "8");
+    await expect(thumbs.nth(2)).toBeFocused();
+    await thumbs.first().focus();
+    await page.keyboard.press("Enter");
+    await expect(main).toHaveAttribute("src", firstSrc!);
+    await expect(main).toHaveAttribute("alt", `packet-front-${suffix}`);
+    await expect(thumbs.first()).toBeFocused();
+    await expect(detail.locator("[data-product-price]")).toHaveText("$22.00");
+    expect(await page.locator('script[type="application/ld+json"]').textContent()).toBe(metadata);
+    expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(storage);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
     await page.screenshot({ path: resolve(root, "product-page.png"), fullPage: true });
+
+    // Use the same persisted Commerce gallery without JavaScript, not an HTML mock.
+    const noScript = await browser.newContext({ javaScriptEnabled: false, viewport: page.viewportSize()! });
+    try {
+      const fallback = await noScript.newPage();
+      await fallback.goto(page.url());
+      await expect(fallback.locator("[data-gallery-thumb]").first()).toBeHidden();
+      const links = fallback.locator("[data-gallery-open]");
+      await expect(links).toHaveCount(3);
+      for (let index = 0; index < 3; index += 1) {
+        await expect(links.nth(index)).toHaveAttribute("href", (await thumbs.nth(index).getAttribute("data-src"))!);
+      }
+      await expect(links.nth(2)).toHaveAccessibleName(`Open picture 3 of 3: seeds-${suffix}`);
+      await links.nth(2).focus();
+      await expect(links.nth(2)).toBeFocused();
+      expect(await fallback.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+      await fallback.screenshot({ path: resolve(root, "product-page-no-script.png"), fullPage: true });
+      const target = new URL((await links.nth(2).getAttribute("href"))!, fallback.url()).href;
+      const [response] = await Promise.all([
+        fallback.waitForNavigation({ waitUntil: "commit" }),
+        fallback.keyboard.press("Enter"),
+      ]);
+      expect(response?.status()).toBe(200);
+      expect(response?.headers()["content-type"]).toContain("image/png");
+      expect(fallback.url()).toBe(target);
+      await fallback.goBack();
+      await expect(fallback.locator("[data-product-price]")).toHaveText("$22.00");
+      await expect(fallback.locator("[data-commerce-image]")).toHaveAttribute("src", firstSrc!);
+      expect(await fallback.locator('script[type="application/ld+json"]').textContent()).toBe(metadata);
+
+      // Single-image products do not need controls or a fallback row.
+      await catalogOp(request, { op: "media", catalogItemId: itemId, image: pictures[0], gallery: [] });
+      await fallback.reload();
+      await expect(fallback.locator("[data-commerce-image]")).toHaveAttribute("src", firstSrc!);
+      await expect(fallback.locator("[data-gallery-controls], [data-gallery-open]")).toHaveCount(0);
+    } finally {
+      await noScript.close();
+    }
   } finally {
     await request.delete(`/_emdash/api/content/products/${entryId}`, { headers: csrf });
   }
@@ -174,6 +229,7 @@ test("a published product with no placeholder art and no Commerce image says No 
     await expect(page.locator(`[data-product-page="${slug}"] [data-commerce-image-placeholder="${itemId}"]`)).toHaveText("No image");
     await expect(page.locator(".product-detail__description")).toHaveText("Organic.");
     await expect(page.locator("[data-product-details]")).toHaveCount(0);
+    await expect(page.locator("[data-gallery-controls], [data-gallery-open]")).toHaveCount(0);
   } finally {
     await request.delete(`/_emdash/api/content/products/${entryId}`, { headers: csrf });
   }

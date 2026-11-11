@@ -39,7 +39,7 @@ const first = pictures[0] ?? null;
     <ProductMedia image={first ?? image} productId={productId} fallbackSrc={fallbackSrc} fallbackAlt={fallbackAlt} />
   </div>
   {pictures.length > 1 && (
-    <ul class="product-gallery__thumbs" aria-label="Product pictures">
+    <ul class="product-gallery__thumbs" aria-label="Product pictures" data-gallery-controls hidden>
       {pictures.map((picture, index) => (
         <li>
           <button type="button" class="product-gallery__thumb" aria-pressed={index === 0 ? "true" : "false"} aria-label={`Show picture ${index + 1} of ${pictures.length}${picture.alt ? `: ${picture.alt}` : ""}`}
@@ -50,6 +50,18 @@ const first = pictures[0] ?? null;
         </li>
       ))}
     </ul>
+    <noscript>
+      <p class="product-gallery__help">Open a picture to inspect it, then use your browser’s Back button to return.</p>
+      <ul class="product-gallery__thumbs" aria-label="Product pictures">
+        {pictures.map((picture, index) => (
+          <li>
+            <a class="product-gallery__thumb" href={picture.src} data-gallery-open aria-label={`Open picture ${index + 1} of ${pictures.length}${picture.alt ? `: ${picture.alt}` : ""}`}>
+              <img src={picture.src} srcset={picture.srcset} sizes="6rem" alt="" width={picture.width ?? undefined} height={picture.height ?? undefined} loading="lazy" decoding="async" />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </noscript>
   )}
 </div>
 <script>
@@ -68,11 +80,15 @@ const first = pictures[0] ?? null;
         for (const other of thumbs) other.setAttribute("aria-pressed", String(other === thumb));
       });
     }
+    const controls = gallery.querySelector<HTMLElement>("[data-gallery-controls]");
+    if (main && controls) controls.hidden = false;
   }
 </script>
 <style>
   .product-gallery{display:grid;gap:.75rem;min-width:0}
   .product-gallery__thumbs{display:flex;flex-wrap:wrap;gap:.5rem;margin:0;padding:0;list-style:none}
+  .product-gallery__thumbs[hidden]{display:none}
+  .product-gallery__help{margin:0 0 .75rem;color:var(--store-muted)}
   .product-gallery__thumb{display:block;width:4.5rem;aspect-ratio:1;padding:0;overflow:hidden;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);cursor:pointer}
   .product-gallery__thumb[aria-pressed="true"]{outline:2px solid var(--store-accent);outline-offset:2px}
   .product-gallery__thumb img{display:block;width:100%;height:100%;object-fit:cover}
