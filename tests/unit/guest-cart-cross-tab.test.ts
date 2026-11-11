@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 
 import { GUEST_CART_STORAGE_KEY, GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY } from "../../src/features/guest-cart/index.js";
 
-async function fixture() {
+async function fixture({ cart = false } = {}) {
   vi.resetModules();
   const values = new Map<string, string>();
   const store = {
@@ -17,7 +17,9 @@ async function fixture() {
     hidden = false;
     textContent = "";
     setAttribute() {}
+    hasAttribute() { return false; }
     querySelector(): Element | null { return null; }
+    querySelectorAll() { return []; }
   }
   const badge = new Element();
   const nav = new Element();
@@ -27,8 +29,12 @@ async function fixture() {
   vi.stubGlobal("window", win);
   vi.stubGlobal("localStorage", store);
   vi.stubGlobal("HTMLElement", Element);
+  for (const name of ["HTMLButtonElement", "HTMLInputElement", "HTMLFieldSetElement", "HTMLAnchorElement"]) vi.stubGlobal(name, Element);
+  const root = new Element();
+  const fetch = vi.fn(async (_input: string, _init: RequestInit) => ({ ok: true, json: async () => ({ products: [{ id: "notebook", found: false }] }) }));
+  vi.stubGlobal("fetch", fetch);
   vi.stubGlobal("document", {
-    querySelector: () => null,
+    querySelector: (selector: string) => cart && selector === "[data-guest-cart]" ? root : null,
     querySelectorAll: (selector: string) => selector === "[data-guest-cart-nav]" ? [nav] : [],
   });
   const { hydrateGuestCartControls } = await import("../../src/features/guest-cart/guest-cart-client.js");
@@ -38,7 +44,7 @@ async function fixture() {
     const event = Object.assign(new Event("storage"), { key, storageArea, newValue: "not trusted" });
     win.dispatchEvent(event);
   };
-  return { values, store, setQuantity, win, listen, badge, change, hydrateGuestCartControls };
+  return { values, store, setQuantity, win, listen, badge, change, hydrateGuestCartControls, fetch };
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -66,7 +72,7 @@ it("refreshes from validated current local storage only, including removal and c
 });
 
 it("keeps locked checkout intent and does not replace it when storage cannot be read", async () => {
-  const f = await fixture();
+  const f = await fixture({ cart: true });
   const retained = JSON.stringify({ capabilityId: "cap-1", capability: "cap-1.secret", attemptId: "attempt-1" });
   f.values.set(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY, retained);
   f.setQuantity(7);
@@ -74,13 +80,31 @@ it("keeps locked checkout intent and does not replace it when storage cannot be 
   f.win.dispatchEvent(new Event("focus"));
   expect(f.badge.textContent).toBe("1");
   expect(f.values.get(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY)).toBe(retained);
+  expect(f.fetch).not.toHaveBeenCalled();
   f.values.delete(GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY);
   f.store.getItem.mockImplementation(() => { throw new Error("storage unavailable"); });
   f.change();
+  f.win.dispatchEvent(new Event("focus"));
   expect(f.badge.textContent).toBe("1");
+  expect(f.fetch).not.toHaveBeenCalled();
   f.store.getItem.mockImplementation((key) => f.values.get(key) ?? null);
   f.win.dispatchEvent(new Event("focus"));
   expect(f.badge.textContent).toBe("7");
+  expect(f.store.setItem).not.toHaveBeenCalled();
+});
+
+it("refreshes Commerce facts for unchanged carts on focus and BFCache return, not unchanged storage or initial pageshow", async () => {
+  const f = await fixture({ cart: true });
+  f.change();
+  f.win.dispatchEvent(new Event("pageshow"));
+  expect(f.fetch).not.toHaveBeenCalled();
+  f.win.dispatchEvent(new Event("focus"));
+  await vi.waitFor(() => expect(f.fetch).toHaveBeenCalledTimes(1));
+  await new Promise(resolve => setTimeout(resolve, 0));
+  f.win.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: true }));
+  await vi.waitFor(() => expect(f.fetch).toHaveBeenCalledTimes(2));
+  expect(f.fetch.mock.calls[0]?.[0]).toBe("/api/guest-cart/snapshot?ids=notebook");
+  expect(f.badge.textContent).toBe("1");
   expect(f.store.setItem).not.toHaveBeenCalled();
 });
 
