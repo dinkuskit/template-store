@@ -236,6 +236,7 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
             {linkedProduct?.mpn && <p class="product-detail__identifier" data-product-mpn={linkedProduct.mpn}>MPN {linkedProduct.mpn}</p>}
             {linkedProduct?.brand && <p class="product-detail__identifier" data-product-brand={linkedProduct.brand}>Brand {linkedProduct.brand}</p>}
             {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price data-variant-price>{selectedVariant?.priceText ?? linkedProduct.price.regularText}</strong>}</p>}
+            {selectedVariant && <p class="product-variants__requirement" data-variant-requirement>Showing {selectedVariant.selections.map(([, value]) => value).join(" / ")}. Enable JavaScript or reload this page to choose another option.</p>}
             {variantOptions.map((option, index) => <fieldset class="product-variants" data-product-variants data-variant-option={option.label}>
               <legend>{option.label}</legend>
               {option.values.map((value) => <label class="product-variant">
@@ -304,6 +305,9 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
     }
   }
   for (const input of choices) input.addEventListener("change", update);
+  for (const fieldset of document.querySelectorAll<HTMLElement>("[data-product-variants]")) {
+    fieldset.dataset.variantsReady = "1";
+  }
 
   // Elevated Product Detail Stage: proximity 3D tilt + RoughNotation two-pass ink underline on price
   const stageVisual = document.querySelector<HTMLElement>("[data-product-stage-visual]");
@@ -386,7 +390,11 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
   .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
   .product-detail__notice{line-height:1.5;color:var(--store-muted)}
   .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
-  .product-variants{display:flex;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}
+  .product-variants{display:none;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}
+  .product-variants[data-variants-ready="1"]{display:flex}
+  .product-detail__body:has([data-variants-ready="1"]) .product-variants__requirement{display:none}
+  .product-variants__requirement{line-height:1.5;color:var(--store-muted)}
+  .product-variants legend{font-weight:800;margin-bottom:.5rem}
   .product-variant{display:inline-flex;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
   .product-variant__sold-out{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .product-variant:has(input[data-variant-sold-out="true"]){color:var(--store-muted);box-shadow:none}

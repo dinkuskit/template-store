@@ -201,7 +201,12 @@ describe("guest cart quantity mutation", () => {
     expect(addToCartAstro).not.toContain("data-add-to-cart-batch");
     expect(addToCartAstro).not.toContain("data-variant-qty");
     expect(addToCartAstro).toContain(".guest-cart-add :global([hidden]){display:none}");
-    expect(addToCartAstro).toContain(".guest-cart-add__single:not([hidden]){display:flex");
+    expect(addToCartAstro).toContain(".guest-cart-add__single{display:none}");
+    expect(addToCartAstro).toContain('.guest-cart-add__single:has([data-guest-cart-ready="1"]):not([hidden]){display:flex');
+    expect(addToCartAstro).toContain("data-add-to-cart-requirement");
+    expect(productPageAstro).toContain(".product-variants{display:none;");
+    expect(productPageAstro).toContain('.product-variants[data-variants-ready="1"]{display:flex}');
+    expect(productPageAstro).toContain("data-variant-requirement");
     expect(addToCartAstro).toContain("data-add-to-cart-sellable");
     expect(productPageAstro).toContain("<AddToCart product={cartProduct} variants={variants} />");
     expect(productPageAstro).toContain("add.dataset.addToCartSellable = String(view.sellable)");
@@ -221,6 +226,8 @@ describe("guest cart quantity mutation", () => {
         return this.attrs.get(name) ?? null;
       }
       addEventListener(type: string, cb: () => void) {
+        // The marker may reveal controls only after their handler is bound.
+        if (this.getAttribute("data-add-to-cart")) expect(this.dataset.guestCartReady).toBeUndefined();
         const list = this.listeners.get(type) ?? [];
         list.push(cb);
         this.listeners.set(type, list);
@@ -304,6 +311,8 @@ describe("guest cart quantity mutation", () => {
 
     try {
       hydrateGuestCartControls();
+      expect(addButton.dataset.guestCartReady).toBe("1");
+      hydrateGuestCartControls(); // Existing readiness guard prevents duplicate adds.
       // Step single quantity to 3 and click Add to cart
       stepUp.click();
       stepUp.click();

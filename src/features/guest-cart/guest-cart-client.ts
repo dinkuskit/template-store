@@ -803,7 +803,6 @@ export function hydrateGuestCartControls(): void {
   });
   document.querySelectorAll("[data-add-to-cart]").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.guestCartReady === "1") return;
-    button.dataset.guestCartReady = "1";
     button.addEventListener("click", () => {
       const container = button.closest(".guest-cart-add") ?? button.parentElement;
       if (isSingleAddBlocked(button, container)) return;
@@ -827,6 +826,7 @@ export function hydrateGuestCartControls(): void {
       commitAddToCartMutation(container, addGuestCartLine(session.intent, id, quantity));
       button.disabled = false;
     });
+    button.dataset.guestCartReady = "1";
   });
 }
 

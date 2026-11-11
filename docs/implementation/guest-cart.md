@@ -43,6 +43,8 @@ invent rates. New checkout attempts use 1800..1860s; historical exact-1800 origi
 
 ## Browser presentation boundaries
 
+Product buying controls wait for their bound handler's readiness marker; otherwise a plain JavaScript/reload explanation retains a shop link. Variant radios likewise wait for their change handlers. Their fallback names the initially displayed option without offering an inert picker. These fallbacks do not add server-cart, no-script checkout or URL-based option-selection support.
+
 The public `guest-cart/index.ts` entry is browser-safe. The declared
 `guest-cart/ui.ts` entry exports Astro presentation components for page/feature
 composition without bringing server-rendered components into the browser

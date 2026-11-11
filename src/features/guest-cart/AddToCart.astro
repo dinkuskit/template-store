@@ -15,6 +15,7 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
 ---
 {allowed ? (
   <div class="guest-cart-add">
+    <p class="guest-cart-add__requirement" data-add-to-cart-requirement>Cart controls need JavaScript. Enable it, or reload this page if it is already enabled. You can still <a href="/">browse the shop</a>.</p>
     <div class="guest-cart-add__single" data-add-to-cart-single>
       <div class="guest-cart-add__qty">
         <label for={qtyInputId}>Quantity</label>
@@ -57,7 +58,11 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
 <style>
   .guest-cart-add{margin-top:1rem;display:grid;gap:.85rem}
   .guest-cart-add :global([hidden]){display:none}
-  .guest-cart-add__single:not([hidden]){display:flex;flex-wrap:wrap;align-items:flex-end;gap:.65rem}
+  .guest-cart-add__single{display:none}
+  .guest-cart-add__single:has([data-guest-cart-ready="1"]):not([hidden]){display:flex;flex-wrap:wrap;align-items:flex-end;gap:.65rem}
+  .guest-cart-add:has([data-guest-cart-ready="1"]) .guest-cart-add__requirement{display:none}
+  .guest-cart-add__requirement{max-width:65ch}
+  .guest-cart-add__requirement a{color:inherit;text-underline-offset:.2em}
   .guest-cart-add__qty{display:grid;gap:.3rem}
   .guest-cart-add__qty label{font-size:.9rem;font-weight:700}
   .guest-cart-add__stepper{display:inline-flex;align-items:center;border:1px solid var(--store-line,#d8d2c7);border-radius:.4rem;background:var(--store-surface,#fff);overflow:hidden}
