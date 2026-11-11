@@ -23,7 +23,8 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
     expect(response.ok(), await response.text()).toBe(true);
     return (await response.json()).data;
   };
-  // A fresh install builds Commerce's unique indexes on its first requests; creating a product needs them.
+  // Initialize Commerce even when this spec runs alone on a fresh store; create needs its unique indexes.
+  expect((await request.get(`/_emdash/api/plugins/${commerce}/catalog/public`)).ok()).toBe(true);
   await expect.poll(() => {
     const database = db();
     try {
@@ -68,6 +69,9 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
       await expect(card.locator("[data-commerce-availability]")).toHaveText("Check options");
       await expect(card.locator("[data-commerce-availability]")).toHaveAttribute("data-commerce-availability", "options");
       await card.click();
+      // The link can complete before deferred page scripts attach the picker listeners in dev mode.
+      await shopper.waitForLoadState("load");
+      await expect(shopper.getByRole("radio", { name: "Large", exact: true })).toBeChecked();
       await shopper.getByRole("radio", { name: "Small (sold out)", exact: true }).check();
       await expect(shopper.locator("[data-product-status]")).toHaveText("Out of stock");
       await expect(shopper.locator("[data-add-to-cart]")).toBeDisabled();
