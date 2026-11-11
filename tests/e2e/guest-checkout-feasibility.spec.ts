@@ -446,6 +446,72 @@ test("offline browser contexts cannot reuse cart state or cookies", async ({ bro
   } finally { await second.close(); }
 });
 
+test("contact validation stays visible and keyboard-recoverable without starting checkout", async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  const baseURL = testInfo.project.use.baseURL as string;
+  const context = await freshOfflineContext(browser, baseURL, testInfo.project.use.viewport);
+  try {
+    const page = await context.newPage();
+    const harness = await installOfflineCheckoutHarness(page, { baseURL });
+    await page.addInitScript(() => localStorage.setItem('dinkus.guest-cart.v1', JSON.stringify({
+      version: 1, lines: [{ id: 'fixture-shirt', quantity: 1 }],
+    })));
+    await page.goto('/checkout');
+    const button = page.locator('[data-guest-cart-checkout]');
+    const feedback = page.locator('[data-guest-cart-contact-error]');
+    const email = page.getByLabel('Email', { exact: true });
+    await expect(button).toBeEnabled();
+    const intent = await page.evaluate(() => localStorage.getItem('dinkus.guest-cart.v1'));
+    await expect(feedback).toBeHidden();
+    await button.click();
+    await expect(feedback).toHaveText('Enter your email address to continue.');
+    await expect(feedback).toHaveAttribute('role', 'alert');
+    await expect(feedback).toBeFocused();
+    await expect(feedback).toBeInViewport();
+    await page.keyboard.press('Tab');
+    await expect(email).toBeFocused();
+    await email.fill('not-an-email');
+    await expect(feedback).toBeHidden();
+    await expect(email).toBeFocused();
+    await button.focus(); await page.keyboard.press('Enter');
+    await expect(feedback).toHaveText('Enter a valid email address to continue.');
+    await expect(feedback).toBeFocused();
+    await expect(feedback).toBeInViewport();
+    await email.fill('synthetic@example.test');
+    await page.getByLabel('Recipient', { exact: true }).fill('Test shopper');
+    await page.getByLabel('Address line 1', { exact: true }).fill('1 Example Way');
+    await page.getByLabel('City', { exact: true }).fill('Portland');
+    await page.getByLabel('Postal code', { exact: true }).fill('97201');
+    await page.getByLabel('Country', { exact: true }).selectOption('US');
+    await button.click();
+    await expect(feedback).toHaveText('Enter a state for United States delivery.');
+    await expect(feedback).toBeFocused();
+    await expect(feedback).toBeInViewport();
+    await expect(email).toHaveValue('synthetic@example.test');
+    expect(harness.counts().startCalls).toBe(0);
+    expect(await page.evaluate(() => localStorage.getItem('dinkus.guest-cart.v1'))).toBe(intent);
+    const dir = resolve('runs/checkout-contact-feedback', testInfo.project.name);
+    await mkdir(dir, { recursive: true });
+    await page.screenshot({ path: resolve(dir, 'contact-error.png'), animations: 'disabled' });
+    await page.getByLabel('State or region (required for United States delivery)', { exact: true }).fill('OR');
+    await page.getByLabel('Billing address same as delivery address').uncheck();
+    await button.click();
+    await expect(feedback).toContainText('Complete the billing name');
+    await expect(feedback).toBeFocused();
+    await expect(feedback).toBeInViewport();
+    await page.getByLabel('Billing country', { exact: true }).focus();
+    await page.getByLabel('Billing country', { exact: true }).selectOption('CA');
+    await expect(feedback).toBeHidden();
+    await expect(page.getByLabel('Billing country', { exact: true })).toBeFocused();
+    await fillBilling(page);
+    await button.click();
+    await expect.poll(() => harness.counts().startCalls).toBe(1);
+    await expect(feedback).toBeHidden();
+    expect(harness.startBodies()[0]).toMatchObject({ contact: { email: 'synthetic@example.test', billing: billingAddress } });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally { await context.close(); }
+});
+
 test("checkout contact proof covers physical validation, Commerce refusal, filled address, and digital omission", async ({
   browser,
 }, testInfo) => {
@@ -499,7 +565,7 @@ test("checkout contact proof covers physical validation, Commerce refusal, fille
 
     await physical.getByLabel("City", { exact: true }).fill("");
     await physical.getByRole("button", { name: "Continue to secure checkout" }).click();
-    await expect(physical.locator("[data-guest-cart-status]")).toContainText("Complete the recipient");
+    await expect(physical.locator("[data-guest-cart-contact-error]")).toContainText("Complete the recipient");
     await physical.screenshot({ path: resolve(root, "physical-validation-error.png"), fullPage: true, animations: "disabled" });
 
     await physical.getByLabel("Recipient", { exact: true }).fill("");
@@ -575,7 +641,7 @@ test("checkout start sends delivery only while the cart needs it, even after fie
     await expect(page.getByLabel("State or region (required for United States delivery)", { exact: true })).toBeVisible();
     await fillContact(page);
     await page.getByRole("button", { name: "Continue to secure checkout" }).click();
-    const status = page.locator("[data-guest-cart-status]");
+    const status = page.locator("[data-guest-cart-contact-error]");
     await expect(status).toHaveAttribute("role", "alert");
     await expect(status).toHaveText("Enter a state for United States delivery.");
     expect(harness.counts().startCalls).toBe(0);

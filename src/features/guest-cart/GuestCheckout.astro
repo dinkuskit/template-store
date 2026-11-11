@@ -48,6 +48,7 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
       </div>
       <fieldset class="guest-cart-contact" data-guest-cart-contact>
         <legend>Checkout contact</legend>
+        <p data-guest-cart-contact-error role="alert" tabindex="-1" hidden></p>
         <p>Commerce uses your email for checkout. Every order needs a billing address; a delivery address is required only when the basket contains a physical item.</p>
         <label for="guest-cart-email">Email</label>
         <input id="guest-cart-email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" />
@@ -155,6 +156,9 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
   .guest-cart-contact{display:grid;gap:.55rem;margin:0 0 1rem;padding:1rem;border:1px solid #2d3a54;border-radius:.6rem;background:#11192a;min-width:0}
   .guest-cart-contact legend{padding:0 .35rem;font-weight:800;color:#fffefb}
   .guest-cart-contact p{margin:0 0 .5rem;color:#c2cad8;line-height:1.45}
+  .guest-cart-contact [data-guest-cart-contact-error]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.25rem;scroll-margin-block:1rem}
+  .guest-cart-contact [data-guest-cart-contact-error][hidden]{display:none}
+  .guest-cart-contact [data-guest-cart-contact-error]:focus{outline:3px solid var(--store-focus-ring);outline-offset:2px}
   .guest-cart-contact h2{font-size:1.15rem;margin:.75rem 0 0;color:#fffefb}
   .guest-cart-contact label{font-weight:700;color:#f7f4ee}
   .guest-cart-contact span{color:#b8c0cf;font-size:.9em;font-weight:500}
