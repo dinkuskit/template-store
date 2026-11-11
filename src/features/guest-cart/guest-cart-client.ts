@@ -295,9 +295,9 @@ function lineMarkup(line: GuestCartView["lines"][number], current: GuestCartView
   <div data-guest-cart-line-copy>${lineCopyMarkup(line)}</div>
   <div class="guest-cart-qty">
     <label for="guest-cart-qty-${escapeText(line.id)}">Quantity</label>
-    <input id="guest-cart-qty-${escapeText(line.id)}" data-guest-cart-qty="${escapeText(line.id)}" type="text" inputmode="numeric" value="${line.quantity}" />
+    <input id="guest-cart-qty-${escapeText(line.id)}" data-guest-cart-qty="${escapeText(line.id)}" type="text" inputmode="numeric" aria-label="Quantity for ${escapeText(line.name)}" value="${line.quantity}" />
   </div>
-  <button type="button" data-guest-cart-remove="${escapeText(line.id)}">Remove</button>
+  <button type="button" data-guest-cart-remove="${escapeText(line.id)}" aria-label="Remove ${escapeText(line.name)}">Remove</button>
 </article>`;
 }
 
@@ -323,9 +323,11 @@ function patchLine(article: HTMLElement, line: GuestCartView["lines"][number], c
   const copy = article.querySelector("[data-guest-cart-line-copy]");
   if (copy instanceof HTMLElement) copy.innerHTML = lineCopyMarkup(line);
   const input = article.querySelector("[data-guest-cart-qty]");
-  if (input instanceof HTMLInputElement && document.activeElement !== input) {
-    input.value = String(line.quantity);
+  if (input instanceof HTMLInputElement) {
+    input.setAttribute("aria-label", `Quantity for ${line.name}`);
+    if (document.activeElement !== input) input.value = String(line.quantity);
   }
+  article.querySelector("[data-guest-cart-remove]")?.setAttribute("aria-label", `Remove ${line.name}`);
 }
 
 function reconcileLines(container: HTMLElement, current: GuestCartView): void {

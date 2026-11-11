@@ -47,7 +47,11 @@ Unknown cart details use a neutral position label such as Item 1; confirmed
 missing or unlisted snapshots use Unavailable item 1. These are cart positions,
 not product names or new identities. Do not show a catalog ID as the heading or
 control name, cache an unpublished title, or change the saved identity/quantity.
-A successful refresh restores the current public Commerce name.
+Quantity and Remove controls include the current row label in their accessible
+names, including after a refresh. A successful refresh restores the current
+public Commerce name. The rendered cart/checkout regression is
+`tests/e2e/guest-cart-fallback-labels.spec.ts` (desktop and phone; browser-local
+snapshots, not real outage or payment proof).
 
 The public `guest-cart/index.ts` entry is browser-safe. The declared
 `guest-cart/ui.ts` entry exports Astro presentation components for page/feature
