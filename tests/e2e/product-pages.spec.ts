@@ -9,6 +9,11 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   const shirt = page.locator("a[data-product-link]", { hasText: "Dinkus Demo Heavyweight T-Shirt" });
   await expect.poll(async () => { await page.reload(); return shirt.count(); }, { timeout: 60_000 }).toBe(1);
 
+  await expect(shirt.locator("[data-commerce-availability]")).toHaveText("In stock");
+  await expect(page.locator('a[href="/products/demo-socks"] [data-commerce-availability]')).toHaveText("Out of stock");
+  await expect(page.locator('a[href="/products/demo-hoodie"] [data-commerce-availability]')).toHaveText("Check options");
+  await expect(page.locator('a[href="/products/demo-hoodie"] [data-commerce-availability]')).toHaveAttribute("data-commerce-availability", "options");
+
   for (const card of await page.locator("a[data-product-link]").all()) {
     await expect(card).toHaveAttribute("href", /^\/products\/[a-z0-9-]+$/);
     await expect(card.locator("[data-add-to-cart]")).toHaveCount(0);

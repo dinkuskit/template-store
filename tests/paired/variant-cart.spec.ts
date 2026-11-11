@@ -60,6 +60,25 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
     const shopperContext = await browser.newContext({ viewport: testInfo.project.use.viewport, isMobile: testInfo.project.use.isMobile, hasTouch: testInfo.project.use.hasTouch, storageState: { cookies: [], origins: [] } });
     const shopper = await shopperContext.newPage();
     try {
+      // A card has no chosen Size: Small's stock cannot describe Large or the whole family.
+      await catalog({ op: "prices", catalogItemId: small, regular: "40", sale: "", stockStatus: "out-of-stock" });
+      await catalog({ op: "prices", catalogItemId: large, productId: small, regular: "45", sale: "", stockStatus: "in-stock" });
+      await shopper.goto("/");
+      const card = shopper.locator(`a[data-product-link][href="/products/${slug}"]`);
+      await expect(card.locator("[data-commerce-availability]")).toHaveText("Check options");
+      await expect(card.locator("[data-commerce-availability]")).toHaveAttribute("data-commerce-availability", "options");
+      await card.click();
+      await shopper.getByRole("radio", { name: "Small (sold out)", exact: true }).check();
+      await expect(shopper.locator("[data-product-status]")).toHaveText("Out of stock");
+      await expect(shopper.locator("[data-add-to-cart]")).toBeDisabled();
+      await shopper.getByRole("radio", { name: "Large" }).check();
+      await expect(shopper.locator("[data-product-status]")).toHaveText("In stock");
+      await expect(shopper.locator("[data-add-to-cart]")).toBeEnabled();
+      await expect(shopper.locator("[data-variant-price]")).toHaveText("$45.00");
+      await capture(shopper, "0-default-sold-out-other-size-buyable");
+      // Restore the original stock arrangement for the remaining cart checks.
+      await catalog({ op: "prices", catalogItemId: small, regular: "40", sale: "", stockStatus: "in-stock" });
+      await catalog({ op: "prices", catalogItemId: large, productId: small, regular: "45", sale: "", stockStatus: "out-of-stock" });
       await shopper.goto("/products/" + slug);
       await expect(shopper.getByRole("heading", { level: 1 })).toHaveText("Sized hoodie");
       const sizes = shopper.locator('[data-product-variants][data-variant-option="Size"]');
