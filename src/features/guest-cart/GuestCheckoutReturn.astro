@@ -2,8 +2,8 @@
 const { contactHref } = Astro.props;
 ---
 <section class="guest-checkout-return" data-guest-checkout-return aria-labelledby="guest-checkout-return-title">
-  <h1 id="guest-checkout-return-title">Order confirmation</h1>
-  <p data-guest-checkout-return-status role="status">Checking the saved checkout status.</p>
+  <h1 id="guest-checkout-return-title">Checkout status</h1>
+  <p data-guest-checkout-return-status role="status">This page has not checked your saved checkout yet. If this message remains, enable JavaScript and reload in the browser you checked out with. Keep that browser’s site data.</p>
   {contactHref && <p data-guest-checkout-contact>Need help? <a href={contactHref}>Contact the store</a>.</p>}
   <div class="ephemera-receipt-card" data-guest-checkout-order data-ephemera-receipt hidden>
     <svg class="ephemera-stamp-defs" width="0" height="0" aria-hidden="true">

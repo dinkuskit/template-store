@@ -802,3 +802,70 @@ for (const scenario of ["prepared capability", "lost first-start response"] as c
     } finally { await context.close(); }
   });
 }
+
+for (const scriptMode of ["disabled", "blocked", "delayed"] as const) {
+  test(`initial checkout return stays unchecked with scripts ${scriptMode}`, async ({ browser }, testInfo) => {
+    test.setTimeout(60_000);
+    const baseURL = testInfo.project.use.baseURL as string;
+    expect(new URL(baseURL).hostname).toBe("127.0.0.1");
+    const context = await browser.newContext({
+      baseURL, viewport: testInfo.project.use.viewport,
+      javaScriptEnabled: scriptMode !== "disabled", serviceWorkers: "block",
+      storageState: { cookies: [], origins: [] },
+    });
+    let releaseScripts = () => {};
+    const scriptGate = new Promise<void>(resolve => { releaseScripts = resolve; });
+    let scriptRequests = 0;
+    const writes: string[] = [];
+    await context.route("**/*", async route => {
+      const request = route.request();
+      if (new URL(request.url()).origin !== new URL(baseURL).origin || !["GET", "HEAD"].includes(request.method())) {
+        writes.push(request.method());
+        await route.abort();
+        return;
+      }
+      if (request.resourceType() === "script") {
+        scriptRequests++;
+        if (scriptMode === "blocked") { await route.abort(); return; }
+        if (scriptMode === "delayed") await scriptGate;
+      }
+      await route.continue();
+    });
+    try {
+      const page = await context.newPage();
+      await page.goto("/checkout/success?session_id=forged&paid=1", { waitUntil: "commit" });
+      const root = page.locator("[data-guest-checkout-return]");
+      await expect(root.getByRole("heading", { name: "Checkout status", exact: true })).toBeVisible();
+      const status = root.locator("[data-guest-checkout-return-status]");
+      await expect(status).toContainText("has not checked your saved checkout yet");
+      await expect(status).toContainText("enable JavaScript and reload");
+      await expect(status).toContainText("browser you checked out with");
+      await expect(status).toContainText("Keep that browser’s site data");
+      await expect(root.locator("[data-guest-checkout-order]")).toBeHidden();
+      await expect(root.locator("[data-guest-checkout-retry]")).toBeHidden();
+      await expect(root.locator("[data-guest-checkout-status-retry]")).toBeHidden();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      const proof = resolve("runs/checkout-return-initial", testInfo.project.name);
+      await mkdir(proof, { recursive: true });
+      // Screenshot font readiness can wait for deferred modules, so do not
+      // await a screenshot while those very modules are held behind the gate.
+      if (scriptMode !== "delayed") await page.screenshot({ path: resolve(proof, `${scriptMode}.png`), fullPage: true });
+      if (scriptMode === "delayed") {
+        releaseScripts();
+        // Existing empty-storage behavior resumes after the real bundle loads.
+        await expect(root.getByRole("heading", { name: "We couldn't confirm your order", exact: true })).toBeVisible();
+        await expect(status).not.toContainText("has not checked your saved checkout yet");
+        await expect(root.locator("[data-guest-checkout-order]")).toBeHidden();
+        await page.screenshot({ path: resolve(proof, "enhanced.png"), fullPage: true });
+      } else {
+        const shop = root.getByRole("link", { name: "Continue shopping", exact: true });
+        await expect(shop).toHaveAttribute("href", "/");
+        await shop.focus();
+        await page.keyboard.press("Enter");
+        await page.waitForURL(url => url.pathname === "/");
+      }
+      if (scriptMode !== "disabled") expect(scriptRequests).toBeGreaterThan(0);
+      expect(writes).toEqual([]);
+    } finally { releaseScripts(); await context.close(); }
+  });
+}
