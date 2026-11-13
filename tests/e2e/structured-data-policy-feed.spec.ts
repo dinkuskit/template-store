@@ -281,7 +281,22 @@ test("published Commerce products, policies, and feeds share one public revision
     expect(metaBody).not.toContain(shirtId);
     expect(metaBody).not.toContain(mugId);
     expect(metaBody).not.toContain(hoodieId);
-    for (const feedPath of ["/feeds/google-merchant.xml/", "/feeds/meta-catalog.csv/", "/shipping/", "/returns/"]) {
+    // The JSON catalog feed lists every product the owner approved for a feed, with its page link.
+    const agentCatalog = await request.get("/feeds/agent-catalog.json");
+    expect(agentCatalog.status()).toBe(200);
+    expect(agentCatalog.headers()["content-type"]).toContain("json");
+    const agentCatalogBody = (await agentCatalog.json()) as {
+      schema: string;
+      products: { id: string; canonicalUrl: string; gtin?: string }[];
+    };
+    expect(agentCatalogBody.schema).toBe("dinkuskit.commerce.agent-catalog-feed/v1");
+    const listed = new Map(agentCatalogBody.products.map((item) => [item.id, item]));
+    expect(listed.get(shirtId)?.canonicalUrl).toBe(shirtLink);
+    expect(listed.get(shirtId)?.gtin).toBe(SHIRT_GTIN);
+    expect(listed.get(capId)?.canonicalUrl).toBe(capLink);
+    expect(listed.has(mugId)).toBe(false);
+    expect(listed.has(hoodieId)).toBe(false);
+    for (const feedPath of ["/feeds/google-merchant.xml/", "/feeds/meta-catalog.csv/", "/feeds/agent-catalog.json/", "/shipping/", "/returns/"]) {
       const slash = await request.get(feedPath, { maxRedirects: 0 });
       expect(slash.status(), feedPath).not.toBe(200);
       if (slash.status() === 301 || slash.status() === 302) {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  readInstalledCatalogListing,
   readInstalledCommerceCatalog,
   readInstalledCommerceProduct,
   readInstalledCommerceProducts,
@@ -29,6 +30,14 @@ describe("installed Commerce public catalog consumer", () => {
       expect([...request.headers]).toEqual([]);
       expect([...new URL(request.url).searchParams.keys()].every(key => key === "cursor")).toBe(true);
     }
+  });
+
+  it("reads the owner's catalog switch from the public catalog, listed unless Commerce says off", async () => {
+    expect(await readInstalledCatalogListing(context([{ products: [item()] }]))).toBe(true);
+    expect(await readInstalledCatalogListing(context([{ products: [item()], offCatalog: true }]))).toBe(false);
+    expect(await readInstalledCatalogListing(context([{ products: [], offCatalog: "yes" }]))).toBe(true);
+    await expect(readInstalledCatalogListing(context([null]))).rejects.toThrow("Installed public catalog unavailable");
+    await expect(readInstalledCatalogListing({ request: new Request("https://shop.example.test/"), runtime: null })).rejects.toThrow();
   });
 
   it("does not fall back to a native plugin in the shipping profile", async () => {
