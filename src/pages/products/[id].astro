@@ -12,10 +12,8 @@ import { productDetailComponents } from "../../features/store-shell/blocks/index
 import UnknownBlock from "../../features/store-shell/blocks/UnknownBlock.astro";
 import { legacyPortableTextComponents } from "../../features/store-shell/portable-text/index.js";
 import { readInstalledCommerceProduct, readInstalledCommerceProductByPage } from "../../features/commerce-catalog/installed.js";
-import {
-  buildProductJsonLd,
-  buildProductPreviewJsonLd,
-} from "@dinkuskit/commerce/features/structured-data";
+import { buildProductPreviewJsonLd } from "@dinkuskit/commerce/features/structured-data";
+import { linkedProductJsonLd } from "../../features/store-shell/linked-product-jsonld.js";
 import { allowsProductJsonLd, canonicalUrl, jsonLdScript } from "../../features/store-shell/structured-data.js";
 import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
@@ -154,37 +152,20 @@ const productCanonical = item
   : "";
 // Produce every selectable block on the server through the Commerce builder.
 // The browser only selects a prepared block; it never recalculates an Offer.
-const linkedProductJsonLd = (variant: (typeof variants)[number] | null) => {
+const selectedProductJsonLd = (variant: (typeof variants)[number] | null) => {
   if (!linkedProduct || !item || !productName) return null;
-  const priceMinor = variant?.unitMinor ?? linkedProduct.price.unitMinor;
-  return buildProductJsonLd({
-    product: {
-      id: linkedProduct.id,
-      name: productName,
-      sku: linkedProduct.sku,
-      ...(priceMinor ? { price: { currency: "USD" as const, minor: priceMinor } } : {}),
-      availability: variant
-        ? { ...variant.availability, listable: true as const }
-        : linkedProduct.availability,
-      ...(linkedProduct.gtin ? { gtin: linkedProduct.gtin } : {}),
-      ...(linkedProduct.mpn ? { mpn: linkedProduct.mpn } : {}),
-      ...(linkedProduct.brand ? { brand: linkedProduct.brand } : {}),
-    },
-    page: {
-      url: productCanonical,
-      name: productName,
-      ...(item.description ? { description: item.description } : {}),
-    },
-    // No shipping or return terms: the store's policies are its EmDash pages, and structured terms are deferred
-    // (GrillTrack policy-pages-content-20261031).
-  });
+  return linkedProductJsonLd(linkedProduct, {
+    url: productCanonical,
+    name: productName,
+    ...(item.description ? { description: item.description } : {}),
+  }, variant);
 };
 // Editorial pages use the preview builder. Unavailable routes emit no data.
 const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item && productName &&
   (item.availabilitySource === "preview" || !lookupUnavailable) &&
   !noLongerAvailable
   ? linkedProduct
-    ? linkedProductJsonLd(selectedVariant)
+    ? selectedProductJsonLd(selectedVariant)
     : buildProductPreviewJsonLd({
       url: productCanonical,
       name: productName,
@@ -195,7 +176,7 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
 // A picked combination with no member shows Product facts without an Offer.
 const variantJsonLd = productJsonLd && linkedProduct && item && productName && variants.length
   ? {
-    ...Object.fromEntries(variants.map((variant) => [variant.id, linkedProductJsonLd(variant)])),
+    ...Object.fromEntries(variants.map((variant) => [variant.id, selectedProductJsonLd(variant)])),
     [NO_OFFER_JSON_LD_KEY]: buildProductPreviewJsonLd({
       url: productCanonical,
       name: productName,
