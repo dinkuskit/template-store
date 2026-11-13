@@ -337,14 +337,18 @@ function reconcileLines(container: HTMLElement, current: GuestCartView): void {
     const id = child.getAttribute("data-guest-cart-line");
     if (!id || !keep.has(id)) child.remove();
   }
-  for (const line of current.lines) {
-    const existing = container.querySelector(lineSelector(line.id));
-    if (existing instanceof HTMLElement) {
-      patchLine(existing, line, current);
-      container.append(existing);
-      continue;
+  for (const [index, line] of current.lines.entries()) {
+    let article = container.querySelector(lineSelector(line.id));
+    if (!(article instanceof HTMLElement)) {
+      container.insertAdjacentHTML("beforeend", lineMarkup(line, current));
+      article = container.querySelector(lineSelector(line.id));
     }
-    container.insertAdjacentHTML("beforeend", lineMarkup(line, current));
+    if (article instanceof HTMLElement) {
+      patchLine(article, line, current);
+      // Refreshing facts must not detach an already correctly placed row and
+      // drop focus from its quantity field when the shopper returns.
+      if (container.children[index] !== article) container.insertBefore(article, container.children[index] ?? null);
+    }
   }
 }
 
@@ -751,15 +755,18 @@ function isSingleAddBlocked(button: HTMLButtonElement, container: Element | null
 let hydrateListenerRegistered = false;
 let storedCartListenersRegistered = false;
 
-function syncStoredCart(): void {
+function syncStoredCart(refreshFacts = false): void {
   // Failed writes deliberately keep an in-memory cart. An active checkout also
   // keeps its reviewed intent until its existing recovery flow settles it.
   if (persistFailed() || checkoutLocked()) return;
   const next = loadSession();
   if (next.notice === "storage-unavailable") return;
-  if (next.notice === session.notice && JSON.stringify(next.intent) === JSON.stringify(session.intent)) return;
-  session = next;
-  mutationNotice = null;
+  const changed = next.notice !== session.notice || JSON.stringify(next.intent) !== JSON.stringify(session.intent);
+  if (!changed && !refreshFacts) return;
+  if (changed) {
+    session = next;
+    mutationNotice = null;
+  }
   const root = document.querySelector("[data-guest-cart]");
   if (root instanceof HTMLElement) void refreshSnapshot(root);
   else renderNav();
@@ -783,8 +790,11 @@ export function hydrateGuestCartControls(): void {
       // Read the latest validated value, not a possibly superseded event payload.
       syncStoredCart();
     });
-    window.addEventListener("focus", syncStoredCart);
-    window.addEventListener("pageshow", syncStoredCart);
+    // Returning to an unchanged cart still needs current Commerce prices/stock.
+    // Ordinary pageshow already has the initial load; only a BFCache restore
+    // needs another facts refresh. Storage events remain intent-change driven.
+    window.addEventListener("focus", () => syncStoredCart(true));
+    window.addEventListener("pageshow", (event) => syncStoredCart(event.persisted));
   }
   if (!hydrateListenerRegistered && typeof document.addEventListener === "function") {
     hydrateListenerRegistered = true;
