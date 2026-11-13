@@ -106,10 +106,10 @@ async function request(path, cookie, body, capability = "capability-proof", orig
   return entry;
 }
 /** A plain form post, as a browser with script off sends it; redirects are read, not followed. */
-async function form(path, cookie, fields) {
+async function form(path, cookie, fields, origin = PLAYGROUND_PROOF_SITE) {
   const before = calls.length;
   const response = await fetch(`${base}${path}`, { method: "POST", body: new URLSearchParams(fields), redirect: "manual", headers: {
-    origin: PLAYGROUND_PROOF_SITE, "sec-fetch-site": "same-origin", cookie, "cf-connecting-ip": "203.0.113.7",
+    origin, "sec-fetch-site": origin === PLAYGROUND_PROOF_SITE ? "same-origin" : "cross-site", cookie, "cf-connecting-ip": "203.0.113.7",
   } });
   const setCookies = response.headers.getSetCookie();
   const entry = { path, status: response.status, location: response.headers.get("location"), setCookies: setCookies.map((c) => c.replace(/=[^;]*/, "=redacted")),
@@ -175,6 +175,29 @@ const writeAttempts = {
   forgedStart: await request(`${COMMERCE}/checkout/guest/start`, session, { contact: { email: "proof@example.test" } }, forgedKey),
   foreignStart: await request(`${COMMERCE}/checkout/guest/start`, session, { contact: { email: "proof@example.test" } }, capability, FOREIGN),
 };
+// The same through the store's own cookie-reading forms and JSON endpoints: a foreign site posting with the
+// shopper's cookie, or a forged cart cookie, changes nothing and opens no payment.
+const forgedCookie = `${session}; dk_cart=${forgedKey}`;
+const storefrontAttempts = {
+  foreignAdd: await form("/cart/add", cookie, { id: catalogItemId, quantity: "5" }, FOREIGN),
+  foreignChange: await form("/cart/change", cookie, { id: catalogItemId, quantity: "0" }, FOREIGN),
+  foreignUpdate: await (async () => {
+    const callsBefore = calls.length;
+    const response = await fetch(`${base}/cart/update.js`, { method: "POST", redirect: "manual",
+      body: JSON.stringify({ version: before?.version ?? null, lines: [] }),
+      headers: { origin: FOREIGN, "sec-fetch-site": "cross-site", "content-type": "application/json", accept: "application/json", cookie, "cf-connecting-ip": "203.0.113.7" } });
+    return { status: response.status, location: null, paymentsCalls: calls.length - callsBefore };
+  })(),
+  foreignCheckout: await form("/checkout", cookie, { email: "proof@example.test", ...{ "delivery[name]": "X", "delivery[line1]": "1 Way",
+    "delivery[city]": "Town", "delivery[region]": "NC", "delivery[postalCode]": "27601", "delivery[country]": "US", billingSame: "on" } }, FOREIGN),
+  forgedCookieChange: await form("/cart/change", forgedCookie, { id: catalogItemId, quantity: "0" }),
+  forgedCookieCheckout: await form("/checkout", forgedCookie, { email: "proof@example.test", "delivery[name]": "X", "delivery[line1]": "1 Way",
+    "delivery[city]": "Town", "delivery[region]": "NC", "delivery[postalCode]": "27601", "delivery[country]": "US", billingSame: "on" }),
+};
+const storefrontRefusals = Object.fromEntries(Object.entries(storefrontAttempts).map(([name, entry]) => [name, {
+  status: entry.status, location: entry.location, paymentsCalls: entry.paymentsCalls,
+  refused: entry.paymentsCalls === 0 && !(entry.location ?? "").startsWith("https://checkout.stripe.com/"),
+}]));
 const after = await cartNow();
 const writeRefusals = Object.fromEntries(Object.entries(writeAttempts).map(([name, entry]) => [name, {
   status: entry.status, code: entry.body?.data?.error?.code ?? entry.body?.error?.code ?? null, paymentsCalls: entry.paymentsCalls,
@@ -271,6 +294,7 @@ if (noEmail.status === 303 || noEmail.paymentsCalls !== 0 || !fieldCorrection.de
   failures.push(`the missing-email correction is not tied to its field: ${JSON.stringify(fieldCorrection)}`);
 }
 if (unpaid.status !== 200 || unpaid.state !== "confirming" || unpaid.claimsPaid || unpaid.order) failures.push(`the unpaid return page: ${JSON.stringify(unpaid)}`);
+for (const [name, result] of Object.entries(storefrontRefusals)) if (!result.refused) failures.push(`${name} was not refused: ${JSON.stringify(result)}`);
 if (!cartUnchanged) failures.push(`the cart changed under refused writes: ${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
 if (missingOriginPaymentsCalls !== 0) failures.push(`missing origin: ${missingOriginPaymentsCalls} Payments calls, expected 0`);
 if (emptied.status !== 200) failures.push(`the cart after payment answered ${emptied.status}`);
@@ -291,6 +315,7 @@ console.log(`restartRecoveryPaid: ${paidPage(cases["restarted:page:authorized"])
 console.log(`expiredRefused: ${hiddenPage(cases["expired:page:authorized"]) && refused(cases["expired:registry:authorized"])}`);
 console.log(`fieldCorrection: ${JSON.stringify(fieldCorrection)}`);
 console.log(`unpaidReturn: ${JSON.stringify(unpaid)}`);
+console.log(`storefrontRefusals: ${JSON.stringify(storefrontRefusals)}`);
 console.log(`writeRefusals: ${JSON.stringify(writeRefusals)} cartUnchanged=${cartUnchanged}`);
 console.log(`missingOriginUnavailable: cart=${missingCart} prepare=${missingPrepare.status} checkout=${missingStart.status} paymentsCalls=${missingOriginPaymentsCalls}`);
 console.log(JSON.stringify(summary, null, 2));

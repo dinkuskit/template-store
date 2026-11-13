@@ -276,6 +276,10 @@ function lineForCommerce(line: ServerCartLineInput) {
     : { productId: line.productId, options: line.options, quantity: line.quantity };
 }
 
+function overCapacity(cart: ServerCart): boolean {
+  return cart.lines.length > GUEST_CART_MAX_LINES || cart.lines.some((line) => line.quantity > GUEST_CART_MAX_QUANTITY);
+}
+
 /**
  * Change the cart: `next` turns the current lines into the wanted ones. A paid cart is finished, so the change
  * goes into a fresh cart (Commerce reads a paid cart as empty). A cart changed elsewhere meanwhile is read again
@@ -303,7 +307,10 @@ export async function changeServerCart(
     }
     const lines = next(current.lines);
     if (!lines) return failure("CART_FULL", { cart: current });
-    if (lines.length > GUEST_CART_MAX_LINES || lines.some((line) => line.quantity > GUEST_CART_MAX_QUANTITY)) {
+    // Lines named by id are checked here; a line picked by its options is only known once Commerce works out
+    // its variant and merges it, so the saved cart is checked again below.
+    const known = lines.filter((line) => "catalogItemId" in line);
+    if (known.length > GUEST_CART_MAX_LINES || lines.some((line) => line.quantity > GUEST_CART_MAX_QUANTITY)) {
       return failure("CART_FULL", { cart: current });
     }
     const version = options.version !== undefined ? options.version : current.version;
@@ -312,6 +319,13 @@ export async function changeServerCart(
       lines: lines.map(lineForCommerce),
       ...(options.key ? { key: options.key } : {}),
     }, key);
+    if (answer.ok && answer.cart && overCapacity(answer.cart)) {
+      // Commerce merged an option line into a cart that is now too big: put the cart back as it was.
+      const undone = await callCommerce(ctx, "cart", { version: answer.cart.version, lines: current.lines.map(lineForCommerce) }, key);
+      const cart = undone.ok && undone.cart ? undone.cart : answer.cart;
+      writeCartCookies(ctx, null, cart.itemCount);
+      return failure("CART_FULL", { cart });
+    }
     if (answer.ok && answer.cart) {
       writeCartCookies(ctx, null, answer.cart.itemCount);
       return { ok: true, cart: answer.cart, checkout: answer.checkout };

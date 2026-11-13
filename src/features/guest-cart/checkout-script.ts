@@ -63,6 +63,11 @@ export function hydrateServerCheckout(): void {
   const invalidField = root.querySelector<HTMLElement>("[aria-invalid=true]");
   if (invalidField) invalidField.focus();
   else root.querySelector<HTMLElement>("[role=alert]")?.scrollIntoView?.({ block: "center" });
+  // Back from Stripe, a browser may restore this page from its cache with the form still marked as sent:
+  // load it again so the server draws the checkout as it now stands (a payment to resume, or the form).
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) window.location.reload();
+  });
   root.querySelector("[data-checkout-form]")?.addEventListener("submit", (event) => {
     const form = event.currentTarget as HTMLFormElement;
     if (form.dataset.submitting === "true") {

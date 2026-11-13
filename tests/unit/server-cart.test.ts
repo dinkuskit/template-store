@@ -281,6 +281,30 @@ describe("cart routes", () => {
     expect(await addToServerCart(ctx, { catalogItemId: "item_new", quantity: 1 })).toMatchObject({ ok: false, error: { code: "CART_FULL" } });
   });
 
+  it("merges a size picked by its options into a full cart, and puts the cart back when it would not fit", async () => {
+    const commerce = fakeCommerce();
+    const ctx = context(commerce, fakeCookies());
+    for (let index = 0; index < GUEST_CART_MAX_LINES - 1; index += 1) {
+      expect((await addToServerCart(ctx, { catalogItemId: `item_${String(index).padStart(2, "0")}`, quantity: 1 })).ok).toBe(true);
+    }
+    expect((await addToServerCart(ctx, { catalogItemId: "item_tee_m", quantity: 1 })).ok).toBe(true);
+    const sized = await addToServerCart(ctx, { productId: "prod_tee", options: { Size: "M" }, quantity: 1 });
+    expect(sized).toMatchObject({ ok: true });
+    expect(sized.ok && sized.cart.lines.length).toBe(GUEST_CART_MAX_LINES);
+    expect(sized.ok && sized.cart.lines.find((line) => line.catalogItemId === "item_tee_m")?.quantity).toBe(2);
+
+    const other = fakeCommerce();
+    const full = context(other, fakeCookies());
+    for (let index = 0; index < GUEST_CART_MAX_LINES; index += 1) {
+      expect((await addToServerCart(full, { catalogItemId: `item_${String(index).padStart(2, "0")}`, quantity: 1 })).ok).toBe(true);
+    }
+    const refused = await addToServerCart(full, { productId: "prod_tee", options: { Size: "M" }, quantity: 1 });
+    expect(refused).toMatchObject({ ok: false, error: { code: "CART_FULL" } });
+    const after = await readServerCart(full);
+    expect(after.ok && after.cart.lines.length).toBe(GUEST_CART_MAX_LINES);
+    expect(after.ok && after.cart.lines.some((line) => line.catalogItemId === "item_tee_m")).toBe(false);
+  });
+
   it("never parses a public form longer than the limit, even without a Content-Length", async () => {
     const commerce = fakeCommerce();
     const big = "x".repeat(64 * 1024);

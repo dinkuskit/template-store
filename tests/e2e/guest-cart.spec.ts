@@ -114,7 +114,22 @@ test("with script the same forms change the cart in place, and agents read it as
   await mkdir(root, { recursive: true });
   const { itemId, productPath } = await storeWithProduct(browser, testInfo, "script");
   const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  // A browser that shopped before this change still holds the old browser-only cart and checkout keys. They are
+  // never read again (no real store ran that cart): the shopper starts with an empty server cart and nothing breaks.
+  await context.addInitScript(() => {
+    try {
+      if (!localStorage.getItem("dinkus.guest-cart.v1")) {
+        localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "old-item", quantity: 3 }] }));
+        localStorage.setItem("dinkus.guest-checkout.v1", JSON.stringify({ capability: "old.capability", attemptId: "old-attempt" }));
+      }
+    } catch { /* storage blocked */ }
+  });
   const shopper = await context.newPage();
+  const errors: string[] = [];
+  shopper.on("pageerror", (error) => errors.push(error.message));
+  await shopper.goto("/cart");
+  await expect(shopper.locator("[data-guest-cart-empty]")).toBeVisible();
+  await expect(shopper.locator("[data-guest-cart-line]")).toHaveCount(0);
   await shopper.goto(productPath);
   const card = shopper.locator("[data-product-page]");
   await card.locator("[data-add-to-cart-qty-increase]").click();
@@ -173,6 +188,7 @@ test("with script the same forms change the cart in place, and agents read it as
   await expect(shopper).toHaveURL(/\/cart$/u);
   await expect(shopper.locator("[data-store-header] [data-guest-cart-count]")).toHaveText("1");
   await shopper.screenshot({ path: resolve(root, "cart-updated-script-on.png"), fullPage: true, animations: "disabled" });
+  expect(errors).toEqual([]);
   await context.close();
 });
 
