@@ -164,6 +164,23 @@ function product(value: unknown): ProductResult {
   } };
 }
 
+/**
+ * Whether the owner lists this store in the DinkusKit cross-store catalog: the switch in
+ * Commerce settings, on unless Commerce's public catalog says `offCatalog`
+ * (GrillTrack `agent-catalog-toggle-home-20261113`, dinkuskit). A Commerce older than the
+ * switch never says it, so its store is listed.
+ */
+export async function readInstalledCatalogListing({ runtime, request }: InstalledCatalogContext): Promise<boolean> {
+  const pluginId = installedPluginId();
+  if (!runtime || !publicGetRoute(runtime, pluginId, ROUTE)) {
+    throw new Error("Installed public catalog unavailable");
+  }
+  const url = new URL(`/_emdash/api/plugins/${pluginId}/${ROUTE}`, request.url);
+  const result = await runtime.handlePublicPluginApiRoute(pluginId, "GET", ROUTE, new Request(url, { method: "GET" }));
+  if (!result.success || !object(result.data)) throw new Error("Installed public catalog unavailable");
+  return result.data.offCatalog !== true;
+}
+
 /** Public-only SSR dispatch preserves the installed plugin's original context. */
 export async function readInstalledCommerceCatalog({ runtime, request }: InstalledCatalogContext): Promise<PublicCommerceProduct[]> {
   const pluginId = installedPluginId();

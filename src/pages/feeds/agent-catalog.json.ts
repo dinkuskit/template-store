@@ -3,11 +3,14 @@ import {
   buildAgentCatalogFeed,
   buildInstalledStorefrontAgentFeedOptions,
 } from "../../features/commerce-feeds/index.js";
+import { readInstalledCatalogListing } from "../../features/commerce-catalog/installed.js";
 
 /**
  * The store's product catalog as JSON, for programs: the DinkusKit cross-store
  * catalog reads it, and so may every agent. It carries only what a shopper can
  * already see on the store (GrillTrack `agent-catalog-data-20261113`, dinkuskit).
+ * While the owner has "List my products in the DinkusKit catalog" off in Commerce
+ * settings the feed lists no products, so the catalog drops the store.
  */
 export const GET: APIRoute = async ({ locals, request, site }) => {
   try {
@@ -16,7 +19,8 @@ export const GET: APIRoute = async ({ locals, request, site }) => {
       request,
       site,
     });
-    return new Response(JSON.stringify(buildAgentCatalogFeed(options)), {
+    const listed = await readInstalledCatalogListing({ runtime: locals.emdash, request });
+    return new Response(JSON.stringify(buildAgentCatalogFeed(listed ? options : { ...options, products: [] })), {
       headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
     });
   } catch {
