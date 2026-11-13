@@ -34,6 +34,17 @@ A matching installed Commerce artifact is required before Shop can list live
 Products on the shipping profile. Historical Commerce49/Payments12 package
 fixtures keep their identities and do not qualify this pairing.
 
+## Variant product cards
+
+A card for a product with selectable variants summarizes all listable members'
+Commerce availability, not just the default member. If any member is sellable,
+show the best status in this order: **In stock**, **Low stock**, **Available on
+backorder**. If none is sellable, show **Out of stock**, or **Availability
+unavailable** when every member reports that. This does not combine stock
+quantities or change purchase eligibility: the product page still shows the
+chosen member's authoritative price and availability. Simple-product cards keep
+their Commerce stock labels.
+
 ## Proof store on the Registry build
 
 Commerce runs one build here, the Registry (sandboxed) one

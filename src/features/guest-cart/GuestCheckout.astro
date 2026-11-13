@@ -51,27 +51,34 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
         <p>Commerce uses your email for checkout. Every order needs a billing address; a delivery address is required only when the basket contains a physical item.</p>
         <label for="guest-cart-email">Email</label>
         <input id="guest-cart-email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" />
+        <p id="guest-cart-email-error" data-guest-cart-contact-error="email" role="alert" hidden></p>
         <div class="guest-cart-delivery" data-guest-cart-delivery hidden>
           <h2>Delivery address</h2>
           <p>Complete these fields for a physical order.</p>
           <label for="guest-cart-delivery-name">Recipient</label>
           <input id="guest-cart-delivery-name" data-guest-cart-delivery-name maxlength="200" autocomplete="shipping name" />
+          <p id="guest-cart-delivery-name-error" data-guest-cart-contact-error="delivery-name" role="alert" hidden></p>
           <label for="guest-cart-delivery-line1">Address line 1</label>
           <input id="guest-cart-delivery-line1" data-guest-cart-delivery-line1 maxlength="200" autocomplete="shipping address-line1" />
+          <p id="guest-cart-delivery-line1-error" data-guest-cart-contact-error="delivery-line1" role="alert" hidden></p>
           <label for="guest-cart-delivery-line2">Address line 2 <span>(optional)</span></label>
           <input id="guest-cart-delivery-line2" data-guest-cart-delivery-line2 maxlength="200" autocomplete="shipping address-line2" />
           <label for="guest-cart-delivery-city">City</label>
           <input id="guest-cart-delivery-city" data-guest-cart-delivery-city maxlength="200" autocomplete="shipping address-level2" />
+          <p id="guest-cart-delivery-city-error" data-guest-cart-contact-error="delivery-city" role="alert" hidden></p>
           <label for="guest-cart-delivery-region">State or region <span>(required for United States delivery)</span></label>
           <input id="guest-cart-delivery-region" data-guest-cart-delivery-region maxlength="200" autocomplete="shipping address-level1" />
+          <p id="guest-cart-delivery-region-error" data-guest-cart-contact-error="delivery-region" role="alert" hidden></p>
           <label for="guest-cart-delivery-postal-code">Postal code</label>
           <input id="guest-cart-delivery-postal-code" data-guest-cart-delivery-postal-code maxlength="200" autocomplete="shipping postal-code" />
+          <p id="guest-cart-delivery-postal-code-error" data-guest-cart-contact-error="delivery-postal-code" role="alert" hidden></p>
           <label for="guest-cart-delivery-country">Country</label>
           <select id="guest-cart-delivery-country" data-guest-cart-delivery-country autocomplete="shipping country">
             <option value="">Select a country</option>
             <option value="US">United States</option>
             {COMING_SOON_SHIPPING_COUNTRIES.map((name) => <option value="" disabled>{name} (coming soon)</option>)}
           </select>
+          <p id="guest-cart-delivery-country-error" data-guest-cart-contact-error="delivery-country" role="alert" hidden></p>
         </div>
         <label class="guest-cart-billing-same" data-guest-cart-billing-same-row hidden>
           <input type="checkbox" data-guest-cart-billing-same checked />
@@ -82,21 +89,26 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
           <p>The address for the card you pay with.</p>
           <label for="guest-cart-billing-name">Billing name</label>
           <input id="guest-cart-billing-name" data-guest-cart-billing-name maxlength="200" autocomplete="billing name" />
+          <p id="guest-cart-billing-name-error" data-guest-cart-contact-error="billing-name" role="alert" hidden></p>
           <label for="guest-cart-billing-line1">Billing address line 1</label>
           <input id="guest-cart-billing-line1" data-guest-cart-billing-line1 maxlength="200" autocomplete="billing address-line1" />
+          <p id="guest-cart-billing-line1-error" data-guest-cart-contact-error="billing-line1" role="alert" hidden></p>
           <label for="guest-cart-billing-line2">Billing address line 2 <span>(optional)</span></label>
           <input id="guest-cart-billing-line2" data-guest-cart-billing-line2 maxlength="200" autocomplete="billing address-line2" />
           <label for="guest-cart-billing-city">Billing city</label>
           <input id="guest-cart-billing-city" data-guest-cart-billing-city maxlength="200" autocomplete="billing address-level2" />
+          <p id="guest-cart-billing-city-error" data-guest-cart-contact-error="billing-city" role="alert" hidden></p>
           <label for="guest-cart-billing-region">Billing state or region <span>(optional)</span></label>
           <input id="guest-cart-billing-region" data-guest-cart-billing-region maxlength="200" autocomplete="billing address-level1" />
           <label for="guest-cart-billing-postal-code">Billing postal code</label>
           <input id="guest-cart-billing-postal-code" data-guest-cart-billing-postal-code maxlength="200" autocomplete="billing postal-code" />
+          <p id="guest-cart-billing-postal-code-error" data-guest-cart-contact-error="billing-postal-code" role="alert" hidden></p>
           <label for="guest-cart-billing-country">Billing country</label>
           <select id="guest-cart-billing-country" data-guest-cart-billing-country autocomplete="billing country">
             <option value="">Select a country</option>
             {BILLING_COUNTRIES.map(({ code, name }) => <option value={code}>{name}</option>)}
           </select>
+          <p id="guest-cart-billing-country-error" data-guest-cart-contact-error="billing-country" role="alert" hidden></p>
         </div>
       </fieldset>
       <div class="guest-cart-coupon" data-guest-cart-coupon-box aria-disabled="true">
@@ -155,6 +167,9 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
   .guest-cart-contact{display:grid;gap:.55rem;margin:0 0 1rem;padding:1rem;border:1px solid #2d3a54;border-radius:.6rem;background:#11192a;min-width:0}
   .guest-cart-contact legend{padding:0 .35rem;font-weight:800;color:#fffefb}
   .guest-cart-contact p{margin:0 0 .5rem;color:#c2cad8;line-height:1.45}
+  .guest-cart-contact [data-guest-cart-contact-error]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.25rem;scroll-margin-block:1rem}
+  .guest-cart-contact [data-guest-cart-contact-error][hidden]{display:none}
+  .guest-cart-contact [aria-invalid="true"]{border:2px solid #b44536;scroll-margin-block:5rem}
   .guest-cart-contact h2{font-size:1.15rem;margin:.75rem 0 0;color:#fffefb}
   .guest-cart-contact label{font-weight:700;color:#f7f4ee}
   .guest-cart-contact span{color:#b8c0cf;font-size:.9em;font-weight:500}

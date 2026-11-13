@@ -52,7 +52,33 @@ describe("guest checkout delivery contact", () => {
     expect(readCheckoutContact(contactForm({ region, country: "us" }), true)).toEqual({
       contact: null,
       error: "Enter a state for United States delivery.",
+      field: "delivery-region",
     });
+  });
+
+  it.each([
+    ["name", "delivery-name"], ["line1", "delivery-line1"], ["city", "delivery-city"],
+    ["postal-code", "delivery-postal-code"], ["country", "delivery-country"],
+  ])("locates blank delivery %s without changing the existing message", (name, field) => {
+    expect(readCheckoutContact(contactForm({ region: "NY", [name]: "" }), true)).toEqual({
+      contact: null, error: "Complete the recipient, address, city, postal code, and country fields.", field,
+    });
+  });
+
+  it.each([
+    ["name", "billing-name"], ["line1", "billing-line1"], ["city", "billing-city"],
+    ["postal-code", "billing-postal-code"], ["country", "billing-country"],
+  ])("locates blank billing %s without changing the existing message", (name, field) => {
+    const billing = { "billing-name": "Bill Payer", "billing-line1": "9 Billing Way", "billing-city": "Toronto", "billing-postal-code": "M5V 1A1", "billing-country": "CA" };
+    expect(readCheckoutContact(contactForm({ region: "NY", ...billing, [`billing-${name}`]: "" }, false), true)).toEqual({
+      contact: null, error: "Complete the billing name, address, city, postal code, and country fields.", field,
+    });
+  });
+
+  it("preserves email priority and country validation locations", () => {
+    expect(readCheckoutContact(contactForm({ email: "" }), true)).toEqual({ contact: null, error: "Enter your email address to continue.", field: "email" });
+    expect(readCheckoutContact(contactForm({ email: "not-an-email" }), true)).toEqual({ contact: null, error: "Enter a valid email address to continue.", field: "email" });
+    expect(readCheckoutContact(contactForm({ country: "USA" }), true)).toEqual({ contact: null, error: "Choose a country this store ships to.", field: "delivery-country" });
   });
 
   it("forwards a filled US region without taking over Commerce's geographic validation", () => {
@@ -93,6 +119,7 @@ describe("guest checkout delivery contact", () => {
     expect(readCheckoutContact(form({}), false)).toEqual({
       contact: null,
       error: "Complete the billing name, address, city, postal code, and country fields.",
+      field: "billing-name",
     });
   });
 

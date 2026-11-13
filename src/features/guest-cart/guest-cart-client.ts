@@ -41,6 +41,7 @@ import {
   type GuestCheckoutTransport,
   type GuestCheckoutWireResult,
 } from "./index.js";
+import { clearCheckoutContactFeedback, setCheckoutContactFeedback, type CheckoutContactField } from "./contact-feedback.js";
 import {
   SHOPPER_ORDERS_ENDPOINT,
   SHOPPER_SESSION_HEADER,
@@ -209,8 +210,14 @@ async function prefillShopperContact(root: Element): Promise<void> {
   }
 }
 
-/** Reads one address block; "missing" when a required field is blank. */
-function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckoutDelivery | "empty" | "missing" {
+type RequiredAddressField = "name" | "line1" | "city" | "postalCode" | "country";
+const REQUIRED_ADDRESS_FIELDS: readonly RequiredAddressField[] = ["name", "line1", "city", "postalCode", "country"];
+function addressField(kind: "delivery" | "billing", name: RequiredAddressField): CheckoutContactField {
+  return `${kind}-${name === "postalCode" ? "postal-code" : name}`;
+}
+
+/** Reads one address block and locates its first blank required field. */
+function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckoutDelivery | "empty" | { missing: RequiredAddressField } {
   const field = (name: string) => inputValue(root, `[data-guest-cart-${kind}-${name}]`);
   const fields = {
     name: field("name"),
@@ -222,8 +229,8 @@ function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckout
     country: field("country").toUpperCase(),
   };
   if (!Object.values(fields).some(Boolean)) return "empty";
-  for (const [key, value] of Object.entries(fields)) {
-    if (!value && key !== "line2" && key !== "region") return "missing";
+  for (const key of REQUIRED_ADDRESS_FIELDS) {
+    if (!fields[key]) return { missing: key };
   }
   return {
     name: fields.name,
@@ -239,24 +246,24 @@ function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckout
 export function readCheckoutContact(
   root: Element,
   needsDelivery: boolean,
-): { contact: GuestCheckoutContact | null; error: string | null } {
+): { contact: GuestCheckoutContact; error: null } | { contact: null; error: string; field: CheckoutContactField } {
   const email = inputValue(root, "[data-guest-cart-email]");
-  if (!email) return { contact: null, error: "Enter your email address to continue." };
+  if (!email) return { contact: null, error: "Enter your email address to continue.", field: "email" };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
-    return { contact: null, error: "Enter a valid email address to continue." };
+    return { contact: null, error: "Enter a valid email address to continue.", field: "email" };
   }
   // A digital-only cart hides the delivery section; values left there from an
   // earlier physical cart must never reach Commerce or block checkout.
   let delivery: GuestCheckoutDelivery | undefined;
   if (needsDelivery) {
     const read = readAddress(root, "delivery");
-    if (read === "missing") {
-      return { contact: null, error: "Complete the recipient, address, city, postal code, and country fields." };
+    if (read !== "empty" && "missing" in read) {
+      return { contact: null, error: "Complete the recipient, address, city, postal code, and country fields.", field: addressField("delivery", read.missing) };
     }
     if (read !== "empty") {
-      if (!/^[A-Z]{2}$/u.test(read.country)) return { contact: null, error: "Choose a country this store ships to." };
+      if (!/^[A-Z]{2}$/u.test(read.country)) return { contact: null, error: "Choose a country this store ships to.", field: "delivery-country" };
       if (read.country === "US" && !read.region) {
-        return { contact: null, error: "Enter a state for United States delivery." };
+        return { contact: null, error: "Enter a state for United States delivery.", field: "delivery-region" };
       }
       delivery = read;
     }
@@ -268,8 +275,11 @@ export function readCheckoutContact(
     return { contact: delivery ? { email, delivery, billing: { ...delivery } } : { email }, error: null };
   }
   const billing = readAddress(root, "billing");
-  if (billing === "empty" || billing === "missing" || !/^[A-Z]{2}$/u.test(billing.country)) {
-    return { contact: null, error: "Complete the billing name, address, city, postal code, and country fields." };
+  if (billing === "empty" || "missing" in billing) {
+    return { contact: null, error: "Complete the billing name, address, city, postal code, and country fields.", field: addressField("billing", billing === "empty" ? "name" : billing.missing) };
+  }
+  if (!/^[A-Z]{2}$/u.test(billing.country)) {
+    return { contact: null, error: "Complete the billing name, address, city, postal code, and country fields.", field: "billing-country" };
   }
   return { contact: { email, ...(delivery ? { delivery } : {}), billing }, error: null };
 }
@@ -295,9 +305,9 @@ function lineMarkup(line: GuestCartView["lines"][number], current: GuestCartView
   <div data-guest-cart-line-copy>${lineCopyMarkup(line)}</div>
   <div class="guest-cart-qty">
     <label for="guest-cart-qty-${escapeText(line.id)}">Quantity</label>
-    <input id="guest-cart-qty-${escapeText(line.id)}" data-guest-cart-qty="${escapeText(line.id)}" type="text" inputmode="numeric" value="${line.quantity}" />
+    <input id="guest-cart-qty-${escapeText(line.id)}" data-guest-cart-qty="${escapeText(line.id)}" type="text" inputmode="numeric" aria-label="Quantity for ${escapeText(line.name)}" value="${line.quantity}" />
   </div>
-  <button type="button" data-guest-cart-remove="${escapeText(line.id)}">Remove</button>
+  <button type="button" data-guest-cart-remove="${escapeText(line.id)}" aria-label="Remove ${escapeText(line.name)}">Remove</button>
 </article>`;
 }
 
@@ -323,9 +333,11 @@ function patchLine(article: HTMLElement, line: GuestCartView["lines"][number], c
   const copy = article.querySelector("[data-guest-cart-line-copy]");
   if (copy instanceof HTMLElement) copy.innerHTML = lineCopyMarkup(line);
   const input = article.querySelector("[data-guest-cart-qty]");
-  if (input instanceof HTMLInputElement && document.activeElement !== input) {
-    input.value = String(line.quantity);
+  if (input instanceof HTMLInputElement) {
+    input.setAttribute("aria-label", `Quantity for ${line.name}`);
+    if (document.activeElement !== input) input.value = String(line.quantity);
   }
+  article.querySelector("[data-guest-cart-remove]")?.setAttribute("aria-label", `Remove ${line.name}`);
 }
 
 function reconcileLines(container: HTMLElement, current: GuestCartView): void {
@@ -335,14 +347,18 @@ function reconcileLines(container: HTMLElement, current: GuestCartView): void {
     const id = child.getAttribute("data-guest-cart-line");
     if (!id || !keep.has(id)) child.remove();
   }
-  for (const line of current.lines) {
-    const existing = container.querySelector(lineSelector(line.id));
-    if (existing instanceof HTMLElement) {
-      patchLine(existing, line, current);
-      container.append(existing);
-      continue;
+  for (const [index, line] of current.lines.entries()) {
+    let article = container.querySelector(lineSelector(line.id));
+    if (!(article instanceof HTMLElement)) {
+      container.insertAdjacentHTML("beforeend", lineMarkup(line, current));
+      article = container.querySelector(lineSelector(line.id));
     }
-    container.insertAdjacentHTML("beforeend", lineMarkup(line, current));
+    if (article instanceof HTMLElement) {
+      patchLine(article, line, current);
+      // Refreshing facts must not detach an already correctly placed row and
+      // drop focus from its quantity field when the shopper returns.
+      if (container.children[index] !== article) container.insertBefore(article, container.children[index] ?? null);
+    }
   }
 }
 
@@ -373,6 +389,11 @@ export function renderBilling(root: Element, needsDelivery: boolean): void {
   if (sameRow instanceof HTMLElement) sameRow.hidden = !needsDelivery;
   if (billing instanceof HTMLElement) {
     billing.hidden = needsDelivery && same instanceof HTMLInputElement && same.checked;
+    if (billing.hidden) clearCheckoutContactFeedback(billing);
+  }
+  if (!needsDelivery) {
+    const delivery = root.querySelector("[data-guest-cart-delivery]");
+    if (delivery) clearCheckoutContactFeedback(delivery);
   }
 }
 
@@ -749,15 +770,18 @@ function isSingleAddBlocked(button: HTMLButtonElement, container: Element | null
 let hydrateListenerRegistered = false;
 let storedCartListenersRegistered = false;
 
-function syncStoredCart(): void {
+function syncStoredCart(refreshFacts = false): void {
   // Failed writes deliberately keep an in-memory cart. An active checkout also
   // keeps its reviewed intent until its existing recovery flow settles it.
   if (persistFailed() || checkoutLocked()) return;
   const next = loadSession();
   if (next.notice === "storage-unavailable") return;
-  if (next.notice === session.notice && JSON.stringify(next.intent) === JSON.stringify(session.intent)) return;
-  session = next;
-  mutationNotice = null;
+  const changed = next.notice !== session.notice || JSON.stringify(next.intent) !== JSON.stringify(session.intent);
+  if (!changed && !refreshFacts) return;
+  if (changed) {
+    session = next;
+    mutationNotice = null;
+  }
   const root = document.querySelector("[data-guest-cart]");
   if (root instanceof HTMLElement) void refreshSnapshot(root);
   else renderNav();
@@ -781,8 +805,11 @@ export function hydrateGuestCartControls(): void {
       // Read the latest validated value, not a possibly superseded event payload.
       syncStoredCart();
     });
-    window.addEventListener("focus", syncStoredCart);
-    window.addEventListener("pageshow", syncStoredCart);
+    // Returning to an unchanged cart still needs current Commerce prices/stock.
+    // Ordinary pageshow already has the initial load; only a BFCache restore
+    // needs another facts refresh. Storage events remain intent-change driven.
+    window.addEventListener("focus", () => syncStoredCart(true));
+    window.addEventListener("pageshow", (event) => syncStoredCart(event.persisted));
   }
   if (!hydrateListenerRegistered && typeof document.addEventListener === "function") {
     hydrateListenerRegistered = true;
@@ -877,10 +904,10 @@ export function hydrateGuestCartPage(): void {
         return;
       }
       const originalIntent = structuredClone(session.intent);
+      clearCheckoutContactFeedback(root);
       const contactInput = readCheckoutContact(root, view().needsDelivery);
-      if (contactInput.error || !contactInput.contact) {
-        setCheckoutMessage(contactInput.error ?? "Complete the checkout contact fields.", true);
-        renderCart(root);
+      if (contactInput.error !== null) {
+        setCheckoutContactFeedback(root, { field: contactInput.field, message: contactInput.error });
         return;
       }
       // Coupons are coming soon: Registry Commerce refuses every code for v1,
@@ -947,6 +974,13 @@ export function hydrateGuestCartPage(): void {
     focusAfterRemove(root, removeId);
     void refreshSnapshot(root);
   });
+  const clearContactFeedback = (event: Event) => {
+    if (event.target instanceof Element && event.target.closest("[data-guest-cart-contact]")) {
+      clearCheckoutContactFeedback(root, event.target);
+    }
+  };
+  root.addEventListener("input", clearContactFeedback);
+  root.addEventListener("change", clearContactFeedback);
   root.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
@@ -959,7 +993,12 @@ export function hydrateGuestCartPage(): void {
     if (!id) return;
     const quantity = parseGuestCartQuantityInput(target.value);
     if (quantity === null) {
-      mutationNotice = "Quantity must be a whole number from 1 to 99.";
+      // Restore the reviewed intent, including unsaved in-memory edits. A
+      // rejected draft must not remain visible beside the previous totals.
+      const line = session.intent.lines.find((candidate) => candidate.id === id);
+      if (line) target.value = String(line.quantity);
+      else renderCart(root);
+      mutationNotice = "Quantity must be a whole number from 1 to 99. Your cart has not changed.";
       setStatus(root, mutationNotice, true);
       return;
     }

@@ -182,6 +182,78 @@ test("a reload after a quantity change keeps the cart editable when no checkout 
   } finally { await context.close(); }
 });
 
+for (const path of ["/cart", "/checkout"]) {
+  test(`invalid quantities restore the reviewed cart on ${path}`, async ({ browser }, testInfo) => {
+    test.setTimeout(60_000);
+    const context = await freshOfflineContext(browser, testInfo.project.use.baseURL as string, testInfo.project.use.viewport);
+    try {
+      const page = await context.newPage();
+      const harness = await installOfflineCheckoutHarness(page, {
+        baseURL: testInfo.project.use.baseURL as string,
+        digital: true, statusWithoutAttempt: true,
+      });
+      await page.addInitScript(() => {
+        if (localStorage.getItem("dinkus.guest-cart.v1")) return;
+        localStorage.setItem("dinkus.guest-cart.v1", JSON.stringify({ version: 1, lines: [{ id: "fixture-shirt", quantity: 1 }] }));
+      });
+      await page.goto(path);
+      const qty = page.locator("[data-guest-cart-qty]");
+      const proceed = page.locator("[data-guest-cart-checkout]");
+      const subtotal = page.locator("[data-guest-cart-subtotal]");
+      const status = page.locator("[data-guest-cart-status]");
+      // This is an admitted, populated cart, not an already-disabled one.
+      await expect(proceed).toBeEnabled();
+      await expect(qty).toHaveValue("1");
+      await expect(subtotal).toHaveText(/Subtotal\s*\$24\.00/u);
+      const saved = await page.evaluate(() => localStorage.getItem("dinkus.guest-cart.v1"));
+      for (const invalid of ["0", "", "-1", "1.5", "100", "letters", "1e2"]) {
+        await qty.fill(invalid);
+        await qty.press("Tab");
+        await expect(qty).toHaveValue("1");
+        await expect(status).toHaveText("Quantity must be a whole number from 1 to 99. Your cart has not changed.");
+        await expect(status).toHaveAttribute("role", "alert");
+        await expect(subtotal).toHaveText(/Subtotal\s*\$24\.00/u);
+        await expect(proceed).toBeEnabled();
+        expect(await page.evaluate(() => localStorage.getItem("dinkus.guest-cart.v1"))).toBe(saved);
+      }
+      await qty.fill("3");
+      await qty.press("Tab");
+      await expect(subtotal).toHaveText(/Subtotal\s*\$72\.00/u);
+      await qty.fill("0");
+      await qty.press("Tab");
+      await expect(qty).toHaveValue("3");
+      await expect(subtotal).toHaveText(/Subtotal\s*\$72\.00/u);
+
+      // A refused save leaves a newer in-memory cart. Restore that review,
+      // not the older persisted quantity, when the next edit is invalid.
+      await page.evaluate(() => {
+        const original = Storage.prototype.setItem;
+        Storage.prototype.setItem = function (key, value) {
+          if (key === "dinkus.guest-cart.v1") throw new Error("synthetic storage failure");
+          return original.call(this, key, value);
+        };
+      });
+      await qty.fill("2");
+      await qty.press("Tab");
+      await expect(status).toContainText("Leave or reload this page");
+      const persisted = await page.evaluate(() => localStorage.getItem("dinkus.guest-cart.v1"));
+      expect(persisted).toContain('"quantity":3');
+      await qty.fill("");
+      await qty.press("Tab");
+      await expect(qty).toHaveValue("2");
+      await expect(subtotal).toHaveText(/Subtotal\s*\$48\.00/u);
+      expect(await page.evaluate(() => localStorage.getItem("dinkus.guest-cart.v1"))).toBe(persisted);
+      await expect(proceed).toBeEnabled();
+      expect(harness.counts()).toEqual({ prepareCalls: 1, startCalls: 0, statusCalls: 0 });
+      expect(harness.blocked).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+      const proof = resolve("runs/cart-quantity-restoration", testInfo.project.name);
+      await mkdir(proof, { recursive: true });
+      await page.screenshot({ path: resolve(proof, `${path.slice(1)}-restored.png`), fullPage: true });
+    } finally { await context.close(); }
+  });
+}
+
 test("a reload finds a checkout another tab opened and offers the way back to it", async ({ browser }, testInfo) => {
   test.setTimeout(60_000);
   const redirectUrl = "https://checkout.stripe.com/c/pay/cs_test_fixture_open";
