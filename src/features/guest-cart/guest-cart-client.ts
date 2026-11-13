@@ -41,6 +41,7 @@ import {
   type GuestCheckoutTransport,
   type GuestCheckoutWireResult,
 } from "./index.js";
+import { clearCheckoutContactFeedback, setCheckoutContactFeedback, type CheckoutContactField } from "./contact-feedback.js";
 import {
   SHOPPER_ORDERS_ENDPOINT,
   SHOPPER_SESSION_HEADER,
@@ -209,8 +210,14 @@ async function prefillShopperContact(root: Element): Promise<void> {
   }
 }
 
-/** Reads one address block; "missing" when a required field is blank. */
-function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckoutDelivery | "empty" | "missing" {
+type RequiredAddressField = "name" | "line1" | "city" | "postalCode" | "country";
+const REQUIRED_ADDRESS_FIELDS: readonly RequiredAddressField[] = ["name", "line1", "city", "postalCode", "country"];
+function addressField(kind: "delivery" | "billing", name: RequiredAddressField): CheckoutContactField {
+  return `${kind}-${name === "postalCode" ? "postal-code" : name}`;
+}
+
+/** Reads one address block and locates its first blank required field. */
+function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckoutDelivery | "empty" | { missing: RequiredAddressField } {
   const field = (name: string) => inputValue(root, `[data-guest-cart-${kind}-${name}]`);
   const fields = {
     name: field("name"),
@@ -222,8 +229,8 @@ function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckout
     country: field("country").toUpperCase(),
   };
   if (!Object.values(fields).some(Boolean)) return "empty";
-  for (const [key, value] of Object.entries(fields)) {
-    if (!value && key !== "line2" && key !== "region") return "missing";
+  for (const key of REQUIRED_ADDRESS_FIELDS) {
+    if (!fields[key]) return { missing: key };
   }
   return {
     name: fields.name,
@@ -239,24 +246,24 @@ function readAddress(root: Element, kind: "delivery" | "billing"): GuestCheckout
 export function readCheckoutContact(
   root: Element,
   needsDelivery: boolean,
-): { contact: GuestCheckoutContact | null; error: string | null } {
+): { contact: GuestCheckoutContact; error: null } | { contact: null; error: string; field: CheckoutContactField } {
   const email = inputValue(root, "[data-guest-cart-email]");
-  if (!email) return { contact: null, error: "Enter your email address to continue." };
+  if (!email) return { contact: null, error: "Enter your email address to continue.", field: "email" };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) {
-    return { contact: null, error: "Enter a valid email address to continue." };
+    return { contact: null, error: "Enter a valid email address to continue.", field: "email" };
   }
   // A digital-only cart hides the delivery section; values left there from an
   // earlier physical cart must never reach Commerce or block checkout.
   let delivery: GuestCheckoutDelivery | undefined;
   if (needsDelivery) {
     const read = readAddress(root, "delivery");
-    if (read === "missing") {
-      return { contact: null, error: "Complete the recipient, address, city, postal code, and country fields." };
+    if (read !== "empty" && "missing" in read) {
+      return { contact: null, error: "Complete the recipient, address, city, postal code, and country fields.", field: addressField("delivery", read.missing) };
     }
     if (read !== "empty") {
-      if (!/^[A-Z]{2}$/u.test(read.country)) return { contact: null, error: "Choose a country this store ships to." };
+      if (!/^[A-Z]{2}$/u.test(read.country)) return { contact: null, error: "Choose a country this store ships to.", field: "delivery-country" };
       if (read.country === "US" && !read.region) {
-        return { contact: null, error: "Enter a state for United States delivery." };
+        return { contact: null, error: "Enter a state for United States delivery.", field: "delivery-region" };
       }
       delivery = read;
     }
@@ -268,8 +275,11 @@ export function readCheckoutContact(
     return { contact: delivery ? { email, delivery, billing: { ...delivery } } : { email }, error: null };
   }
   const billing = readAddress(root, "billing");
-  if (billing === "empty" || billing === "missing" || !/^[A-Z]{2}$/u.test(billing.country)) {
-    return { contact: null, error: "Complete the billing name, address, city, postal code, and country fields." };
+  if (billing === "empty" || "missing" in billing) {
+    return { contact: null, error: "Complete the billing name, address, city, postal code, and country fields.", field: addressField("billing", billing === "empty" ? "name" : billing.missing) };
+  }
+  if (!/^[A-Z]{2}$/u.test(billing.country)) {
+    return { contact: null, error: "Complete the billing name, address, city, postal code, and country fields.", field: "billing-country" };
   }
   return { contact: { email, ...(delivery ? { delivery } : {}), billing }, error: null };
 }
@@ -379,6 +389,11 @@ export function renderBilling(root: Element, needsDelivery: boolean): void {
   if (sameRow instanceof HTMLElement) sameRow.hidden = !needsDelivery;
   if (billing instanceof HTMLElement) {
     billing.hidden = needsDelivery && same instanceof HTMLInputElement && same.checked;
+    if (billing.hidden) clearCheckoutContactFeedback(billing);
+  }
+  if (!needsDelivery) {
+    const delivery = root.querySelector("[data-guest-cart-delivery]");
+    if (delivery) clearCheckoutContactFeedback(delivery);
   }
 }
 
@@ -889,10 +904,10 @@ export function hydrateGuestCartPage(): void {
         return;
       }
       const originalIntent = structuredClone(session.intent);
+      clearCheckoutContactFeedback(root);
       const contactInput = readCheckoutContact(root, view().needsDelivery);
-      if (contactInput.error || !contactInput.contact) {
-        setCheckoutMessage(contactInput.error ?? "Complete the checkout contact fields.", true);
-        renderCart(root);
+      if (contactInput.error !== null) {
+        setCheckoutContactFeedback(root, { field: contactInput.field, message: contactInput.error });
         return;
       }
       // Coupons are coming soon: Registry Commerce refuses every code for v1,
@@ -959,6 +974,13 @@ export function hydrateGuestCartPage(): void {
     focusAfterRemove(root, removeId);
     void refreshSnapshot(root);
   });
+  const clearContactFeedback = (event: Event) => {
+    if (event.target instanceof Element && event.target.closest("[data-guest-cart-contact]")) {
+      clearCheckoutContactFeedback(root, event.target);
+    }
+  };
+  root.addEventListener("input", clearContactFeedback);
+  root.addEventListener("change", clearContactFeedback);
   root.addEventListener("change", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
