@@ -93,6 +93,7 @@ const READY = {
 buildPlaygroundWorker();
 let server = await startPlaygroundWorker({ name: "checkout-proof", port, vars: READY, persistTo });
 const base = server.base;
+const PROOF_EMAIL = "proof@example.test";
 
 async function request(path, cookie, body, capability = "capability-proof", origin = PLAYGROUND_PROOF_SITE) {
   const before = calls.length;
@@ -123,7 +124,12 @@ async function page(path, cookie) {
   const html = await response.text();
   const entry = { path, status: response.status, location: response.headers.get("location"),
     state: html.match(/data-guest-checkout-return-state="([a-z-]+)"/)?.[1] ?? null,
-    order: html.match(/data-guest-checkout-order-number>Order ([^<]+)</)?.[1] ?? null, paymentsCalls: calls.length - before };
+    order: html.match(/data-guest-checkout-order-number>Order ([^<]+)</)?.[1] ?? null, paymentsCalls: calls.length - before,
+    // The paid order's own email and addresses (commerce-thank-you-contact-20261113); no other page shows them.
+    email: html.match(/data-guest-checkout-email>([^<]+)</)?.[1] ?? null,
+    shipTo: html.match(/data-guest-checkout-address>([^<]+)</)?.[1] ?? null,
+    billTo: html.match(/data-guest-checkout-billing>([^<]+)</)?.[1] ?? null,
+    contactShown: html.includes(PROOF_EMAIL) || html.includes("1 Test Way") };
   trace.push(entry);
   return entry;
 }
@@ -246,7 +252,7 @@ const fieldCorrection = {
   autofocus: /<input[^>]*id="guest-cart-email"[^>]*autofocus/u.test(noEmail.html),
   errorBeside: /id="guest-cart-email-error"[^>]*role="alert"/u.test(noEmail.html),
 };
-const started = await form("/checkout", cookie, { email: "proof@example.test", ...delivery });
+const started = await form("/checkout", cookie, { email: PROOF_EMAIL, ...delivery });
 if (started.status !== 303 || !started.location?.startsWith("https://checkout.stripe.com/")) {
   throw new Error(`the checkout form did not open Stripe: ${started.status} ${started.location} ${started.html.match(/role="alert">([^<]+)/)?.[1] ?? ""}\n${server.output.join("").slice(-3000)}`);
 }
@@ -255,9 +261,11 @@ const checkoutOf = (entry) => entry.body?.data?.checkout ?? entry.body?.checkout
 const paidRead = (entry) => entry.status === 200 && checkoutOf(entry)?.state === "paid" && checkoutOf(entry)?.order != null;
 // Another visitor's store has no such cart: Commerce answers 403, or 200 with CAPABILITY_DENIED. Either way no order and no Payments call.
 const denied = (entry) => entry.status === 403 || (entry.status === 200 && entry.body?.data?.ok === false && entry.body.data.error?.code === "CAPABILITY_DENIED");
-const refused = (entry) => denied(entry) && entry.paymentsCalls === 0 && !JSON.stringify(entry.body ?? {}).includes("orderId");
-const paidPage = (entry) => entry.status === 200 && entry.state === "paid" && typeof entry.order === "string";
-const hiddenPage = (entry) => entry.status === 200 && entry.state !== "paid" && entry.order === null && entry.paymentsCalls === 0;
+const refused = (entry) => denied(entry) && entry.paymentsCalls === 0 && !JSON.stringify(entry.body ?? {}).includes("orderId") &&
+  !JSON.stringify(entry.body ?? {}).includes(PROOF_EMAIL);
+const paidPage = (entry) => entry.status === 200 && entry.state === "paid" && typeof entry.order === "string" &&
+  entry.email === PROOF_EMAIL && entry.shipTo?.startsWith("1 Test Way") === true && entry.billTo?.includes("1 Test Way") === true;
+const hiddenPage = (entry) => entry.status === 200 && entry.state !== "paid" && entry.order === null && entry.paymentsCalls === 0 && !entry.contactShown;
 const cases = {};
 async function returnMatrix(label) {
   cases[`${label}:page:authorized`] = await page("/checkout/success?session_id=cs_ignored", cookie);
@@ -279,6 +287,24 @@ const unpaid = {
 stripePaid = true;
 await returnMatrix("live");
 const emptied = await page("/cart", cookie);
+// What the paying shopper sees: the order with its email and addresses, on a desktop and a phone.
+{
+  const { chromium, devices } = await import("@playwright/test");
+  // PLAYWRIGHT_CHROMIUM_PATH points at a preinstalled Chromium when the pinned browser is not downloaded.
+  const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {});
+  for (const [name, options] of [["desktop", { viewport: { width: 1280, height: 900 } }], ["phone", devices["Pixel 7"]]]) {
+    const context = await browser.newContext({ ...options, extraHTTPHeaders: { "cf-connecting-ip": "203.0.113.7" } });
+    await context.addCookies(cookie.split("; ").map((pair) => {
+      const at = pair.indexOf("=");
+      return { name: pair.slice(0, at), value: pair.slice(at + 1), url: base };
+    }));
+    const tab = await context.newPage();
+    await tab.goto(`${base}/checkout/success`);
+    await tab.screenshot({ path: join(artifact, `thank-you-paid-${name}.png`), fullPage: true, animations: "disabled" });
+    await context.close();
+  }
+  await browser.close();
+}
 
 await server.stop();
 server = await startPlaygroundWorker({ name: "checkout-proof", port, vars: READY, persistTo });
@@ -342,7 +368,8 @@ if (sessionCalls.length === 0) failures.push("no Payments session was created");
 if (sessionCalls.some((call) => call.clientIp !== "203.0.113.7")) failures.push("a Payments session call lacked the visitor's IP");
 console.log(`trace: ${trace.length} cases`);
 console.log(`paymentsCalls: ${calls.map((call) => call.path).join(", ")}`);
-console.log(`thankYouPage: ${paidPage(cases["live:page:authorized"])} order=${cases["live:page:authorized"].order}`);
+console.log(`thankYouPage: ${paidPage(cases["live:page:authorized"])} order=${cases["live:page:authorized"].order} email=${cases["live:page:authorized"].email} shipTo="${cases["live:page:authorized"].shipTo}" billTo="${cases["live:page:authorized"].billTo}"`);
+console.log(`contactHiddenFromOthers: ${["foreign", "reset"].every((who) => hiddenPage(cases[`live:page:${who}`]) && refused(cases[`live:registry:${who}`]))}`);
 console.log(`restartRecoveryPaid: ${paidPage(cases["restarted:page:authorized"]) && paidRead(cases["restarted:registry:authorized"])}`);
 console.log(`expiredRefused: ${hiddenPage(cases["expired:page:authorized"]) && refused(cases["expired:registry:authorized"])}`);
 console.log(`fieldCorrection: ${JSON.stringify(fieldCorrection)}`);
