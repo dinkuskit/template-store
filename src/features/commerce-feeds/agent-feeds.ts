@@ -249,6 +249,7 @@ export function buildStorefrontLlmsTxt(options: StorefrontAgentFeedOptions): str
     "## Storefront & Agent Discovery",
     `- [Full Catalog & Policy Corpus (llms-full.txt)](${feed.siteOrigin}/llms-full.txt): Complete product specs, AI projections, store policies, and checkout contract.`,
     `- [Shopping Agent & Virtual Card Guide (agents.md)](${feed.siteOrigin}/agents.md): Machine-readable guest checkout API and single-use virtual card sizing instructions.`,
+    `- [Product Catalog (JSON)](${feed.siteOrigin}/feeds/agent-catalog.json): Every listed product with price, availability, options and identifiers.`,
     `- [Storefront Home](${feed.siteOrigin}/): Public HTML storefront.`,
     `- [Google Merchant Feed](${feed.siteOrigin}/feeds/google-merchant.xml): RSS 2.0 XML product feed.`,
     `- [Meta Catalog Feed](${feed.siteOrigin}/feeds/meta-catalog.csv): CSV product feed.`,

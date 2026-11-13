@@ -57,12 +57,16 @@ describe("public boundary access evaluation", () => {
     expect(slashlessRedirectPath("/returns/")).toBe("/returns");
     expect(slashlessRedirectPath("/feeds/google-merchant.xml/")).toBe("/feeds/google-merchant.xml");
     expect(slashlessRedirectPath("/feeds/meta-catalog.csv/")).toBe("/feeds/meta-catalog.csv");
+    expect(slashlessRedirectPath("/feeds/agent-catalog.json/")).toBe("/feeds/agent-catalog.json");
     expect(slashlessRedirectPath("/api/checkout/status/")).toBeUndefined();
     expect(slashlessRedirectPath("/_emdash/admin/")).toBeUndefined();
     expect(evaluatePublicBoundary("GET", "/shipping").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/returns").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/feeds/google-merchant.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/feeds/meta-catalog.csv").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/feeds/agent-catalog.json").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/feeds/agent-catalog.json/").allowed).toBe(false);
+    expect(evaluatePublicBoundary("POST", "/feeds/agent-catalog.json").status).toBe(405);
     expect(evaluatePublicBoundary("GET", "/shipping/").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/feeds/google-merchant.xml/").allowed).toBe(false);
     expect(evaluatePublicBoundary("POST", "/feeds/google-merchant.xml").status).toBe(405);
