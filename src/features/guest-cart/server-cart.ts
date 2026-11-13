@@ -326,9 +326,56 @@ export async function changeServerCart(
   return failure("CONTENTION");
 }
 
-/** Add one line to the cart, merging with the same item (Commerce merges and sorts). */
+/**
+ * Add one line to the cart. The same item merges into its line here, so adding to a full cart's existing item
+ * is never refused as a new line; an item picked by its options merges in Commerce, which works out the variant.
+ */
 export function addToServerCart(ctx: ServerCartContext, line: ServerCartLineInput): Promise<ServerCartResult> {
-  return changeServerCart(ctx, (lines) => [...lines, line]);
+  return changeServerCart(ctx, (lines) => {
+    const id = "catalogItemId" in line ? line.catalogItemId : null;
+    if (id && lines.some((existing) => existing.catalogItemId === id)) {
+      return lines.map((existing) => existing.catalogItemId === id ? { ...existing, quantity: existing.quantity + line.quantity } : existing);
+    }
+    return [...lines, line];
+  });
+}
+
+/**
+ * The request body, read up to `limit` bytes as it streams in; null when it is longer. A missing or false
+ * Content-Length never lets an oversized public form reach the parser.
+ */
+export async function readBoundedBody(request: Request, limit: number): Promise<Uint8Array<ArrayBuffer> | null> {
+  const declared = request.headers.get("content-length");
+  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > limit)) return null;
+  if (!request.body) return new Uint8Array();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return body;
+}
+
+/** A public form, parsed only after its body fits the limit. */
+export async function readBoundedForm(request: Request, limit: number): Promise<FormData | null> {
+  const body = await readBoundedBody(request, limit);
+  if (!body) return null;
+  const type = request.headers.get("content-type") ?? "";
+  return new Response(body, { headers: { "content-type": type } }).formData().catch(() => null);
 }
 
 /** Set one item's quantity; 0 removes it. */

@@ -11,7 +11,7 @@ import { isDemoCatalogProfile } from "../../features/playground/demo-products.js
 import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../../features/playground/flat-rate-shipping.js";
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { loadServerCartPage, openPaymentUrl } from "../../features/guest-cart/server-view.js";
-import { readContactForm, sameStoreRequest, startServerCheckout, type ContactFieldError, type ContactFormValues } from "../../features/guest-cart/server-cart.js";
+import { readBoundedForm, readContactForm, sameStoreRequest, startServerCheckout, type ContactFieldError, type ContactFormValues } from "../../features/guest-cart/server-cart.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -39,7 +39,8 @@ let error: ContactFieldError | { field: null; message: string } | null = null;
 // The checkout form posts here: the server checks it, starts checkout from the saved cart and sends the shopper
 // to Stripe, with no script needed (template-cart-real-form-20261113).
 if (Astro.request.method === "POST") {
-  const form = sameStoreRequest(cartContext) ? await Astro.request.formData().catch(() => null) : null;
+  // Contact, delivery and billing fit well under 16 KB; a longer body is never parsed.
+  const form = sameStoreRequest(cartContext) ? await readBoundedForm(Astro.request, 16 * 1024) : null;
   const read = form ? readContactForm(form, page.view.needsDelivery) : null;
   if (!read) {
     error = { field: null, message: "Checkout could not start. Try again." };

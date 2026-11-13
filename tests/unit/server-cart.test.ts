@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   COMMERCE_REGISTRY_RUNTIME_ID,
+  GUEST_CART_MAX_LINES,
   GUEST_CHECKOUT_CAPABILITY_HEADER,
   GUEST_CHECKOUT_PROJECTION_SCHEMA,
   SUPPORTED_GUEST_CHECKOUT_ROUTES,
@@ -11,6 +12,8 @@ import {
   CART_COUNT_COOKIE,
   addToServerCart,
   cartJson,
+  readBoundedBody,
+  readBoundedForm,
   readAddForm,
   readContactForm,
   readServerCart,
@@ -262,6 +265,43 @@ describe("cart routes", () => {
     const script = await postAdd(apiContext(commerce, jar, "/cart/add.js", form));
     expect(script.status).toBe(200);
     expect(await script.json()).toMatchObject({ ok: true, cart: { itemCount: 4 } });
+  });
+
+  it("adds to an item already in a full cart instead of refusing a 41st line", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    const ctx = context(commerce, jar);
+    for (let index = 0; index < GUEST_CART_MAX_LINES; index += 1) {
+      expect((await addToServerCart(ctx, { catalogItemId: `item_${String(index).padStart(2, "0")}`, quantity: 1 })).ok).toBe(true);
+    }
+    const more = await addToServerCart(ctx, { catalogItemId: "item_07", quantity: 2 });
+    expect(more).toMatchObject({ ok: true });
+    expect(more.ok && more.cart.lines.length).toBe(GUEST_CART_MAX_LINES);
+    expect(more.ok && more.cart.lines.find((line) => line.catalogItemId === "item_07")?.quantity).toBe(3);
+    expect(await addToServerCart(ctx, { catalogItemId: "item_new", quantity: 1 })).toMatchObject({ ok: false, error: { code: "CART_FULL" } });
+  });
+
+  it("never parses a public form longer than the limit, even without a Content-Length", async () => {
+    const commerce = fakeCommerce();
+    const big = "x".repeat(64 * 1024);
+    const stream = () => new ReadableStream<Uint8Array>({ start(controller) {
+      controller.enqueue(new TextEncoder().encode(`id=item_hat&quantity=1&pad=${big}`));
+      controller.close();
+    } });
+    const request = new Request("https://shop.test/cart/add", { method: "POST", body: stream(), duplex: "half",
+      headers: { "content-type": "application/x-www-form-urlencoded" } } as RequestInit);
+    expect(request.headers.get("content-length")).toBeNull();
+    expect(await readBoundedForm(request, 8 * 1024)).toBeNull();
+    const small = new Request("https://shop.test/cart/add", { method: "POST", body: "id=item_hat&quantity=1",
+      headers: { "content-type": "application/x-www-form-urlencoded" } });
+    expect((await readBoundedForm(small, 8 * 1024))?.get("id")).toBe("item_hat");
+    const json = new Request("https://shop.test/cart/update.js", { method: "POST", body: stream(), duplex: "half",
+      headers: { "content-type": "application/json" } } as RequestInit);
+    expect(await readBoundedBody(json, 8 * 1024)).toBeNull();
+    const response = await postAdd(apiContext(commerce, fakeCookies(), "/cart/add", `id=item_hat&quantity=1&pad=${big}`,
+      { "content-type": "application/x-www-form-urlencoded" }));
+    expect(response.headers.get("location")).toBe("/cart?cart_error=INVALID_CART");
+    expect(commerce.calls).toHaveLength(0);
   });
 
   it("sends a refused plain form to the cart page, which says why", async () => {

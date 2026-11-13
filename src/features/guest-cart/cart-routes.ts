@@ -5,6 +5,8 @@ import {
   cartJson,
   changeServerCart,
   readAddForm,
+  readBoundedBody,
+  readBoundedForm,
   readChangeForm,
   readServerCart,
   sameStoreRequest,
@@ -51,17 +53,13 @@ function redirect(location: string): Response {
 }
 
 async function readBody(context: APIContext): Promise<FormData | Record<string, unknown> | null> {
-  const declared = context.request.headers.get("content-length");
-  if (declared !== null && (!/^\d+$/u.test(declared) || Number(declared) > MAX_BODY_BYTES)) return null;
   const type = context.request.headers.get("content-type") ?? "";
+  if (!type.includes("application/json")) return readBoundedForm(context.request, MAX_BODY_BYTES);
+  const bytes = await readBoundedBody(context.request, MAX_BODY_BYTES).catch(() => null);
+  if (!bytes) return null;
   try {
-    if (type.includes("application/json")) {
-      const text = await context.request.text();
-      if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) return null;
-      const value: unknown = JSON.parse(text || "{}");
-      return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
-    }
-    return await context.request.formData();
+    const value: unknown = JSON.parse(new TextDecoder().decode(bytes) || "{}");
+    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
   } catch {
     return null;
   }
