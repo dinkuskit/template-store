@@ -235,3 +235,17 @@
 {"action": "decision_locked", "at": "2026-11-01T23:55:50+00:00", "data": {"decision_id": "template-drop-older-store-box-20261101"}, "event_id": "0982a901-9f8e-4fc7-9666-cc273ea39ee4"}
 {"action": "decision_implemented", "at": "2026-11-01T23:55:50+00:00", "data": {"decision_id": "template-drop-older-store-box-20261101"}, "event_id": "87637862-dda3-49a4-a49d-9db256bb3dc2"}
 {"action": "decision_verified", "at": "2026-11-01T23:55:50+00:00", "data": {"decision_id": "template-drop-older-store-box-20261101"}, "event_id": "180cf511-4564-43cf-a5f1-c214dc3113d7"}
+{"action": "focus_started", "at": "2026-11-13T16:12:36+00:00", "data": {"cadence": "frontier-batch", "domain": "Server-side cart (store site)"}, "event_id": "c0b49e4d-9165-4999-a3ee-23fcbeea66ff"}
+{"action": "decision_proposed", "at": "2026-11-13T16:12:36+00:00", "data": {"decision_id": "template-cart-real-form-20261113"}, "event_id": "78cccae2-cc34-4a26-b5f5-a748f7c2bfb0"}
+{"action": "decision_locked", "at": "2026-11-13T16:12:36+00:00", "data": {"decision_id": "template-cart-real-form-20261113"}, "event_id": "ae5137cb-1785-443f-8853-ff037febfca4"}
+{"action": "decision_proposed", "at": "2026-11-13T16:12:36+00:00", "data": {"decision_id": "template-cart-size-picker-20261113"}, "event_id": "e9f30bf8-d0d5-402a-a021-54f17959ade9"}
+{"action": "decision_locked", "at": "2026-11-13T16:12:36+00:00", "data": {"decision_id": "template-cart-size-picker-20261113"}, "event_id": "f92b5b52-e424-458b-b469-9e742c05c7ec"}
+{"action": "decision_proposed", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-count-cookie-20261113"}, "event_id": "abfa9fac-30a3-4fa5-a884-95df1595d0ec"}
+{"action": "decision_locked", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-count-cookie-20261113"}, "event_id": "63daa2c9-ef06-451d-b7ae-a4378678b4be"}
+{"action": "decision_proposed", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-thank-you-server-20261113"}, "event_id": "4f6e59b7-4895-4312-8410-3fbda4cf907b"}
+{"action": "decision_locked", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-thank-you-server-20261113"}, "event_id": "2f9c191f-372b-4cb1-8acc-2b3b219a9238"}
+{"action": "decision_proposed", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-agents-20261113"}, "event_id": "4fa31a49-b476-4af3-b208-7c5344fc6c77"}
+{"action": "decision_locked", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-agents-20261113"}, "event_id": "2d666112-69ca-4c0d-b1d6-80b2a41b5324"}
+{"action": "decision_proposed", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-timing-20261113"}, "event_id": "cedd7d93-c575-4e0d-9c29-2b48921bfbe2"}
+{"action": "decision_locked", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-timing-20261113"}, "event_id": "779ef697-a54c-487e-aeb5-e481a8fa4d78"}
+{"action": "shared_understanding_confirmed", "at": "2026-11-13T16:12:37+00:00", "data": {"summary": "Ronald answered each cart question in the cart thread on 13 Nov 2026 (14:04-16:10 UTC) and on #226 in the sweep thread (15:43). Commerce-side locks: commerce-server-cart-20261113, commerce-cart-agent-writes-20261113, commerce-cart-expiry-20261113 in dinkuskit/commerce."}, "event_id": "acfe2ec5-b582-48ef-a478-cbca4b011671"}
