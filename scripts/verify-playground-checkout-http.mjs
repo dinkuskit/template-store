@@ -260,7 +260,7 @@ if (started.status !== 303 || !started.location?.startsWith("https://checkout.st
 const checkoutOf = (entry) => entry.body?.data?.checkout ?? entry.body?.checkout ?? null;
 const paidRead = (entry) => entry.status === 200 && checkoutOf(entry)?.state === "paid" && checkoutOf(entry)?.order != null;
 // Another visitor's store has no such cart: Commerce answers 403, or 200 with CAPABILITY_DENIED. Either way no order and no Payments call.
-const denied = (entry) => entry.status === 403 || (entry.status === 200 && entry.body?.data?.ok === false && entry.body.data.error?.code === "CAPABILITY_DENIED");
+const denied = (entry) => entry.status === 403 || (entry.status === 200 && entry.body?.data?.ok === false && ["CAPABILITY_DENIED", "ORIGIN_DENIED"].includes(entry.body.data.error?.code));
 const refused = (entry) => denied(entry) && entry.paymentsCalls === 0 && !JSON.stringify(entry.body ?? {}).includes("orderId") &&
   !JSON.stringify(entry.body ?? {}).includes(PROOF_EMAIL);
 const paidPage = (entry) => entry.status === 200 && entry.state === "paid" && typeof entry.order === "string" &&
@@ -274,6 +274,9 @@ async function returnMatrix(label) {
   cases[`${label}:registry:authorized`] = await request(`${COMMERCE}/checkout/guest/cart`, session, {}, capability);
   cases[`${label}:registry:foreign`] = await request(`${COMMERCE}/checkout/guest/cart`, foreignSession, {}, capability);
   cases[`${label}:registry:reset`] = await request(`${COMMERCE}/checkout/guest/cart`, resetSession, {}, capability);
+  // The paid cart read with a forged key, or from another site with the real key: no order, no contact.
+  cases[`${label}:registry:forged-key`] = await request(`${COMMERCE}/checkout/guest/cart`, session, {}, forgedKey);
+  cases[`${label}:registry:foreign-origin`] = await request(`${COMMERCE}/checkout/guest/cart`, session, {}, capability, FOREIGN);
 }
 // Back from Stripe before the payment is done: the page says it is still checking, never that it went through.
 const unpaidResponse = await fetch(`${base}/checkout/success`, { headers: { cookie, "cf-connecting-ip": "203.0.113.7" }, redirect: "manual" });
@@ -369,7 +372,11 @@ if (sessionCalls.some((call) => call.clientIp !== "203.0.113.7")) failures.push(
 console.log(`trace: ${trace.length} cases`);
 console.log(`paymentsCalls: ${calls.map((call) => call.path).join(", ")}`);
 console.log(`thankYouPage: ${paidPage(cases["live:page:authorized"])} order=${cases["live:page:authorized"].order} email=${cases["live:page:authorized"].email} shipTo="${cases["live:page:authorized"].shipTo}" billTo="${cases["live:page:authorized"].billTo}"`);
-console.log(`contactHiddenFromOthers: ${["foreign", "reset"].every((who) => hiddenPage(cases[`live:page:${who}`]) && refused(cases[`live:registry:${who}`]))}`);
+console.log(`contactHiddenFromOthers: ${["foreign", "reset"].every((who) => hiddenPage(cases[`live:page:${who}`]) && refused(cases[`live:registry:${who}`])) &&
+  ["forged-key", "foreign-origin"].every((who) => refused(cases[`live:registry:${who}`]))} ${JSON.stringify(Object.fromEntries(["foreign", "reset", "forged-key", "foreign-origin"].map((who) => {
+    const entry = cases[`live:registry:${who}`];
+    return [who, { status: entry.status, code: entry.body?.data?.error?.code ?? null, order: JSON.stringify(entry.body ?? {}).includes("orderId"), email: JSON.stringify(entry.body ?? {}).includes(PROOF_EMAIL), paymentsCalls: entry.paymentsCalls }];
+  })))}`);
 console.log(`restartRecoveryPaid: ${paidPage(cases["restarted:page:authorized"]) && paidRead(cases["restarted:registry:authorized"])}`);
 console.log(`expiredRefused: ${hiddenPage(cases["expired:page:authorized"]) && refused(cases["expired:registry:authorized"])}`);
 console.log(`fieldCorrection: ${JSON.stringify(fieldCorrection)}`);
