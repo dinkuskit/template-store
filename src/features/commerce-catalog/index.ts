@@ -22,11 +22,16 @@ export const availabilityLabels: Record<string, string> = {
   "availability-unavailable": "Availability unavailable",
 };
 
-/** A product card has no selected option. Its default member's stock is not the family's stock. */
+/** The installed adapter admits only listable members; summarize their Commerce facts, not the default's. */
 export function catalogCardAvailability(product: Pick<PublicCommerceProduct, "availability" | "variants">): { status: string; label: string } {
-  return product.variants?.length
-    ? { status: "options", label: "Check options" }
-    : { status: product.availability.status, label: availabilityLabels[product.availability.status] };
+  const members = product.variants;
+  const status = members?.length
+    ? ["in-stock", "low-stock", "available-on-backorder"].find(candidate =>
+        members.some(member => member.availability.sellable && member.availability.status === candidate))
+      ?? (members.every(member => member.availability.status === "availability-unavailable")
+        ? "availability-unavailable" : "out-of-stock")
+    : product.availability.status;
+  return { status, label: availabilityLabels[status] };
 }
 
 export type CommerceCatalogSnapshot =

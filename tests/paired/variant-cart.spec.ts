@@ -66,8 +66,8 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
       await catalog({ op: "prices", catalogItemId: large, productId: small, regular: "45", sale: "", stockStatus: "in-stock" });
       await shopper.goto("/");
       const card = shopper.locator(`a[data-product-link][href="/products/${slug}"]`);
-      await expect(card.locator("[data-commerce-availability]")).toHaveText("Check options");
-      await expect(card.locator("[data-commerce-availability]")).toHaveAttribute("data-commerce-availability", "options");
+      await expect(card.locator("[data-commerce-availability]")).toHaveText("In stock");
+      await expect(card.locator("[data-commerce-availability]")).toHaveAttribute("data-commerce-availability", "in-stock");
       await card.click();
       // The link can complete before deferred page scripts attach the picker listeners in dev mode.
       await shopper.waitForLoadState("load");

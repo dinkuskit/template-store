@@ -36,11 +36,14 @@ fixtures keep their identities and do not qualify this pairing.
 
 ## Variant product cards
 
-A card for a product with selectable variants says **Check options**, not the
-default member's stock status. That member may be sold out while another Size or
-Color is buyable. This is navigation guidance, not an aggregate stock or
-sellability claim; the product page still shows the chosen member's authoritative
-price and availability. Simple-product cards keep their Commerce stock labels.
+A card for a product with selectable variants summarizes all listable members'
+Commerce availability, not just the default member. If any member is sellable,
+show the best status in this order: **In stock**, **Low stock**, **Available on
+backorder**. If none is sellable, show **Out of stock**, or **Availability
+unavailable** when every member reports that. This does not combine stock
+quantities or change purchase eligibility: the product page still shows the
+chosen member's authoritative price and availability. Simple-product cards keep
+their Commerce stock labels.
 
 ## Proof store on the Registry build
 

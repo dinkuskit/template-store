@@ -11,8 +11,8 @@ test("clicking a home card lands on its product page with a Commerce price", asy
 
   await expect(shirt.locator("[data-commerce-availability]")).toHaveText("In stock");
   await expect(page.locator('a[href="/products/demo-socks"] [data-commerce-availability]')).toHaveText("Out of stock");
-  await expect(page.locator('a[href="/products/demo-hoodie"] [data-commerce-availability]')).toHaveText("Check options");
-  await expect(page.locator('a[href="/products/demo-hoodie"] [data-commerce-availability]')).toHaveAttribute("data-commerce-availability", "options");
+  await expect(page.locator('a[href="/products/demo-hoodie"] [data-commerce-availability]')).toHaveText("In stock");
+  await expect(page.locator('a[href="/products/demo-hoodie"] [data-commerce-availability]')).toHaveAttribute("data-commerce-availability", "in-stock");
 
   for (const card of await page.locator("a[data-product-link]").all()) {
     await expect(card).toHaveAttribute("href", /^\/products\/[a-z0-9-]+$/);
