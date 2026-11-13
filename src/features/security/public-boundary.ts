@@ -28,6 +28,7 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/_emdash/api/search/suggest",
   "/feeds/google-merchant.xml",
   "/feeds/meta-catalog.csv",
+  "/feeds/agent-catalog.json",
 ]);
 
 const ALLOWED_PATH_PATTERNS = [
@@ -109,7 +110,8 @@ function slashlessCollectionPath(pathname: string): string | undefined {
     pathname === "/returns/" ||
     pathname === "/search/" ||
     pathname === "/feeds/google-merchant.xml/" ||
-    pathname === "/feeds/meta-catalog.csv/"
+    pathname === "/feeds/meta-catalog.csv/" ||
+    pathname === "/feeds/agent-catalog.json/"
   ) {
     return pathname.slice(0, -1);
   }
