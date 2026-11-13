@@ -23,19 +23,6 @@ export type {
   GuestCartReadNotice,
 } from "./intent.js";
 export {
-  PLAYGROUND_STORE_META,
-  loadGuestCartIntent,
-  readBrowserGuestCartStorage,
-  saveGuestCartIntent,
-  admitPlaygroundStoreStorage,
-  playgroundStoreStorage,
-} from "./storage.js";
-export type {
-  GuestCartLoadResult,
-  GuestCartSaveResult,
-  GuestCartStoragePort,
-} from "./storage.js";
-export {
   GUEST_CART_PROCEED_LABEL,
   GUEST_CHECKOUT_LABEL,
   GUEST_CHECKOUT_REASON,
@@ -66,28 +53,12 @@ export type {
   GuestCheckoutShippingPolicyInput,
 } from "./present.js";
 export { parseGuestCartSnapshotIds } from "./snapshot-ids.js";
-export { settleGuestCheckoutCart } from "./checkout-cart-settlement.js";
 export {
   COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CHECKOUT_CAPABILITY_HEADER,
-  GUEST_CHECKOUT_CAPABILITY_STORAGE_KEY,
-  GUEST_CHECKOUT_PREPARE_ENDPOINT,
   GUEST_CHECKOUT_PROJECTION_SCHEMA,
-  GUEST_CHECKOUT_START_ENDPOINT,
-  GUEST_CHECKOUT_STATUS_ENDPOINT,
-  MAX_GUEST_CHECKOUT_STATUS_CHECKS,
-  callGuestCheckout,
-  canRetryGuestCheckoutStatus,
-  checkoutCanConfirm,
-  checkoutStartIntent,
-  createGuestCheckoutController,
   isSafeOrderLineImageUrl,
   parseGuestCheckoutWireResult,
-  readGuestCheckoutRetention,
-  retainGuestCheckoutCapability,
-  strictStripeCheckoutUrl,
-  guestCheckoutRetryUrl,
-  updateGuestCheckoutAttempt,
 } from "./checkout-protocol.js";
 export {
   SUPPORTED_GUEST_CHECKOUT_ROUTES,
@@ -99,34 +70,27 @@ export type {
   SupportedCatalogCheckoutAuthority,
 } from "./checkout-admission.js";
 export type {
-  GuestCheckoutCall,
-  GuestCheckoutCallResult,
-  GuestCheckoutController,
   GuestCheckoutOrderLine,
   GuestCheckoutProjection,
   GuestCheckoutContact,
   GuestCheckoutError,
   GuestCheckoutCouponReason,
   GuestCheckoutDelivery,
-  GuestCheckoutRetention,
-  GuestCheckoutRetentionStorage,
-  GuestCheckoutTransport,
   GuestCheckoutWireResult,
 } from "./checkout-protocol.js";
 export {
   WEBMCP_ANTI_SCRAPE_NOTICE,
   WEBMCP_REGISTRATION_SYMBOL,
   buildStorefrontWebMcpTools,
-  computeCartReviewFingerprint,
   createStorefrontActions,
   installStorefrontWebMcp,
 } from "./webmcp.js";
 export type {
+  DinkusCartError,
+  DinkusCartLineInput,
   DinkusCartLineSnapshot,
   DinkusCartSnapshot,
-  DinkusCartUpdatePatch,
-  DinkusCartUpdateResult,
-  DinkusCheckoutPreview,
+  DinkusCartWriteResult,
   DinkusCheckoutProceedResult,
   DinkusStorefrontActions,
   ModelContextHost,

@@ -4,9 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   GUEST_CART_MAX_LINES,
   GUEST_CART_MAX_QUANTITY,
-  GUEST_CART_MAX_RAW_LENGTH,
   GUEST_CART_PROCEED_LABEL,
-  GUEST_CART_STORAGE_KEY,
   GUEST_CHECKOUT_REASON,
   addGuestCartLine,
   canAddCommerceProductToCart,
@@ -15,7 +13,6 @@ import {
   isSafeGuestCartThumbnailSrc,
   guestCartRetryControlState,
   guestReturnQueryIsPresent,
-  loadGuestCartIntent,
   parseGuestCartIntent,
   parseGuestCartQuantityInput,
   parseGuestCartSnapshotIds,
@@ -24,23 +21,9 @@ import {
   presentGuestCheckoutBreakdown,
   projectGuestCartCatalogSnapshots,
   removeGuestCartLine,
-  saveGuestCartIntent,
   setGuestCartLineQuantity,
   stepGuestCartQuantityInput,
 } from "../../src/features/guest-cart/index.js";
-import { hydrateGuestCartControls } from "../../src/features/guest-cart/guest-cart-client.js";
-
-function memoryStorage(initial?: Record<string, string>) {
-  const values = new Map(Object.entries(initial ?? {}));
-  return {
-    getItem(key: string) {
-      return values.has(key) ? values.get(key) ?? null : null;
-    },
-    setItem(key: string, value: string) {
-      values.set(key, value);
-    },
-  };
-}
 
 describe("guest cart untrusted cache", () => {
   it("accepts only version, safe IDs, and positive integer quantities", () => {
@@ -95,70 +78,6 @@ describe("guest cart untrusted cache", () => {
       }),
     ).toBeNull();
   });
-
-  it("rejects malformed storage without crashing and keeps an in-session cart", () => {
-    expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, null)).toMatchObject({
-      intent: emptyGuestCartIntent(),
-      persisted: false,
-      notice: "storage-unavailable",
-    });
-    expect(
-      loadGuestCartIntent(GUEST_CART_STORAGE_KEY, memoryStorage({
-        [GUEST_CART_STORAGE_KEY]: "{not-json",
-      })),
-    ).toMatchObject({
-      intent: emptyGuestCartIntent(),
-      notice: "rejected-malformed",
-    });
-    const brokenWrite = {
-      getItem() {
-        return null;
-      },
-      setItem() {
-        throw new Error("quota");
-      },
-    };
-    const added = addGuestCartLine(emptyGuestCartIntent(), "hat-1", 2);
-    expect(added.accepted).toBe(true);
-    expect(saveGuestCartIntent(GUEST_CART_STORAGE_KEY, added.intent, brokenWrite)).toMatchObject({
-      intent: added.intent,
-      persisted: false,
-      notice: "storage-write-failed",
-    });
-    expect(guestCartItemCount(added.intent)).toBe(2);
-    const original = memoryStorage({
-      [GUEST_CART_STORAGE_KEY]: JSON.stringify({
-        version: 1,
-        lines: [{ id: "hat-1", quantity: 2 }],
-      }),
-    });
-    const failedWrite = {
-      getItem(key: string) {
-        return original.getItem(key);
-      },
-      setItem() {
-        throw new Error("quota");
-      },
-    };
-    const next = setGuestCartLineQuantity(
-      { version: 1, lines: [{ id: "hat-1", quantity: 2 }] },
-      "hat-1",
-      4,
-    );
-    expect(saveGuestCartIntent(GUEST_CART_STORAGE_KEY, next.intent, failedWrite).persisted).toBe(false);
-    expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, original).intent.lines).toEqual([
-      { id: "hat-1", quantity: 2 },
-    ]);
-    expect(
-      loadGuestCartIntent(
-        GUEST_CART_STORAGE_KEY,
-        memoryStorage({ [GUEST_CART_STORAGE_KEY]: "x".repeat(GUEST_CART_MAX_RAW_LENGTH + 1) }),
-      ),
-    ).toMatchObject({
-      intent: emptyGuestCartIntent(),
-      notice: "rejected-malformed",
-    });
-  });
 });
 
 describe("guest cart quantity mutation", () => {
@@ -192,170 +111,18 @@ describe("guest cart quantity mutation", () => {
     expect(stepGuestCartQuantityInput("invalid", -1, 0)).toBe(0);
   });
 
-  it("wires the PDP quantity stepper and one Add to cart that refuses an unavailable variant", () => {
+  it("makes Add to cart a plain form whose option buttons sit in it", () => {
     const addToCartAstro = readFileSync("src/features/guest-cart/AddToCart.astro", "utf8");
     const productPageAstro = readFileSync("src/pages/products/[id].astro", "utf8");
-    expect(addToCartAstro).toContain("data-add-to-cart-qty");
+    expect(addToCartAstro).toContain('method="post" action="/cart/add"');
+    expect(addToCartAstro).toContain('name="quantity"');
     expect(addToCartAstro).toContain("data-add-to-cart-qty-step");
-    // One Add to cart per product page: no second per-option quantity block.
     expect(addToCartAstro).not.toContain("data-add-to-cart-batch");
-    expect(addToCartAstro).not.toContain("data-variant-qty");
-    expect(addToCartAstro).toContain(".guest-cart-add :global([hidden]){display:none}");
-    expect(addToCartAstro).toContain(".guest-cart-add__single:not([hidden]){display:flex");
-    expect(addToCartAstro).toContain("data-add-to-cart-sellable");
-    expect(productPageAstro).toContain("<AddToCart product={cartProduct} variants={variants} />");
+    expect(addToCartAstro).toContain('name="productId"');
+    expect(productPageAstro).toContain("<AddToCart product={cartProduct} variants={variants} productId={linkedProduct?.id} formId={addFormId} />");
+    expect(productPageAstro).toContain("form={addFormId}");
+    expect(productPageAstro).toContain("name={`options[${option.label}]`}");
     expect(productPageAstro).toContain("add.dataset.addToCartSellable = String(view.sellable)");
-    expect(productPageAstro).toContain("data-variant-option={option.label}");
-
-    class MockElement {
-      dataset: Record<string, string> = {};
-      hidden = false;
-      textContent = "";
-      parentElement: MockElement | null = null;
-      private attrs = new Map<string, string>();
-      private listeners = new Map<string, (() => void)[]>();
-      setAttribute(name: string, value: string) {
-        this.attrs.set(name, value);
-      }
-      getAttribute(name: string) {
-        return this.attrs.get(name) ?? null;
-      }
-      addEventListener(type: string, cb: () => void) {
-        const list = this.listeners.get(type) ?? [];
-        list.push(cb);
-        this.listeners.set(type, list);
-      }
-      click() {
-        for (const cb of this.listeners.get("click") ?? []) cb();
-      }
-      closest(selector: string): MockElement | null {
-        let cur: MockElement | null = this;
-        while (cur) {
-          if (selector === ".guest-cart-add" && cur.getAttribute("data-mock-role") === "container") return cur;
-          if (selector === "[data-add-to-cart-single]" && cur.getAttribute("data-mock-role") === "single") return cur;
-          if (selector === "[hidden]" && cur.hidden) return cur;
-          cur = cur.parentElement;
-        }
-        return null;
-      }
-      querySelector(_selector: string): MockElement | null {
-        return null;
-      }
-      querySelectorAll(_selector: string): MockElement[] {
-        return [];
-      }
-    }
-    class MockInput extends MockElement {
-      disabled = false;
-      constructor(public value: string) {
-        super();
-      }
-    }
-    class MockButton extends MockElement {
-      disabled = false;
-    }
-
-    const store = memoryStorage();
-    const qtyInput = new MockInput("1");
-    const stepUp = new MockButton();
-    stepUp.setAttribute("data-add-to-cart-qty-step", "1");
-    const stepDown = new MockButton();
-    stepDown.setAttribute("data-add-to-cart-qty-step", "-1");
-    const addButton = new MockButton();
-    addButton.setAttribute("data-add-to-cart", "hoodie-small-indigo");
-    addButton.setAttribute("data-add-to-cart-sellable", "true");
-    const status = new MockElement();
-    status.hidden = true;
-    const navBadge = new MockElement();
-    const navLink = new MockElement();
-    navLink.querySelector = (sel: string) => (sel === "[data-guest-cart-count]" ? navBadge : null);
-
-    const container = new MockElement();
-    container.setAttribute("data-mock-role", "container");
-    const singleWrapper = new MockElement();
-    singleWrapper.setAttribute("data-mock-role", "single");
-    singleWrapper.parentElement = container;
-    for (const child of [qtyInput, stepUp, stepDown, addButton]) {
-      child.parentElement = singleWrapper;
-    }
-    status.parentElement = container;
-    container.querySelector = (selector: string) => {
-      if (selector === "[data-add-to-cart-qty]") return qtyInput;
-      if (selector === "[data-add-to-cart-status]") return status;
-      return null;
-    };
-
-    vi.stubGlobal("localStorage", store);
-    vi.stubGlobal("HTMLElement", MockElement);
-    vi.stubGlobal("HTMLInputElement", MockInput);
-    vi.stubGlobal("HTMLButtonElement", MockButton);
-    vi.stubGlobal("CSS", { escape: (v: string) => v });
-    vi.stubGlobal("document", {
-      querySelectorAll(selector: string) {
-        if (selector === "[data-guest-cart-nav]") return [navLink];
-        if (selector === "[data-add-to-cart-qty-step]") return [stepUp, stepDown];
-        if (selector === "[data-add-to-cart]") return [addButton];
-        return [];
-      },
-      dispatchEvent() {
-        return true;
-      },
-    });
-
-    try {
-      hydrateGuestCartControls();
-      // Step single quantity to 3 and click Add to cart
-      stepUp.click();
-      stepUp.click();
-      expect(qtyInput.value).toBe("3");
-      addButton.click();
-      expect(status.textContent).toBe("Added to cart.");
-      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
-        { id: "hoodie-small-indigo", quantity: 3 },
-      ]);
-
-      // Reject invalid single quantity
-      qtyInput.value = "0";
-      addButton.click();
-      expect(status.textContent).toBe("Quantity must be a whole number from 1 to 99.");
-      expect(status.getAttribute("role")).toBe("alert");
-      qtyInput.value = "1";
-
-      // Picking another variant points the one Add to cart at it
-      addButton.setAttribute("data-add-to-cart", "hoodie-xl-vermilion");
-      qtyInput.value = "3";
-      addButton.click();
-      expect(status.textContent).toBe("Added to cart.");
-      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
-        { id: "hoodie-small-indigo", quantity: 3 },
-        { id: "hoodie-xl-vermilion", quantity: 3 },
-      ]);
-
-      // Selecting an unavailable variant marks addButton unsellable and disables it;
-      // clicking addButton must refuse to add the unavailable variant.
-      addButton.setAttribute("data-add-to-cart", "hoodie-medium-indigo");
-      addButton.setAttribute("data-add-to-cart-sellable", "false");
-      addButton.disabled = true;
-      status.textContent = "";
-      addButton.click();
-      expect(status.textContent).toBe("");
-      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
-        { id: "hoodie-small-indigo", quantity: 3 },
-        { id: "hoodie-xl-vermilion", quantity: 3 },
-      ]);
-
-      // Even if someone removes disabled, sellable="false" still blocks single-add
-      addButton.disabled = false;
-      addButton.click();
-      expect(loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store).intent.lines).toEqual([
-        { id: "hoodie-small-indigo", quantity: 3 },
-        { id: "hoodie-xl-vermilion", quantity: 3 },
-      ]);
-
-      expect(navBadge.textContent).toBe("6");
-    } finally {
-      vi.unstubAllGlobals();
-    }
   });
 });
 

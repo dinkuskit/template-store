@@ -20,7 +20,7 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/llms-full.txt",
   "/agents.md",
   "/api/guest-cart/snapshot",
-  "/api/checkout/status",
+  "/cart.js",
   "/shipping",
   "/returns",
   "/search",
@@ -52,12 +52,14 @@ export function isStorefrontPagePath(pathname: string): boolean {
 }
 
 const GUEST_CHECKOUT_POST_PATH =
-  new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/checkout/guest/(prepare|start|status)$`);
+  new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/checkout/guest/(prepare|cart|start)$`);
 const SHOPPER_ACCOUNT_POST_PATH =
   new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/account/(sign-in/start|sign-in/verify|sign-out|profile)$`);
 const SHOPPER_ACCOUNT_GET_PATH =
   new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/account/(orders|profile)$`);
-const LOCAL_CHECKOUT_STATUS_POST_PATH = /^\/api\/checkout\/status$/;
+// The store site's own cart and checkout forms (template-cart-real-form-20261113), Shopify's paths.
+const STORE_CART_POST_PATH = /^\/cart\/(?:(?:add|change)(?:\.js)?|update\.js)$/;
+const STORE_CHECKOUT_FORM_PATH = /^\/checkout$/;
 const LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH = /^\/api\/account\/demo-session$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 
@@ -282,7 +284,8 @@ export function evaluatePublicBoundary(
   const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
   const isShopperAccountPost = pathForms.some((path) => SHOPPER_ACCOUNT_POST_PATH.test(path));
   const isShopperAccountGet = pathForms.some((path) => SHOPPER_ACCOUNT_GET_PATH.test(path));
-  const isLocalCheckoutStatusPost = pathForms.some((path) => LOCAL_CHECKOUT_STATUS_POST_PATH.test(path));
+  const isStoreFormPost = normalizedMethod === "POST" &&
+    pathForms.some((path) => STORE_CART_POST_PATH.test(path) || STORE_CHECKOUT_FORM_PATH.test(path));
   const isLocalAccountDemoSessionPost = pathForms.some((path) => LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH.test(path));
   const isAllowedEmdashAdminRequest = allowEmdashAdmin;
 
@@ -290,7 +293,7 @@ export function evaluatePublicBoundary(
   // Commerce guest and shopper account POSTs admitted below.
   if (
     !isAllowedEmdashAdminRequest &&
-    ((normalizedMethod === "POST" && !isGuestCheckoutPost && !isShopperAccountPost && !isLocalCheckoutStatusPost && !isLocalAccountDemoSessionPost) ||
+    ((normalizedMethod === "POST" && !isGuestCheckoutPost && !isShopperAccountPost && !isStoreFormPost && !isLocalAccountDemoSessionPost) ||
       normalizedMethod === "PUT" ||
       normalizedMethod === "PATCH" ||
       normalizedMethod === "DELETE")
@@ -308,7 +311,7 @@ export function evaluatePublicBoundary(
     normalizedMethod !== "HEAD" &&
     !isGuestCheckoutPost &&
     !isShopperAccountPost &&
-    !isLocalCheckoutStatusPost &&
+    !isStoreFormPost &&
     !isLocalAccountDemoSessionPost
   ) {
     return {
@@ -339,7 +342,10 @@ export function evaluatePublicBoundary(
     }
     return { allowed: false, status: 405, reason: "Method not allowed." };
   }
-  if (LOCAL_CHECKOUT_STATUS_POST_PATH.test(decodedPath) || LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH.test(decodedPath)) {
+  if (STORE_CHECKOUT_FORM_PATH.test(decodedPath) && normalizedMethod === "POST") {
+    return { allowed: true, status: 200 };
+  }
+  if (STORE_CART_POST_PATH.test(decodedPath) || LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH.test(decodedPath)) {
     return normalizedMethod === "POST"
       ? { allowed: true, status: 200 }
       : { allowed: false, status: 405, reason: "Method not allowed." };

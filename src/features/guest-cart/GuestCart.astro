@@ -1,25 +1,77 @@
 ---
-import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON, GUEST_CHECKOUT_READY_LABEL } from "./index.js";
+import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON } from "./index.js";
 import type { GuestCheckoutAdmission } from "./index.js";
+import { loadServerCartPage } from "./server-view.js";
+import { GUEST_CART_MAX_QUANTITY } from "./intent.js";
 
 interface Props {
   checkoutAdmission?: GuestCheckoutAdmission | null;
 }
 
 const { checkoutAdmission = null } = Astro.props;
+// Drawn on the server from Commerce's cart (template-cart-real-form-20261113): it works with script off, and the
+// page script only swaps in a fresh copy of this section after a change.
+const page = await loadServerCartPage(
+  { locals: Astro.locals, request: Astro.request, url: Astro.url, cookies: Astro.cookies },
+  Boolean(checkoutAdmission),
+);
+const { view } = page;
+const canCheckout = view.checkoutEnabled && !page.openPayment;
 ---
-<section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart data-guest-cart-page="cart" data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"}>
+<section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart data-guest-cart-page="cart" data-server-cart data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"} data-cart-count={String(page.result.cart?.itemCount ?? 0)}>
   <h1 id="guest-cart-title">Cart</h1>
-  <p data-guest-cart-status role="status" hidden></p>
-  <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. Listed shop products can be added when they are currently priced and sellable.</p>
-  <div data-guest-cart-lines></div>
-  <p class="guest-cart-subtotal" data-guest-cart-subtotal hidden>Subtotal <strong data-guest-cart-subtotal-amount></strong></p>
+  {page.notice && <p data-guest-cart-status role="status">{page.notice}</p>}
+  {page.error && <p data-guest-cart-status role="alert">{page.error}</p>}
+  {view.snapshotError && <p data-guest-cart-status role="alert">{view.snapshotError}</p>}
+  {view.empty && <p data-guest-cart-empty tabindex="-1">Your cart is empty. <a href="/">Continue shopping</a>.</p>}
+  <div data-guest-cart-lines>
+    {view.lines.map((line) => (
+      <article data-guest-cart-line={line.id}>
+        <div class="guest-cart-line-media" data-guest-cart-line-thumbnail data-guest-cart-line-media>
+          {line.thumbnail
+            ? <img data-guest-cart-thumbnail-img src={line.thumbnail.src} alt={line.thumbnail.alt} width="160" height="120" loading="lazy" />
+            : <p data-guest-cart-thumbnail-placeholder>No image</p>}
+        </div>
+        <div data-guest-cart-line-copy>
+          <h2>{line.name}</h2>
+          {line.sku && <p data-guest-cart-sku>SKU: {line.sku}</p>}
+          {line.saleText && line.regularText
+            ? <p class="price"><s data-regular-price>{line.regularText}</s><strong data-sale-price>{line.saleText}</strong></p>
+            : line.regularText && <p class="price"><strong data-regular-price>{line.regularText}</strong></p>}
+          {line.lineTotalText && <p data-guest-cart-line-total>Line total <strong>{line.lineTotalText}</strong></p>}
+          {line.availabilityLabel && <p data-commerce-availability>{line.availabilityLabel}</p>}
+          {line.reason && <p data-guest-cart-line-reason={line.reasonCode ?? ""}>{line.reason}</p>}
+        </div>
+        <form class="guest-cart-qty" method="post" action="/cart/change" data-cart-change-form>
+          <input type="hidden" name="id" value={line.id} />
+          <label for={`guest-cart-qty-${line.id}`}>Quantity</label>
+          <input id={`guest-cart-qty-${line.id}`} name="quantity" data-guest-cart-qty={line.id} type="number" inputmode="numeric"
+            min="1" max={String(GUEST_CART_MAX_QUANTITY)} aria-label={`Quantity for ${line.name}`} value={String(line.quantity)} disabled={Boolean(page.openPayment)} />
+          <button type="submit" data-guest-cart-update={line.id} disabled={Boolean(page.openPayment)}>Update</button>
+        </form>
+        <form method="post" action="/cart/change" data-cart-change-form>
+          <input type="hidden" name="id" value={line.id} />
+          <input type="hidden" name="quantity" value="0" />
+          <button type="submit" data-guest-cart-remove={line.id} aria-label={`Remove ${line.name}`} disabled={Boolean(page.openPayment)}>Remove</button>
+        </form>
+      </article>
+    ))}
+  </div>
+  {view.subtotalText && <p class="guest-cart-subtotal" data-guest-cart-subtotal>Subtotal <strong data-guest-cart-subtotal-amount>{view.subtotalText}</strong></p>}
   <div class="guest-cart-checkout">
-    <button type="button" data-guest-cart-checkout data-guest-cart-proceed disabled>{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
-    <p data-guest-cart-checkout-reason>{checkoutAdmission ? "" : GUEST_CHECKOUT_REASON}</p>
-    <button type="button" data-guest-cart-retry hidden>Try again</button>
-    <a data-guest-cart-resume hidden rel="noopener noreferrer">Return to secure checkout</a>
-    <button type="button" data-guest-cart-recover hidden>Check checkout status</button>
+    {page.openPayment ? (
+      <>
+        <a data-guest-cart-resume href={page.openPayment} rel="noopener noreferrer">Return to secure checkout</a>
+        <p data-guest-cart-checkout-reason>Your payment is open, so this cart is held. Finish paying, or it opens again when the payment expires.</p>
+      </>
+    ) : canCheckout ? (
+      <a class="guest-cart-checkout__go" data-guest-cart-checkout data-guest-cart-proceed href="/checkout">{view.checkoutLabel}</a>
+    ) : (
+      <>
+        <button type="button" data-guest-cart-checkout data-guest-cart-proceed disabled>{checkoutAdmission ? view.checkoutLabel : GUEST_CHECKOUT_LABEL}</button>
+        <p data-guest-cart-checkout-reason>{checkoutAdmission ? view.checkoutReason : GUEST_CHECKOUT_REASON}</p>
+      </>
+    )}
   </div>
 </section>
 <style>
@@ -28,36 +80,30 @@ const { checkoutAdmission = null } = Astro.props;
   [data-guest-cart-status],[data-guest-cart-empty],[data-guest-cart-checkout-reason]{color:var(--store-muted);line-height:1.5}
   [data-guest-cart-status][role="alert"]{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
   [data-guest-cart-lines]{display:grid;gap:1rem;margin:1.5rem 0}
-  .guest-cart-subtotal[hidden]{display:none}
   .guest-cart-subtotal{display:flex;justify-content:space-between;gap:1rem;max-width:32rem;margin:1rem 0 0;padding-top:1rem;border-top:1px solid var(--store-line);font-size:1.25rem;font-variant-numeric:tabular-nums}
-  .guest-cart-subtotal strong{font-family:var(--font-mono);font-variant-numeric:tabular-nums;transition:color .22s ease,transform .22s cubic-bezier(.22,1,.36,1);display:inline-block}
-  .guest-cart-subtotal strong[data-number-flow-ticking="true"]{color:var(--store-accent);transform:translateY(-1px)}
+  .guest-cart-subtotal strong{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
   .guest-cart-checkout{margin-top:2rem}
-  .guest-cart-checkout button{margin:.4rem .6rem .4rem 0;padding:.75rem 1.1rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);color:inherit;font:inherit;font-weight:800;box-shadow:3px 3px 0 var(--store-shadow);cursor:pointer}
-  .guest-cart-checkout [data-guest-cart-checkout]:not(:disabled){background:var(--dinkus-action-background);color:var(--dinkus-action-color);border-color:var(--dinkus-action-background)}
-  .guest-cart-checkout [data-guest-cart-resume]{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);color:inherit;font-weight:800;text-decoration:underline;text-underline-offset:.2em}
-  .guest-cart-checkout [data-guest-cart-resume][hidden]{display:none}
+  .guest-cart-checkout button,.guest-cart-checkout a{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.75rem 1.1rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);color:inherit;font:inherit;font-weight:800;box-shadow:3px 3px 0 var(--store-shadow);cursor:pointer;text-decoration:none}
+  .guest-cart-checkout .guest-cart-checkout__go{background:var(--dinkus-action-background);color:var(--dinkus-action-color);border-color:var(--dinkus-action-background)}
+  .guest-cart-checkout [data-guest-cart-resume]{text-decoration:underline;text-underline-offset:.2em}
   [data-guest-cart-checkout]:disabled{color:var(--store-muted);box-shadow:none;cursor:not-allowed}
-  .guest-cart :global([data-guest-cart-line]){display:grid;grid-template-columns:auto minmax(0,1fr);gap:1rem 1.25rem;align-items:start;padding:1.5rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow);min-width:0;overflow-wrap:anywhere}
-  .guest-cart :global(.guest-cart-line-media){width:clamp(5.5rem,18vw,8.5rem);aspect-ratio:4/3;box-sizing:border-box;padding:.35rem;border:1.5px solid var(--store-ink-border);border-radius:.65rem;background:#f7f4ec;box-shadow:inset 0 0 0 1px rgba(25,25,22,.06);overflow:hidden}
-  .guest-cart :global(.guest-cart-line-media img){display:block;width:100%;height:100%;object-fit:cover;border-radius:.4rem;background:#e9e8df}
-  .guest-cart :global([data-guest-cart-thumbnail-placeholder]){display:grid;place-items:center;height:100%;margin:0;border-radius:.4rem;background:#e9e8df;color:var(--store-muted);font-size:.85rem;font-weight:700;text-align:center}
-  .guest-cart :global([data-guest-cart-line-copy]){min-width:0}
-  .guest-cart :global([data-guest-cart-line] h2){font-size:1.5rem;margin:0 0 1rem}
-  .guest-cart :global(.price){display:flex;gap:.65rem;flex-wrap:wrap;font-size:1.4rem}
-  .guest-cart :global(s){color:var(--store-muted)}
-  .guest-cart :global([data-guest-cart-line-reason]){color:var(--store-muted);line-height:1.5}
-  .guest-cart :global(.guest-cart-qty){grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.25rem 0 0;min-width:0}
-  .guest-cart :global([data-guest-cart-qty]){width:4.5rem;max-width:100%;padding:.45rem .55rem;border:1px solid var(--store-line);border-radius:.4rem;font:inherit;background:var(--store-surface)}
-  .guest-cart :global([data-guest-cart-remove]){grid-column:1/-1;justify-self:start;padding:.7rem 1rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
-  .guest-cart :global([data-guest-cart-qty]:focus-visible),
-  .guest-cart :global([data-guest-cart-remove]:focus-visible),
-  .guest-cart :global([data-guest-cart-retry]:focus-visible),
-  .guest-cart :global([data-guest-cart-resume]:focus-visible),
-  .guest-cart :global([data-guest-cart-empty]:focus-visible){outline:3px solid #215cc8;outline-offset:3px}
-  @media(max-width:45rem){.guest-cart :global([data-guest-cart-line]),.guest-cart :global(.guest-cart-qty){min-width:0}}
+  [data-guest-cart-line]{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1rem 1.25rem;align-items:start;padding:1.5rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow);min-width:0;overflow-wrap:anywhere}
+  .guest-cart-line-media{width:clamp(5.5rem,18vw,8.5rem);aspect-ratio:4/3;box-sizing:border-box;padding:.35rem;border:1.5px solid var(--store-ink-border);border-radius:.65rem;background:#f7f4ec;box-shadow:inset 0 0 0 1px rgba(25,25,22,.06);overflow:hidden}
+  .guest-cart-line-media img{display:block;width:100%;height:100%;object-fit:cover;border-radius:.4rem;background:#e9e8df}
+  [data-guest-cart-thumbnail-placeholder]{display:grid;place-items:center;height:100%;margin:0;border-radius:.4rem;background:#e9e8df;color:var(--store-muted);font-size:.85rem;font-weight:700;text-align:center}
+  [data-guest-cart-line-copy]{min-width:0}
+  [data-guest-cart-line] h2{font-size:1.5rem;margin:0 0 1rem}
+  .price{display:flex;gap:.65rem;flex-wrap:wrap;font-size:1.4rem}
+  s{color:var(--store-muted)}
+  [data-guest-cart-line-reason]{color:var(--store-muted);line-height:1.5}
+  .guest-cart-qty{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.25rem 0 0;min-width:0}
+  [data-guest-cart-qty]{width:4.5rem;max-width:100%;padding:.45rem .55rem;border:1px solid var(--store-line);border-radius:.4rem;font:inherit;background:var(--store-surface)}
+  [data-guest-cart-line] form button{padding:.6rem .9rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
+  [data-guest-cart-line] form:last-child{grid-column:1/-1;justify-self:start}
+  [data-guest-cart-line] button:disabled,[data-guest-cart-qty]:disabled{opacity:.5;cursor:not-allowed}
+  [data-guest-cart-qty]:focus-visible,[data-guest-cart-line] button:focus-visible,[data-guest-cart-resume]:focus-visible,[data-guest-cart-empty]:focus-visible{outline:3px solid #215cc8;outline-offset:3px}
 </style>
 <script>
-  import { hydrateGuestCartPage } from "./guest-cart-client.ts";
-  hydrateGuestCartPage();
+  import { hydrateServerCartForms } from "./cart-script.ts";
+  hydrateServerCartForms();
 </script>

@@ -11,7 +11,7 @@
  * - PLAYGROUND_CHECKOUT_LIMITER   ratelimit binding, 3 checkout starts per 10 minutes per visitor IP.
  * - EMDASH_SITE_URL               var    Canonical store origin the paid return is confirmed against, e.g.
  *                                        https://playground.dinkuskit.com (bare https origin, no path). Not a
- *                                        secret. /api/checkout/status refuses every return without it, so
+ *                                        secret. The server cart refuses every Commerce call without it, so
  *                                        checkout is not admitted until it is set. http://127.0.0.1 or
  *                                        http://localhost is accepted only under DINKUS_LOCAL_PROOF="1".
  */
@@ -84,10 +84,10 @@ export const SITE_URL_ENV = "EMDASH_SITE_URL";
 const LOCAL_PROOF_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 /**
- * The canonical return origin /api/checkout/status trusts (EMDASH_SITE_URL),
- * or null when it is absent or not a bare origin. Production needs https; a
+ * The canonical store origin the server cart trusts (EMDASH_SITE_URL), or
+ * null when it is absent or not a bare origin. Production needs https; a
  * loopback http origin is accepted only for the local proof harness. The
- * status route keeps its own origin checks against this same value.
+ * server cart sends this origin, never the request's Host, to Commerce.
  */
 export function readTrustedReturnOrigin(env: EnvLike = process.env): string | null {
   const raw = env[SITE_URL_ENV];
@@ -215,15 +215,16 @@ export function showsSandboxCheckoutNotice(input: CheckoutGateInput): boolean {
 }
 
 export const GUEST_CHECKOUT_PATH =
-  new RegExp(`^/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/(prepare|start|status)$`, "u");
+  new RegExp(`^/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/checkout/guest/(prepare|cart|start)$`, "u");
 
 export const MAX_CHECKOUT_BODY_BYTES = 4 * 1024;
-const MAX_ATTEMPT_ID_LENGTH = 256;
+const MAX_VERSION_LENGTH = 256;
+const MAX_CART_KEY_LENGTH = 128;
 const MAX_COUPON_LENGTH = 128;
 const CONTACT_FIELDS = new Set(["email", "delivery", "billing"]);
 const DELIVERY_FIELDS = new Set(["name", "line1", "line2", "city", "region", "postalCode", "country"]);
 
-export type CheckoutRouteKind = "prepare" | "start" | "status";
+export type CheckoutRouteKind = "prepare" | "cart" | "start";
 
 export function checkoutRouteKind(pathname: string): CheckoutRouteKind | null {
   const match = GUEST_CHECKOUT_PATH.exec(pathname);
@@ -238,7 +239,7 @@ export function playgroundCheckoutAdmission(isPlayground: boolean, configured: b
   if (!isPlayground || !configured) return null;
   return {
     pluginId: COMMERCE_REGISTRY_RUNTIME_ID as typeof COMMERCE_REGISTRY_RUNTIME_ID,
-    routes: ["checkout/guest/prepare", "checkout/guest/start", "checkout/guest/status"] as const,
+    routes: ["checkout/guest/prepare", "checkout/guest/cart", "checkout/guest/start"] as const,
     catalog: { pluginId: COMMERCE_REGISTRY_RUNTIME_ID as typeof COMMERCE_REGISTRY_RUNTIME_ID, sameCatalogNamespace: true as const, checkoutConfiguration: "supported" as const },
   };
 }
@@ -282,26 +283,29 @@ export function validateCheckoutBody(kind: CheckoutRouteKind, raw: string): { ok
   if (!isObject(body)) return { ok: false, reason: "malformed" };
   const keys = Object.keys(body);
   if (kind === "prepare") return keys.length === 0 ? { ok: true } : { ok: false, reason: "unexpected-field" };
-  if (kind === "status") {
-    if (!keys.every((key) => key === "attemptId")) return { ok: false, reason: "unexpected-field" };
-    return body.attemptId === undefined || boundedString(body.attemptId, MAX_ATTEMPT_ID_LENGTH)
-      ? { ok: true } : { ok: false, reason: "invalid-attempt" };
-  }
-  if (!keys.every((key) => key === "lines" || key === "couponCode" || key === "contact")) {
-    return { ok: false, reason: "unexpected-field" };
-  }
-  const lines = body.lines;
-  if (!Array.isArray(lines) || lines.length === 0 || lines.length > GUEST_CART_MAX_LINES) {
-    return { ok: false, reason: "invalid-lines" };
-  }
-  const seen = new Set<string>();
-  for (const line of lines) {
-    if (!isObject(line) || Object.keys(line).length !== 2 ||
-        !isSafeGuestCartProductId(line.catalogItemId) || !isSafeGuestCartQuantity(line.quantity) ||
-        seen.has(line.catalogItemId)) {
-      return { ok: false, reason: "invalid-lines" };
+  if (kind === "cart") {
+    // A read ({}) or a whole replacement ({lines, version}, plus an agent's retry key).
+    if (keys.length === 0) return { ok: true };
+    if (!keys.every((key) => key === "lines" || key === "version" || key === "key") ||
+        !keys.includes("lines") || !keys.includes("version")) return { ok: false, reason: "unexpected-field" };
+    if (body.version !== null && !boundedString(body.version, MAX_VERSION_LENGTH)) return { ok: false, reason: "invalid-version" };
+    if (body.key !== undefined && !boundedString(body.key, MAX_CART_KEY_LENGTH)) return { ok: false, reason: "invalid-key" };
+    const lines = body.lines;
+    if (!Array.isArray(lines) || lines.length > GUEST_CART_MAX_LINES) return { ok: false, reason: "invalid-lines" };
+    for (const line of lines) {
+      if (!isObject(line) || !isSafeGuestCartQuantity(line.quantity)) return { ok: false, reason: "invalid-lines" };
+      const lineKeys = Object.keys(line).sort().join(",");
+      const byItem = lineKeys === "catalogItemId,quantity" && isSafeGuestCartProductId(line.catalogItemId);
+      const byOptions = lineKeys === "options,productId,quantity" && isSafeGuestCartProductId(line.productId) &&
+        isObject(line.options) && Object.entries(line.options).length <= 8 &&
+        Object.entries(line.options).every(([label, choice]) => label.length <= 80 && boundedString(choice, 120));
+      if (!byItem && !byOptions) return { ok: false, reason: "invalid-lines" };
     }
-    seen.add(line.catalogItemId);
+    return { ok: true };
+  }
+  // Start buys the saved cart: only the shopper's contact (and, outside the Registry build, a coupon) goes with it.
+  if (!keys.every((key) => key === "couponCode" || key === "contact")) {
+    return { ok: false, reason: "unexpected-field" };
   }
   if (body.couponCode !== undefined && !boundedString(body.couponCode, MAX_COUPON_LENGTH)) {
     return { ok: false, reason: "invalid-coupon" };

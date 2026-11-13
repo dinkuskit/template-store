@@ -1,28 +1,12 @@
-import {
-  GUEST_CART_MAX_QUANTITY,
-  GUEST_CART_STORAGE_KEY,
-  addGuestCartLine,
-  emptyGuestCartIntent,
-  guestCartItemCount,
-  isSafeGuestCartProductId,
-  isSafeGuestCartQuantity,
-  removeGuestCartLine,
-  setGuestCartLineQuantity,
-  type GuestCartIntent,
-  type GuestCartLine,
-  type GuestCartReadNotice,
-} from "./intent.js";
-import {
-  parseGuestCartSnapshotResponse,
-  type GuestCartCatalogSnapshot,
-} from "./present.js";
-import {
-  loadGuestCartIntent,
-  readBrowserGuestCartStorage,
-  saveGuestCartIntent,
-  type GuestCartStoragePort,
-} from "./storage.js";
+import { GUEST_CART_MAX_LINES, GUEST_CART_MAX_QUANTITY } from "./intent.js";
+import { parseGuestCartSnapshotResponse, type GuestCartCatalogSnapshot } from "./present.js";
 
+/**
+ * Browser agent tools on the shopper's server cart (template-cart-agents-20261113). Every tool calls the store's
+ * own cart endpoints (/cart.js, /cart/update.js), so an agent sees and changes the very cart the shopper sees.
+ * The names follow Shopify's agent tools: get_cart, create_cart, update_cart, cancel_cart, show_variant and
+ * proceed_to_checkout. A write quotes the cart version it read; a stale version changes nothing.
+ */
 export const WEBMCP_REGISTRATION_SYMBOL = Symbol.for("dinkuskit.webmcp.registered");
 
 export const WEBMCP_ANTI_SCRAPE_NOTICE =
@@ -46,7 +30,7 @@ export type WebMcpToolDescriptor = Readonly<{
 
 export type ModelContextHost = {
   registerTool?: (tool: WebMcpToolDescriptor) => unknown;
-  [ WEBMCP_REGISTRATION_SYMBOL ]?: boolean;
+  [WEBMCP_REGISTRATION_SYMBOL]?: boolean;
 };
 
 export type DinkusCartLineSnapshot = Readonly<{
@@ -64,55 +48,32 @@ export type DinkusCartLineSnapshot = Readonly<{
 export type DinkusCartSnapshot = Readonly<{
   ok: true;
   untrustedContent: true;
+  /** Quote this on update_cart and cancel_cart; null for a cart that holds nothing yet. */
+  version: string | null;
   currency: string;
   itemCount: number;
   subtotalMinor: number | null;
   reviewFingerprint: string;
   lines: readonly DinkusCartLineSnapshot[];
-  storageNotice: GuestCartReadNotice | null;
+  /** A payment the shopper opened: the cart is held until it finishes or expires. */
+  checkoutOpen: boolean;
 }>;
 
-export type DinkusCartUpdatePatch = Readonly<{
-  mode?: "add" | "merge" | "replace";
-  clear?: boolean;
-  lines?: readonly Readonly<{ id: string; quantity: number }>[];
+export type DinkusCartLineInput = Readonly<
+  | { id: string; quantity: number }
+  | { productId: string; options: Readonly<Record<string, string>>; quantity: number }
+>;
+
+export type DinkusCartError = Readonly<{
+  ok: false;
+  code: string;
+  message: string;
+  instruction: string;
+  /** The cart as it stands now, when the store could read it. */
+  cart?: DinkusCartSnapshot;
 }>;
 
-export type DinkusCartUpdateResult =
-  | Readonly<{
-      ok: true;
-      untrustedContent: true;
-      cart: DinkusCartSnapshot;
-    }>
-  | Readonly<{
-      ok: false;
-      code:
-        | "INVALID_PATCH"
-        | "INVALID_PRODUCT_ID"
-        | "INVALID_QUANTITY"
-        | "CART_LINE_LIMIT"
-        | "STORAGE_UNAVAILABLE";
-      message: string;
-      instruction: string;
-    }>;
-
-export type DinkusCheckoutPreview = Readonly<{
-  ok: true;
-  untrustedContent: true;
-  currency: string;
-  itemCount: number;
-  reviewFingerprint: string;
-  reviewStatus: "empty_cart" | "buyer_review_required" | "buyer_reviewed";
-  totals: Readonly<{
-    subtotalMinor: number | null;
-    shippingMinor: number | null;
-    discountMinor: number;
-    taxMinor: number | null;
-    totalMinor: number | null;
-  }>;
-  lines: readonly DinkusCartLineSnapshot[];
-  continueUrl: "/checkout";
-}>;
+export type DinkusCartWriteResult = Readonly<{ ok: true; untrustedContent: true; cart: DinkusCartSnapshot }> | DinkusCartError;
 
 export type DinkusCheckoutProceedResult =
   | Readonly<{
@@ -121,688 +82,359 @@ export type DinkusCheckoutProceedResult =
       untrustedContent: true;
       reviewFingerprint: string;
       continueUrl: "/checkout";
-      totals: DinkusCheckoutPreview["totals"];
+      subtotalMinor: number;
       instruction: string;
     }>
-  | Readonly<{
-      ok: false;
-      code: "EMPTY_CART" | "UNSELLABLE_LINE" | "PRICE_UNAVAILABLE";
-      message: string;
-      instruction: string;
-    }>;
+  | DinkusCartError;
 
 export type DinkusStorefrontActions = Readonly<{
-  getCart: (options?: Readonly<{ includeCatalog?: boolean }>) => Promise<DinkusCartSnapshot>;
-  updateCart: (patch: DinkusCartUpdatePatch) => Promise<DinkusCartUpdateResult>;
+  getCart: () => Promise<DinkusCartSnapshot | DinkusCartError>;
+  createCart: (lines: readonly DinkusCartLineInput[]) => Promise<DinkusCartWriteResult>;
+  updateCart: (input: Readonly<{ version: string | null; lines: readonly DinkusCartLineInput[]; key?: string }>) => Promise<DinkusCartWriteResult>;
+  cancelCart: (input: Readonly<{ version: string | null }>) => Promise<DinkusCartWriteResult>;
+  showVariant: (input: Readonly<{ productId: string; variantId?: string }>) => Readonly<{ ok: true; url: string }> | DinkusCartError;
   openCart: () => void;
-  getCheckoutPreview: () => Promise<DinkusCheckoutPreview>;
-  proceedToCheckout: (input?: Readonly<{
-    buyerConfirmed?: boolean;
-    reviewFingerprint?: string;
-  }>) => Promise<DinkusCheckoutProceedResult>;
+  proceedToCheckout: (input?: Readonly<{ buyerConfirmed?: boolean; reviewFingerprint?: string }>) => Promise<DinkusCheckoutProceedResult>;
+}>;
+
+type CartWire = Readonly<{
+  ok?: boolean;
+  cart?: { lines?: { catalogItemId: string; quantity: number }[]; version?: string | null; itemCount?: number };
+  checkout?: { open?: boolean };
+  error?: { code?: string; message?: string };
 }>;
 
 export type StorefrontWebMcpEnvironment = Readonly<{
-  storage?: GuestCartStoragePort | null;
+  fetch?: (input: string, init?: RequestInit) => Promise<Response>;
   fetchSnapshot?: (ids: readonly string[]) => Promise<readonly GuestCartCatalogSnapshot[] | null>;
   navigate?: (path: string) => void;
-  dispatchEvent?: (eventName: string, detail: unknown) => void;
+  /** Called with the new item count after every write, so the page's cart badge follows. */
+  onCartChanged?: (count: number) => void;
   modelContext?: ModelContextHost | null;
   globalTarget?: Record<string, unknown> | null;
 }>;
 
-export function computeCartReviewFingerprint(
-  intent: GuestCartIntent,
-  resolved?: Readonly<{
-    currency?: string;
-    subtotalMinor?: number | null;
-    lines?: readonly DinkusCartLineSnapshot[];
-  }>,
-): string {
-  if (intent.lines.length === 0) return "cart:empty";
-  const resolvedById = new Map<string, DinkusCartLineSnapshot>();
-  if (resolved?.lines) {
-    for (const line of resolved.lines) {
-      resolvedById.set(line.id, line);
-    }
-  }
-  const canonicalLines = [...intent.lines]
-    .sort((left, right) => left.id.localeCompare(right.id))
-    .map((line) => {
-      const snap = resolvedById.get(line.id);
-      if (!snap) {
-        return `${line.id}:${line.quantity}:unquoted`;
-      }
-      return [
-        line.id,
-        String(line.quantity),
-        snap.unitPriceMinor !== null ? String(snap.unitPriceMinor) : "unpriced",
-        snap.lineSubtotalMinor !== null ? String(snap.lineSubtotalMinor) : "unpriced",
-        snap.sellable !== null ? String(snap.sellable) : "unknown",
-        snap.fulfillment ?? "unknown",
-        snap.currency,
-      ].join(":");
-    })
-    .join("|");
-  const subtotalToken =
-    resolved && resolved.subtotalMinor !== undefined && resolved.subtotalMinor !== null
-      ? String(resolved.subtotalMinor)
-      : "unpriced";
-  const currencyToken = resolved?.currency ?? "USD";
-  const canonical = `${canonicalLines}|currency=${currencyToken}|subtotal=${subtotalToken}`;
+const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+
+function fail(code: string, message: string, cart?: DinkusCartSnapshot): DinkusCartError {
+  return { ok: false, code, message, instruction: WEBMCP_ANTI_SCRAPE_NOTICE, ...(cart ? { cart } : {}) };
+}
+
+function fingerprint(version: string | null, lines: readonly DinkusCartLineSnapshot[], subtotal: number | null): string {
+  if (!lines.length) return "cart:empty";
+  const canonical = `${version}|${lines.map((line) => `${line.id}:${line.quantity}:${line.unitPriceMinor ?? "unpriced"}:${line.sellable}`).join("|")}|${subtotal ?? "unpriced"}`;
   let hash = 2166136261;
   for (let index = 0; index < canonical.length; index += 1) {
     hash ^= canonical.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return `cart:${(hash >>> 0).toString(16).padStart(8, "0")}:${intent.lines.length}`;
+  return `cart:${(hash >>> 0).toString(16).padStart(8, "0")}:${lines.length}`;
 }
 
-async function defaultFetchCatalogSnapshots(
-  ids: readonly string[],
-): Promise<readonly GuestCartCatalogSnapshot[] | null> {
-  if (ids.length === 0 || typeof fetch !== "function") return [];
+function minor(value: string | null | undefined): number | null {
+  if (typeof value !== "string" || !/^\d+$/u.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function snapshotOf(wire: CartWire, catalog: readonly GuestCartCatalogSnapshot[] | null): DinkusCartSnapshot {
+  const byId = new Map((catalog ?? []).map((entry) => [entry.id, entry]));
+  const version = wire.cart?.version ?? null;
+  let subtotal: number | null = 0;
+  const lines = (wire.cart?.lines ?? []).map((line): DinkusCartLineSnapshot => {
+    const snap = byId.get(line.catalogItemId);
+    const unit = snap?.found ? minor(snap.price.unitMinor) : null;
+    const lineMinor = unit !== null && Number.isSafeInteger(unit * line.quantity) ? unit * line.quantity : null;
+    subtotal = lineMinor === null || subtotal === null ? null : subtotal + lineMinor;
+    return {
+      id: line.catalogItemId,
+      quantity: line.quantity,
+      name: snap?.found ? snap.name : null,
+      sku: snap?.found ? snap.sku : null,
+      fulfillment: snap?.found ? snap.fulfillment ?? null : null,
+      sellable: snap ? snap.found && snap.availability.sellable && snap.price.listable : null,
+      unitPriceMinor: unit,
+      lineSubtotalMinor: lineMinor,
+      currency: "USD",
+    };
+  });
+  return Object.freeze({
+    ok: true,
+    untrustedContent: true,
+    version,
+    currency: "USD",
+    itemCount: lines.reduce((sum, line) => sum + line.quantity, 0),
+    subtotalMinor: subtotal,
+    reviewFingerprint: fingerprint(version, lines, subtotal),
+    lines: Object.freeze(lines),
+    checkoutOpen: wire.checkout?.open === true,
+  });
+}
+
+async function defaultFetchSnapshot(ids: readonly string[]): Promise<readonly GuestCartCatalogSnapshot[] | null> {
+  if (!ids.length) return [];
   try {
-    const response = await fetch(
-      `/api/guest-cart/snapshot?ids=${encodeURIComponent(ids.join(","))}`,
-      {
-        headers: { accept: "application/json" },
-        signal: AbortSignal.timeout(10_000),
-      },
-    );
-    if (!response.ok) return null;
-    return parseGuestCartSnapshotResponse(await response.json());
+    const response = await fetch(`/api/guest-cart/snapshot?ids=${encodeURIComponent(ids.join(","))}`, {
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    return response.ok ? parseGuestCartSnapshotResponse(await response.json()) : null;
   } catch {
     return null;
   }
 }
 
-function defaultEmitEvent(eventName: string, detail: unknown): void {
-  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
-    window.dispatchEvent(new CustomEvent(eventName, { detail }));
-  }
-}
-
-function defaultNavigate(path: string): void {
-  if (typeof window !== "undefined" && window.location && typeof window.location.assign === "function") {
-    window.location.assign(path);
-  }
-}
-
-function parseMinorUnit(minorText: string | null | undefined): number | null {
-  if (typeof minorText !== "string" || !/^\d+$/u.test(minorText)) return null;
-  const parsed = Number(minorText);
-  return Number.isSafeInteger(parsed) ? parsed : null;
-}
-
-function buildCartSnapshot(
-  intent: GuestCartIntent,
-  notice: GuestCartReadNotice | null,
-  catalogSnapshots: readonly GuestCartCatalogSnapshot[] | null,
-): DinkusCartSnapshot {
-  const byId = new Map<string, GuestCartCatalogSnapshot>();
-  if (catalogSnapshots) {
-    for (const entry of catalogSnapshots) {
-      byId.set(entry.id, entry);
+function lineInputs(value: unknown): { catalogItemId?: string; productId?: string; options?: Record<string, string>; quantity: number }[] | string {
+  if (!Array.isArray(value)) return "Cart lines must be an array of { id, quantity } or { productId, options, quantity } entries.";
+  if (value.length > GUEST_CART_MAX_LINES) return `A cart holds up to ${GUEST_CART_MAX_LINES} lines.`;
+  const lines = [];
+  for (const raw of value) {
+    const line = (raw ?? {}) as { id?: unknown; productId?: unknown; options?: unknown; quantity?: unknown };
+    const quantity = line.quantity;
+    if (typeof quantity !== "number" || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > GUEST_CART_MAX_QUANTITY) {
+      return `Quantity must be a whole number from 1 to ${GUEST_CART_MAX_QUANTITY}; omit a line to remove it.`;
     }
-  }
-  let subtotalMinor: number | null = intent.lines.length === 0 ? 0 : 0;
-  const lines: DinkusCartLineSnapshot[] = intent.lines.map((line: GuestCartLine) => {
-    const snap = byId.get(line.id);
-    if (!snap || !snap.found) {
-      subtotalMinor = null;
-      return {
-        id: line.id,
-        quantity: line.quantity,
-        name: null,
-        sku: null,
-        fulfillment: null,
-        sellable: snap ? false : null,
-        unitPriceMinor: null,
-        lineSubtotalMinor: null,
-        currency: "USD",
-      };
-    }
-    const unitMinor = parseMinorUnit(snap.price.unitMinor);
-    const lineMinor =
-      unitMinor !== null && Number.isSafeInteger(unitMinor * line.quantity)
-        ? unitMinor * line.quantity
-        : null;
-    if (lineMinor === null || subtotalMinor === null) {
-      subtotalMinor = null;
+    if (typeof line.id === "string" && SAFE_ID.test(line.id.trim())) {
+      lines.push({ catalogItemId: line.id.trim(), quantity });
+    } else if (typeof line.productId === "string" && SAFE_ID.test(line.productId.trim()) && line.options &&
+        typeof line.options === "object" && !Array.isArray(line.options) &&
+        Object.values(line.options).every((choice) => typeof choice === "string")) {
+      lines.push({ productId: line.productId.trim(), options: line.options as Record<string, string>, quantity });
     } else {
-      subtotalMinor += lineMinor;
+      return "Each cart line needs a Commerce item id, or a productId with its options (for example { Size: \"M\" }).";
     }
-    return {
-      id: line.id,
-      quantity: line.quantity,
-      name: snap.name,
-      sku: snap.sku,
-      fulfillment: snap.fulfillment ?? null,
-      sellable: snap.availability.sellable && snap.price.listable,
-      unitPriceMinor: unitMinor,
-      lineSubtotalMinor: lineMinor,
-      currency: "USD",
-    };
-  });
-
-  return Object.freeze({
-    ok: true,
-    untrustedContent: true,
-    currency: "USD",
-    itemCount: guestCartItemCount(intent),
-    subtotalMinor,
-    reviewFingerprint: computeCartReviewFingerprint(intent, {
-      currency: "USD",
-      subtotalMinor,
-      lines,
-    }),
-    lines: Object.freeze(lines),
-    storageNotice: notice,
-  });
-}
-
-function intentLinesKey(intent: GuestCartIntent): string {
-  return intent.lines.map((line) => `${line.id}:${line.quantity}`).join("|");
-}
-
-function notifyNativeCartListeners(): void {
-  if (typeof document !== "undefined" && typeof document.dispatchEvent === "function") {
-    document.dispatchEvent(new CustomEvent("guest-cart-updated"));
-    document.dispatchEvent(new CustomEvent("dinkus:guest-cart-hydrate"));
   }
+  return lines;
 }
 
-export function createStorefrontActions(
-  env: StorefrontWebMcpEnvironment = {},
-): DinkusStorefrontActions {
-  const resolveStorage = (): GuestCartStoragePort | null =>
-    env.storage !== undefined ? env.storage : readBrowserGuestCartStorage();
-  const fetchSnapshot = env.fetchSnapshot ?? defaultFetchCatalogSnapshots;
-  const emit = env.dispatchEvent ?? defaultEmitEvent;
-  const navigate = env.navigate ?? defaultNavigate;
+export function createStorefrontActions(env: StorefrontWebMcpEnvironment = {}): DinkusStorefrontActions {
+  const send = env.fetch ?? ((input: string, init?: RequestInit) => fetch(input, init));
+  const fetchSnapshot = env.fetchSnapshot ?? defaultFetchSnapshot;
+  const navigate = env.navigate ?? ((path: string) => window.location.assign(path));
+  const changed = env.onCartChanged ?? (() => {});
+  // proceed_to_checkout's first call records the fingerprint the shopper must review.
+  let pendingReview: string | null = null;
 
-  let pendingReviewFingerprint: string | null = null;
-  let confirmedReviewFingerprint: string | null = null;
-  let reviewedIntentKey: string | null = null;
-
-  if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
-    document.addEventListener("guest-cart-updated", () => {
-      const currentKey = intentLinesKey(
-        loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
-      );
-      if (reviewedIntentKey !== null && currentKey !== reviewedIntentKey) {
-        pendingReviewFingerprint = null;
-        confirmedReviewFingerprint = null;
-        reviewedIntentKey = null;
-      }
-    });
-  }
-
-  const getCart = async (
-    options?: Readonly<{ includeCatalog?: boolean }>,
-  ): Promise<DinkusCartSnapshot> => {
-    let loaded = loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage());
-    const includeCatalog = options?.includeCatalog !== false;
-    if (!includeCatalog || loaded.intent.lines.length === 0) {
-      return buildCartSnapshot(loaded.intent, loaded.notice, null);
+  const call = async (path: string, init?: RequestInit): Promise<CartWire | null> => {
+    try {
+      const response = await send(path, {
+        ...init,
+        headers: { accept: "application/json", ...(init?.body ? { "content-type": "application/json" } : {}) },
+        credentials: "same-origin",
+      });
+      const body = await response.json().catch(() => null) as CartWire | null;
+      return body && typeof body === "object" ? body : null;
+    } catch {
+      return null;
     }
-    let snapshots = await fetchSnapshot(loaded.intent.lines.map((line) => line.id));
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      const latest = loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage());
-      if (intentLinesKey(latest.intent) === intentLinesKey(loaded.intent)) {
-        loaded = latest;
-        break;
-      }
-      pendingReviewFingerprint = null;
-      confirmedReviewFingerprint = null;
-      reviewedIntentKey = null;
-      loaded = latest;
-      if (loaded.intent.lines.length === 0) {
-        snapshots = null;
-        break;
-      }
-      snapshots = await fetchSnapshot(loaded.intent.lines.map((line) => line.id));
-    }
-    return buildCartSnapshot(loaded.intent, loaded.notice, snapshots);
   };
 
-  const updateCart = async (
-    patch: DinkusCartUpdatePatch,
-  ): Promise<DinkusCartUpdateResult> => {
-    if (!patch || typeof patch !== "object") {
-      const error: DinkusCartUpdateResult = {
-        ok: false,
-        code: "INVALID_PATCH",
-        message: "Cart update requires a structured patch object.",
-        instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-      };
-      emit("dinkus:cart:error", error);
-      return error;
+  const withCatalog = async (wire: CartWire): Promise<DinkusCartSnapshot> =>
+    snapshotOf(wire, await fetchSnapshot((wire.cart?.lines ?? []).map((line) => line.catalogItemId)));
+
+  const getCart = async (): Promise<DinkusCartSnapshot | DinkusCartError> => {
+    const wire = await call("/cart.js");
+    if (!wire) return fail("UNAVAILABLE", "The cart is unavailable right now. Try again in a moment.");
+    if (wire.ok === false && wire.error?.code !== "NO_CART") {
+      return fail(wire.error?.code ?? "UNAVAILABLE", wire.error?.message ?? "The cart could not be read.");
     }
-
-    if (patch.mode === "replace" && patch.clear !== true && !Array.isArray(patch.lines)) {
-      const error: DinkusCartUpdateResult = {
-        ok: false,
-        code: "INVALID_PATCH",
-        message: "Cart lines must be an array of { id, quantity } entries.",
-        instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-      };
-      emit("dinkus:cart:error", error);
-      return error;
-    }
-
-    const store = resolveStorage();
-    const loaded = loadGuestCartIntent(GUEST_CART_STORAGE_KEY, store);
-    let current: GuestCartIntent =
-      patch.clear === true || patch.mode === "replace"
-        ? emptyGuestCartIntent()
-        : loaded.intent;
-
-    if (patch.lines !== undefined) {
-      if (!Array.isArray(patch.lines)) {
-        const error: DinkusCartUpdateResult = {
-          ok: false,
-          code: "INVALID_PATCH",
-          message: "Cart lines must be an array of { id, quantity } entries.",
-          instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-        };
-        emit("dinkus:cart:error", error);
-        return error;
-      }
-
-      for (const item of patch.lines) {
-        if (!item || typeof item !== "object" || !isSafeGuestCartProductId(item.id)) {
-          const error: DinkusCartUpdateResult = {
-            ok: false,
-            code: "INVALID_PRODUCT_ID",
-            message: "Each cart line requires a valid Commerce product identifier.",
-            instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-          };
-          emit("dinkus:cart:error", error);
-          return error;
-        }
-        const id = item.id.trim();
-        if (item.quantity === 0) {
-          if (patch.mode === "replace" || patch.mode === "add") {
-            const error: DinkusCartUpdateResult = {
-              ok: false,
-              code: "INVALID_QUANTITY",
-              message:
-                patch.mode === "add"
-                  ? `Additive add_to_cart requires a positive quantity from 1 to ${GUEST_CART_MAX_QUANTITY}.`
-                  : "Full-replacement update_cart_lines requires positive quantities (1..99); omit a line from the array to remove it.",
-              instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-            };
-            emit("dinkus:cart:error", error);
-            return error;
-          }
-          const removed = removeGuestCartLine(current, id);
-          if (removed.accepted) current = removed.intent;
-          continue;
-        }
-        if (!isSafeGuestCartQuantity(item.quantity)) {
-          const error: DinkusCartUpdateResult = {
-            ok: false,
-            code: "INVALID_QUANTITY",
-            message: `Quantity must be a whole number from 1 to ${GUEST_CART_MAX_QUANTITY}.`,
-            instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-          };
-          emit("dinkus:cart:error", error);
-          return error;
-        }
-        const exists = current.lines.some((line) => line.id === id);
-        const mutation =
-          patch.mode === "replace" && exists
-            ? setGuestCartLineQuantity(current, id, item.quantity)
-            : addGuestCartLine(current, id, item.quantity);
-        if (!mutation.accepted) {
-          const error: DinkusCartUpdateResult = {
-            ok: false,
-            code: "CART_LINE_LIMIT",
-            message: mutation.reason ?? "The cart line limit was reached.",
-            instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-          };
-          emit("dinkus:cart:error", error);
-          return error;
-        }
-        current = mutation.intent;
-      }
-    }
-
-    const saved = saveGuestCartIntent(GUEST_CART_STORAGE_KEY, current, store);
-    if (!saved.persisted) {
-      const error: DinkusCartUpdateResult = {
-        ok: false,
-        code: "STORAGE_UNAVAILABLE",
-        message: "Browser cart storage is unavailable.",
-        instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-      };
-      emit("dinkus:cart:error", error);
-      return error;
-    }
-
-    pendingReviewFingerprint = null;
-    confirmedReviewFingerprint = null;
-    reviewedIntentKey = null;
-    notifyNativeCartListeners();
-    const cart = await getCart({ includeCatalog: true });
-    emit("dinkus:cart:updated", cart);
-    return {
-      ok: true,
-      untrustedContent: true,
-      cart,
-    };
+    return withCatalog(wire);
   };
 
-  const openCart = (): void => {
-    navigate("/cart");
+  const write = async (body: Readonly<Record<string, unknown>>): Promise<DinkusCartWriteResult> => {
+    const wire = await call("/cart/update.js", { method: "POST", body: JSON.stringify(body) });
+    if (!wire) return fail("UNAVAILABLE", "The cart is unavailable right now. Try again in a moment.");
+    pendingReview = null;
+    const cart = await withCatalog(wire);
+    if (wire.ok !== true) {
+      const code = wire.error?.code ?? "UNAVAILABLE";
+      const message = code === "CONTENTION"
+        ? "The cart changed since you read it. Read it again with get_cart and quote its version."
+        : wire.error?.message ?? "That cart change could not be made.";
+      return fail(code, message, wire.cart ? cart : undefined);
+    }
+    changed(cart.itemCount);
+    return { ok: true, untrustedContent: true, cart };
   };
 
-  const getCheckoutPreview = async (): Promise<DinkusCheckoutPreview> => {
-    const cart = await getCart({ includeCatalog: true });
-    const currentKey = intentLinesKey(
-      loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
-    );
-    const reviewStatus =
-      cart.itemCount === 0
-        ? "empty_cart"
-        : confirmedReviewFingerprint === cart.reviewFingerprint &&
-            reviewedIntentKey !== null &&
-            reviewedIntentKey === currentKey
-          ? "buyer_reviewed"
-          : "buyer_review_required";
-    return Object.freeze({
-      ok: true,
-      untrustedContent: true,
-      currency: cart.currency,
-      itemCount: cart.itemCount,
-      reviewFingerprint: cart.reviewFingerprint,
-      reviewStatus,
-      totals: Object.freeze({
-        subtotalMinor: cart.subtotalMinor,
-        shippingMinor: null,
-        discountMinor: 0,
-        taxMinor: null,
-        totalMinor: null,
-      }),
-      lines: cart.lines,
-      continueUrl: "/checkout",
-    });
+  const updateCart: DinkusStorefrontActions["updateCart"] = async (input) => {
+    const lines = lineInputs(input?.lines);
+    if (typeof lines === "string") return fail("INVALID_INPUT", lines);
+    if (input.version !== null && typeof input.version !== "string") {
+      return fail("INVALID_INPUT", "Quote the cart version from get_cart (null for a cart that holds nothing yet).");
+    }
+    return write({ version: input.version, lines, ...(input.key ? { key: input.key } : {}) });
   };
 
-  const proceedToCheckout = async (
-    input?: Readonly<{
-      buyerConfirmed?: boolean;
-      reviewFingerprint?: string;
-    }>,
-  ): Promise<DinkusCheckoutProceedResult> => {
-    const preReadIntentKey = intentLinesKey(
-      loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
-    );
-    const preview = await getCheckoutPreview();
-    const postReadIntentKey = intentLinesKey(
-      loadGuestCartIntent(GUEST_CART_STORAGE_KEY, resolveStorage()).intent,
-    );
-    if (preview.itemCount === 0) {
-      return {
-        ok: false,
-        code: "EMPTY_CART",
-        message: "Add sellable products to the cart before proceeding to checkout.",
-        instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-      };
+  const createCart: DinkusStorefrontActions["createCart"] = async (lines) => {
+    const current = await getCart();
+    if (!current.ok) return current;
+    if (current.lines.length) {
+      return fail("CART_EXISTS", "This shopper already has a cart. Use update_cart with its version, or cancel_cart first.", current);
     }
-    const unsellable = preview.lines.find((line) => line.sellable === false);
-    if (unsellable) {
-      return {
-        ok: false,
-        code: "UNSELLABLE_LINE",
-        message: `Product ${unsellable.id} is not currently sellable. Remove it before proceeding to checkout.`,
-        instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-      };
-    }
-    if (preview.totals.subtotalMinor === null) {
-      return {
-        ok: false,
-        code: "PRICE_UNAVAILABLE",
-        message: "Authoritative Commerce prices could not be verified for every cart line.",
-        instruction: WEBMCP_ANTI_SCRAPE_NOTICE,
-      };
-    }
+    return updateCart({ version: current.version, lines });
+  };
 
-    const suppliedFingerprint =
-      typeof input?.reviewFingerprint === "string" ? input.reviewFingerprint.trim() : "";
-    const intentUnchangedSinceReview =
-      preReadIntentKey === postReadIntentKey &&
-      reviewedIntentKey !== null &&
-      reviewedIntentKey === postReadIntentKey;
-    const hasPendingOrConfirmedReview =
-      pendingReviewFingerprint === preview.reviewFingerprint ||
-      confirmedReviewFingerprint === preview.reviewFingerprint;
-    const confirmed =
-      input?.buyerConfirmed === true &&
-      suppliedFingerprint.length > 0 &&
-      intentUnchangedSinceReview &&
-      hasPendingOrConfirmedReview &&
-      suppliedFingerprint === preview.reviewFingerprint;
+  const cancelCart: DinkusStorefrontActions["cancelCart"] = async (input) =>
+    input?.version !== null && typeof input?.version !== "string"
+      ? fail("INVALID_INPUT", "Quote the cart version from get_cart.")
+      : write({ version: input.version, lines: [] });
 
-    if (!confirmed) {
-      pendingReviewFingerprint = preview.reviewFingerprint;
-      confirmedReviewFingerprint = null;
-      reviewedIntentKey = postReadIntentKey;
+  const showVariant: DinkusStorefrontActions["showVariant"] = (input) => {
+    const productId = typeof input?.productId === "string" ? input.productId.trim() : "";
+    const variantId = typeof input?.variantId === "string" ? input.variantId.trim() : "";
+    if (!SAFE_ID.test(productId) || (variantId && !SAFE_ID.test(variantId))) {
+      return fail("INVALID_INPUT", "show_variant needs the product's id and, optionally, a variant id.");
+    }
+    const url = `/products/${encodeURIComponent(productId)}${variantId ? `?variant=${encodeURIComponent(variantId)}` : ""}`;
+    navigate(url);
+    return { ok: true, url };
+  };
+
+  const proceedToCheckout: DinkusStorefrontActions["proceedToCheckout"] = async (input) => {
+    const cart = await getCart();
+    if (!cart.ok) return cart;
+    if (!cart.lines.length) return fail("EMPTY_CART", "Add products to the cart before proceeding to checkout.", cart);
+    const unsellable = cart.lines.find((line) => line.sellable === false);
+    if (unsellable) return fail("UNSELLABLE_LINE", `Product ${unsellable.id} is not for sale right now. Remove it first.`, cart);
+    if (cart.subtotalMinor === null) return fail("PRICE_UNAVAILABLE", "Commerce prices could not be read for every cart line.", cart);
+    const supplied = typeof input?.reviewFingerprint === "string" ? input.reviewFingerprint.trim() : "";
+    if (input?.buyerConfirmed === true && pendingReview === cart.reviewFingerprint && supplied === cart.reviewFingerprint) {
+      pendingReview = null;
+      navigate("/checkout");
       return {
         ok: true,
-        status: "buyer_review_required",
+        status: "requires_escalation",
         untrustedContent: true,
-        reviewFingerprint: preview.reviewFingerprint,
+        reviewFingerprint: cart.reviewFingerprint,
         continueUrl: "/checkout",
-        totals: preview.totals,
-        instruction:
-          "Present the cart lines and integer minor-unit merchandise subtotal to the shopper for explicit confirmation before calling proceed_to_checkout with buyerConfirmed: true and the exact matching reviewFingerprint. " +
-          WEBMCP_ANTI_SCRAPE_NOTICE,
+        subtotalMinor: cart.subtotalMinor,
+        instruction: "Shopper review confirmed. The shopper enters their details and pays on the store's own checkout page (/checkout); agents never submit payment credentials.",
       };
     }
-
-    confirmedReviewFingerprint = preview.reviewFingerprint;
-    reviewedIntentKey = postReadIntentKey;
-    navigate("/checkout");
+    pendingReview = cart.reviewFingerprint;
     return {
       ok: true,
-      status: "requires_escalation",
+      status: "buyer_review_required",
       untrustedContent: true,
-      reviewFingerprint: preview.reviewFingerprint,
+      reviewFingerprint: cart.reviewFingerprint,
       continueUrl: "/checkout",
-      totals: preview.totals,
-      instruction:
-        "Shopper review confirmed. Payment completion is escalated to the store's own checkout page (/checkout); agents never submit raw payment credentials.",
+      subtotalMinor: cart.subtotalMinor,
+      instruction: "Show the shopper the cart lines and the subtotal (integer minor units) and get their explicit approval, then call proceed_to_checkout again with buyerConfirmed: true and this exact reviewFingerprint. " +
+        WEBMCP_ANTI_SCRAPE_NOTICE,
     };
   };
 
   return Object.freeze({
     getCart,
+    createCart,
     updateCart,
-    openCart,
-    getCheckoutPreview,
+    cancelCart,
+    showVariant,
+    openCart: () => navigate("/cart"),
     proceedToCheckout,
   });
 }
 
-export function buildStorefrontWebMcpTools(
-  actions: DinkusStorefrontActions,
-): readonly WebMcpToolDescriptor[] {
-  return Object.freeze([
+const LINE_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["quantity"],
+  properties: {
+    id: { type: "string", description: "Commerce item id (a product without options, or one exact variant)." },
+    productId: { type: "string", description: "Commerce product id, with options instead of an item id." },
+    options: { type: "object", additionalProperties: { type: "string" }, description: "Chosen options, for example { \"Size\": \"M\" }." },
+    quantity: { type: "integer", minimum: 1, maximum: GUEST_CART_MAX_QUANTITY },
+  },
+});
+
+const LINES_SCHEMA = Object.freeze({ type: "array", maxItems: GUEST_CART_MAX_LINES, items: LINE_SCHEMA });
+const VERSION_SCHEMA = Object.freeze({ type: ["string", "null"], description: "The cart version get_cart returned." });
+
+function annotations(title: string, readOnly: boolean, idempotent: boolean, consequential = false): WebMcpToolAnnotations {
+  return Object.freeze({ title, readOnlyHint: readOnly, consequentialHint: consequential, untrustedContentHint: true, idempotentHint: idempotent });
+}
+
+export function buildStorefrontWebMcpTools(actions: DinkusStorefrontActions): readonly WebMcpToolDescriptor[] {
+  const tools: WebMcpToolDescriptor[] = [
     {
       name: "get_cart",
-      description:
-        "Read the current storefront cart lines, quantities, and authoritative Commerce integer minor-unit prices (for two-decimal USD, 2499 equals $24.99).",
-      annotations: Object.freeze({
-        title: "Get Cart",
-        readOnlyHint: true,
-        consequentialHint: false,
-        untrustedContentHint: true,
-        idempotentHint: true,
-      }),
-      inputSchema: Object.freeze({
-        type: "object",
-        additionalProperties: false,
-        properties: {},
-      }),
-      execute: async () => actions.getCart({ includeCatalog: true }),
+      description: "Read the shopper's cart: its version, lines, quantities and Commerce prices in integer minor units (2499 is $24.99).",
+      annotations: annotations("Get cart", true, true),
+      inputSchema: Object.freeze({ type: "object", additionalProperties: false, properties: {} }),
+      execute: async () => actions.getCart(),
     },
     {
-      name: "add_to_cart",
-      description:
-        "Add or increment a sellable Commerce product in the storefront guest cart by product id and integer quantity (1..99).",
-      annotations: Object.freeze({
-        title: "Add to Cart",
-        readOnlyHint: false,
-        consequentialHint: false,
-        untrustedContentHint: true,
-        idempotentHint: false,
-      }),
-      inputSchema: Object.freeze({
-        type: "object",
-        additionalProperties: false,
-        required: ["id"],
-        properties: {
-          id: { type: "string", description: "Commerce catalog product id." },
-          quantity: {
-            type: "integer",
-            minimum: 1,
-            maximum: GUEST_CART_MAX_QUANTITY,
-            default: 1,
-          },
-        },
-      }),
-      execute: async (args) => {
-        const id = typeof args?.id === "string" ? args.id : "";
-        const quantity = typeof args?.quantity === "number" ? args.quantity : 1;
-        return actions.updateCart({
-          mode: "add",
-          lines: [{ id, quantity }],
-        });
-      },
+      name: "create_cart",
+      description: "Fill an empty cart with these lines. If the shopper already has items, use update_cart instead.",
+      annotations: annotations("Create cart", false, false),
+      inputSchema: Object.freeze({ type: "object", additionalProperties: false, required: ["lines"], properties: { lines: LINES_SCHEMA } }),
+      execute: async (args) => actions.createCart((args?.lines ?? []) as readonly DinkusCartLineInput[]),
     },
     {
-      name: "update_cart_lines",
-      description:
-        "Replace the complete desired cart line list (full PUT semantics: omit a line to remove it; quantities must be 1..99).",
-      annotations: Object.freeze({
-        title: "Update Cart Lines",
-        readOnlyHint: false,
-        consequentialHint: false,
-        untrustedContentHint: true,
-        idempotentHint: true,
-      }),
+      name: "update_cart",
+      description: "Replace the whole cart with these lines (omit a line to remove it), quoting the version get_cart returned. A stale version changes nothing and answers CONTENTION with the current cart. Pass the same key to retry safely.",
+      annotations: annotations("Update cart", false, true),
       inputSchema: Object.freeze({
         type: "object",
         additionalProperties: false,
-        required: ["lines"],
+        required: ["version", "lines"],
         properties: {
-          lines: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["id", "quantity"],
-              properties: {
-                id: { type: "string" },
-                quantity: {
-                  type: "integer",
-                  minimum: 1,
-                  maximum: GUEST_CART_MAX_QUANTITY,
-                },
-              },
-            },
-          },
+          version: VERSION_SCHEMA,
+          lines: LINES_SCHEMA,
+          key: { type: "string", maxLength: 128, description: "Optional retry key: the same key with the same change is applied once." },
         },
       }),
-      execute: async (args) =>
-        actions.updateCart({
-          mode: "replace",
-          lines: args?.lines as unknown as readonly Readonly<{
-            id: string;
-            quantity: number;
-          }>[],
-        }),
+      execute: async (args) => actions.updateCart({
+        version: (args?.version ?? null) as string | null,
+        lines: (args?.lines ?? []) as readonly DinkusCartLineInput[],
+        ...(typeof args?.key === "string" ? { key: args.key } : {}),
+      }),
     },
     {
       name: "cancel_cart",
-      description: "Clear all lines from the current storefront guest cart.",
-      annotations: Object.freeze({
-        title: "Cancel Cart",
-        readOnlyHint: false,
-        consequentialHint: false,
-        untrustedContentHint: true,
-        idempotentHint: true,
-      }),
-      inputSchema: Object.freeze({
-        type: "object",
-        additionalProperties: false,
-        properties: {},
-      }),
-      execute: async () => actions.updateCart({ clear: true }),
+      description: "Empty the shopper's cart, quoting the version get_cart returned.",
+      annotations: annotations("Cancel cart", false, true),
+      inputSchema: Object.freeze({ type: "object", additionalProperties: false, required: ["version"], properties: { version: VERSION_SCHEMA } }),
+      execute: async (args) => actions.cancelCart({ version: (args?.version ?? null) as string | null }),
     },
     {
-      name: "get_checkout_preview",
-      description:
-        "Read deterministic integer minor-unit merchandise subtotal (subtotalMinor, discountMinor) and reviewFingerprint before buyer confirmation. Shipping, tax, and final order total (shippingMinor, taxMinor, totalMinor) remain null until authoritative charges are resolved on /checkout.",
-      annotations: Object.freeze({
-        title: "Get Checkout Preview",
-        readOnlyHint: true,
-        consequentialHint: false,
-        untrustedContentHint: true,
-        idempotentHint: true,
-      }),
+      name: "show_variant",
+      description: "Open a product page for the shopper, on one variant when variantId is given.",
+      annotations: annotations("Show variant", false, true),
       inputSchema: Object.freeze({
         type: "object",
         additionalProperties: false,
-        properties: {},
+        required: ["productId"],
+        properties: { productId: { type: "string" }, variantId: { type: "string" } },
       }),
-      execute: async () => actions.getCheckoutPreview(),
+      execute: async (args) => actions.showVariant({
+        productId: typeof args?.productId === "string" ? args.productId : "",
+        ...(typeof args?.variantId === "string" ? { variantId: args.variantId } : {}),
+      }),
     },
     {
       name: "proceed_to_checkout",
-      description:
-        "Two-step buyer review gate for checkout handoff. First call transitions to buyer_review_required and returns reviewFingerprint; second call requires both buyerConfirmed: true and the exact matching reviewFingerprint before escalating to /checkout.",
-      annotations: Object.freeze({
-        title: "Proceed to Checkout",
-        readOnlyHint: false,
-        consequentialHint: true,
-        untrustedContentHint: true,
-        idempotentHint: false,
-      }),
+      description: "Two steps. The first call returns a reviewFingerprint for the shopper to approve; the second, with buyerConfirmed: true and that exact fingerprint, opens /checkout, where the shopper enters their details and pays.",
+      annotations: annotations("Proceed to checkout", false, false, true),
       inputSchema: Object.freeze({
         type: "object",
         additionalProperties: false,
         properties: {
-          buyerConfirmed: {
-            type: "boolean",
-            description:
-              "Set true only after the human shopper has explicitly reviewed and approved the current reviewFingerprint and subtotal.",
-          },
-          reviewFingerprint: {
-            type: "string",
-            description:
-              "Exact cart quote fingerprint returned by the prior buyer_review_required step (required when buyerConfirmed is true).",
-          },
+          buyerConfirmed: { type: "boolean", description: "True only after the shopper approved this exact cart and subtotal." },
+          reviewFingerprint: { type: "string", description: "The fingerprint the first call returned." },
         },
       }),
-      execute: async (args) =>
-        actions.proceedToCheckout({
-          buyerConfirmed: args?.buyerConfirmed === true,
-          reviewFingerprint:
-            typeof args?.reviewFingerprint === "string"
-              ? args.reviewFingerprint
-              : undefined,
-        }),
+      execute: async (args) => actions.proceedToCheckout({
+        buyerConfirmed: args?.buyerConfirmed === true,
+        ...(typeof args?.reviewFingerprint === "string" ? { reviewFingerprint: args.reviewFingerprint } : {}),
+      }),
     },
-  ]);
+  ];
+  return Object.freeze(tools);
 }
 
-function resolveBrowserModelContext(
-  env: StorefrontWebMcpEnvironment,
-): ModelContextHost | null {
+function resolveBrowserModelContext(env: StorefrontWebMcpEnvironment): ModelContextHost | null {
   if (env.modelContext !== undefined) return env.modelContext;
   if (typeof document !== "undefined") {
     const docContext = (document as unknown as { modelContext?: ModelContextHost }).modelContext;
@@ -815,61 +447,31 @@ function resolveBrowserModelContext(
   return null;
 }
 
-export function installStorefrontWebMcp(
-  env: StorefrontWebMcpEnvironment = {},
-): Readonly<{
+/** Attach window.Dinkus.actions and, when a WebMCP browser agent is present, register the tools once. */
+export function installStorefrontWebMcp(env: StorefrontWebMcpEnvironment = {}): Readonly<{
   actions: DinkusStorefrontActions;
   webMcpRegistered: boolean;
   toolNames: readonly string[];
 }> {
-  const target =
-    env.globalTarget !== undefined
-      ? env.globalTarget
-      : typeof window !== "undefined"
-        ? (window as unknown as Record<string, unknown>)
-        : null;
-
-  const existingNamespace =
-    target && typeof target.Dinkus === "object" && target.Dinkus !== null
-      ? (target.Dinkus as Record<string, unknown>)
-      : null;
-
-  const existingActions =
-    existingNamespace &&
-    typeof existingNamespace.actions === "object" &&
-    existingNamespace.actions !== null
-      ? (existingNamespace.actions as DinkusStorefrontActions)
-      : null;
-
-  const actions = existingActions ?? createStorefrontActions(env);
-
-  if (target && !existingActions) {
-    target.Dinkus = Object.freeze({
-      ...(existingNamespace ?? {}),
-      actions,
-    });
-  }
-
+  const target = env.globalTarget !== undefined
+    ? env.globalTarget
+    : typeof window !== "undefined" ? window as unknown as Record<string, unknown> : null;
+  const namespace = target && typeof target.Dinkus === "object" && target.Dinkus !== null
+    ? target.Dinkus as Record<string, unknown>
+    : null;
+  const existing = namespace && typeof namespace.actions === "object" && namespace.actions !== null
+    ? namespace.actions as DinkusStorefrontActions
+    : null;
+  const actions = existing ?? createStorefrontActions(env);
+  if (target && !existing) target.Dinkus = Object.freeze({ ...(namespace ?? {}), actions });
   const host = resolveBrowserModelContext(env);
   if (!host || typeof host.registerTool !== "function") {
-    return Object.freeze({
-      actions,
-      webMcpRegistered: false,
-      toolNames: Object.freeze([]),
-    });
+    return Object.freeze({ actions, webMcpRegistered: false, toolNames: Object.freeze([]) });
   }
-
   const tools = buildStorefrontWebMcpTools(actions);
   if (host[WEBMCP_REGISTRATION_SYMBOL] !== true) {
-    for (const tool of tools) {
-      host.registerTool(tool);
-    }
+    for (const tool of tools) host.registerTool(tool);
     host[WEBMCP_REGISTRATION_SYMBOL] = true;
   }
-
-  return Object.freeze({
-    actions,
-    webMcpRegistered: true,
-    toolNames: Object.freeze(tools.map((tool) => tool.name)),
-  });
+  return Object.freeze({ actions, webMcpRegistered: true, toolNames: Object.freeze(tools.map((tool) => tool.name)) });
 }
