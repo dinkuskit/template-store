@@ -22,7 +22,19 @@ GET and HEAD `/_image` only when `href` is that same host's
 Other image targets stay 404. They never render a URL,
 filename, or storage key from the catalog payload. An absent, unsafe, or
 unresolvable image renders the text placeholder "No image". Gallery entries
-stay on the product for a later view; cards show the primary image only.
+stay on the product; cards show the primary image only.
+
+The product gallery renders every approved picture on the server, without a
+gallery script, thumbnail buttons or raw-file fallback links. Its first picture
+is eager/high-priority and retains the existing pigment-drift frame; later
+pictures use native lazy loading and the same 300/600/1200 WebP source set.
+Native lazy loading is a browser hint, not a promise of zero requests until a
+picture is visible. Alt text and explicit image dimensions are retained.
+Desktop shows the extras in a grid below the lead picture. At 48rem and below,
+all pictures share a keyboard-focusable horizontal CSS scroll-snap region with
+a next-picture peek; only that region scrolls, not the document. A single
+picture keeps its existing frame with no strip, and missing media still says
+**No image**. Price, availability, Product JSON-LD and cart intent are unaffected.
 
 Without a paired installed Commerce artifact that route is absent. Shop
 fail-closes with an unavailable catalog and invents no products, prices, or

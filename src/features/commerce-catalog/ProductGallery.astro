@@ -11,7 +11,7 @@ interface Props {
   productId: string;
   fallbackSrc?: string | null;
   fallbackAlt?: string;
-  /** Classes for the frame holding the main picture. */
+  /** Classes for the frame holding the first picture. */
   stageClass?: string;
 }
 
@@ -27,69 +27,40 @@ const resolver = {
     return { mimeType: item.mimeType, storageKey: item.storageKey, status: item.status };
   },
 };
-// The main image first, then the gallery, each once; a picture that cannot be served is left out.
+// The primary picture first, then Commerce's gallery, each once; omit unservable media.
 const pictures = (await Promise.all([image, ...gallery].filter((entry): entry is PublicCommerceImage => Boolean(entry))
   .filter((entry, index, all) => all.findIndex((other) => other.id === entry.id) === index)
   .map((entry) => resolveCommerceImage(entry, resolver))))
   .filter((entry): entry is ResolvedCommerceImage => Boolean(entry));
 const first = pictures[0] ?? null;
+const multiple = pictures.length > 1;
 ---
-<div class="product-gallery" data-product-gallery={productId}>
+<div class:list={["product-gallery", { "product-gallery--multiple": multiple }]} data-product-gallery={productId}
+  role={multiple ? "region" : undefined} aria-label={multiple ? "Product pictures" : undefined} tabindex={multiple ? 0 : undefined}>
   <div class={stageClass} data-product-stage-visual>
-    <ProductMedia image={first ?? image} productId={productId} fallbackSrc={fallbackSrc} fallbackAlt={fallbackAlt} />
+    <ProductMedia image={first ?? image} productId={productId} fallbackSrc={fallbackSrc} fallbackAlt={fallbackAlt} priority />
   </div>
-  {pictures.length > 1 && (
-    <ul class="product-gallery__thumbs" aria-label="Product pictures" data-gallery-controls hidden>
-      {pictures.map((picture, index) => (
-        <li>
-          <button type="button" class="product-gallery__thumb" aria-pressed={index === 0 ? "true" : "false"} aria-label={`Show picture ${index + 1} of ${pictures.length}${picture.alt ? `: ${picture.alt}` : ""}`}
-            data-gallery-thumb data-src={picture.src} data-srcset={picture.srcset} data-alt={picture.alt}
-            data-width={picture.width ?? ""} data-height={picture.height ?? ""}>
-            <img src={picture.src} srcset={picture.srcset} sizes="6rem" alt="" width={picture.width ?? undefined} height={picture.height ?? undefined} loading="lazy" decoding="async" />
-          </button>
-        </li>
+  {multiple && (
+    <div class="product-gallery__extras" data-gallery-extras>
+      {pictures.slice(1).map((picture) => (
+        <figure class="product-gallery__picture">
+          <img src={picture.src} srcset={picture.srcset} sizes="(max-width: 48rem) 85vw, 25vw" alt={picture.alt}
+            width={picture.width ?? 640} height={picture.height ?? 480} loading="lazy" decoding="async" data-gallery-picture />
+        </figure>
       ))}
-    </ul>
-    <noscript>
-      <p class="product-gallery__help">Open a picture to inspect it, then use your browser’s Back button to return.</p>
-      <ul class="product-gallery__thumbs" aria-label="Product pictures">
-        {pictures.map((picture, index) => (
-          <li>
-            <a class="product-gallery__thumb" href={picture.src} data-gallery-open aria-label={`Open picture ${index + 1} of ${pictures.length}${picture.alt ? `: ${picture.alt}` : ""}`}>
-              <img src={picture.src} srcset={picture.srcset} sizes="6rem" alt="" width={picture.width ?? undefined} height={picture.height ?? undefined} loading="lazy" decoding="async" />
-            </a>
-          </li>
-        ))}
-      </ul>
-    </noscript>
+    </div>
   )}
 </div>
-<script>
-  // A picked thumbnail becomes the main picture; nothing is fetched or recalculated.
-  for (const gallery of document.querySelectorAll<HTMLElement>("[data-product-gallery]")) {
-    const main = gallery.querySelector<HTMLImageElement>("[data-commerce-image]");
-    const thumbs = [...gallery.querySelectorAll<HTMLButtonElement>("[data-gallery-thumb]")];
-    for (const thumb of thumbs) {
-      thumb.addEventListener("click", () => {
-        if (!main) return;
-        main.src = thumb.dataset.src ?? main.src;
-        main.srcset = thumb.dataset.srcset ?? "";
-        main.alt = thumb.dataset.alt ?? "";
-        if (thumb.dataset.width) main.width = Number(thumb.dataset.width); else main.removeAttribute("width");
-        if (thumb.dataset.height) main.height = Number(thumb.dataset.height); else main.removeAttribute("height");
-        for (const other of thumbs) other.setAttribute("aria-pressed", String(other === thumb));
-      });
-    }
-    const controls = gallery.querySelector<HTMLElement>("[data-gallery-controls]");
-    if (main && controls) controls.hidden = false;
-  }
-</script>
 <style>
-  .product-gallery{display:grid;gap:.75rem;min-width:0}
-  .product-gallery__thumbs{display:flex;flex-wrap:wrap;gap:.5rem;margin:0;padding:0;list-style:none}
-  .product-gallery__thumbs[hidden]{display:none}
-  .product-gallery__help{margin:0 0 .75rem;color:var(--store-muted)}
-  .product-gallery__thumb{display:block;width:4.5rem;aspect-ratio:1;padding:0;overflow:hidden;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);cursor:pointer}
-  .product-gallery__thumb[aria-pressed="true"]{outline:2px solid var(--store-accent);outline-offset:2px}
-  .product-gallery__thumb img{display:block;width:100%;height:100%;object-fit:cover}
+  .product-gallery { display: grid; gap: .75rem; min-width: 0; }
+  .product-gallery__extras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  .product-gallery__picture { margin: 0; min-width: 0; }
+  .product-gallery__picture img { display: block; width: 100%; height: auto; border-radius: var(--store-radius-card); }
+  .product-gallery:focus-visible { outline: 2px solid var(--store-accent); outline-offset: 4px; }
+  @media (max-width: 48rem) {
+    .product-gallery--multiple { display: flex; align-items: flex-start; overflow-x: auto; scroll-snap-type: x mandatory; gap: .75rem; padding-bottom: .75rem; scrollbar-color: var(--store-accent) var(--store-surface); }
+    .product-gallery--multiple > [data-product-stage-visual],
+    .product-gallery__picture { flex: 0 0 88%; scroll-snap-align: start; min-width: 0; }
+    .product-gallery__extras { display: contents; }
+  }
 </style>
