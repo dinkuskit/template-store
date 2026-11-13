@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMMERCE_REGISTRY_RUNTIME_ID,
   GUEST_CART_MAX_LINES,
+  GUEST_CART_MAX_QUANTITY,
   GUEST_CHECKOUT_CAPABILITY_HEADER,
   GUEST_CHECKOUT_PROJECTION_SCHEMA,
   SUPPORTED_GUEST_CHECKOUT_ROUTES,
@@ -281,7 +282,7 @@ describe("cart routes", () => {
     expect(await addToServerCart(ctx, { catalogItemId: "item_new", quantity: 1 })).toMatchObject({ ok: false, error: { code: "CART_FULL" } });
   });
 
-  it("merges a size picked by its options into a full cart, and puts the cart back when it would not fit", async () => {
+  it("merges a size picked by its options into a full cart, and never writes a cart that would not fit", async () => {
     const commerce = fakeCommerce();
     const ctx = context(commerce, fakeCookies());
     for (let index = 0; index < GUEST_CART_MAX_LINES - 1; index += 1) {
@@ -298,11 +299,37 @@ describe("cart routes", () => {
     for (let index = 0; index < GUEST_CART_MAX_LINES; index += 1) {
       expect((await addToServerCart(full, { catalogItemId: `item_${String(index).padStart(2, "0")}`, quantity: 1 })).ok).toBe(true);
     }
+    const shopperKey = other.calls.at(-1)?.key;
+    const shopperWrites = () => other.calls.filter((call) => call.route === "cart" && call.key === shopperKey && "lines" in call.body).length;
+    const before = shopperWrites();
     const refused = await addToServerCart(full, { productId: "prod_tee", options: { Size: "M" }, quantity: 1 });
     expect(refused).toMatchObject({ ok: false, error: { code: "CART_FULL" } });
+    // Commerce worked out the size in a throwaway cart; the shopper's cart was never written.
+    expect(shopperWrites()).toBe(before);
     const after = await readServerCart(full);
     expect(after.ok && after.cart.lines.length).toBe(GUEST_CART_MAX_LINES);
     expect(after.ok && after.cart.lines.some((line) => line.catalogItemId === "item_tee_m")).toBe(false);
+    const scratch = [...other.carts.values()].filter((cart) => cart.writes > 0 && cart.lines.length === 0);
+    expect(scratch.length).toBe(1);
+
+    const tooMany = await addToServerCart(full, { productId: "prod_tee", options: { Size: "M" }, quantity: GUEST_CART_MAX_QUANTITY });
+    expect(tooMany).toMatchObject({ ok: false, error: { code: "CART_FULL" } });
+    const gone = await addToServerCart(full, { productId: "prod_tee", options: { Size: "XL" }, quantity: 1 });
+    expect(gone).toMatchObject({ ok: false, error: { code: "PRODUCT_UNAVAILABLE" } });
+    expect(shopperWrites()).toBe(before);
+  });
+
+  it("refuses a size whose merged quantity would pass the limit, without writing the cart", async () => {
+    const commerce = fakeCommerce();
+    const ctx = context(commerce, fakeCookies());
+    expect((await addToServerCart(ctx, { catalogItemId: "item_tee_m", quantity: GUEST_CART_MAX_QUANTITY - 1 })).ok).toBe(true);
+    const key = commerce.calls.at(-1)?.key;
+    const writes = () => commerce.calls.filter((call) => call.route === "cart" && call.key === key && "lines" in call.body).length;
+    const before = writes();
+    expect(await addToServerCart(ctx, { productId: "prod_tee", options: { Size: "M" }, quantity: 2 })).toMatchObject({ ok: false, error: { code: "CART_FULL" } });
+    expect(writes()).toBe(before);
+    const fits = await addToServerCart(ctx, { productId: "prod_tee", options: { Size: "M" }, quantity: 1 });
+    expect(fits.ok && fits.cart.lines).toEqual([{ catalogItemId: "item_tee_m", quantity: GUEST_CART_MAX_QUANTITY }]);
   });
 
   it("never parses a public form longer than the limit, even without a Content-Length", async () => {

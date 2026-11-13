@@ -276,8 +276,30 @@ function lineForCommerce(line: ServerCartLineInput) {
     : { productId: line.productId, options: line.options, quantity: line.quantity };
 }
 
-function overCapacity(cart: ServerCart): boolean {
-  return cart.lines.length > GUEST_CART_MAX_LINES || cart.lines.some((line) => line.quantity > GUEST_CART_MAX_QUANTITY);
+/**
+ * Could the lines outgrow the cart once Commerce works out each size picked by its options and merges it? Lines
+ * named by id are checked as they are; only option lines are unknown until Commerce answers.
+ */
+function mightOverfill(lines: readonly ServerCartLineInput[]): boolean {
+  const picked = lines.filter((line) => !("catalogItemId" in line));
+  if (!picked.length) return false;
+  const most = Math.max(0, ...lines.filter((line) => "catalogItemId" in line).map((line) => line.quantity));
+  return lines.length > GUEST_CART_MAX_LINES || most + picked.reduce((sum, line) => sum + line.quantity, 0) > GUEST_CART_MAX_QUANTITY;
+}
+
+/**
+ * Commerce alone decides which variant a size picks. When the answer could overfill the cart, ask it in a throwaway
+ * cart first, so the shopper's cart is written once, with lines already known to fit. Answers the lines by item id,
+ * or Commerce's refusal code.
+ */
+async function resolveLines(ctx: ServerCartContext, lines: readonly ServerCartLineInput[]): Promise<readonly ServerCartLineInput[] | string> {
+  const scratch = await newCartKey(ctx);
+  if (!scratch) return "UNAVAILABLE";
+  const answer = await callCommerce(ctx, "cart", { version: null, lines: lines.map(lineForCommerce) }, scratch);
+  if (!answer.ok) return answer.code;
+  if (!answer.cart) return "UNAVAILABLE";
+  await callCommerce(ctx, "cart", { version: answer.cart.version, lines: [] }, scratch);
+  return answer.cart.lines;
 }
 
 /**
@@ -305,10 +327,10 @@ export async function changeServerCart(
       if (!key) return failure("UNAVAILABLE");
       writeCartCookies(ctx, key, null);
     }
-    const lines = next(current.lines);
-    if (!lines) return failure("CART_FULL", { cart: current });
-    // Lines named by id are checked here; a line picked by its options is only known once Commerce works out
-    // its variant and merges it, so the saved cart is checked again below.
+    const wanted = next(current.lines);
+    if (!wanted) return failure("CART_FULL", { cart: current });
+    const lines = mightOverfill(wanted) ? await resolveLines(ctx, wanted) : wanted;
+    if (typeof lines === "string") return failure(lines, { cart: current });
     const known = lines.filter((line) => "catalogItemId" in line);
     if (known.length > GUEST_CART_MAX_LINES || lines.some((line) => line.quantity > GUEST_CART_MAX_QUANTITY)) {
       return failure("CART_FULL", { cart: current });
@@ -319,13 +341,6 @@ export async function changeServerCart(
       lines: lines.map(lineForCommerce),
       ...(options.key ? { key: options.key } : {}),
     }, key);
-    if (answer.ok && answer.cart && overCapacity(answer.cart)) {
-      // Commerce merged an option line into a cart that is now too big: put the cart back as it was.
-      const undone = await callCommerce(ctx, "cart", { version: answer.cart.version, lines: current.lines.map(lineForCommerce) }, key);
-      const cart = undone.ok && undone.cart ? undone.cart : answer.cart;
-      writeCartCookies(ctx, null, cart.itemCount);
-      return failure("CART_FULL", { cart });
-    }
     if (answer.ok && answer.cart) {
       writeCartCookies(ctx, null, answer.cart.itemCount);
       return { ok: true, cart: answer.cart, checkout: answer.checkout };

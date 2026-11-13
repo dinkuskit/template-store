@@ -204,6 +204,37 @@ const writeRefusals = Object.fromEntries(Object.entries(writeAttempts).map(([nam
   refused: !(entry.status === 200 && entry.body?.data?.ok === true) && entry.paymentsCalls === 0,
 }]));
 const cartUnchanged = JSON.stringify(before?.lines) === JSON.stringify(after?.lines) && before?.version === after?.version && before?.lines?.length === 1;
+// A size picked by its options is worked out by Commerce before the shopper's cart is written: one that would pass
+// 99 of an item is refused and the saved cart is not touched; one that fits merges into its line.
+const sized = await (async () => {
+  const response = await fetch(`${base}${COMMERCE}/catalog/public`, { headers: { cookie: session } });
+  const products = (await response.json().catch(() => null))?.data?.products ?? [];
+  for (const product of products) {
+    const member = (product.variants?.members ?? []).find((candidate) => candidate.availability?.sellable !== false &&
+      Array.isArray(candidate.selections) && candidate.selections.length > 0);
+    if (typeof product.id === "string" && member) {
+      return { productId: product.id, catalogItemId: member.catalogItemId,
+        options: Object.fromEntries(member.selections.map((selection) => [`options[${selection.optionLabel}]`, selection.valueLabel])) };
+    }
+  }
+  throw new Error("the visitor's Commerce sells no product with sizes");
+})();
+const sizedAdd = await form("/cart/add", session, { id: sized.catalogItemId, quantity: "98" });
+const sizedKey = cookieValue(sizedAdd.setCookies, "dk_cart");
+const sizedCookie = `${session}; dk_cart=${sizedKey}`;
+const sizedCart = async () => (await request(`${COMMERCE}/checkout/guest/cart`, session, {}, sizedKey)).body?.data?.cart ?? null;
+const sizedBefore = await sizedCart();
+const overfill = await form("/cart/add", sizedCookie, { productId: sized.productId, ...sized.options, quantity: "2" });
+const sizedAfterRefusal = await sizedCart();
+const fits = await form("/cart/add", sizedCookie, { productId: sized.productId, ...sized.options, quantity: "1" });
+const sizedAfterFit = await sizedCart();
+const sizePicker = {
+  refused: overfill.status === 303 && overfill.location === "/cart?cart_error=CART_FULL",
+  cartUntouched: sizedBefore?.version === sizedAfterRefusal?.version && JSON.stringify(sizedBefore?.lines) === JSON.stringify(sizedAfterRefusal?.lines),
+  merged: fits.status === 303 && fits.location === "/cart?added=1" &&
+    sizedAfterFit?.lines?.length === 1 && sizedAfterFit.lines[0].catalogItemId === sized.catalogItemId && sizedAfterFit.lines[0].quantity === 99,
+  paymentsCalls: overfill.paymentsCalls + fits.paymentsCalls,
+};
 const delivery = { "delivery[name]": "Proof Visitor", "delivery[line1]": "1 Test Way", "delivery[city]": "Testville",
   "delivery[region]": "NC", "delivery[postalCode]": "27601", "delivery[country]": "US", billingSame: "on" };
 // A missing email is redrawn beside its field, tied to it for screen readers and focused, before any Payments call.
@@ -306,6 +337,7 @@ for (const [key, entry] of Object.entries(cases)) {
   if (!ok) failures.push(`${key} -> ${entry.status} ${JSON.stringify(entry.body ?? { state: entry.state, order: entry.order })?.slice(0, 200)}`);
 }
 const sessionCalls = calls.filter((call) => call.path === "/v1/checkout/session");
+if (!sizePicker.refused || !sizePicker.cartUntouched || !sizePicker.merged || sizePicker.paymentsCalls !== 0) failures.push(`the size picker wrote a cart that did not fit: ${JSON.stringify(sizePicker)}`);
 if (sessionCalls.length === 0) failures.push("no Payments session was created");
 if (sessionCalls.some((call) => call.clientIp !== "203.0.113.7")) failures.push("a Payments session call lacked the visitor's IP");
 console.log(`trace: ${trace.length} cases`);
@@ -316,6 +348,7 @@ console.log(`expiredRefused: ${hiddenPage(cases["expired:page:authorized"]) && r
 console.log(`fieldCorrection: ${JSON.stringify(fieldCorrection)}`);
 console.log(`unpaidReturn: ${JSON.stringify(unpaid)}`);
 console.log(`storefrontRefusals: ${JSON.stringify(storefrontRefusals)}`);
+console.log(`sizePicker: ${JSON.stringify(sizePicker)}`);
 console.log(`writeRefusals: ${JSON.stringify(writeRefusals)} cartUnchanged=${cartUnchanged}`);
 console.log(`missingOriginUnavailable: cart=${missingCart} prepare=${missingPrepare.status} checkout=${missingStart.status} paymentsCalls=${missingOriginPaymentsCalls}`);
 console.log(JSON.stringify(summary, null, 2));
