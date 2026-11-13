@@ -5,6 +5,7 @@
   <span data-guest-cart-count hidden>0</span>
 </a>
 <script>
-  import { hydrateGuestCartControls } from "./guest-cart-client.ts";
-  hydrateGuestCartControls();
+  // The count comes from the readable cart cookie, so pages never vary per shopper.
+  import { hydrateServerCartForms } from "./cart-script.ts";
+  hydrateServerCartForms();
 </script>

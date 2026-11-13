@@ -190,8 +190,8 @@ provisioned by infra outside the committed Wrangler config: `PAYMENTS_URL`,
 `PLAYGROUND_CHECKOUT_LIMITER` binding, and `EMDASH_SITE_URL`. The last is the
 canonical https origin of that deployment (for example
 `https://playground.dinkuskit.com`, or `https://pr-N.playground.dinkuskit.com`
-for a preview), not a secret. `/api/checkout/status` confirms paid returns only
-against it, so without a valid value the cart shows checkout as unavailable.
+for a preview), not a secret. The server cart sends only this origin to
+Commerce, so without a valid value the cart shows checkout as unavailable.
 The `main` deploy passes `--keep-vars`, so these values, once set on the
 `dinkuskit-template-playground` Worker, survive every deploy. `PAYMENTS_URL`
 must be `https://payments.dinkuskit.com`, the Payments host Commerce may call.

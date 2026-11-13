@@ -40,7 +40,7 @@ describe("installed checkout middleware", () => {
       expect(next).toHaveBeenCalledOnce();
       expect(dispatch).toHaveBeenCalledOnce();
     });
-    for (const route of ["start", "status"]) {
+    for (const route of ["start", "cart"]) {
       it(`${hosting}: ${route} reaches Commerce without an advisory readiness check`, async () => {
         const { response, next, dispatch } = await invoke(hosting, false, "shipping", route);
         expect(response?.status).toBe(200);

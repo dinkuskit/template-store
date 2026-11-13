@@ -273,8 +273,11 @@ describe("installed Commerce feed facts", () => {
     expect(agentsMd).not.toContain("/catalog/public");
     expect(agentsMd).toContain("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare");
     expect(agentsMd).toContain("data.capability.capability");
-    expect(agentsMd).toContain("payload = body.success === true ? body.data : body");
-    expect(agentsMd).toContain("payload.checkout.retryAfter === payload.checkout.attemptId");
+    expect(agentsMd).toContain("/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/cart");
+    expect(agentsMd).toContain("/cart/update.js");
+    expect(agentsMd).not.toContain("checkout/guest/status");
+    expect(agentsMd).not.toContain("/api/checkout/status");
+    expect(agentsMd).toContain("data.checkout.retryAfter === data.checkout.attemptId");
     expect(agentsMd).toContain("recoverable-failure");
     expect(agentsMd).toContain("Pre-Start Checkout DOM Estimate Attributes");
     expect(agentsMd).toContain("exclusively from Commerce's authoritative frozen `data.checkout.pricing.finalTotal.minor`");

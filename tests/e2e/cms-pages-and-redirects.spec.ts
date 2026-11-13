@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 // template-cms-pages-and-redirects-20261027: a page the owner writes in the CMS
 // has its own address, and old WooCommerce addresses land on the same products.
-// The Worker drops trailing slashes first (cloudflare-checkout-return.spec.ts);
+// The Worker drops trailing slashes first;
 // the Astro dev server answers those itself.
 const csrf = { "X-EmDash-Request": "1" };
 

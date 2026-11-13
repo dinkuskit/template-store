@@ -45,6 +45,9 @@ describe("playground stores from before the Registry build", () => {
     expect(await madeBeforeRegistryCommerce(db as never)).toBe(false);
     await store("r_gshdrqaldna3r7sn", "catalog_items");
     expect(await madeBeforeRegistryCommerce(db as never)).toBe(false);
+    // The playground's own checkout bindings share the old plugin id; they do not make a store old.
+    await store("dinkus-commerce", "playground_checkout_bindings");
+    expect(await madeBeforeRegistryCommerce(db as never)).toBe(false);
     await store("dinkus-commerce", "catalogItems");
     expect(await madeBeforeRegistryCommerce(db as never)).toBe(true);
   });
