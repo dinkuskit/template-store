@@ -551,6 +551,7 @@ for (const scenario of [
     await expect(error).toHaveText(scenario.message);
     await expect(field).toBeFocused();
     await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(field).toHaveCSS('border-top-color', 'rgb(180, 69, 54)');
     await expect(field).toHaveAttribute('aria-describedby', `guest-checkout-title guest-cart-${scenario.field}-error`);
     await expect(error).toBeInViewport();
     expect(await field.evaluate(el => el.nextElementSibling?.id)).toBe(`guest-cart-${scenario.field}-error`);
