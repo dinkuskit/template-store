@@ -93,11 +93,25 @@ test("the cart works with script off: add, change, remove, and an honest checkou
   await expect(shopper.locator("[data-guest-cart-empty]")).toBeVisible();
   await expect(line).toHaveCount(0);
   expect((await cookieNamed(shopper, "dk_cart_count"))?.value).toBe("0");
+
+  // A refused plain-form add lands on the cart page, which says why.
+  const refused = await shopper.request.post("/cart/add", {
+    form: { id: "no_such_item", quantity: "1" },
+    headers: { origin: new URL(shopper.url()).origin },
+    maxRedirects: 0,
+  });
+  expect(refused.status()).toBe(303);
+  await shopper.goto(refused.headers().location ?? "/cart");
+  await expect(shopper).toHaveURL(/\/cart\?cart_error=[A-Z_]+$/u);
+  await expect(shopper.locator("[data-guest-cart-status][role=alert]")).toBeVisible();
+  await shopper.screenshot({ path: resolve(root, "cart-refused-add-script-off.png"), fullPage: true, animations: "disabled" });
   await context.close();
 });
 
 test("with script the same forms change the cart in place, and agents read it as JSON", async ({ browser }, testInfo) => {
   test.setTimeout(180_000);
+  const root = resolve("runs/guest-cart/browser", testInfo.project.name);
+  await mkdir(root, { recursive: true });
   const { itemId, productPath } = await storeWithProduct(browser, testInfo, "script");
   const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
   const shopper = await context.newPage();
@@ -109,6 +123,7 @@ test("with script the same forms change the cart in place, and agents read it as
   await expect(card.locator("[data-add-to-cart-status]")).toHaveText("Added to your cart.");
   await expect(shopper).toHaveURL(new RegExp(`${productPath}$`, "u"));
   await expect(shopper.locator("[data-store-header] [data-guest-cart-count]")).toHaveText("2");
+  await shopper.screenshot({ path: resolve(root, "product-added-script-on.png"), fullPage: true, animations: "disabled" });
 
   const cart = await shopper.evaluate(async () => (await fetch("/cart.js", { headers: { accept: "application/json" } })).json());
   expect(cart).toMatchObject({ ok: true, cart: { itemCount: 2, lines: [{ catalogItemId: itemId, quantity: 2 }] } });
@@ -137,6 +152,18 @@ test("with script the same forms change the cart in place, and agents read it as
   expect(viaAgent).toMatchObject({ ok: true, cart: { itemCount: 4 } });
   await expect(shopper.locator("[data-store-header] [data-guest-cart-count]")).toHaveText("4");
 
+  // show_variant opens the product's published page, found from its Commerce id.
+  const shown = await shopper.evaluate(async (id) => {
+    const actions = (window as unknown as { Dinkus: { actions: {
+      showVariant(input: { productId: string }): Promise<{ ok: boolean; url?: string }>;
+    } } }).Dinkus.actions;
+    return actions.showVariant({ productId: id });
+  }, itemId);
+  expect(shown).toEqual({ ok: true, url: productPath });
+  await expect(shopper).toHaveURL(new RegExp(`${productPath}$`, "u"));
+  const missing = await shopper.request.get("/variants/no_such_item", { headers: { accept: "application/json" } });
+  expect(missing.status()).toBe(404);
+
   await shopper.goto("/cart");
   const line = shopper.locator(`[data-guest-cart-line="${itemId}"]`);
   await expect(line.locator("[data-guest-cart-qty]")).toHaveValue("4");
@@ -145,11 +172,14 @@ test("with script the same forms change the cart in place, and agents read it as
   await expect(shopper.locator(`[data-guest-cart-line="${itemId}"] [data-guest-cart-line-total]`)).toHaveText("Line total $24.00");
   await expect(shopper).toHaveURL(/\/cart$/u);
   await expect(shopper.locator("[data-store-header] [data-guest-cart-count]")).toHaveText("1");
+  await shopper.screenshot({ path: resolve(root, "cart-updated-script-on.png"), fullPage: true, animations: "disabled" });
   await context.close();
 });
 
 test("the thank-you page trusts only the order behind the cart cookie", async ({ browser }, testInfo) => {
   test.setTimeout(180_000);
+  const root = resolve("runs/guest-cart/browser", testInfo.project.name);
+  await mkdir(root, { recursive: true });
   const { productPath } = await storeWithProduct(browser, testInfo, "return");
   const context = await browser.newContext({ viewport: testInfo.project.use.viewport, javaScriptEnabled: false });
   const shopper = await context.newPage();
@@ -159,6 +189,7 @@ test("the thank-you page trusts only the order behind the cart cookie", async ({
   await expect(shopper.locator("[data-guest-checkout-return]")).toHaveAttribute("data-guest-checkout-return-state", "no-cart");
   await expect(shopper.locator("[data-guest-checkout-order]")).toHaveCount(0);
   await expect(shopper.locator("#guest-checkout-return-title")).toHaveText("Thank you");
+  await shopper.screenshot({ path: resolve(root, "thank-you-no-cart.png"), fullPage: true, animations: "disabled" });
 
   // A cart that was never paid goes back to the cart with its items.
   await shopper.goto(productPath);
@@ -167,5 +198,6 @@ test("the thank-you page trusts only the order behind the cart cookie", async ({
   await expect(shopper).toHaveURL(/\/cart\?cart_error=NOT_PAID$/u);
   await expect(shopper.locator("[data-guest-cart-status][role=alert]")).toHaveText("Your payment was not completed. Your items are still in your cart.");
   await expect(shopper.locator("[data-guest-cart-line]")).toHaveCount(1);
+  await shopper.screenshot({ path: resolve(root, "cart-not-paid.png"), fullPage: true, animations: "disabled" });
   await context.close();
 });

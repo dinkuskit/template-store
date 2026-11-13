@@ -49,6 +49,8 @@ const pass = () => {
   return `${part({ alg: "ES256", typ: "JWT" })}.${part({ iss: "https://dinkuskit.com/account", aud: "dinkus-payments",
     sub: "store:playground", site_id: "playground", scope: "payments:checkout", iat: now, exp: now + 600 })}.c2ln`;
 };
+// Stripe says "open" until the shopper finishes paying; the proof flips this after it checks the unpaid page.
+let stripePaid = false;
 const payments = createServer(async (request, response) => {
   const body = await new Promise((resolveBody) => {
     let text = "";
@@ -62,6 +64,7 @@ const payments = createServer(async (request, response) => {
     return json(response, { outcome: "open", attemptId: parsed.attemptId, total: parsed.total, session: sessionFor(parsed.attemptId) });
   }
   if (request.url === "/v1/checkout/lookup") {
+    if (!stripePaid) return json(response, { outcome: "open", attemptId: parsed.attemptId, total: parsed.total, session: sessionFor(parsed.attemptId) });
     return json(response, { outcome: "paid", attemptId: parsed.attemptId, total: parsed.total,
       paymentId: `pay_${parsed.attemptId}`, session: sessionFor(parsed.attemptId) });
   }
@@ -178,10 +181,18 @@ const writeRefusals = Object.fromEntries(Object.entries(writeAttempts).map(([nam
   refused: !(entry.status === 200 && entry.body?.data?.ok === true) && entry.paymentsCalls === 0,
 }]));
 const cartUnchanged = JSON.stringify(before?.lines) === JSON.stringify(after?.lines) && before?.version === after?.version && before?.lines?.length === 1;
-const started = await form("/checkout", cookie, {
-  email: "proof@example.test", "delivery[name]": "Proof Visitor", "delivery[line1]": "1 Test Way", "delivery[city]": "Testville",
-  "delivery[region]": "NC", "delivery[postalCode]": "27601", "delivery[country]": "US", billingSame: "on",
-});
+const delivery = { "delivery[name]": "Proof Visitor", "delivery[line1]": "1 Test Way", "delivery[city]": "Testville",
+  "delivery[region]": "NC", "delivery[postalCode]": "27601", "delivery[country]": "US", billingSame: "on" };
+// A missing email is redrawn beside its field, tied to it for screen readers and focused, before any Payments call.
+const noEmail = await form("/checkout", cookie, { email: "", ...delivery });
+const fieldCorrection = {
+  status: noEmail.status,
+  paymentsCalls: noEmail.paymentsCalls,
+  describedBy: /<input[^>]*id="guest-cart-email"[^>]*aria-describedby="guest-cart-email-error"/u.test(noEmail.html),
+  autofocus: /<input[^>]*id="guest-cart-email"[^>]*autofocus/u.test(noEmail.html),
+  errorBeside: /id="guest-cart-email-error"[^>]*role="alert"/u.test(noEmail.html),
+};
+const started = await form("/checkout", cookie, { email: "proof@example.test", ...delivery });
 if (started.status !== 303 || !started.location?.startsWith("https://checkout.stripe.com/")) {
   throw new Error(`the checkout form did not open Stripe: ${started.status} ${started.location} ${started.html.match(/role="alert">([^<]+)/)?.[1] ?? ""}\n${server.output.join("").slice(-3000)}`);
 }
@@ -202,6 +213,16 @@ async function returnMatrix(label) {
   cases[`${label}:registry:foreign`] = await request(`${COMMERCE}/checkout/guest/cart`, foreignSession, {}, capability);
   cases[`${label}:registry:reset`] = await request(`${COMMERCE}/checkout/guest/cart`, resetSession, {}, capability);
 }
+// Back from Stripe before the payment is done: the page says it is still checking, never that it went through.
+const unpaidResponse = await fetch(`${base}/checkout/success`, { headers: { cookie, "cf-connecting-ip": "203.0.113.7" }, redirect: "manual" });
+const unpaidHtml = await unpaidResponse.text();
+const unpaid = {
+  status: unpaidResponse.status,
+  state: unpaidHtml.match(/data-guest-checkout-return-state="([a-z-]+)"/)?.[1] ?? null,
+  claimsPaid: /went through\.|Order confirmed/u.test(unpaidHtml),
+  order: /data-guest-checkout-order-number/u.test(unpaidHtml),
+};
+stripePaid = true;
 await returnMatrix("live");
 const emptied = await page("/cart", cookie);
 
@@ -246,6 +267,10 @@ if (missingPrepare.status < 400 || missingPrepare.body?.data?.capability) {
 }
 if (missingStart.status === 303) failures.push(`missing origin: the checkout form was sent on to ${missingStart.location}`);
 for (const [name, result] of Object.entries(writeRefusals)) if (!result.refused) failures.push(`${name} was not refused: ${JSON.stringify(result)}`);
+if (noEmail.status === 303 || noEmail.paymentsCalls !== 0 || !fieldCorrection.describedBy || !fieldCorrection.autofocus || !fieldCorrection.errorBeside) {
+  failures.push(`the missing-email correction is not tied to its field: ${JSON.stringify(fieldCorrection)}`);
+}
+if (unpaid.status !== 200 || unpaid.state !== "confirming" || unpaid.claimsPaid || unpaid.order) failures.push(`the unpaid return page: ${JSON.stringify(unpaid)}`);
 if (!cartUnchanged) failures.push(`the cart changed under refused writes: ${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
 if (missingOriginPaymentsCalls !== 0) failures.push(`missing origin: ${missingOriginPaymentsCalls} Payments calls, expected 0`);
 if (emptied.status !== 200) failures.push(`the cart after payment answered ${emptied.status}`);
@@ -264,6 +289,8 @@ console.log(`paymentsCalls: ${calls.map((call) => call.path).join(", ")}`);
 console.log(`thankYouPage: ${paidPage(cases["live:page:authorized"])} order=${cases["live:page:authorized"].order}`);
 console.log(`restartRecoveryPaid: ${paidPage(cases["restarted:page:authorized"]) && paidRead(cases["restarted:registry:authorized"])}`);
 console.log(`expiredRefused: ${hiddenPage(cases["expired:page:authorized"]) && refused(cases["expired:registry:authorized"])}`);
+console.log(`fieldCorrection: ${JSON.stringify(fieldCorrection)}`);
+console.log(`unpaidReturn: ${JSON.stringify(unpaid)}`);
 console.log(`writeRefusals: ${JSON.stringify(writeRefusals)} cartUnchanged=${cartUnchanged}`);
 console.log(`missingOriginUnavailable: cart=${missingCart} prepare=${missingPrepare.status} checkout=${missingStart.status} paymentsCalls=${missingOriginPaymentsCalls}`);
 console.log(JSON.stringify(summary, null, 2));

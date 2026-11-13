@@ -50,8 +50,8 @@ async function submitAdd(form: HTMLFormElement, submitter: HTMLElement | null): 
       setStatus(form, body?.error?.message ?? "That cart change could not be made.", true);
     }
   } catch {
-    // The network failed: send the plain form, which works without this script.
-    form.submit();
+    // The answer was lost, so the add may have been saved. Sending it again could add it twice: point to the cart instead.
+    setStatus(form, "We could not tell whether that was added. Check your cart before adding it again.", true);
   } finally {
     if (button) button.disabled = false;
   }

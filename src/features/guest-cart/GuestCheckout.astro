@@ -40,7 +40,12 @@ const value = (name: string) => values?.[name] ?? "";
 // "Same as delivery" starts ticked (billing-address-v1); a refused post keeps the shopper's choice.
 const billingSame = values ? values.billingSame === "on" : true;
 const fieldError = (name: string) => error && error.field === name ? error.message : null;
-const invalid = (name: string) => (error && error.field === name ? "true" : undefined);
+// A correction sits beside its control, is tied to it for screen readers, and takes focus (template-store#223).
+// autofocus works without script; a refused post is redrawn here with one field in error.
+const errorId = (name: string) => `guest-cart-${name.replace(/\[|\]/gu, (bracket) => bracket === "[" ? "-" : "").replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)}-error`;
+const invalidAttrs = (name: string) => error && error.field === name
+  ? { "aria-invalid": "true" as const, "aria-describedby": errorId(name), autofocus: true }
+  : {};
 const canStart = Boolean(checkoutAdmission) && view.checkoutEnabled && !page.openPayment;
 const shippingText = shippingMode === "free" ? "Free"
   : shippingMode === "flat" && shippingMinor ? formatUsdMinor(shippingMinor) : "Calculated at checkout";
@@ -81,8 +86,8 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
         <legend>Checkout contact</legend>
         <p>Commerce uses your email for checkout. Every order needs a billing address; a delivery address is required only when the basket contains a physical item.</p>
         <label for="guest-cart-email">Email</label>
-        <input id="guest-cart-email" name="email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" value={value("email")} aria-invalid={invalid("email")} />
-        {fieldError("email") && <p id="guest-cart-email-error" data-guest-cart-contact-error="email" role="alert">{fieldError("email")}</p>}
+        <input id="guest-cart-email" name="email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" value={value("email")} {...invalidAttrs("email")} />
+        {fieldError("email") && <p id={errorId("email")} data-guest-cart-contact-error="email" role="alert">{fieldError("email")}</p>}
         {view.needsDelivery && (
           <div class="guest-cart-delivery" data-guest-cart-delivery>
             <h2>Delivery address</h2>
@@ -90,17 +95,17 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
             {address("delivery").map(({ field, label, auto, required }) => (
               <>
                 <label for={`guest-cart-delivery-${dataName(field)}`}>{label}{!required && <span> (optional)</span>}{field === "region" && <span> (required for United States delivery)</span>}</label>
-                <input id={`guest-cart-delivery-${dataName(field)}`} name={`delivery[${field}]`} {...{ [`data-guest-cart-delivery-${dataName(field)}`]: "" }} maxlength="200" autocomplete={`shipping ${auto}`} value={value(`delivery[${field}]`)} aria-invalid={invalid(`delivery[${field}]`)} />
-                {fieldError(`delivery[${field}]`) && <p data-guest-cart-contact-error={`delivery-${dataName(field)}`} role="alert">{fieldError(`delivery[${field}]`)}</p>}
+                <input id={`guest-cart-delivery-${dataName(field)}`} name={`delivery[${field}]`} {...{ [`data-guest-cart-delivery-${dataName(field)}`]: "" }} maxlength="200" autocomplete={`shipping ${auto}`} value={value(`delivery[${field}]`)} {...invalidAttrs(`delivery[${field}]`)} />
+                {fieldError(`delivery[${field}]`) && <p id={errorId(`delivery[${field}]`)} data-guest-cart-contact-error={`delivery-${dataName(field)}`} role="alert">{fieldError(`delivery[${field}]`)}</p>}
               </>
             ))}
             <label for="guest-cart-delivery-country">Country</label>
-            <select id="guest-cart-delivery-country" name="delivery[country]" data-guest-cart-delivery-country autocomplete="shipping country" aria-invalid={invalid("delivery[country]")}>
+            <select id="guest-cart-delivery-country" name="delivery[country]" data-guest-cart-delivery-country autocomplete="shipping country" {...invalidAttrs("delivery[country]")}>
               <option value="">Select a country</option>
               <option value="US" selected={value("delivery[country]").toUpperCase() === "US"}>United States</option>
               {COMING_SOON_SHIPPING_COUNTRIES.map((name) => <option value="" disabled>{name} (coming soon)</option>)}
             </select>
-            {fieldError("delivery[country]") && <p data-guest-cart-contact-error="delivery-country" role="alert">{fieldError("delivery[country]")}</p>}
+            {fieldError("delivery[country]") && <p id={errorId("delivery[country]")} data-guest-cart-contact-error="delivery-country" role="alert">{fieldError("delivery[country]")}</p>}
           </div>
         )}
         {view.needsDelivery && (
@@ -115,16 +120,16 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
           {address("billing").map(({ field, label, auto, required }) => (
             <>
               <label for={`guest-cart-billing-${dataName(field)}`}>{label}{!required && <span> (optional)</span>}</label>
-              <input id={`guest-cart-billing-${dataName(field)}`} name={`billing[${field}]`} {...{ [`data-guest-cart-billing-${dataName(field)}`]: "" }} maxlength="200" autocomplete={`billing ${auto}`} value={value(`billing[${field}]`)} aria-invalid={invalid(`billing[${field}]`)} />
-              {fieldError(`billing[${field}]`) && <p data-guest-cart-contact-error={`billing-${dataName(field)}`} role="alert">{fieldError(`billing[${field}]`)}</p>}
+              <input id={`guest-cart-billing-${dataName(field)}`} name={`billing[${field}]`} {...{ [`data-guest-cart-billing-${dataName(field)}`]: "" }} maxlength="200" autocomplete={`billing ${auto}`} value={value(`billing[${field}]`)} {...invalidAttrs(`billing[${field}]`)} />
+              {fieldError(`billing[${field}]`) && <p id={errorId(`billing[${field}]`)} data-guest-cart-contact-error={`billing-${dataName(field)}`} role="alert">{fieldError(`billing[${field}]`)}</p>}
             </>
           ))}
           <label for="guest-cart-billing-country">Billing country</label>
-          <select id="guest-cart-billing-country" name="billing[country]" data-guest-cart-billing-country autocomplete="billing country" aria-invalid={invalid("billing[country]")}>
+          <select id="guest-cart-billing-country" name="billing[country]" data-guest-cart-billing-country autocomplete="billing country" {...invalidAttrs("billing[country]")}>
             <option value="">Select a country</option>
             {BILLING_COUNTRIES.map(({ code, name }) => <option value={code} selected={value("billing[country]").toUpperCase() === code}>{name}</option>)}
           </select>
-          {fieldError("billing[country]") && <p data-guest-cart-contact-error="billing-country" role="alert">{fieldError("billing[country]")}</p>}
+          {fieldError("billing[country]") && <p id={errorId("billing[country]")} data-guest-cart-contact-error="billing-country" role="alert">{fieldError("billing[country]")}</p>}
         </div>
       </fieldset>
       <div class="guest-cart-coupon" data-guest-cart-coupon-box aria-disabled="true">

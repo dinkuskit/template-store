@@ -16,8 +16,9 @@ const title = order ? "Order confirmation"
   : result.kind === "no-cart" ? "Thank you"
   : "We couldn't confirm your order";
 const message = order ? "Order confirmed."
-  : result.kind === "confirming" ? "Your payment went through. We are confirming your order, which takes a few seconds."
-  : result.kind === "slow" ? "This is taking longer than usual. Your confirmation email is on its way once it finishes."
+  // Only Commerce's paid answer says the payment went through; until then the page says it is still checking.
+  : result.kind === "confirming" ? "We are checking with the payment provider whether your payment is complete. This page updates in a few seconds."
+  : result.kind === "slow" ? "Your payment is not confirmed yet. If you paid, your confirmation email comes once it is. If you did not finish paying, your items are still in your cart."
   : result.kind === "no-cart" ? "If you just paid, your confirmation email has your order details. Signed-in shoppers find every order in their account."
   : contactHref ? "We couldn't confirm your order just now. Check your email, or contact us." : "We couldn't confirm your order just now. Check your email.";
 const statusRole = result.kind === "unavailable" ? "alert" : "status";
@@ -113,6 +114,7 @@ const hasDestination = Boolean(order && (order.email || order.recipient || order
   {(result.kind === "slow" || result.kind === "unavailable") && (
     <a data-guest-checkout-status-retry href="/checkout/success">Check status again</a>
   )}
+  {result.kind === "slow" && <a data-guest-checkout-back-to-cart href="/cart">Back to your cart</a>}
   <div class="guest-checkout-actions" data-guest-checkout-actions>
     <a class="guest-checkout-continue" href="/">Continue shopping</a>
     <a class="guest-checkout-account" data-guest-checkout-account href="/account">Shopper account</a>

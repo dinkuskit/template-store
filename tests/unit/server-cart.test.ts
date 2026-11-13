@@ -264,12 +264,13 @@ describe("cart routes", () => {
     expect(await script.json()).toMatchObject({ ok: true, cart: { itemCount: 4 } });
   });
 
-  it("sends a refused plain form back where it came from with the reason", async () => {
+  it("sends a refused plain form to the cart page, which says why", async () => {
     const commerce = fakeCommerce();
     const form = new FormData();
     form.set("id", "item_gone");
     const response = await postAdd(apiContext(commerce, fakeCookies(), "/cart/add", form, { referer: "https://shop.test/products/gone?x=1" }));
-    expect(response.headers.get("location")).toBe("/products/gone?x=1&cart_error=PRODUCT_UNAVAILABLE");
+    // The product page has no place for the reason; the cart page draws it (and the Referer is never trusted).
+    expect(response.headers.get("location")).toBe("/cart?cart_error=PRODUCT_UNAVAILABLE");
     const crossSite = await postAdd(apiContext(commerce, fakeCookies(), "/cart/add", form, { "sec-fetch-site": "cross-site" }));
     expect(crossSite.headers.get("location")).toBe("/cart?cart_error=INVALID_CART");
   });

@@ -50,6 +50,9 @@ function fakeStore(initial: { catalogItemId: string; quantity: number }[] = []) 
       version = `v${writes + 1}`;
       return answer(true);
     }
+    // The store's variant link: Commerce's id resolved to the published page's slug.
+    if (path === "/variants/var_m") return Response.json({ ok: true, url: "/products/sized-tee?variant=var_m" });
+    if (path.startsWith("/variants/")) return Response.json({ ok: false, error: { code: "NOT_FOUND", message: "x" } }, { status: 404 });
     return new Response("not found", { status: 404 });
   };
   return { fetch, requests, get version() { return version; }, changeElsewhere() { version = "elsewhere"; } };
@@ -115,12 +118,14 @@ describe("browser agent tools on the server cart", () => {
     expect(await actions.cancelCart({ version: store.version })).toMatchObject({ ok: true, cart: { itemCount: 0, lines: [] } });
   });
 
-  it("opens a product on a variant", () => {
+  it("opens a product on a variant at its published page", async () => {
     const navigated: string[] = [];
     const actions = actionsFor(fakeStore(), navigated);
-    expect(actions.showVariant({ productId: "prod_tee", variantId: "var_m" })).toEqual({ ok: true, url: "/products/prod_tee?variant=var_m" });
-    expect(actions.showVariant({ productId: "../admin" })).toMatchObject({ ok: false, code: "INVALID_INPUT" });
-    expect(navigated).toEqual(["/products/prod_tee?variant=var_m"]);
+    // The page lives at its published slug (sized-tee), not at the Commerce id (prod_tee).
+    expect(await actions.showVariant({ productId: "prod_tee", variantId: "var_m" })).toEqual({ ok: true, url: "/products/sized-tee?variant=var_m" });
+    expect(await actions.showVariant({ productId: "prod_gone" })).toMatchObject({ ok: false, code: "NOT_FOUND" });
+    expect(await actions.showVariant({ productId: "../admin" })).toMatchObject({ ok: false, code: "INVALID_INPUT" });
+    expect(navigated).toEqual(["/products/sized-tee?variant=var_m"]);
   });
 
   it("asks for the shopper's review before opening checkout, and a cart change resets it", async () => {

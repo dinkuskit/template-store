@@ -40,21 +40,6 @@ function statusFor(result: ServerCartResult): number {
   }
 }
 
-/** A path on this store to send a plain form back to, from the Referer; anything else lands on the cart. */
-function backTo(context: APIContext, fallback: string): string {
-  try {
-    const referer = new URL(context.request.headers.get("referer") ?? "");
-    if (referer.origin === context.url.origin && referer.pathname.startsWith("/") && !referer.pathname.startsWith("//")) {
-      referer.searchParams.delete("cart_error");
-      referer.searchParams.delete("added");
-      return referer.pathname + referer.search;
-    }
-  } catch {
-    // No usable Referer.
-  }
-  return fallback;
-}
-
 function withQuery(path: string, name: string, value: string): string {
   const url = new URL(path, "https://store.invalid");
   url.searchParams.set(name, value);
@@ -99,7 +84,7 @@ function refused(context: APIContext, code: string): Response {
   const result: ServerCartResult = { ok: false, error: { code, message: "That cart change could not be made." } };
   return wantsJson(context.request, context.url)
     ? json(cartJson(result), code === "FORBIDDEN" ? 403 : 400)
-    : redirect(withQuery(backTo(context, "/cart"), "cart_error", code === "FORBIDDEN" ? "INVALID_CART" : code));
+    : redirect(withQuery("/cart", "cart_error", code === "FORBIDDEN" ? "INVALID_CART" : code));
 }
 
 /** GET /cart.js: the cart, as the page script and agents read it (Shopify's /cart.js). */
@@ -115,7 +100,7 @@ export const postAdd: APIRoute = async (context) => {
   if (wantsJson(context.request, context.url)) return json(cartJson(result), statusFor(result));
   return result.ok
     ? redirect(withQuery("/cart", "added", String(line.quantity)))
-    : redirect(withQuery(backTo(context, "/cart"), "cart_error", result.error.code));
+    : redirect(withQuery("/cart", "cart_error", result.error.code));
 };
 
 /** POST /cart/change (a plain form) and /cart/change.js: set one item's quantity; 0 removes it. */

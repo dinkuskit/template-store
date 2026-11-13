@@ -39,7 +39,7 @@ Every storefront page with cart controls freezes `window.Dinkus.actions`:
 | `create_cart` | `false` | `false` | `true` | `false` | Starts a cart with the given lines when the shopper has none. |
 | `update_cart` | `false` | `false` | `true` | `true` | Replaces the whole cart quoting `version` (required with `lines`); optional idempotency `key`. |
 | `cancel_cart` | `false` | `false` | `true` | `true` | Empties the cart, quoting `version`. |
-| `show_variant` | `false` | `false` | `true` | `true` | Opens a product page on a chosen variant. |
+| `show_variant` | `false` | `false` | `true` | `true` | Opens the product's published page, on a chosen variant. The store's `/variants/<id>` finds the page from the Commerce id; an id no published page sells answers `NOT_FOUND` and nothing opens. |
 | `proceed_to_checkout` | `false` | **`true`** | `true` | `false` | Enforces the two-step `buyer_review_required` gate with explicit `reviewFingerprint` verification before navigating to `/checkout`. |
 
 ### 3. Safety Boundaries: Prompt-Injection Defense, Two-Step Buyer Review, and Hosted Payment Escalation

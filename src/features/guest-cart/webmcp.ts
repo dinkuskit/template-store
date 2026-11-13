@@ -92,7 +92,7 @@ export type DinkusStorefrontActions = Readonly<{
   createCart: (lines: readonly DinkusCartLineInput[]) => Promise<DinkusCartWriteResult>;
   updateCart: (input: Readonly<{ version: string | null; lines: readonly DinkusCartLineInput[]; key?: string }>) => Promise<DinkusCartWriteResult>;
   cancelCart: (input: Readonly<{ version: string | null }>) => Promise<DinkusCartWriteResult>;
-  showVariant: (input: Readonly<{ productId: string; variantId?: string }>) => Readonly<{ ok: true; url: string }> | DinkusCartError;
+  showVariant: (input: Readonly<{ productId: string; variantId?: string }>) => Promise<Readonly<{ ok: true; url: string }> | DinkusCartError>;
   openCart: () => void;
   proceedToCheckout: (input?: Readonly<{ buyerConfirmed?: boolean; reviewFingerprint?: string }>) => Promise<DinkusCheckoutProceedResult>;
 }>;
@@ -280,13 +280,22 @@ export function createStorefrontActions(env: StorefrontWebMcpEnvironment = {}): 
       ? fail("INVALID_INPUT", "Quote the cart version from get_cart.")
       : write({ version: input.version, lines: [] });
 
-  const showVariant: DinkusStorefrontActions["showVariant"] = (input) => {
+  const showVariant: DinkusStorefrontActions["showVariant"] = async (input) => {
     const productId = typeof input?.productId === "string" ? input.productId.trim() : "";
     const variantId = typeof input?.variantId === "string" ? input.variantId.trim() : "";
     if (!SAFE_ID.test(productId) || (variantId && !SAFE_ID.test(variantId))) {
       return fail("INVALID_INPUT", "show_variant needs the product's id and, optionally, a variant id.");
     }
-    const url = `/products/${encodeURIComponent(productId)}${variantId ? `?variant=${encodeURIComponent(variantId)}` : ""}`;
+    // Product pages live at their published slug, not the Commerce id: the store's /variants/<id> finds the page.
+    type VariantLink = { ok?: boolean; url?: unknown; error?: { code?: string; message?: string } };
+    const found = await send(`/variants/${encodeURIComponent(variantId || productId)}`, {
+      headers: { accept: "application/json" },
+      credentials: "same-origin",
+    }).then((response) => response.json() as Promise<VariantLink>).catch((): VariantLink | null => null);
+    const url = found?.ok && typeof found.url === "string" && found.url.startsWith("/products/") ? found.url : null;
+    if (!url) {
+      return fail(found?.error?.code ?? "UNAVAILABLE", found?.error?.message ?? "The product page could not be found right now.");
+    }
     navigate(url);
     return { ok: true, url };
   };

@@ -59,7 +59,10 @@ export function hydrateServerCheckout(): void {
   renderBilling(root);
   root.querySelector("[data-guest-cart-billing-same]")?.addEventListener("change", () => renderBilling(root));
   void prefillShopperContact(root);
-  root.querySelector<HTMLElement>("[role=alert]")?.scrollIntoView?.({ block: "center" });
+  // A refused post comes back with its field marked: focus that field, or show the page's own alert.
+  const invalidField = root.querySelector<HTMLElement>("[aria-invalid=true]");
+  if (invalidField) invalidField.focus();
+  else root.querySelector<HTMLElement>("[role=alert]")?.scrollIntoView?.({ block: "center" });
   root.querySelector("[data-checkout-form]")?.addEventListener("submit", (event) => {
     const form = event.currentTarget as HTMLFormElement;
     if (form.dataset.submitting === "true") {
