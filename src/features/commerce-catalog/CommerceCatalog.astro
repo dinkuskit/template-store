@@ -1,6 +1,6 @@
 ---
 import { AddToCart } from "../guest-cart/ui.ts";
-import { availabilityLabels, type PublicCommerceProduct } from "./index.js";
+import { catalogCardAvailability, type PublicCommerceProduct } from "./index.js";
 import ProductMedia from "./ProductMedia.astro";
 import { demoPlaceholderImage } from "../playground/demo-products.js";
 import { catalogNoticeText } from "../store-shell/checkout-copy.js";
@@ -20,13 +20,14 @@ const notice = catalogNoticeText({ unavailable, productCount: products.length, c
   {unavailable ? <p role="alert">The product catalog is temporarily unavailable.</p> : products.length === 0 ? <p data-commerce-empty>No products are listed yet.</p> : <div class="shop-grid">
     {products.map(product => {
       const href = productPaths.get(product.id);
+      const availability = catalogCardAvailability(product);
       const body = <>
       <ProductMedia image={product.image} productId={product.id} fallbackSrc={demoPlaceholderImage(product.sku, href?.split("/").pop())} fallbackAlt={`${product.name} placeholder image`} />
       <div class="shop-card__body">
         <h3>{product.name}</h3>
         <div class="shop-card__facts">
           <p class="price">{product.price.saleText ? <><s data-regular-price>{product.price.regularText}</s><strong data-sale-price>{product.price.saleText}</strong></> : <strong data-regular-price>{product.price.regularText}</strong>}</p>
-          <p class="availability" data-commerce-availability={product.availability.status}>{availabilityLabels[product.availability.status]}</p>
+          <p class="availability" data-commerce-availability={availability.status}>{availability.label}</p>
         </div>
         {!href && <AddToCart product={product} />}
       </div></>;
