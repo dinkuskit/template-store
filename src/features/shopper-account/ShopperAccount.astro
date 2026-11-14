@@ -140,6 +140,9 @@ const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
     margin: 0 0 1.25rem;
   }
   [data-account-status] {
+    /* Chalk stays light even when the surrounding page uses its dark palette. */
+    color-scheme: light;
+    color: var(--store-ink);
     margin: 0 0 1.5rem;
     padding: 0.8rem 1rem;
     border-radius: 0.6rem;
@@ -182,6 +185,8 @@ const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
     min-width: 0;
   }
   .account-card--stamp {
+    /* Resolve light-dark() text and native fields against this fixed chalk. */
+    color-scheme: light;
     background: #fcfbf8;
     border: 1.5px solid var(--account-chalk-border, #d6d0c4);
     box-shadow: 0 4px 0 0 var(--account-chalk-shadow, #e6e0d4);
