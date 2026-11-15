@@ -44,7 +44,7 @@ const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
 
       <form class="account-form account-verify-form" data-account-verify-form hidden novalidate>
         <label for="account-code">6-digit verification code</label>
-        <input id="account-code" data-account-code type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required />
+        <input id="account-code" data-account-code type="text" inputmode="numeric" pattern="\s*[0-9]{6}\s*" autocomplete="one-time-code" required />
         <button type="submit" data-account-verify>Verify &amp; sign in</button>
       </form>
     </div>
@@ -310,6 +310,10 @@ const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
     border-radius: 0.35rem;
     background: #ffffff;
     font: inherit;
+  }
+  #account-code {
+    width: min(100%, 14rem);
+    font-variant-numeric: tabular-nums;
   }
   .shopper-account button {
     width: fit-content;
