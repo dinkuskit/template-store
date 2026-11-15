@@ -21,6 +21,7 @@ import {
   type ShopperProfile,
   type StoredShopperSession,
 } from "./index.js";
+import { clearProfileFeedback, profileAddressError, showProfileFeedback } from "./profile-feedback.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -82,6 +83,7 @@ function readFieldValue(root: Element, selector: string): string {
 }
 
 function populateProfileForm(root: Element, profile: ShopperProfile): void {
+  clearProfileFeedback(root);
   setFieldValue(root, "[data-account-profile-phone]", profile.phone ?? "");
   const delivery = profile.delivery;
   setFieldValue(root, "[data-account-profile-name]", delivery?.name ?? "");
@@ -213,6 +215,7 @@ export async function fetchOrderCatalogSnapshots(
 }
 
 function showSignedInState(root: Element, signedIn: boolean, email = ""): void {
+  if (!signedIn) clearProfileFeedback(root);
   const signedOutSection = root.querySelector("[data-account-signed-out]");
   const signedInSection = root.querySelector("[data-account-signed-in]");
   const emailBadge = root.querySelector("[data-account-current-email]");
@@ -470,6 +473,12 @@ export function hydrateShopperAccountPage(): void {
     })();
   });
 
+  const clearEditedFeedback = (event: Event) => {
+    if (event.target instanceof Element) clearProfileFeedback(root, event.target);
+  };
+  profileForm?.addEventListener("input", clearEditedFeedback);
+  profileForm?.addEventListener("change", clearEditedFeedback);
+
   profileForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     void (async () => {
@@ -488,14 +497,13 @@ export function hydrateShopperAccountPage(): void {
       const postalCode = readFieldValue(root, "[data-account-profile-postal-code]");
       const country = readFieldValue(root, "[data-account-profile-country]").toUpperCase();
       const hasDeliveryInput = Boolean(name || line1 || line2 || city || region || postalCode);
-      if (hasDeliveryInput && (!name || !line1 || !city || !postalCode || !country)) {
-        setAccountStatus(
-          root,
-          "Complete recipient, address line 1, city, postal code, and country to save your shipping address.",
-          true,
-        );
+      const addressError = profileAddressError({ name, line1, line2, city, region, postalCode, country });
+      if (addressError) {
+        setAccountStatus(root, "Check the highlighted shipping field.", true);
+        showProfileFeedback(root, addressError);
         return;
       }
+      clearProfileFeedback(root);
       const delivery = hasDeliveryInput
         ? {
             name,
