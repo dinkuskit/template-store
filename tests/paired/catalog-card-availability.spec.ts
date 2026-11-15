@@ -79,7 +79,8 @@ test("catalog cards summarize every listable member without changing selected-me
     await expect(shopper.locator("[data-variant-price]")).toHaveText("$45.00");
     await expect(shopper.locator("[data-add-to-cart]")).toHaveAttribute("data-add-to-cart", large);
     await expect(shopper.locator("[data-add-to-cart]")).toBeEnabled();
-    expect(await shopper.evaluate(() => localStorage.length)).toBe(0);
+    // Looking at a product makes no cart: the server cart starts with the first Add.
+    expect((await shopperContext.cookies()).some((cookie) => cookie.name === "dk_cart")).toBe(false);
   } finally {
     await cardsContext.close();
     await shopperContext.close();

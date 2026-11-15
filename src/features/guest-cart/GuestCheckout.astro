@@ -1,18 +1,30 @@
 ---
 import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON, GUEST_CHECKOUT_READY_LABEL } from "./index.js";
 import type { GuestCheckoutAdmission } from "./index.js";
+import type { ServerCartPage } from "./server-view.js";
+import type { ContactFieldError, ContactFormValues } from "./server-cart.js";
+import { formatUsdMinor } from "../store-shell/price.js";
 
 interface Props {
   checkoutAdmission?: GuestCheckoutAdmission | null;
   shippingMode?: "free" | "flat" | null;
   shippingMinor?: string | null;
+  /** The cart the server read for this page. */
+  page: ServerCartPage;
+  /** What the shopper posted, kept when checkout refused it. */
+  values?: ContactFormValues | null;
+  error?: (ContactFieldError | Readonly<{ field: null; message: string }>) | null;
 }
 
 const {
   checkoutAdmission = null,
   shippingMode = null,
   shippingMinor = null,
+  page,
+  values = null,
+  error = null,
 } = Astro.props;
+const { view } = page;
 // Shown disabled until Commerce publishes the store's allowed shipping countries.
 const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia", "Germany", "France", "Japan"];
 // A billing address may be in every country, so its list holds each country the runtime names.
@@ -24,12 +36,35 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
     return name && name !== code ? [{ code, name }] : [];
   })
   .sort((a, b) => a.name.localeCompare(b.name, "en"));
+const value = (name: string) => values?.[name] ?? "";
+// "Same as delivery" starts ticked (billing-address-v1); a refused post keeps the shopper's choice.
+const billingSame = values ? values.billingSame === "on" : true;
+const fieldError = (name: string) => error && error.field === name ? error.message : null;
+// A correction sits beside its control, is tied to it for screen readers, and takes focus (template-store#223).
+// autofocus works without script; a refused post is redrawn here with one field in error.
+const errorId = (name: string) => `guest-cart-${name.replace(/\[|\]/gu, (bracket) => bracket === "[" ? "-" : "").replace(/[A-Z]/gu, (c) => `-${c.toLowerCase()}`)}-error`;
+const invalidAttrs = (name: string) => error && error.field === name
+  ? { "aria-invalid": "true" as const, "aria-describedby": errorId(name), autofocus: true }
+  : {};
+const canStart = Boolean(checkoutAdmission) && view.checkoutEnabled && !page.openPayment;
+const shippingText = shippingMode === "free" ? "Free"
+  : shippingMode === "flat" && shippingMinor ? formatUsdMinor(shippingMinor) : "Calculated at checkout";
+const address = (kind: "delivery" | "billing") => [
+  { field: "name", label: kind === "delivery" ? "Recipient" : "Billing name", auto: "name", required: true },
+  { field: "line1", label: kind === "delivery" ? "Address line 1" : "Billing address line 1", auto: "address-line1", required: true },
+  { field: "line2", label: kind === "delivery" ? "Address line 2" : "Billing address line 2", auto: "address-line2", required: false },
+  { field: "city", label: kind === "delivery" ? "City" : "Billing city", auto: "address-level2", required: true },
+  { field: "region", label: kind === "delivery" ? "State or region" : "Billing state or region", auto: "address-level1", required: false },
+  { field: "postalCode", label: kind === "delivery" ? "Postal code" : "Billing postal code", auto: "postal-code", required: true },
+];
+const dataName = (field: string) => field === "postalCode" ? "postal-code" : field;
 ---
 <section
   class="guest-checkout"
   aria-labelledby="guest-checkout-title"
   data-guest-cart
   data-guest-checkout-page
+  data-server-checkout
   data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"}
   data-checkout-shipping-mode={shippingMode ?? undefined}
   data-checkout-shipping-minor={shippingMinor ?? undefined}
@@ -38,77 +73,63 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
     <h1 id="guest-checkout-title">Checkout</h1>
     <a href="/cart" class="guest-checkout-back" data-checkout-back-to-cart>Back to cart</a>
   </div>
-  <p data-guest-cart-status role="status" hidden></p>
-  <p data-guest-cart-empty hidden tabindex="-1">Your cart is empty. <a href="/cart">Return to cart</a> or <a href="/">continue shopping</a>.</p>
+  {error && error.field === null && <p data-guest-cart-status role="alert">{error.message}</p>}
+  {page.error && <p data-guest-cart-status role="alert">{page.error}</p>}
+  {view.empty ? <p data-guest-cart-empty tabindex="-1">Your cart is empty. <a href="/cart">Return to cart</a> or <a href="/">continue shopping</a>.</p> : (
   <div class="guest-checkout-grid">
-    <div class="guest-checkout-vault" data-checkout-vault>
+    <form class="guest-checkout-vault" method="post" action="/checkout" data-checkout-vault data-checkout-form novalidate>
       <div class="guest-checkout-vault__header">
         <p class="guest-checkout-vault__eyebrow">Secure Checkout Vault</p>
         <h2>Contact &amp; Delivery</h2>
       </div>
-      <fieldset class="guest-cart-contact" data-guest-cart-contact>
+      <fieldset class="guest-cart-contact" data-guest-cart-contact disabled={!canStart}>
         <legend>Checkout contact</legend>
         <p>Commerce uses your email for checkout. Every order needs a billing address; a delivery address is required only when the basket contains a physical item.</p>
         <label for="guest-cart-email">Email</label>
-        <input id="guest-cart-email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" />
-        <p id="guest-cart-email-error" data-guest-cart-contact-error="email" role="alert" hidden></p>
-        <div class="guest-cart-delivery" data-guest-cart-delivery hidden>
-          <h2>Delivery address</h2>
-          <p>Complete these fields for a physical order.</p>
-          <label for="guest-cart-delivery-name">Recipient</label>
-          <input id="guest-cart-delivery-name" data-guest-cart-delivery-name maxlength="200" autocomplete="shipping name" />
-          <p id="guest-cart-delivery-name-error" data-guest-cart-contact-error="delivery-name" role="alert" hidden></p>
-          <label for="guest-cart-delivery-line1">Address line 1</label>
-          <input id="guest-cart-delivery-line1" data-guest-cart-delivery-line1 maxlength="200" autocomplete="shipping address-line1" />
-          <p id="guest-cart-delivery-line1-error" data-guest-cart-contact-error="delivery-line1" role="alert" hidden></p>
-          <label for="guest-cart-delivery-line2">Address line 2 <span>(optional)</span></label>
-          <input id="guest-cart-delivery-line2" data-guest-cart-delivery-line2 maxlength="200" autocomplete="shipping address-line2" />
-          <label for="guest-cart-delivery-city">City</label>
-          <input id="guest-cart-delivery-city" data-guest-cart-delivery-city maxlength="200" autocomplete="shipping address-level2" />
-          <p id="guest-cart-delivery-city-error" data-guest-cart-contact-error="delivery-city" role="alert" hidden></p>
-          <label for="guest-cart-delivery-region">State or region <span>(required for United States delivery)</span></label>
-          <input id="guest-cart-delivery-region" data-guest-cart-delivery-region maxlength="200" autocomplete="shipping address-level1" />
-          <p id="guest-cart-delivery-region-error" data-guest-cart-contact-error="delivery-region" role="alert" hidden></p>
-          <label for="guest-cart-delivery-postal-code">Postal code</label>
-          <input id="guest-cart-delivery-postal-code" data-guest-cart-delivery-postal-code maxlength="200" autocomplete="shipping postal-code" />
-          <p id="guest-cart-delivery-postal-code-error" data-guest-cart-contact-error="delivery-postal-code" role="alert" hidden></p>
-          <label for="guest-cart-delivery-country">Country</label>
-          <select id="guest-cart-delivery-country" data-guest-cart-delivery-country autocomplete="shipping country">
-            <option value="">Select a country</option>
-            <option value="US">United States</option>
-            {COMING_SOON_SHIPPING_COUNTRIES.map((name) => <option value="" disabled>{name} (coming soon)</option>)}
-          </select>
-          <p id="guest-cart-delivery-country-error" data-guest-cart-contact-error="delivery-country" role="alert" hidden></p>
-        </div>
-        <label class="guest-cart-billing-same" data-guest-cart-billing-same-row hidden>
-          <input type="checkbox" data-guest-cart-billing-same checked />
-          Billing address same as delivery address
-        </label>
-        <div class="guest-cart-delivery" data-guest-cart-billing>
+        <input id="guest-cart-email" name="email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" value={value("email")} {...invalidAttrs("email")} />
+        {fieldError("email") && <p id={errorId("email")} data-guest-cart-contact-error="email" role="alert">{fieldError("email")}</p>}
+        {view.needsDelivery && (
+          <div class="guest-cart-delivery" data-guest-cart-delivery>
+            <h2>Delivery address</h2>
+            <p>Complete these fields for a physical order.</p>
+            {address("delivery").map(({ field, label, auto, required }) => (
+              <>
+                <label for={`guest-cart-delivery-${dataName(field)}`}>{label}{!required && <span> (optional)</span>}{field === "region" && <span> (required for United States delivery)</span>}</label>
+                <input id={`guest-cart-delivery-${dataName(field)}`} name={`delivery[${field}]`} {...{ [`data-guest-cart-delivery-${dataName(field)}`]: "" }} maxlength="200" autocomplete={`shipping ${auto}`} value={value(`delivery[${field}]`)} {...invalidAttrs(`delivery[${field}]`)} />
+                {fieldError(`delivery[${field}]`) && <p id={errorId(`delivery[${field}]`)} data-guest-cart-contact-error={`delivery-${dataName(field)}`} role="alert">{fieldError(`delivery[${field}]`)}</p>}
+              </>
+            ))}
+            <label for="guest-cart-delivery-country">Country</label>
+            <select id="guest-cart-delivery-country" name="delivery[country]" data-guest-cart-delivery-country autocomplete="shipping country" {...invalidAttrs("delivery[country]")}>
+              <option value="">Select a country</option>
+              <option value="US" selected={value("delivery[country]").toUpperCase() === "US"}>United States</option>
+              {COMING_SOON_SHIPPING_COUNTRIES.map((name) => <option value="" disabled>{name} (coming soon)</option>)}
+            </select>
+            {fieldError("delivery[country]") && <p id={errorId("delivery[country]")} data-guest-cart-contact-error="delivery-country" role="alert">{fieldError("delivery[country]")}</p>}
+          </div>
+        )}
+        {view.needsDelivery && (
+          <label class="guest-cart-billing-same" data-guest-cart-billing-same-row>
+            <input type="checkbox" name="billingSame" data-guest-cart-billing-same checked={billingSame} />
+            Billing address same as delivery address
+          </label>
+        )}
+        <div class="guest-cart-delivery" data-guest-cart-billing data-billing-optional={view.needsDelivery ? "when-same" : undefined}>
           <h2>Billing address</h2>
-          <p>The address for the card you pay with.</p>
-          <label for="guest-cart-billing-name">Billing name</label>
-          <input id="guest-cart-billing-name" data-guest-cart-billing-name maxlength="200" autocomplete="billing name" />
-          <p id="guest-cart-billing-name-error" data-guest-cart-contact-error="billing-name" role="alert" hidden></p>
-          <label for="guest-cart-billing-line1">Billing address line 1</label>
-          <input id="guest-cart-billing-line1" data-guest-cart-billing-line1 maxlength="200" autocomplete="billing address-line1" />
-          <p id="guest-cart-billing-line1-error" data-guest-cart-contact-error="billing-line1" role="alert" hidden></p>
-          <label for="guest-cart-billing-line2">Billing address line 2 <span>(optional)</span></label>
-          <input id="guest-cart-billing-line2" data-guest-cart-billing-line2 maxlength="200" autocomplete="billing address-line2" />
-          <label for="guest-cart-billing-city">Billing city</label>
-          <input id="guest-cart-billing-city" data-guest-cart-billing-city maxlength="200" autocomplete="billing address-level2" />
-          <p id="guest-cart-billing-city-error" data-guest-cart-contact-error="billing-city" role="alert" hidden></p>
-          <label for="guest-cart-billing-region">Billing state or region <span>(optional)</span></label>
-          <input id="guest-cart-billing-region" data-guest-cart-billing-region maxlength="200" autocomplete="billing address-level1" />
-          <label for="guest-cart-billing-postal-code">Billing postal code</label>
-          <input id="guest-cart-billing-postal-code" data-guest-cart-billing-postal-code maxlength="200" autocomplete="billing postal-code" />
-          <p id="guest-cart-billing-postal-code-error" data-guest-cart-contact-error="billing-postal-code" role="alert" hidden></p>
+          <p>{view.needsDelivery ? "The address for the card you pay with. Leave it empty when it matches the delivery address." : "The address for the card you pay with."}</p>
+          {address("billing").map(({ field, label, auto, required }) => (
+            <>
+              <label for={`guest-cart-billing-${dataName(field)}`}>{label}{!required && <span> (optional)</span>}</label>
+              <input id={`guest-cart-billing-${dataName(field)}`} name={`billing[${field}]`} {...{ [`data-guest-cart-billing-${dataName(field)}`]: "" }} maxlength="200" autocomplete={`billing ${auto}`} value={value(`billing[${field}]`)} {...invalidAttrs(`billing[${field}]`)} />
+              {fieldError(`billing[${field}]`) && <p id={errorId(`billing[${field}]`)} data-guest-cart-contact-error={`billing-${dataName(field)}`} role="alert">{fieldError(`billing[${field}]`)}</p>}
+            </>
+          ))}
           <label for="guest-cart-billing-country">Billing country</label>
-          <select id="guest-cart-billing-country" data-guest-cart-billing-country autocomplete="billing country">
+          <select id="guest-cart-billing-country" name="billing[country]" data-guest-cart-billing-country autocomplete="billing country" {...invalidAttrs("billing[country]")}>
             <option value="">Select a country</option>
-            {BILLING_COUNTRIES.map(({ code, name }) => <option value={code}>{name}</option>)}
+            {BILLING_COUNTRIES.map(({ code, name }) => <option value={code} selected={value("billing[country]").toUpperCase() === code}>{name}</option>)}
           </select>
-          <p id="guest-cart-billing-country-error" data-guest-cart-contact-error="billing-country" role="alert" hidden></p>
+          {fieldError("billing[country]") && <p id={errorId("billing[country]")} data-guest-cart-contact-error="billing-country" role="alert">{fieldError("billing[country]")}</p>}
         </div>
       </fieldset>
       <div class="guest-cart-coupon" data-guest-cart-coupon-box aria-disabled="true">
@@ -118,27 +139,51 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
       </div>
       <div class="guest-checkout-actions" data-checkout-payment-handoff>
         <p class="guest-checkout-handoff-note" data-checkout-payment-note>Payment is processed securely through the store's configured payment provider.</p>
-        <button type="button" data-guest-cart-checkout disabled>{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
-        <p data-guest-cart-checkout-reason>{checkoutAdmission ? "" : GUEST_CHECKOUT_REASON}</p>
-        <button type="button" data-guest-cart-retry hidden>Try again</button>
-        <a data-guest-cart-resume hidden rel="noopener noreferrer">Return to secure checkout</a>
-        <button type="button" data-guest-cart-recover hidden>Check checkout status</button>
+        {page.openPayment ? (
+          <>
+            <a data-guest-cart-resume href={page.openPayment} rel="noopener noreferrer">Return to secure checkout</a>
+            <p data-guest-cart-checkout-reason>Your payment is already open. Finish paying there.</p>
+          </>
+        ) : (
+          <>
+            <button type="submit" data-guest-cart-checkout disabled={!canStart}>{canStart ? "Continue to secure checkout" : checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}</button>
+            <p data-guest-cart-checkout-reason>{canStart ? view.checkoutReason : checkoutAdmission ? view.checkoutReason : GUEST_CHECKOUT_REASON}</p>
+          </>
+        )}
       </div>
-    </div>
-    <aside class="guest-checkout-manifest" aria-labelledby="guest-checkout-manifest-title" data-checkout-manifest hidden>
+    </form>
+    <aside class="guest-checkout-manifest" aria-labelledby="guest-checkout-manifest-title" data-checkout-manifest>
       <div class="guest-checkout-manifest__header">
         <h2 id="guest-checkout-manifest-title">Order Manifest</h2>
         <a href="/cart" data-checkout-edit-cart>Edit cart</a>
       </div>
-      <div class="guest-checkout-manifest__lines" data-guest-cart-lines></div>
-      <dl class="guest-checkout-breakdown" data-checkout-breakdown data-checkout-currency="USD" data-checkout-tax-minor="0" hidden>
-        <div class="guest-checkout-breakdown__row" data-guest-cart-subtotal hidden>
-          <dt>Subtotal</dt>
-          <dd><strong data-guest-cart-subtotal-amount></strong></dd>
-        </div>
+      <div class="guest-checkout-manifest__lines" data-guest-cart-lines>
+        {view.lines.map((line) => (
+          <article data-guest-cart-line={line.id}>
+            <div class="guest-cart-line-media" data-guest-cart-line-thumbnail>
+              {line.thumbnail
+                ? <img data-guest-cart-thumbnail-img src={line.thumbnail.src} alt={line.thumbnail.alt} width="160" height="120" loading="lazy" />
+                : <p data-guest-cart-thumbnail-placeholder>No image</p>}
+            </div>
+            <div data-guest-cart-line-copy>
+              <h2>{line.name}</h2>
+              <p data-guest-cart-line-quantity>Quantity {line.quantity}</p>
+              {line.lineTotalText && <p data-guest-cart-line-total>Line total <strong>{line.lineTotalText}</strong></p>}
+              {line.reason && <p data-guest-cart-line-reason={line.reasonCode ?? ""}>{line.reason}</p>}
+            </div>
+          </article>
+        ))}
+      </div>
+      <dl class="guest-checkout-breakdown" data-checkout-breakdown data-checkout-currency="USD" data-checkout-tax-minor="0">
+        {view.subtotalText && (
+          <div class="guest-checkout-breakdown__row" data-guest-cart-subtotal>
+            <dt>Subtotal</dt>
+            <dd><strong data-guest-cart-subtotal-amount>{view.subtotalText}</strong></dd>
+          </div>
+        )}
         <div class="guest-checkout-breakdown__row" data-checkout-shipping>
           <dt>Shipping</dt>
-          <dd data-checkout-shipping-amount>Calculated at checkout</dd>
+          <dd data-checkout-shipping-amount>{shippingText}</dd>
         </div>
         <div class="guest-checkout-breakdown__row" data-checkout-tax>
           <dt>Tax</dt>
@@ -151,6 +196,7 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
       </dl>
     </aside>
   </div>
+  )}
 </section>
 <style>
   .guest-checkout{width:min(70rem,calc(100% - 2rem));margin:3rem auto;min-height:65vh;overflow-wrap:anywhere}
@@ -225,6 +271,6 @@ const BILLING_COUNTRIES = Array.from({ length: 26 * 26 }, (_, i) => String.fromC
   }
 </style>
 <script>
-  import { hydrateGuestCartPage } from "./guest-cart-client.ts";
-  hydrateGuestCartPage();
+  import { hydrateServerCheckout } from "./checkout-script.ts";
+  hydrateServerCheckout();
 </script>

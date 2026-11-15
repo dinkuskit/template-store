@@ -10,18 +10,22 @@ import { commerceProfile } from "../commerce-profile/profiles.mjs";
  */
 export const PLAYGROUND_REGISTRY_PLUGINS = ["commerce", "payments", "ship"];
 /**
- * The Commerce package the store pins: Vite defines it for the Worker, the config reads the environment the
- * playground config sets from the pin, as the store's own config does.
+ * The Commerce package the store pins: Vite defines it for the Worker; at config time it is read when asked,
+ * because the playground config sets DINKUS_COMMERCE_PROFILE from the pin only after this module is imported.
  */
-const COMMERCE_PACKAGE = typeof __DINKUS_COMMERCE_PROFILE__ === "undefined"
-  ? (globalThis.process?.env?.DINKUS_COMMERCE_PROFILE ?? "stable")
-  : __DINKUS_COMMERCE_PROFILE__;
+function commercePackage() {
+  return typeof __DINKUS_COMMERCE_PROFILE__ === "undefined"
+    ? (globalThis.process?.env?.DINKUS_COMMERCE_PROFILE ?? "stable")
+    : __DINKUS_COMMERCE_PROFILE__;
+}
 /** The ID a store gives each plugin when it installs it from the Registry; Connect builds its return links from it. */
-export const PLAYGROUND_INSTALLED_PLUGIN_IDS = {
-  commerce: commerceProfile(COMMERCE_PACKAGE).runtimeId,
+export const PLAYGROUND_INSTALLED_PLUGIN_IDS = Object.freeze({
+  get commerce() {
+    return commerceProfile(commercePackage()).runtimeId;
+  },
   payments: "r_3brsc2on3bu673rn",
   ship: "r_ehdlg5cxkb3ffqvr",
-};
+});
 
 /** A prepared plugin's Registry manifest (config time only). */
 export function playgroundPluginManifest(name) {

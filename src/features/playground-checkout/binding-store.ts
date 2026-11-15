@@ -9,7 +9,8 @@ import {
 } from "./binding-auth.js";
 export type { PlaygroundCheckoutBindingRecord, PlaygroundCheckoutBindingStore } from "./binding-auth.js";
 
-const PLAYGROUND_BINDINGS_COLLECTION = "playground_checkout_bindings";
+/** The playground keeps its own checkout bindings under Commerce's package id; store-generation.ts skips them. */
+export const PLAYGROUND_BINDINGS_COLLECTION = "playground_checkout_bindings";
 
 export function playgroundCheckoutBindingStore(
   db: ConstructorParameters<typeof PluginStorageRepository>[0],
@@ -33,10 +34,10 @@ export function playgroundCheckoutBindingStore(
 
 /**
  * The one persistent binding store for this request. The middleware calls this
- * before dispatching a checkout or status route, which publishes the store on
- * `locals`; the `/api/checkout/status` route reads that same store back with
+ * before dispatching a checkout route, which publishes the store on `locals`;
+ * the store's own cart and checkout pages read that same store back with
  * `playgroundCheckoutBindingsFromLocals`, so start (which writes the binding)
- * and both status entrypoints (which authorize against it) share one store.
+ * and every cart read (which authorizes against it) share one store.
  * Non-playground requests get `undefined`, which authorizes nothing.
  */
 export function playgroundCheckoutBindingsFor(locals: unknown): PlaygroundCheckoutBindingStore | undefined {

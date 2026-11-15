@@ -57,12 +57,16 @@ test("nonempty worker, hidden assets, modes and empty directories survive ZIP mo
   assert.equal(lstatSync(join(f.root, "restored/dist/client/empty")).isDirectory(), true);
 });
 
+// The build's Commerce profile follows the pin (a beta tag builds the beta listing), so the refused one is the other.
+const pinnedCommerceTag = JSON.parse(readFileSync(new URL("package.json", source), "utf8")).dinkuskit.sourcePins.commerce.tag;
+const otherCommerceProfile = pinnedCommerceTag.includes("-") ? "stable" : "beta";
+
 test("restore binds repository, source, run, attempt, event, workflow and toolchain inputs", (t) => {
   const f = fixture(t); const { manifestSha256 } = f.pack();
   for (const overrides of [{ SOURCE_SHA: "b".repeat(40) }, { GITHUB_RUN_ID: "124" }, { PLAYGROUND_PRODUCER_ATTEMPT: "2" },
     { GITHUB_REPOSITORY: "fork/template-store" }, { GITHUB_REPOSITORY_ID: "42" }, { SOURCE_REPOSITORY: "fork/template-store" },
     { SOURCE_PR_NUMBER: "8" }, { GITHUB_WORKFLOW_SHA: "b".repeat(40) }, { GITHUB_EVENT_NAME: "push" },
-    { DINKUS_COMMERCE_PROFILE: "beta" }, { PUBLIC_CHANGED: "1" }, { DINKUS_PLAYGROUND_WRANGLER_CONFIG: "other.json" }]) {
+    { DINKUS_COMMERCE_PROFILE: otherCommerceProfile }, { PUBLIC_CHANGED: "1" }, { DINKUS_PLAYGROUND_WRANGLER_CONFIG: "other.json" }]) {
     assert.throws(() => f.restore(manifestSha256, overrides));
     assert.equal(existsSync(join(f.root, "restored/dist")), false);
   }

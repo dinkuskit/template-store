@@ -18,8 +18,6 @@ import {
   PAYMENTS_CREATE_RETRY_BOUND_HOURS,
   PAYMENTS_SAFE_PROVIDER_DELAY_SECONDS,
   createCurrentPaymentRequest,
-  createPlugin,
-  dinkusCommerce,
   isCurrentPaymentRequest,
   isLegacyExact1800PaymentRequest,
   paymentRequestHandoff,
@@ -175,36 +173,5 @@ describe("checkout dependency handoff contracts", () => {
     expect(new GuestCheckoutError("INVALID_CART").status).toBe(400);
     expect(new GuestCheckoutError("ORIGIN_DENIED").status).toBe(403);
     expect(new GuestCheckoutError("UNAVAILABLE").status).toBe(503);
-  });
-
-  it("demonstrates runtime checkout option dropped in descriptor despite forward input vs createPlugin mounting", () => {
-    const siteUrl = "http://127.0.0.1:20141";
-    // Forward host input containing checkout option, typed via Parameters<typeof createPlugin>[0]
-    const hostOptions: Parameters<typeof createPlugin>[0] = {
-      siteUrl,
-      checkout: {
-        paymentBindingRef: "fixture-binding",
-        resolvePayments: async () => null,
-      },
-    };
-
-    // 1. dinkusCommerce produces a pure EmDash plugin descriptor and readonly drops the checkout option
-    const descriptor = dinkusCommerce(hostOptions as Parameters<typeof dinkusCommerce>[0]);
-    expect(descriptor.id).toBe("dinkus-commerce");
-    expect(descriptor.options?.siteUrl).toBe(siteUrl);
-    expect(Object.hasOwn(descriptor.options ?? {}, "checkout")).toBe(false);
-    expect("routes" in descriptor).toBe(false);
-
-    // 2. createPlugin mounts all guest checkout routes and collections from runtime options
-    const plugin = createPlugin(hostOptions);
-    expect(plugin.routes[GUEST_CHECKOUT_PREPARE_ROUTE]).toBeDefined();
-    expect(plugin.routes[GUEST_CHECKOUT_START_ROUTE]).toBeDefined();
-    expect(plugin.routes[GUEST_CHECKOUT_STATUS_ROUTE]).toBeDefined();
-    expect(plugin.storage[CHECKOUT_COLLECTION]).toBeDefined();
-    expect(plugin.storage[CHECKOUT_GUEST_CAPABILITY_COLLECTION]).toBeDefined();
-
-    // Route mounting registers HTTP route handlers, but does NOT supply an authenticated Payments bridge.
-    // Host JSON serialization drops function properties (resolvePayments), ensuring native routes
-    // fail closed with PAYMENTS_UNAVAILABLE (503) unless an in-process bridge is wired.
   });
 });

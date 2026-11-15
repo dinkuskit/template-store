@@ -10,6 +10,8 @@ import { playgroundCheckoutConfigured, playgroundEnvOf } from "../../features/pl
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../../features/playground/flat-rate-shipping.js";
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
+import { loadServerCartPage, openPaymentUrl } from "../../features/guest-cart/server-view.js";
+import { readBoundedForm, readContactForm, sameStoreRequest, startServerCheckout, type ContactFieldError, type ContactFormValues } from "../../features/guest-cart/server-cart.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -29,6 +31,36 @@ const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
 const shipping = isPlayground ? PLAYGROUND_FLAT_RATE_SHIPPING : null;
 const shippingMode = shipping?.mode === "flat" || shipping?.mode === "free" ? shipping.mode : null;
 const shippingMinor = shipping?.amount?.minor ?? null;
+const cartContext = { locals: Astro.locals, request: Astro.request, url: Astro.url, cookies: Astro.cookies };
+const admitted = Boolean(effectiveAdmission);
+let page = await loadServerCartPage(cartContext, admitted);
+let values: ContactFormValues | null = null;
+let error: ContactFieldError | { field: null; message: string } | null = null;
+// The checkout form posts here: the server checks it, starts checkout from the saved cart and sends the shopper
+// to Stripe, with no script needed (template-cart-real-form-20261113).
+if (Astro.request.method === "POST") {
+  // Contact, delivery and billing fit well under 16 KB; a longer body is never parsed.
+  const form = sameStoreRequest(cartContext) ? await readBoundedForm(Astro.request, 16 * 1024) : null;
+  const read = form ? readContactForm(form, page.view.needsDelivery) : null;
+  if (!read) {
+    error = { field: null, message: "Checkout could not start. Try again." };
+  } else if (read.error) {
+    values = read.values;
+    error = read.error;
+  } else if (!admitted || !page.view.checkoutEnabled) {
+    values = read.values;
+    error = { field: null, message: page.view.checkoutReason };
+  } else {
+    const started = await startServerCheckout(cartContext, read.contact);
+    if (started.ok && started.checkout.state === "paid") return Astro.redirect("/checkout/success", 303);
+    const payment = started.ok ? openPaymentUrl(started) : null;
+    if (payment) return Astro.redirect(payment, 303);
+    values = read.values;
+    error = { field: null, message: started.ok ? "Checkout could not start. Try again." : started.error.message };
+    page = await loadServerCartPage(cartContext, admitted);
+  }
+  Astro.response.status = 422;
+}
 ---
 <!doctype html>
 <html lang="en">
@@ -47,6 +79,9 @@ const shippingMinor = shipping?.amount?.minor ?? null;
         checkoutAdmission={playgroundAdmission ?? (isPlayground ? undefined : checkoutAdmission ?? undefined)}
         shippingMode={shippingMode}
         shippingMinor={shippingMinor}
+        page={page}
+        values={values}
+        error={error}
       />
     </main>
     <StoreFooter profile={profile} />

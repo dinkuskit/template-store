@@ -16,6 +16,11 @@ import {
   startPlaygroundVisitor,
   startPlaygroundWorker,
 } from "./lib/playground-worker-proof.mjs";
+import { pairedCommerceRuntimeId } from "./lib/paired-commerce.mjs";
+
+// This checkout's playground installs Commerce under the pin's package (or DINKUS_COMMERCE_PROFILE); the earlier
+// build keeps its own native id below.
+const COMMERCE_ID = pairedCommerceRuntimeId();
 
 const root = resolve(import.meta.dirname, "..");
 const from = process.env.DINKUS_PLAYGROUND_CUTOVER_FROM ?? "74a31c25e64080d84af84397069a919511d222c5";
@@ -52,7 +57,7 @@ try {
   // This checkout's playground, on the same visitor databases.
   buildPlaygroundWorker();
   server = await startPlaygroundWorker({ name: "cutover-after", port, persistTo, vars: {} });
-  const api = await fetch(`${server.base}/_emdash/api/plugins/r_gshdrqaldna3r7sn/admin`, {
+  const api = await fetch(`${server.base}/_emdash/api/plugins/${COMMERCE_ID}/admin`, {
     method: "POST", redirect: "manual",
     headers: { cookie: before.cookie, origin: PLAYGROUND_PROOF_SITE, "content-type": "application/json", "x-emdash-request": "1" },
     body: JSON.stringify({ type: "page_load", page: "/settings" }),
@@ -62,7 +67,7 @@ try {
   results.oldVisitorPage = { status: page.status, location: page.headers.get("location"), clearsCookie: /^emdash_playground=; Max-Age=0/.test(page.headers.get("set-cookie") ?? "") };
   // The visitor's next click lands on a fresh store, seeded through the Registry build.
   const after = await startPlaygroundVisitor(server.base, "203.0.113.70", server.output);
-  const registryCatalog = await fetch(`${server.base}/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public`, { headers: { cookie: after.cookie } });
+  const registryCatalog = await fetch(`${server.base}/_emdash/api/plugins/${COMMERCE_ID}/catalog/public`, { headers: { cookie: after.cookie } });
   results.freshStore = {
     newSession: after.cookie !== before.cookie,
     catalogGuidance: after.home.match(/data-catalog-guidance-state="([a-z]+)"/)?.[1] ?? null,

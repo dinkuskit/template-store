@@ -1,5 +1,6 @@
 import type { PluginStorageRepository } from "emdash";
 import { CLEAR_PLAYGROUND_COOKIE } from "./contract.js";
+import { PLAYGROUND_BINDINGS_COLLECTION } from "../playground-checkout/binding-store.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 
@@ -10,18 +11,24 @@ const NATIVE_COMMERCE_PLUGIN_ID = "dinkus-commerce";
  * Whether this visitor store was made by the playground before it ran Commerce's Registry build
  * (playground-commerce-in-store-20261031). Its Commerce data sits under the native plugin id, which the Registry
  * build cannot see, so its edits, orders, sign-ins and checkout would vanish behind a fresh demo shop. Such a store
- * starts over instead, as if its hour had run out (Ronald, 1 Nov 2026). Nothing writes under that id now.
+ * starts over instead, as if its hour had run out (Ronald, 1 Nov 2026). Only the playground's checkout bindings are
+ * written under that id now.
  */
 export async function madeBeforeRegistryCommerce(db: Db): Promise<boolean> {
   const row = await (db as unknown as {
     selectFrom(table: "_plugin_storage"): {
       select(column: "id"): {
         where(column: "plugin_id", op: "=", value: string): {
-          limit(count: number): { executeTakeFirst(): Promise<unknown> };
+          where(column: "collection", op: "!=", value: string): {
+            limit(count: number): { executeTakeFirst(): Promise<unknown> };
+          };
         };
       };
     };
-  }).selectFrom("_plugin_storage").select("id").where("plugin_id", "=", NATIVE_COMMERCE_PLUGIN_ID).limit(1).executeTakeFirst();
+  }).selectFrom("_plugin_storage").select("id").where("plugin_id", "=", NATIVE_COMMERCE_PLUGIN_ID)
+    // The playground's own checkout bindings sit under the same id (binding-store.ts); they are not old Commerce data,
+    // and counting them started every paid visitor over once a new isolate served them.
+    .where("collection", "!=", PLAYGROUND_BINDINGS_COLLECTION).limit(1).executeTakeFirst();
   return row !== undefined;
 }
 

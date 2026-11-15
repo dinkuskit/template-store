@@ -8,7 +8,6 @@ import { resolve } from "node:path";
 const commerce = process.env.DINKUS_PAIRED_RUNTIME_ID ?? "r_fjzjvld3ssb4j63o";
 const headers = { "X-EmDash-Request": "1" };
 const artifacts = process.env.DINKUS_PAIRED_ARTIFACTS ?? resolve("test-results/paired-product-on-sale");
-const CART_KEY = "dinkus.guest-cart.v1";
 
 const db = () => new DatabaseSync(process.env.DINKUS_PAIRED_DB ?? ".artifacts/paired/content.db");
 const capture = (page: Page, name: string) => page.screenshot({ path: resolve(artifacts, test.info().project.name + "-cart-" + name + ".png"), animations: "disabled", fullPage: true });
@@ -92,43 +91,22 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
       const add = shopper.locator("[data-add-to-cart]");
       await expect(add).toHaveAttribute("data-add-to-cart", small);
       await add.click();
-      await expect.poll(() => shopper.evaluate((key) => localStorage.getItem(key), CART_KEY)).toContain(small);
+      // The cart lives in Commerce; the browser keeps only its key and a readable count (template-cart-real-form-20261113).
+      const notice = shopper.locator("[data-add-to-cart-status]");
+      await expect(notice).toHaveText("Added to your cart.");
+      await expect.poll(async () => (await shopperContext.cookies()).find((cookie) => cookie.name === "dk_cart_count")?.value).toBe("1");
       await capture(shopper, "1-product-page-small");
 
       // A confirmation belongs to the Size just added, not the newly selected sold-out Size.
-      const notice = shopper.locator("[data-add-to-cart-status]");
-      await expect(notice).toHaveText("Added to cart.");
       await sizes.getByRole("radio", { name: "Large" }).check();
       await expect(add).toBeDisabled();
       await expect(add).toHaveText("Sold out");
       await expect(notice).toBeHidden();
       await expect(notice).toHaveText("");
-      expect(await shopper.evaluate((key) => JSON.parse(localStorage.getItem(key)!), CART_KEY))
-        .toEqual({ version: 1, lines: [{ id: small, quantity: 1 }] });
       await sizes.getByRole("radio", { name: "Small" }).check();
       await expect(add).toBeEnabled();
       await expect(notice).toBeHidden();
 
-      // Do not hide persistence alerts when changing Size: an unsaved Add still needs its warning.
-      await shopper.evaluate((key) => {
-        const original = Storage.prototype.setItem;
-        Storage.prototype.setItem = function (name: string, value: string) {
-          if (name === key) throw new Error("storage blocked");
-          return original.call(this, name, value);
-        };
-      }, CART_KEY);
-      await add.click();
-      await expect(notice).toHaveAttribute("role", "alert");
-      await expect(notice).toContainText("Leave or reload this page");
-      const warning = await notice.textContent();
-      await sizes.getByRole("radio", { name: "Large" }).check();
-      await expect(notice).toBeVisible();
-      await expect(notice).toHaveText(warning!);
-      expect(await shopper.evaluate((key) => JSON.parse(localStorage.getItem(key)!), CART_KEY))
-        .toEqual({ version: 1, lines: [{ id: small, quantity: 1 }] });
-      await capture(shopper, "1b-size-change-keeps-storage-alert");
-
-      // A full navigation restores the prototype and reloads the persisted (not the unsaved) intent.
       // The cart prices the chosen Size from Commerce; before #181 it said the product had left the catalog.
       await shopper.goto("/cart");
       const line = shopper.locator(`[data-guest-cart-line="${small}"]`);
@@ -140,20 +118,23 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
       await expect(shopper.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$40.00");
       await capture(shopper, "2-cart-small");
 
-      // A sold-out Size saved in the cart is never priced from the product or from Small: it stays blocked.
-      await shopper.evaluate(([key, id]) => localStorage.setItem(key, JSON.stringify({ version: 1, lines: [{ id, quantity: 1 }] })), [CART_KEY, large]);
-      await shopper.reload();
+      // A Size that sells out after it was added stays in the cart, is never priced from the product or from
+      // Small, and cannot be checked out.
+      await catalog({ op: "prices", catalogItemId: large, productId: small, regular: "45", sale: "", stockStatus: "in-stock" });
+      await shopper.goto("/products/" + slug);
+      await shopper.waitForLoadState("load");
+      await sizes.getByRole("radio", { name: "Large" }).check();
+      await expect(add).toBeEnabled();
+      await add.click();
+      await expect(notice).toHaveText("Added to your cart.");
+      await catalog({ op: "prices", catalogItemId: large, productId: small, regular: "45", sale: "", stockStatus: "out-of-stock" });
+      await shopper.goto("/cart");
       const soldOut = shopper.locator(`[data-guest-cart-line="${large}"]`);
       await expect(soldOut.getByRole("heading", { level: 2 })).toHaveText("Sized hoodie — Large");
       await expect(soldOut.locator("[data-guest-cart-line-reason]")).toHaveText("Out of stock and cannot be checked out.");
       await expect(soldOut).not.toContainText("$40.00");
+      await expect(shopper.locator("[data-guest-cart-checkout]")).toBeDisabled();
       await capture(shopper, "3-cart-large-sold-out");
-
-      // A Size Commerce no longer sells (here: an id it never had) reads as gone, not as the product.
-      const gone = `${large}-gone`;
-      await shopper.evaluate(([key, id]) => localStorage.setItem(key, JSON.stringify({ version: 1, lines: [{ id, quantity: 1 }] })), [CART_KEY, gone]);
-      await shopper.reload();
-      await expect(shopper.locator(`[data-guest-cart-line="${gone}"] [data-guest-cart-line-reason]`)).toHaveText("This product is no longer in the catalog and cannot be checked out.");
     } finally {
       await shopperContext.close();
     }
@@ -196,9 +177,14 @@ test("a digital choice checks out with no delivery address, and a physical one a
     const shopperContext = await browser.newContext({ viewport: testInfo.project.use.viewport, isMobile: testInfo.project.use.isMobile, hasTouch: testInfo.project.use.hasTouch, storageState: { cookies: [], origins: [] } });
     const shopper = await shopperContext.newPage();
     try {
-      const cart = (ids: string[]) => shopper.evaluate(([key, lines]) => localStorage.setItem(key, JSON.stringify({ version: 1, lines: JSON.parse(lines).map((id: string) => ({ id, quantity: 1 })) })), [CART_KEY, JSON.stringify(ids)]);
-      await shopper.goto("/cart");
-      await cart([pdf]);
+      const addFormat = async (format: "PDF" | "Print") => {
+        await shopper.goto("/products/" + slug);
+        await shopper.waitForLoadState("load");
+        await shopper.getByRole("radio", { name: format, exact: true }).check();
+        await shopper.locator("[data-add-to-cart]").click();
+        await expect(shopper.locator("[data-add-to-cart-status]")).toHaveText("Added to your cart.");
+      };
+      await addFormat("PDF");
       await shopper.goto("/checkout");
       const line = shopper.locator(`[data-guest-cart-line="${pdf}"]`);
       await expect(line.getByRole("heading", { level: 2 })).toHaveText("Grow guide \u2014 PDF");
@@ -207,8 +193,8 @@ test("a digital choice checks out with no delivery address, and a physical one a
       await expect(shopper.locator("[data-guest-cart-delivery]")).toBeHidden();
       await capture(shopper, "4-checkout-digital-only");
 
-      await cart([pdf, print]);
-      await shopper.reload();
+      await addFormat("Print");
+      await shopper.goto("/checkout");
       await expect(shopper.locator(`[data-guest-cart-line="${print}"]`).getByRole("heading", { level: 2 })).toHaveText("Grow guide \u2014 Print");
       await expect(shopper.locator("[data-guest-cart-delivery]")).toBeVisible();
       await capture(shopper, "5-checkout-with-print");

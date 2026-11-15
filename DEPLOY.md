@@ -41,6 +41,10 @@ Preview from the current pin (review only):
    - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start` (`POST`)
    - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status` (`POST`)
 
+   Commerce with the server cart (commerce#272) adds
+   `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/cart` (`POST`); the
+   store calls it in-process and no longer uses `checkout/guest/status`.
+
    These are generated from `src/plugin.ts` and its route-id exports; the list
    above is only a review snapshot. The script fails if the source exposes a
    route without an explicit public/admin declaration.

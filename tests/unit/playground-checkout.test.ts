@@ -76,11 +76,12 @@ describe("sandbox checkout notice", () => {
 });
 
 describe("checkout body validation", () => {
-  const valid = JSON.stringify({ lines: [{ catalogItemId: "item_1", quantity: 2 }] });
 
   it("recognizes only the guest checkout routes", () => {
     expect(checkoutRouteKind(startPath)).toBe("start");
     expect(checkoutRouteKind(startPath.replace("start", "prepare"))).toBe("prepare");
+    expect(checkoutRouteKind(startPath.replace("start", "cart"))).toBe("cart");
+    expect(checkoutRouteKind(startPath.replace("start", "status"))).toBeNull();
     expect(checkoutRouteKind(`${startPath}/x`)).toBeNull();
     // The retired native copy's path is no checkout route (template-one-build-registry-20261031).
     expect(checkoutRouteKind("/_emdash/api/plugins/dinkus-commerce/checkout/guest/start")).toBeNull();
@@ -88,40 +89,48 @@ describe("checkout body validation", () => {
     expect(checkoutRouteKind("/cart")).toBeNull();
   });
 
-  it("accepts ids and quantities, with optional contact", () => {
-    expect(validateCheckoutBody("start", valid)).toEqual({ ok: true });
+  it("accepts a saved-cart start with optional contact, and cart reads and whole replacements", () => {
+    expect(validateCheckoutBody("start", "{}")).toEqual({ ok: true });
     expect(validateCheckoutBody("start", JSON.stringify({
-      lines: [{ catalogItemId: "item_1", quantity: 1 }],
       contact: { email: "a@example.test", delivery: { name: "A", line1: "1 St", city: "X", postalCode: "1", country: "US" } },
     }))).toEqual({ ok: true });
     expect(validateCheckoutBody("start", JSON.stringify({
-      lines: [{ catalogItemId: "item_1", quantity: 1 }],
       contact: { email: "a@example.test", billing: { name: "B", line1: "2 St", city: "Y", postalCode: "2", country: "CA" } },
     }))).toEqual({ ok: true });
     expect(validateCheckoutBody("prepare", "{}")).toEqual({ ok: true });
-    expect(validateCheckoutBody("status", JSON.stringify({ attemptId: "att_1" }))).toEqual({ ok: true });
+    expect(validateCheckoutBody("cart", "{}")).toEqual({ ok: true });
+    expect(validateCheckoutBody("cart", JSON.stringify({ version: null, lines: [{ catalogItemId: "item_1", quantity: 1 }] }))).toEqual({ ok: true });
+    expect(validateCheckoutBody("cart", JSON.stringify({
+      version: "v1", key: "retry-1", lines: [{ productId: "prod_1", options: { Size: "M" }, quantity: 2 }],
+    }))).toEqual({ ok: true });
+    expect(validateCheckoutBody("cart", JSON.stringify({ version: "v1", lines: [] }))).toEqual({ ok: true });
   });
 
   it("rejects client prices, unknown fields and malformed carts", () => {
-    const bad = [
-      JSON.stringify({ lines: [{ catalogItemId: "item_1", quantity: 1, price: 1 }] }),
-      JSON.stringify({ lines: [{ catalogItemId: "item_1", quantity: 1 }], amount: { minor: "1" } }),
-      JSON.stringify({ lines: [] }),
-      JSON.stringify({ lines: [{ catalogItemId: "../x", quantity: 1 }] }),
-      JSON.stringify({ lines: [{ catalogItemId: "item_1", quantity: 0 }] }),
-      JSON.stringify({ lines: [{ catalogItemId: "item_1", quantity: 100 }] }),
-      JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }, { catalogItemId: "a", quantity: 1 }] }),
-      JSON.stringify({ lines: Array.from({ length: 41 }, (_, i) => ({ catalogItemId: `i${i}`, quantity: 1 })) }),
-      JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }], contact: { email: "nope" } }),
-      JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }], contact: { email: "a@example.test", billing: { name: "B", cardNumber: "4242" } } }),
-      JSON.stringify({ lines: [{ catalogItemId: "a", quantity: 1 }], contact: { email: "a@example.test", billing: "same" } }),
+    const badStart = [
+      JSON.stringify({ lines: [{ catalogItemId: "item_1", quantity: 1 }] }),
+      JSON.stringify({ amount: { minor: "1" } }),
+      JSON.stringify({ contact: { email: "nope" } }),
+      JSON.stringify({ contact: { email: "a@example.test", billing: { name: "B", cardNumber: "4242" } } }),
+      JSON.stringify({ contact: { email: "a@example.test", billing: "same" } }),
       "not json",
       "[]",
-      `{"lines":[${"x".repeat(5000)}]}`,
+      `{"contact":"${"x".repeat(5000)}"}`,
     ];
-    for (const body of bad) expect(validateCheckoutBody("start", body).ok).toBe(false);
+    for (const body of badStart) expect(validateCheckoutBody("start", body).ok).toBe(false);
+    const badCart = [
+      JSON.stringify({ lines: [{ catalogItemId: "item_1", quantity: 1 }] }),
+      JSON.stringify({ version: null, lines: [{ catalogItemId: "item_1", quantity: 1, price: 1 }] }),
+      JSON.stringify({ version: null, lines: [{ catalogItemId: "../x", quantity: 1 }] }),
+      JSON.stringify({ version: null, lines: [{ catalogItemId: "item_1", quantity: 0 }] }),
+      JSON.stringify({ version: null, lines: [{ catalogItemId: "item_1", quantity: 100 }] }),
+      JSON.stringify({ version: null, lines: Array.from({ length: 41 }, (_, i) => ({ catalogItemId: `i${i}`, quantity: 1 })) }),
+      JSON.stringify({ version: 7, lines: [] }),
+      JSON.stringify({ version: null, lines: [], attemptId: "att_1" }),
+      JSON.stringify({ version: null, lines: [{ productId: "p", options: { Size: 3 }, quantity: 1 }] }),
+    ];
+    for (const body of badCart) expect(validateCheckoutBody("cart", body).ok).toBe(false);
     expect(validateCheckoutBody("prepare", JSON.stringify({ price: 1 })).ok).toBe(false);
-    expect(validateCheckoutBody("status", JSON.stringify({ attemptId: "", x: 1 })).ok).toBe(false);
   });
 
   it("fails closed when the limiter is missing or denies", async () => {
@@ -202,9 +211,10 @@ describe("Payments config and store pass", () => {
     expect(middleware).toMatch(/kind === "start" && isPlayground && !visitorIp\(request\)\) \{\s*return checkoutJsonError\(400, SANDBOX_CLIENT_IP_MESSAGE\)/);
   });
 
-  it("success page confirms only through Commerce's capability-scoped return controller", () => {
+  it("success page confirms only through Commerce's paid order for the cart cookie", () => {
     const page = readFileSync("src/pages/checkout/success.astro", "utf8");
-    expect(page).toContain("<GuestCheckoutReturn contactHref={contactHref} />");
+    expect(page).toContain("<GuestCheckoutReturn result={result} contactHref={contactHref} />");
+    expect(page).toContain("loadCheckoutReturn(");
     // No caller-selected Stripe session id is looked up under the shared playground credential.
     expect(page).not.toMatch(/session_id|lookupCheckoutReceipt|PAYMENTS_STORE_KEY|getStorePass/);
     expect(page).not.toMatch(/wakes\?|ackWake|wake-client/);

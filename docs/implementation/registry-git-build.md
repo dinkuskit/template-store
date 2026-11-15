@@ -178,18 +178,20 @@ and callbacks remain intact. Node and other Cloudflare profiles keep their
 existing runners. A reported failure after a write is not proof of rollback;
 inspect and reuse the persisted record before retrying creation.
 
-## Checkout status public dispatch
+## Server cart public dispatch
 
-The browser-facing `/api/checkout/status` endpoint requires an Origin matching
-both the configured site origin and the incoming request URL. It preserves the
-installed guest-route admission gate, then calls the existing public-only
-EmDash dispatcher from request locals with a fixed Commerce status Request.
-Only the validated origin, capability, content type and accept headers are
-forwarded; no browser cookie or authorization header is forwarded. The route
-never falls back to HTTP self-fetch, a private handler, or native Commerce.
-Missing locals or dispatcher admission remains unavailable. Request and
-serialized result sizes remain bounded; only validated checkout projection
-fields are returned. Status does not start a payment.
+The cart pages and forms (`/cart`, `/cart/add`, `/cart/change`, `/cart.js`,
+`/cart/update.js`, `POST /checkout`, `/checkout/success`) call Commerce's
+`checkout/guest/prepare`, `cart` and `start` routes in-process through the
+public-only EmDash dispatcher from request locals (`src/features/guest-cart/server-cart.ts`).
+They preserve the installed guest-route admission gate and send only the
+configured store origin, the cart key from the HttpOnly `dk_cart` cookie, and
+fixed content type and accept headers; no browser cookie or authorization
+header is forwarded. Form posts must come from the store's own origin. There is
+no HTTP self-fetch, private handler, or native Commerce fallback; missing
+locals or dispatcher admission shows the cart as unavailable. The browser-facing
+`/api/checkout/status` route is gone: a cart read runs Commerce's payment check,
+and the thank-you page is drawn on the server from the order behind the cookie.
 
 ## Commerce runtime profile
 

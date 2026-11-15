@@ -23,11 +23,10 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
   assert.deepEqual(policy.commerce.publicRoutes, [
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public/item",
-    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/policies/public",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/store-proof",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start",
-    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/cart",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/readiness",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/start",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/verify",

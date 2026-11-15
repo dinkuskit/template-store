@@ -36,7 +36,7 @@ test("a simple digital product keeps its fulfillment through both cart lookups a
       await shopper.goto("/products/" + slug);
       await expect(shopper.locator("[data-product-variants]")).toHaveCount(0);
       await shopper.locator("[data-add-to-cart]").click();
-      await expect(shopper.locator("[data-add-to-cart-status]")).toHaveText("Added to cart.");
+      await expect(shopper.locator("[data-add-to-cart-status]")).toHaveText("Added to your cart.");
       for (const ids of [[id], [id, ...Array.from({ length: 8 }, (_, i) => `missing-digital-${i}`)]]) {
         const snapshot = await context.request.get(new URL("/api/guest-cart/snapshot?ids=" + encodeURIComponent(ids.join(",")), shopper.url()).href);
         expect(snapshot.ok()).toBe(true);

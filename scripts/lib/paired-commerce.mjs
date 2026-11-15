@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { commerceProfile } from "../../src/features/commerce-profile/profiles.mjs";
 
 // The Commerce this store runs: the Registry (sandboxed) build, the one build Commerce keeps
 // (template-one-build-registry-20261031), mounted through EmDash's `sandboxed: [...]` the way a Registry
@@ -33,6 +34,14 @@ export function pairedCommercePin(root = projectRoot) {
 /** The Registry package the pin's build is: a pre-release tag is the beta package, a release the stable one. */
 export function pairedCommerceProfile(pin) {
   return pin.tag.includes("-") ? "beta" : "stable";
+}
+
+/**
+ * The Registry id the store and playground builds install Commerce under: DINKUS_COMMERCE_PROFILE when set,
+ * otherwise the pin's package, as both configs choose it.
+ */
+export function pairedCommerceRuntimeId(env = process.env, root = projectRoot) {
+  return commerceProfile(env.DINKUS_COMMERCE_PROFILE ?? pairedCommerceProfile(pairedCommercePin(root))).runtimeId;
 }
 
 /** Where the pin's build lives, one directory per commit, under ignored .artifacts. */
@@ -99,6 +108,12 @@ export function ensurePairedCommerceBuild({ env = process.env, root = projectRoo
   run("git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"], dir);
   if (pairedCommerceHead(dir) !== pin.commit) throw new Error(`Fetched Commerce did not resolve to ${pin.commit}`);
   run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], dir);
+  // A beta tag sits on a main commit whose files still carry the last release's version: Commerce's Cut beta
+  // stamps the beta version into its checkout before building and never commits it. Do the same, so the
+  // build is the one the beta listing published.
+  if (pairedCommerceProfile(pin) === "beta") {
+    run("node", ["scripts/release-flow.mjs", "stamp-beta-version", "--version", pin.tag.slice(1)], dir);
+  }
   run("npm", ["run", "build"], dir);
   if (!hasRegistryBuild(dir)) throw new Error(`Commerce ${pin.tag} built no Registry bundle under ${dir}`);
   log(`paired commerce: ${pin.tag} ${pin.commit.slice(0, 12)} built`);
