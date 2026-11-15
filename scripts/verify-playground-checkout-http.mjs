@@ -308,6 +308,19 @@ const completeResponse = await fetch(`${base}${COMMERCE}/orders`, { method: "POS
 const completion = { status: completeResponse.status, body: await completeResponse.json().catch(() => null) };
 trace.push({ path: `${COMMERCE}/orders`, status: completion.status, body: completion.body });
 await returnMatrix("shipped");
+// Another shopper in the same store, with a valid cart key of their own, reads their own cart: no order of the
+// first shopper's, no tracking, no contact; nor on the thank-you page.
+const otherAdded = await form("/cart/add", session, { id: catalogItemId, quantity: "1" });
+const otherCapability = cookieValue(otherAdded.setCookies, "dk_cart");
+const otherShopper = {
+  key: typeof otherCapability === "string" && otherCapability !== capability,
+  read: await request(`${COMMERCE}/checkout/guest/cart`, session, {}, otherCapability ?? "missing"),
+  page: await page("/checkout/success", `${session}; dk_cart=${otherCapability}`),
+};
+const otherBody = JSON.stringify(otherShopper.read.body ?? {});
+otherShopper.ok = otherShopper.key && otherShopper.read.status === 200 && otherShopper.read.body?.data?.ok === true &&
+  checkoutOf(otherShopper.read)?.order === null && !otherBody.includes(PROOF_TRACKING) && !otherBody.includes(PROOF_EMAIL) &&
+  !otherBody.includes(paidOrderId) && otherShopper.page.order === null && otherShopper.page.tracking === null && !otherShopper.page.contactShown;
 await screenshots("thank-you-shipped");
 async function screenshots(prefix) {
   const { chromium, devices } = await import("@playwright/test");
@@ -397,6 +410,7 @@ if (fulfillment.before.page !== "processing" || fulfillment.before.read !== "pro
     fulfillment.after.readTracking !== PROOF_TRACKING || fulfillment.restarted.page !== "completed" || fulfillment.restarted.tracking !== PROOF_TRACKING) {
   failures.push(`the order status on the thank-you page: ${JSON.stringify(fulfillment)}`);
 }
+if (!otherShopper.ok) failures.push(`another shopper's cart showed the order: ${JSON.stringify({ key: otherShopper.key, status: otherShopper.read.status, body: otherBody.slice(0, 300), page: otherShopper.page.state })}`);
 const sessionCalls = calls.filter((call) => call.path === "/v1/checkout/session");
 if (!sizePicker.refused || !sizePicker.cartUntouched || !sizePicker.merged || sizePicker.paymentsCalls !== 0) failures.push(`the size picker wrote a cart that did not fit: ${JSON.stringify(sizePicker)}`);
 if (sessionCalls.length === 0) failures.push("no Payments session was created");
@@ -410,6 +424,15 @@ console.log(`contactHiddenFromOthers: ${["foreign", "reset"].every((who) => hidd
     return [who, { status: entry.status, code: entry.body?.data?.error?.code ?? null, order: JSON.stringify(entry.body ?? {}).includes("orderId"), email: JSON.stringify(entry.body ?? {}).includes(PROOF_EMAIL), paymentsCalls: entry.paymentsCalls }];
   })))}`);
 console.log(`orderStatus: ${JSON.stringify(fulfillment)}`);
+console.log(`orderStatusHiddenFromOthers: ${otherShopper.ok && ["foreign", "reset", "forged-key", "foreign-origin"].every((who) => refused(cases[`shipped:registry:${who}`])) &&
+  ["foreign", "reset"].every((who) => hiddenPage(cases[`shipped:page:${who}`])) && refused(cases["expired:registry:authorized"]) && hiddenPage(cases["expired:page:authorized"])} ${JSON.stringify({
+  otherShopper: { status: otherShopper.read.status, order: checkoutOf(otherShopper.read)?.order ?? null, tracking: otherBody.includes(PROOF_TRACKING), page: otherShopper.page.state },
+  ...Object.fromEntries(["foreign", "reset", "forged-key", "foreign-origin"].map((who) => {
+    const entry = cases[`shipped:registry:${who}`];
+    return [who, { status: entry.status, code: entry.body?.data?.error?.code ?? null, order: JSON.stringify(entry.body ?? {}).includes("orderId"), tracking: JSON.stringify(entry.body ?? {}).includes(PROOF_TRACKING) }];
+  })),
+  expired: { status: cases["expired:registry:authorized"].status, code: cases["expired:registry:authorized"].body?.data?.error?.code ?? null, tracking: JSON.stringify(cases["expired:registry:authorized"].body ?? {}).includes(PROOF_TRACKING) },
+})}`);
 console.log(`restartRecoveryPaid: ${paidPage(cases["restarted:page:authorized"]) && paidRead(cases["restarted:registry:authorized"])}`);
 console.log(`expiredRefused: ${hiddenPage(cases["expired:page:authorized"]) && refused(cases["expired:registry:authorized"])}`);
 console.log(`fieldCorrection: ${JSON.stringify(fieldCorrection)}`);
