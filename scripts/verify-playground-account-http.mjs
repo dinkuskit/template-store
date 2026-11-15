@@ -13,6 +13,7 @@ import {
   startPlaygroundVisitor,
   startPlaygroundWorker,
 } from "./lib/playground-worker-proof.mjs";
+import { pairedCommerceRuntimeId } from "./lib/paired-commerce.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const artifact = resolve(root, ".artifacts/playground-account-http-proof");
@@ -100,7 +101,8 @@ async function callAccount({
   return cases[label];
 }
 
-const REGISTRY_PREFIX = "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account";
+// The Commerce the playground installs: the pin's package, or DINKUS_COMMERCE_PROFILE, as its config chooses.
+const REGISTRY_PREFIX = `/_emdash/api/plugins/${pairedCommerceRuntimeId()}/account`;
 
 buildPlaygroundWorker();
 const live = await serve("live", proofVars);

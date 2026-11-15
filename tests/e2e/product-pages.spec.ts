@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../src/features/guest-cart/checkout-protocol.js";
+import { COMMERCE_ID } from "./helpers/product-page";
 
 // Demo profile: seeded Commerce items get published product entries, placeholder
 // images, and whole-card links from the home page.
@@ -61,7 +61,7 @@ test("clicking a home card lands on its product page with a Commerce price", asy
   const hoodieCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
   // Compare against the anonymous public projection, never the visible parent SKU.
   const productId = await page.locator("[data-commerce-item]").getAttribute("data-commerce-item");
-  const publicResponse = await request.get(`/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/catalog/public/item?itemId=${encodeURIComponent(productId!)}`);
+  const publicResponse = await request.get(`/_emdash/api/plugins/${COMMERCE_ID}/catalog/public/item?itemId=${encodeURIComponent(productId!)}`);
   expect(publicResponse.ok()).toBe(true);
   const publicBody = await publicResponse.json();
   const projectedMembers = publicBody.data.variants.members as { catalogItemId: string; sku?: string }[];
