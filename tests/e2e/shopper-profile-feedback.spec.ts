@@ -73,6 +73,10 @@ for (const colorScheme of ['light', 'dark'] as const) {
     expect(bodies.at(-1)).toEqual({ phone: null, delivery: null });
     // Optional address / phone-only save retains the old request contract.
     await phone.fill('+15555550123'); await save.click();
+    // Observing the request is not observing completion: its profile response
+    // replaces the form. Wait before starting the next draft (including in CI).
+    await expect(page.locator('[data-account-status]')).toContainText('Saved your default shipping address');
+    await expect(save).toBeEnabled();
     expect(bodies.at(-1)).toEqual({ phone: '+15555550123', delivery: null });
     // Explicit sign-out erases corrections; cross-tab guards are a separate PR.
     await city.fill('Testville'); await save.click(); await expect(name).toHaveAttribute('aria-invalid', 'true');
