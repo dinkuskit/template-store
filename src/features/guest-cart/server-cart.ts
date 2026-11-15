@@ -523,11 +523,14 @@ export function readAddForm(form: FormData): ServerCartLineInput | null {
   return productId && Object.keys(options).length ? { productId, options, quantity } : null;
 }
 
-/** The change form: one item's new quantity (0 removes it). */
+/** The change form: one item's new quantity (0 removes it). A blank, missing or non-digit quantity is refused, never read as 0. */
 export function readChangeForm(form: FormData): Readonly<{ id: string; quantity: number }> | null {
   const id = formText(form, "id", 128);
-  const quantity = Number(formText(form, "quantity", 3));
-  return id && Number.isSafeInteger(quantity) && quantity >= 0 && quantity <= GUEST_CART_MAX_QUANTITY
+  const raw = form.get("quantity");
+  const digits = typeof raw === "string" ? raw.trim() : "";
+  if (!/^\d{1,3}$/u.test(digits)) return null;
+  const quantity = Number(digits);
+  return id && quantity <= GUEST_CART_MAX_QUANTITY
     ? { id, quantity }
     : null;
 }

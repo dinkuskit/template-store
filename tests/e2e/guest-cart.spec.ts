@@ -71,6 +71,11 @@ test("the cart works with script off: add, change, remove, and an honest checkou
   await expect(line.locator("[data-guest-cart-qty]")).toHaveValue("3");
   await expect(shopper.locator("[data-guest-cart-subtotal]")).toHaveText("Subtotal $72.00");
 
+  // A cleared Quantity box is a draft, not a removal: the browser stops the form and the line stays.
+  await line.locator("[data-guest-cart-qty]").fill("");
+  await line.locator("[data-guest-cart-qty]").press("Enter");
+  expect(await line.locator("[data-guest-cart-qty]").evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true);
+  expect((await cookieNamed(shopper, "dk_cart_count"))?.value).toBe("3");
   await line.locator("[data-guest-cart-qty]").fill("5");
   await line.locator("[data-guest-cart-qty]").press("Enter");
   await expect(shopper).toHaveURL(/\/cart$/u);
@@ -182,6 +187,10 @@ test("with script the same forms change the cart in place, and agents read it as
   await shopper.goto("/cart");
   const line = shopper.locator(`[data-guest-cart-line="${itemId}"]`);
   await expect(line.locator("[data-guest-cart-qty]")).toHaveValue("4");
+  await line.locator("[data-guest-cart-qty]").fill("");
+  await line.getByRole("button", { name: "Update" }).click();
+  await expect(shopper.locator("[data-store-header] [data-guest-cart-count]")).toHaveText("4");
+  expect((await (await shopper.request.get("/cart.js")).json()).cart.itemCount).toBe(4);
   await line.locator("[data-guest-cart-qty]").fill("1");
   await line.getByRole("button", { name: "Update" }).click();
   await expect(shopper.locator(`[data-guest-cart-line="${itemId}"] [data-guest-cart-line-total]`)).toHaveText("Line total $24.00");

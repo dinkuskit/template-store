@@ -46,7 +46,7 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
           <input type="hidden" name="id" value={line.id} />
           <label for={`guest-cart-qty-${line.id}`}>Quantity</label>
           <input id={`guest-cart-qty-${line.id}`} name="quantity" data-guest-cart-qty={line.id} type="number" inputmode="numeric"
-            min="1" max={String(GUEST_CART_MAX_QUANTITY)} aria-label={`Quantity for ${line.name}`} value={String(line.quantity)} disabled={Boolean(page.openPayment)} />
+            required min="1" max={String(GUEST_CART_MAX_QUANTITY)} aria-label={`Quantity for ${line.name}`} value={String(line.quantity)} disabled={Boolean(page.openPayment)} />
           <button type="submit" data-guest-cart-update={line.id} disabled={Boolean(page.openPayment)}>Update</button>
         </form>
         <form method="post" action="/cart/change" data-cart-change-form>

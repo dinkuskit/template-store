@@ -381,6 +381,30 @@ describe("cart routes", () => {
     const fresh = await postUpdate(apiContext(commerce, jar, "/cart/update.js", JSON.stringify({ version: "v2", lines: [{ id: "item_cap", quantity: 1 }] }), { "content-type": "application/json" }));
     expect(await fresh.json()).toMatchObject({ ok: true, cart: { version: "v3", lines: [{ catalogItemId: "item_cap", quantity: 1 }] } });
   });
+
+  it("refuses a blank, missing or non-number quantity without touching the cart; only an explicit 0 removes", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 2 });
+    const saved = structuredClone(commerce.carts.get("cap1")!);
+    const callsBefore = commerce.calls.length;
+    for (const quantity of ["", "   ", "abc", "1e1", "-1", "2.5", null]) {
+      const change = new FormData();
+      change.set("id", "item_hat");
+      if (quantity !== null) change.set("quantity", quantity);
+      const plain = await postChange(apiContext(commerce, jar, "/cart/change", change));
+      expect(plain.headers.get("location")).toBe("/cart?cart_error=INVALID_CART");
+      const scripted = await postChange(apiContext(commerce, jar, "/cart/change.js", change, { accept: "application/json" }));
+      expect(scripted.ok).toBe(false);
+    }
+    expect(commerce.calls.length).toBe(callsBefore);
+    expect(commerce.carts.get("cap1")).toEqual(saved);
+    const remove = new FormData();
+    remove.set("id", "item_hat");
+    remove.set("quantity", "0");
+    expect((await postChange(apiContext(commerce, jar, "/cart/change", remove))).headers.get("location")).toBe("/cart");
+    expect(commerce.carts.get("cap1")!.lines).toEqual([]);
+  });
 });
 
 describe("thank-you page", () => {
