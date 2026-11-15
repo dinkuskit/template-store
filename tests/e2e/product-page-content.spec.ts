@@ -1,12 +1,13 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
+import { randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { addPageProduct, catalogOp } from "./helpers/product-page";
 
 // template-sells-anything-20261027 and template-rich-product-page-20261027:
 // any kind of product gets a page, the page carries the owner's rich summary and
-// sections, and Commerce's gallery shows as thumbnails.
+// sections, and Commerce's ordered pictures are browsable without a script.
 const csrf = { "X-EmDash-Request": "1" };
 
 function unwrap<T>(body: unknown): T {
@@ -14,7 +15,7 @@ function unwrap<T>(body: unknown): T {
 }
 
 /** A solid-colour PNG tagged with its name, so each picture has its own bytes and EmDash never deduplicates it. */
-function png(name: string, rgb: [number, number, number], size = 8): Buffer {
+function png(name: string, rgb: [number, number, number], size = 1200): Buffer {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
     let c = n;
     for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -50,7 +51,7 @@ function png(name: string, rgb: [number, number, number], size = 8): Buffer {
 async function upload(request: APIRequestContext, name: string, rgb: [number, number, number]): Promise<string> {
   const response = await request.post("/_emdash/api/media", {
     headers: csrf,
-    multipart: { file: { name, mimeType: "image/png", buffer: png(name, rgb) }, alt: name.replace(/\.png$/u, ""), width: "8", height: "8" },
+    multipart: { file: { name, mimeType: "image/png", buffer: png(name, rgb) }, alt: name.replace(/\.png$/u, ""), width: "1200", height: "1200" },
   });
   expect(response.status(), await response.text()).toBe(201);
   return unwrap<{ item: { id: string } }>(await response.json()).item.id;
@@ -59,12 +60,12 @@ async function upload(request: APIRequestContext, name: string, rgb: [number, nu
 const span = (key: string, text: string, marks: string[] = []) => ({ _type: "span", _key: key, text, marks });
 const block = (key: string, children: unknown[], markDefs: unknown[] = []) => ({ _type: "block", _key: key, style: "normal", markDefs, children });
 
-test("a product of any kind shows its rich summary, sections and gallery", async ({ page, request }, testInfo) => {
+test("a product of any kind shows its rich summary, sections and gallery", async ({ page, request, browser }, testInfo) => {
   test.setTimeout(180_000);
   const root = resolve("runs/product-page-content/browser", testInfo.project.name);
   await mkdir(root, { recursive: true });
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
-  const suffix = testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase();
+  const suffix = `${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}-${randomUUID().slice(0, 8)}`;
 
   // A seed packet: no apparel placeholder art, sold through Commerce with a gallery. Its page comes first;
   // Commerce creates the product for the page (no product without a page).
@@ -127,10 +128,7 @@ test("a product of any kind shows its rich summary, sections and gallery", async
     await expect(page.locator("[data-product-specs] dt")).toHaveText(["Flowering time", "Pack size"]);
     await expect(page.locator("[data-product-specs] dd")).toHaveText(["8-9 weeks", "2 seeds"]);
 
-    // Commerce's image first, then its gallery; picking a thumbnail shows it large.
-    const thumbs = page.locator(`[data-product-gallery="${itemId}"] [data-gallery-thumb]`);
-    await expect(thumbs).toHaveCount(3);
-    await expect(thumbs.first()).toHaveAttribute("aria-pressed", "true");
+    // Commerce's primary image keeps its existing visual frame and pigment effect.
     const main = page.locator(`[data-product-gallery="${itemId}"] img[data-commerce-image]`);
     // The product page's frame reaches the gallery's stage: border, rounded clip and stamp shadow.
     const frame = await page.locator(`[data-product-gallery="${itemId}"] [data-product-stage-visual]`).evaluate((stage) => {
@@ -141,13 +139,108 @@ test("a product of any kind shows its rich summary, sections and gallery", async
     expect(frame.overflow).toBe("hidden");
     expect(frame.shadow).not.toBe("none");
     const firstSrc = await main.getAttribute("src");
-    await thumbs.nth(2).click();
-    await expect(thumbs.nth(2)).toHaveAttribute("aria-pressed", "true");
-    await expect(thumbs.first()).toHaveAttribute("aria-pressed", "false");
-    await expect(main).not.toHaveAttribute("src", firstSrc ?? "");
-    await expect(main).toHaveAttribute("alt", `seeds-${suffix}`);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
-    await page.screenshot({ path: resolve(root, "product-page.png"), fullPage: true });
+    const metadata = await page.locator('script[type="application/ld+json"]').textContent();
+    const observations = [];
+    // Fresh public contexts share only the persisted fixture, never staff cookies or mocked HTML.
+    for (const javaScriptEnabled of [true, false]) {
+      const context = await browser.newContext({ javaScriptEnabled, viewport: page.viewportSize()!, hasTouch: page.viewportSize()!.width <= 768 });
+      try {
+        const publicPage = await context.newPage();
+        const writes: string[] = [];
+        publicPage.on("request", (request) => { if (request.method() !== "GET") writes.push(request.method()); });
+        const response = await publicPage.goto(page.url());
+        expect(response?.status()).toBe(200);
+        const gallery = publicPage.getByRole("region", { name: "Product pictures", exact: true });
+        const images = gallery.locator("img");
+        await expect(images).toHaveCount(3);
+        await expect(gallery.locator("button, noscript, [hidden]")).toHaveCount(0);
+        await expect(publicPage.locator("[data-gallery-thumb], [data-gallery-open]")).toHaveCount(0);
+        const alts = [`packet-front-${suffix}`, `packet-back-${suffix}`, `seeds-${suffix}`];
+        const sources = [];
+        for (let index = 0; index < 3; index += 1) {
+          const picture = images.nth(index);
+          await expect(picture).toHaveAttribute("alt", alts[index]!);
+          await expect(picture).toHaveAttribute("width", "1200");
+          await expect(picture).toHaveAttribute("height", "1200");
+          await expect(picture).toHaveAttribute("loading", index === 0 ? "eager" : "lazy");
+          await expect(picture).toHaveAttribute("srcset", /300w.*600w.*1200w/);
+          sources.push(await picture.getAttribute("src"));
+        }
+        await expect(images.first()).toHaveAttribute("fetchpriority", "high");
+        expect(new Set(sources).size).toBe(3);
+        await expect(gallery.locator("[data-pigment-drift]")).toHaveCount(1);
+        const layout = await gallery.evaluate((node) => ({
+          display: getComputedStyle(node).display,
+          snap: getComputedStyle(node).scrollSnapType,
+          client: node.clientWidth, scroll: node.scrollWidth,
+          lead: node.firstElementChild!.getBoundingClientRect().width,
+          extras: getComputedStyle(node.querySelector("[data-gallery-extras]")!).display,
+        }));
+        const phone = page.viewportSize()!.width <= 768;
+        await expect.poll(() => images.first().evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth > 0)).toBe(true);
+        // Capture the native initial position before gesture/scroll checks move the strip.
+        await gallery.screenshot({ path: resolve(root, `gallery-js-${javaScriptEnabled ? "on" : "off"}.png`) });
+        if (phone) {
+          expect(layout.snap).toBe("x mandatory");
+          expect(layout.scroll).toBeGreaterThan(layout.client);
+          expect(layout.lead).toBeLessThan(layout.client); // The next picture peeks in.
+          expect(layout.lead).toBeGreaterThan(layout.client * 0.8);
+          await gallery.focus();
+          await expect(gallery).toBeFocused();
+          await images.first().scrollIntoViewIfNeeded();
+          // Chromium synthetic touch, not a physical-phone or Safari qualification.
+          const session = await context.newCDPSession(publicPage);
+          try {
+            const box = (await gallery.boundingBox())!;
+            const y = box.y + Math.min(100, box.height / 2);
+            await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + box.width * 0.8, y }] });
+            for (let step = 1; step <= 10; step += 1) {
+              await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: box.x + box.width * (0.8 - step * 0.06), y }] });
+              await publicPage.waitForTimeout(16);
+            }
+            await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+            await expect.poll(() => gallery.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+          } finally { await session.detach(); }
+          await images.last().evaluate((node) => node.scrollIntoView({ behavior: "instant", block: "nearest", inline: "end" }));
+          await expect(images.last()).toBeInViewport({ ratio: 0.8 });
+          await images.first().evaluate((node) => node.scrollIntoView({ behavior: "instant", block: "nearest", inline: "start" }));
+        } else {
+          expect(layout.display).toBe("grid");
+          expect(layout.extras).toBe("grid");
+          expect(layout.scroll).toBe(layout.client);
+          const first = await gallery.locator("[data-product-stage-visual]").boundingBox();
+          const second = await images.nth(1).boundingBox();
+          expect(second!.y).toBeGreaterThan(first!.y + first!.height);
+          expect(second!.width).toBeLessThan(first!.width);
+        }
+        for (const picture of await images.all()) {
+          await picture.evaluate((node) => node.scrollIntoView({ behavior: "instant", block: "nearest", inline: "end" }));
+          await expect.poll(() => picture.evaluate((node: HTMLImageElement) => node.complete && node.naturalWidth > 0)).toBe(true);
+        }
+        await expect(publicPage.locator("[data-commerce-image]")).toHaveAttribute("src", firstSrc!);
+        await expect(publicPage.locator("[data-product-price]")).toHaveText("$22.00");
+        expect(await publicPage.locator('script[type="application/ld+json"]').textContent()).toBe(metadata);
+        expect(await publicPage.evaluate(() => localStorage.length)).toBe(0);
+        expect(await context.cookies()).toEqual([]);
+        expect(await publicPage.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+        expect(writes).toEqual([]);
+        observations.push({ javaScriptEnabled, viewport: page.viewportSize(), alts, layout, images: 3, writes: 0, sameMetadata: true, emptyStorage: true, keyboardFocus: phone, chromiumSyntheticTouch: phone });
+      } finally { await context.close(); }
+    }
+    await writeFile(resolve(root, "gallery-output.json"), JSON.stringify(observations, null, 2));
+
+    // Single-picture products keep one image and no strip, with and without scripts.
+    await catalogOp(request, { op: "media", catalogItemId: itemId, image: pictures[0], gallery: [] });
+    for (const javaScriptEnabled of [true, false]) {
+      const context = await browser.newContext({ javaScriptEnabled, viewport: page.viewportSize()! });
+      try {
+        const single = await context.newPage();
+        await single.goto(page.url());
+        await expect(single.locator("[data-product-gallery] img")).toHaveCount(1);
+        await expect(single.locator("[data-commerce-image]")).toHaveAttribute("src", firstSrc!);
+        await expect(single.locator("[data-gallery-extras], .product-gallery--multiple")).toHaveCount(0);
+      } finally { await context.close(); }
+    }
   } finally {
     await request.delete(`/_emdash/api/content/products/${entryId}`, { headers: csrf });
   }
@@ -156,7 +249,7 @@ test("a product of any kind shows its rich summary, sections and gallery", async
 test("a published product with no placeholder art and no Commerce image says No image", async ({ page, request }, testInfo) => {
   test.setTimeout(120_000);
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
-  const slug = `plain-nutrient-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
+  const slug = `plain-nutrient-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}-${randomUUID().slice(0, 8)}`;
   const entry = await request.post("/_emdash/api/content/products", {
     headers: csrf,
     data: { slug, status: "draft", data: { title: "Aloe Vera Flakes", description: "Organic." } },
@@ -174,6 +267,7 @@ test("a published product with no placeholder art and no Commerce image says No 
     await expect(page.locator(`[data-product-page="${slug}"] [data-commerce-image-placeholder="${itemId}"]`)).toHaveText("No image");
     await expect(page.locator(".product-detail__description")).toHaveText("Organic.");
     await expect(page.locator("[data-product-details]")).toHaveCount(0);
+    await expect(page.locator("[data-gallery-extras], .product-gallery--multiple")).toHaveCount(0);
   } finally {
     await request.delete(`/_emdash/api/content/products/${entryId}`, { headers: csrf });
   }
