@@ -26,7 +26,7 @@ describe("storefront checkout wording", () => {
     for (const path of STOREFRONT_PAGES) {
       const page = readFileSync(path, "utf8");
       expect(page, path).toContain("acquireGuestCheckoutAdmission");
-      expect(page, path).toContain("playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())");
+      expect(page, path).toContain("playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)))");
       expect(page, path).toMatch(/data-store-demo-banner data-checkout-available=\{String\(/);
       expect(page, path).toContain("{storeBannerText(");
       expect(page, path).not.toContain("Synthetic demonstration. Purchases and checkout are unavailable.");
@@ -140,12 +140,12 @@ describe("empty cart on a store that takes checkouts", () => {
     expect(closed.checkoutLabel).toBe(GUEST_CHECKOUT_LABEL);
     expect(closed.checkoutReason).toBe(GUEST_CHECKOUT_REASON);
     const cart = readFileSync("src/features/guest-cart/GuestCart.astro", "utf8");
-    expect(cart).toContain("{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}");
+    expect(cart).toContain("{checkoutAdmission ? view.checkoutLabel : GUEST_CHECKOUT_LABEL}");
     expect(cart).not.toContain("data-guest-cart-contact");
     expect(cart).not.toContain("data-guest-cart-delivery");
     expect(cart).not.toContain("data-guest-cart-coupon-box");
     const checkout = readFileSync("src/features/guest-cart/GuestCheckout.astro", "utf8");
-    expect(checkout).toContain("{checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}");
+    expect(checkout).toContain("checkoutAdmission ? GUEST_CHECKOUT_READY_LABEL : GUEST_CHECKOUT_LABEL}");
     expect(checkout).toContain("data-checkout-vault");
     expect(checkout).toContain("data-guest-cart-contact");
     expect(checkout).toContain("data-guest-cart-delivery");

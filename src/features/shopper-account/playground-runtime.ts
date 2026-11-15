@@ -1,12 +1,11 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import {
-  COMMERCE_PLUGIN_ID,
   PAID_ORDER_SCHEMA,
   ORDERS_COLLECTION,
   type OrderRecord,
 } from "@dinkuskit/commerce";
 import {
-  NATIVE_SHOPPER_ACCOUNT_STORAGE,
+  SANDBOX_SHOPPER_ACCOUNT_STORAGE,
   bindShopperAccountRuntime,
   startShopperSignIn,
   verifyShopperSignIn,
@@ -17,6 +16,7 @@ import { listOrdersForEmail, type OrdersCollection } from "@dinkuskit/commerce/f
 import { PluginStorageRepository } from "emdash";
 
 import { playgroundNow } from "../playground-checkout/binding-auth.js";
+import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "../playground-plugins/registry-plugins.mjs";
 import { readTrustedReturnOrigin } from "../playground-checkout/index.js";
 import {
   DEMO_SHOPPER_EMAIL,
@@ -25,6 +25,8 @@ import {
 } from "./index.js";
 
 type EnvLike = Record<string, unknown>;
+/** The visitor's Commerce: its Registry build, under its Registry runtime id, with its snake_case storage. */
+const PLAYGROUND_COMMERCE_ID: string = PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce;
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 
 export const PLAYGROUND_LEADS_DB_BINDING = "PLAYGROUND_LEADS_DB";
@@ -465,8 +467,8 @@ export async function revokeShopperSessionById(db: Db, sessionId: string): Promi
   if (!sessionId) return;
   const sessions = new PluginStorageRepository(
     db,
-    COMMERCE_PLUGIN_ID,
-    NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions,
+    PLAYGROUND_COMMERCE_ID,
+    SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions,
     [],
   );
   await sessions.delete(sessionId);
@@ -475,7 +477,7 @@ export async function revokeShopperSessionById(db: Db, sessionId: string): Promi
 export async function ensureDemoShopperOrder(db: Db): Promise<void> {
   const orders = new PluginStorageRepository<OrderRecord>(
     db,
-    COMMERCE_PLUGIN_ID,
+    PLAYGROUND_COMMERCE_ID,
     ORDERS_COLLECTION,
     [],
   );
@@ -527,7 +529,7 @@ export async function ensureDemoShopperOrder(db: Db): Promise<void> {
 export async function ensurePreUpgradeShopperOrder(db: Db): Promise<void> {
   const orders = new PluginStorageRepository<OrderRecord>(
     db,
-    COMMERCE_PLUGIN_ID,
+    PLAYGROUND_COMMERCE_ID,
     ORDERS_COLLECTION,
     [],
   );
@@ -597,27 +599,27 @@ export async function mintDemoShopperSession(
   await ensureDemoShopperOrder(db);
   const activeEnv = resolveActiveEnv(env);
   const storage = {
-    [NATIVE_SHOPPER_ACCOUNT_STORAGE.customers]: new PluginStorageRepository(
+    [SANDBOX_SHOPPER_ACCOUNT_STORAGE.customers]: new PluginStorageRepository(
       db,
-      COMMERCE_PLUGIN_ID,
-      NATIVE_SHOPPER_ACCOUNT_STORAGE.customers,
+      PLAYGROUND_COMMERCE_ID,
+      SANDBOX_SHOPPER_ACCOUNT_STORAGE.customers,
       [],
     ),
-    [NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes]: new PluginStorageRepository(
+    [SANDBOX_SHOPPER_ACCOUNT_STORAGE.loginCodes]: new PluginStorageRepository(
       db,
-      COMMERCE_PLUGIN_ID,
-      NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes,
+      PLAYGROUND_COMMERCE_ID,
+      SANDBOX_SHOPPER_ACCOUNT_STORAGE.loginCodes,
       [],
     ),
-    [NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions]: new PluginStorageRepository(
+    [SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions]: new PluginStorageRepository(
       db,
-      COMMERCE_PLUGIN_ID,
-      NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions,
+      PLAYGROUND_COMMERCE_ID,
+      SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions,
       [],
     ),
     [ORDERS_COLLECTION]: new PluginStorageRepository<OrderRecord>(
       db,
-      COMMERCE_PLUGIN_ID,
+      PLAYGROUND_COMMERCE_ID,
       ORDERS_COLLECTION,
       [],
     ),
@@ -625,10 +627,10 @@ export async function mintDemoShopperSession(
   // Clear prior demo login code and fixed demo session record so the
   // instant demo sign-in button works repeatedly and overwrites one bounded
   // session slot instead of accumulating unbounded session rows per visitor.
-  await storage[NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes].delete(DEMO_SHOPPER_EMAIL);
-  await storage[NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions].delete(DEMO_SHOPPER_SESSION_ID);
+  await storage[SANDBOX_SHOPPER_ACCOUNT_STORAGE.loginCodes].delete(DEMO_SHOPPER_EMAIL);
+  await storage[SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions].delete(DEMO_SHOPPER_SESSION_ID);
   let capturedCode: string | null = null;
-  const runtime = bindShopperAccountRuntime(storage, NATIVE_SHOPPER_ACCOUNT_STORAGE, {
+  const runtime = bindShopperAccountRuntime(storage, SANDBOX_SHOPPER_ACCOUNT_STORAGE, {
     runtimeSiteUrl: siteOrigin,
     constructorSiteUrl: siteOrigin,
     topLevelSiteUrl: siteOrigin,

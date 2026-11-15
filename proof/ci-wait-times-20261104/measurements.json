@@ -1,0 +1,208 @@
+{
+  "base_head": "b1789ce2c6652309d2b08efeaec1bb56dd1f90a4",
+  "baseline_source_hashes": {
+    "tests/e2e/admin-product-categories.spec.ts": "d5ac4a2f81247bb6f27c6dae91aad8fbfc10ef8dacf8e6e6d18a822c6d81bed8",
+    "tests/e2e/home-opener-section.spec.ts": "b7aac2882504979d3f64e8ef885c2a8f2c049e1f409d44accf7fc360ec7f3926",
+    "tests/e2e/upstream-blocks.spec.ts": "497846f8d21d9188ea79ca89b6d6982a0402d49d90106515fcba52837997b732"
+  },
+  "cleanup": "Parent acceptance record verified fresh-run cleanup and empty owned ports; the worker cleanup receipt alone is not treated as proof.",
+  "correctness": {
+    "late_dialog_claim": "no new synthetic late-dialog regression claimed",
+    "missing_auth": "fails by code when the auth response is missing or malformed; not claimed as a runtime adversarial test",
+    "product_assertions": "unchanged; guest-cart deadlines unchanged",
+    "repair_receipt": {
+      "classification": "complete",
+      "command": "pnpm exec playwright test tests/e2e/admin-product-categories.spec.ts tests/e2e/home-opener-section.spec.ts tests/e2e/upstream-blocks.spec.ts --project=chromium-desktop --reporter=line,json --trace=on --workers=1",
+      "exit": {
+        "normalized": 0,
+        "raw": 0,
+        "signal": null
+      },
+      "raw_capture_sha256": {
+        "capture.json": "0b8f6a6c7fc7976042b09a21353a6f0391e2a114b4b138a1a7f9b4db34fd285e",
+        "stderr.txt": "bd20c79501d57ce533fd4909dd8e87e27ca7219f0a3c3325555cfe570155cc12",
+        "stdout.txt": "a58344a0dc3fd534d809b1a772fc8d4d9b2e304684f8cb9e0b0b7ff184e07236"
+      },
+      "receipt": "runs/ci-wait-times-runs/20261104-repair/captures/01-welcome-chromium-desktop/capture.json",
+      "wall_seconds": 58.24185391701758
+    },
+    "welcome_branches": [
+      "fresh welcome dismissal",
+      "already-dismissed continuation"
+    ]
+  },
+  "environment": {
+    "execution": "serial, warm installed dependencies, HOME preserved, same local Mac; loopback ports varied benignly",
+    "node": "24.22.0",
+    "pnpm": "11.9.0"
+  },
+  "excluded": {
+    "candidate_full": {
+      "reason": "invalid final-site comparison because baseline had an orphan on the assigned port",
+      "receipt": "runs/ci-wait-times-runs/20261104-execute/serial-v1/candidate-full/capture.json",
+      "wall_seconds": 429.6713697919622
+    }
+  },
+  "expected_contract": {
+    "get": "isFirstLogin = !userData?.welcomeDismissed",
+    "package": "emdash@1.4.0",
+    "path": "src/astro/routes/api/auth/me.ts",
+    "post": "dismissWelcome persists welcomeDismissed=true",
+    "sha256": "ab0ef1d49452b5c8a71fbf2f2e6ba39326008a5596e020e7ac4193daa023fe11"
+  },
+  "focused": {
+    "baseline": [
+      {
+        "classification": "complete",
+        "command": "pnpm exec playwright test tests/e2e/admin-product-categories.spec.ts tests/e2e/home-opener-section.spec.ts tests/e2e/upstream-blocks.spec.ts --project=chromium-desktop --reporter=line",
+        "exit": {
+          "normalized": 0,
+          "raw": 0,
+          "signal": null
+        },
+        "raw_capture_sha256": {
+          "capture.json": "59f692578f670bcb975662f2b707578b4b0aa6a81395b235521842a3278808f5",
+          "stderr.txt": "d539a6398acae5225dfdf3ca564ddef80e2f254ff9d6f2e9c25ca2f3f26bfead",
+          "stdout.txt": "fd3357ee9f3131170b4565bd9d8927296d61217e7b1084904f7d8e5c2a375669"
+        },
+        "receipt": "runs/ci-wait-times-runs/20261104-execute/serial-v1/baseline-focused-1/capture.json",
+        "wall_seconds": 135.55680012499215
+      },
+      {
+        "classification": "complete",
+        "command": "pnpm exec playwright test tests/e2e/admin-product-categories.spec.ts tests/e2e/home-opener-section.spec.ts tests/e2e/upstream-blocks.spec.ts --project=chromium-desktop --reporter=line",
+        "exit": {
+          "normalized": 0,
+          "raw": 0,
+          "signal": null
+        },
+        "raw_capture_sha256": {
+          "capture.json": "bfffb317c1b891065fa43e05401b9f01edd6ebc92d660d39391604e779a1f9b8",
+          "stderr.txt": "5d681fdb5c6cbf55926ab545fe443e0bf5f5ed5909a6ba41abf4cfa9feef0ef5",
+          "stdout.txt": "44ed6aa7007af38d661320cf08fe2056e2bfb29e8c32c13644a5300b7b25e0ad"
+        },
+        "receipt": "runs/ci-wait-times-runs/20261104-execute/serial-v1/baseline-focused-2/capture.json",
+        "wall_seconds": 135.26388270797906
+      }
+    ],
+    "baseline_mean_seconds": 135.4103414164856,
+    "candidate": [
+      {
+        "classification": "complete",
+        "command": "pnpm exec playwright test tests/e2e/admin-product-categories.spec.ts tests/e2e/home-opener-section.spec.ts tests/e2e/upstream-blocks.spec.ts --project=chromium-desktop --reporter=line",
+        "exit": {
+          "normalized": 0,
+          "raw": 0,
+          "signal": null
+        },
+        "raw_capture_sha256": {
+          "capture.json": "76e1b916005ffab31f85c44e0db001e78c53b420a9399034c95f0c0da94d8ddf",
+          "stderr.txt": "6e86c996eff8ef159dabeb5a23be7cb2a48090044c25a02fdaf4c3d2143b9776",
+          "stdout.txt": "b61ddf059e02c5fa3388e8e59434bcd4459fbc78c118f88abecf171db6667c47"
+        },
+        "receipt": "runs/ci-wait-times-runs/20261104-execute/serial-v1/candidate-focused-1/capture.json",
+        "wall_seconds": 54.311046791030094
+      },
+      {
+        "classification": "complete",
+        "command": "pnpm exec playwright test tests/e2e/admin-product-categories.spec.ts tests/e2e/home-opener-section.spec.ts tests/e2e/upstream-blocks.spec.ts --project=chromium-desktop --reporter=line",
+        "exit": {
+          "normalized": 0,
+          "raw": 0,
+          "signal": null
+        },
+        "raw_capture_sha256": {
+          "capture.json": "ad0fd74f179dcfd4052cd5ff2862092a6843b032fc870fd3ab22bd22c42f5872",
+          "stderr.txt": "764d6826b7fbd846d8ebe4fe8bad6c6546015be7665b1c5b4a89b2e10e527b1c",
+          "stdout.txt": "b06776e1e8fab0de981a101dc70530577dea4bd37e1e9444633eff89cb5d192c"
+        },
+        "receipt": "runs/ci-wait-times-runs/20261104-execute/serial-v1/candidate-focused-2/capture.json",
+        "wall_seconds": 53.48811862501316
+      }
+    ],
+    "candidate_mean_seconds": 53.899582708021626,
+    "reduction_percent": 60.19537197514252,
+    "result_shape": "all four runs: 3 passed, 1 existing skip",
+    "saved_seconds": 81.51075870846398,
+    "test_budget_seconds": 30
+  },
+  "full": {
+    "accepted_fresh_candidate": {
+      "classification": "complete",
+      "command": "./bin/verify-web full",
+      "exit": {
+        "normalized": 0,
+        "raw": 0,
+        "signal": null
+      },
+      "raw_capture_sha256": {
+        "capture.json": "a1d7bf6fac549c8220a175c69eed8f2654e5ebfd2e1d54e7d893196e5c91cf47",
+        "stderr.txt": "6d16bc39dcad34528661bc199efd0d0e9284866f1659b748d2f442a0ace10e03",
+        "stdout.txt": "a30cc5f3d21c127212d0455854fb79493e0faf57535637bf3e483b376b46bbb8"
+      },
+      "receipt": "runs/ci-wait-times-runs/20261104-execute/fresh-full/capture/capture.json",
+      "result_shape": "578 unit tests passed; 131 browser tests passed; 9 existing browser skips; 4 projects; site 32 URLs, 0 failures, 2 skips; valid feeds",
+      "wall_seconds": 422.8352312089992
+    },
+    "baseline": {
+      "classification": "complete",
+      "command": "./bin/verify-web full",
+      "exit": {
+        "normalized": 0,
+        "raw": 0,
+        "signal": null
+      },
+      "raw_capture_sha256": {
+        "capture.json": "9c18d676b04035b9bbafad790bfb8852b0e35fbaf69afb41742c4b4c38d0cbcd",
+        "stderr.txt": "304c7ebd25a4e6d66e7b4f4eee11f20b9c49c74efe90d56b086f10883045669e",
+        "stdout.txt": "6a1d10cf92e6e8b8feeb18b9943829ba71aca76fa630d9395a8be8229e1c6653"
+      },
+      "receipt": "runs/ci-wait-times-runs/20261104-execute/serial-v1/baseline-full/capture.json",
+      "result_shape": "578 unit tests passed; 131 browser tests passed; 9 existing browser skips; 4 projects; site 32 URLs, 0 failures, 2 skips; valid feeds",
+      "wall_seconds": 610.5808407079894
+    },
+    "claim_boundary": "one local full sample each; observed elapsed improvement, not statistical generalization or CI cost claim",
+    "observed_wall_reduction_seconds": 187.74560949899023
+  },
+  "limitations": [
+    "Focused runs shared the same idle baseline preview orphan; each used fresh dedicated browser servers. The orphan was removed before the accepted fresh full run.",
+    "One baseline and one accepted candidate full sample; benign loopback port differences, warm dependencies, no invoice or hosted-CI speedup measured.",
+    "The fresh full wrapper ended without its own cleanup receipt. The coordinator validated the intended origin and completed exact-owned-process cleanup after capture."
+  ],
+  "review": {
+    "scope": "This snapshot records local prepublication proof. Current hosted CI and exact-head review receipts belong to the pull request."
+  },
+  "schema": "template-store.ci-wait-times.measurements.v1",
+  "source_commit": "The published PR head containing the source_hashes below; source was tested before commit.",
+  "source_hashes": {
+    "tests/e2e/admin-product-categories.spec.ts": "094793c21d86a9935feaa3ed6db7be8d3b5d9d0e732a88cd08040757fe56d017",
+    "tests/e2e/helpers/welcome.ts": "4b1cbf4cd8b63dd51db4e846e71a72336427c3bf7d5d2fa52f22e8d6ea083f4b",
+    "tests/e2e/home-opener-section.spec.ts": "6869fa43317b20cec181f211de36871da5d028e436fe9fc7a853464528aa158a",
+    "tests/e2e/upstream-blocks.spec.ts": "1ffa7c4525f5f42d8ce954ad88c0714ac217253344395a64ff2786ad9be12bc2"
+  },
+  "status": "local-verification-qualified",
+  "task": "ci-wait-times-20261104",
+  "typecheck": {
+    "final": {
+      "classification": "complete",
+      "command": "pnpm exec astro check",
+      "exit": {
+        "normalized": 0,
+        "raw": 0,
+        "signal": null
+      },
+      "raw_capture_sha256": {
+        "capture.json": "104303b4d16e8c1efde96141ff16aa164bbf381191d67462da88024eac2d4e53",
+        "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout.txt": "1841ae507a1d13c679fb43b3a3e38472f2f2e84dd19032475b22a910da75711c"
+      },
+      "receipt": "runs/ci-wait-times-runs/20261104-execute/typecheck-2/capture.json",
+      "wall_seconds": 12.518869958992582
+    },
+    "initial": {
+      "cause": "type annotation",
+      "status": "failed"
+    },
+    "interpretation": "fixed type annotation; not evidence of a runtime fix"
+  }
+}

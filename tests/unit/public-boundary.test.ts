@@ -34,7 +34,8 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/categories/apparel").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/products/hoodie-black").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/api/guest-cart/snapshot").allowed).toBe(true);
-    expect(evaluatePublicBoundary("POST", "/api/checkout/status").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/cart.js").allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", "/api/checkout/status").allowed).toBe(false);
   });
 
   it("allows static assets and public media GET endpoints", () => {
@@ -44,6 +45,9 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("GET", "/_emdash/api/media/file/hero.png").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/favicon.ico").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/robots.txt").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/llms.txt").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/llms-full.txt").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/agents.md").allowed).toBe(true);
   });
 
   it("identifies only scoped slash variants for 301 redirects", () => {
@@ -54,12 +58,16 @@ describe("public boundary access evaluation", () => {
     expect(slashlessRedirectPath("/returns/")).toBe("/returns");
     expect(slashlessRedirectPath("/feeds/google-merchant.xml/")).toBe("/feeds/google-merchant.xml");
     expect(slashlessRedirectPath("/feeds/meta-catalog.csv/")).toBe("/feeds/meta-catalog.csv");
+    expect(slashlessRedirectPath("/feeds/agent-catalog.json/")).toBe("/feeds/agent-catalog.json");
     expect(slashlessRedirectPath("/api/checkout/status/")).toBeUndefined();
     expect(slashlessRedirectPath("/_emdash/admin/")).toBeUndefined();
     expect(evaluatePublicBoundary("GET", "/shipping").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/returns").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/feeds/google-merchant.xml").allowed).toBe(true);
     expect(evaluatePublicBoundary("GET", "/feeds/meta-catalog.csv").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/feeds/agent-catalog.json").allowed).toBe(true);
+    expect(evaluatePublicBoundary("GET", "/feeds/agent-catalog.json/").allowed).toBe(false);
+    expect(evaluatePublicBoundary("POST", "/feeds/agent-catalog.json").status).toBe(405);
     expect(evaluatePublicBoundary("GET", "/shipping/").allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", "/feeds/google-merchant.xml/").allowed).toBe(false);
     expect(evaluatePublicBoundary("POST", "/feeds/google-merchant.xml").status).toBe(405);
@@ -83,12 +91,19 @@ describe("public boundary access evaluation", () => {
     const base = "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest";
     expect(evaluatePublicBoundary("POST", `${base}/prepare`).allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", `${base}/start`).allowed).toBe(true);
-    expect(evaluatePublicBoundary("POST", `${base}/status`).allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", `${base}/cart`).allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", `${base}/status`).allowed).toBe(false);
     expect(evaluatePublicBoundary("GET", `${base}/start`).status).toBe(405);
     expect(evaluatePublicBoundary("GET", "/checkout/success").allowed).toBe(true);
     expect(evaluatePublicBoundary("HEAD", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", "/cart/").status).toBe(405);
-    expect(evaluatePublicBoundary("POST", "/checkout").status).toBe(405);
+    // The store's own forms post to Shopify's paths (template-cart-real-form-20261113).
+    for (const path of ["/checkout", "/cart/add", "/cart/add.js", "/cart/change", "/cart/change.js", "/cart/update.js"]) {
+      expect(evaluatePublicBoundary("POST", path).allowed).toBe(true);
+    }
+    expect(evaluatePublicBoundary("GET", "/cart/add").status).toBe(405);
+    expect(evaluatePublicBoundary("POST", "/cart/update").status).toBe(405);
+    expect(evaluatePublicBoundary("POST", "/cart.js").status).toBe(405);
     expect(evaluatePublicBoundary("PUT", "/checkout/success/").status).toBe(405);
     expect(evaluatePublicBoundary("DELETE", "/checkout/").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/checkout/success").status).toBe(405);

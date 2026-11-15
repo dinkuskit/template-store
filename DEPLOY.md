@@ -1,8 +1,10 @@
 # Deployment and Cloudflare Access
 
+> **The demo Worker is retired.** `dinkuskit-template-demo` (demo.dinkuskit.com) was retired on 18 Oct 2026 ([dinkuskit/dinkuskit#51](https://github.com/dinkuskit/dinkuskit/pull/51); GrillTrack `hosted-demo-retired-20261031`). The public store is the playground (`astro.playground.config.mjs`, `wrangler.playground.jsonc`) and the live test store is beta.sm0ky.dev, built by `pnpm build:registry`. The demo Worker's `wrangler.jsonc`, `scripts/build-demo.mjs` and `pnpm build` are removed; the repository has no default Wrangler config, and a Cloudflare build of `astro.config.mjs` refuses to run unless `DINKUS_WRANGLER_CONFIG` names one (`pnpm build:registry` writes it).
+
 This repository does not change a store's live Cloudflare Access applications.
 
-Workers.dev and preview URLs stay disabled (`workers_dev: false`, `preview_urls: false` in `wrangler.jsonc`) so the demo is served only on its Access-protected custom domain.
+A Registry store's generated config (`runs/registry/wrangler.jsonc`, [Registry builds from Git](docs/implementation/registry-git-build.md)) keeps Workers.dev and preview URLs disabled (`workers_dev: false`, `preview_urls: false`) and binds `LOADER` (`worker_loaders`), which runs the installed Commerce in EmDash's sandbox and which the Workers paid plan provides.
 
 ## Rule
 
@@ -38,6 +40,10 @@ Preview from the current pin (review only):
    - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare` (`POST`)
    - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start` (`POST`)
    - `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status` (`POST`)
+
+   Commerce with the server cart (commerce#272) adds
+   `/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/cart` (`POST`); the
+   store calls it in-process and no longer uses `checkout/guest/status`.
 
    These are generated from `src/plugin.ts` and its route-id exports; the list
    above is only a review snapshot. The script fails if the source exposes a
@@ -91,7 +97,7 @@ Commerce pin until upstream issue #79 adds the missing admin declaration and
 published route manifest. This is a release prerequisite, not permission to
 interpret an undeclared route as public. The policy checker audits only the
 actual deployment-policy inputs at the repository root: `DEPLOY.md` and
-`wrangler.jsonc`. It rejects concrete named-plugin wildcard paths (for
+`wrangler.playground.jsonc`, the one committed Worker config. It rejects concrete named-plugin wildcard paths (for
 example, a named plugin followed by `/*`); tests, proof, and source fixtures
 are outside this audit scope.
 

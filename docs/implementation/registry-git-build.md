@@ -1,10 +1,13 @@
 # Registry builds from Git
 
-Use a dedicated Worker for this branch. Plain `pnpm build` selects the default
-Node shipping profile; it does not select Cloudflare. A Cloudflare build using
-the default `wrangler.jsonc` selects the separate native demo. Neither is this
-dedicated Registry deployment path. Keep automatic builds disabled until the
-target resources, build inputs and commands are configured.
+Use a dedicated Worker for this branch. `pnpm run build:registry` is the only
+Cloudflare build of this store: the repository has no default Wrangler config
+(the retired demo Worker's `wrangler.jsonc` and `pnpm build` are removed,
+GrillTrack `hosted-demo-retired-20261031`), and a Cloudflare build of
+`astro.config.mjs` refuses to start unless `DINKUS_WRANGLER_CONFIG` names one.
+The playground is a separate Worker built from `astro.playground.config.mjs`.
+Keep automatic builds disabled until the target resources, build inputs and
+commands are configured.
 
 ## Cloudflare Workers Builds settings
 
@@ -40,7 +43,7 @@ existing behavior and do not acquire a new Git requirement.
 below, writes ignored `runs/registry/wrangler.jsonc`, and builds with that exact
 config. It forces the shipping profile, Inventory/proof mode off, LOADER on,
 and a shared build/runtime site origin. Missing inputs fail before a build;
-there is no fallback to the demo config. The command does not provision,
+there is no fallback config. The command does not provision,
 deploy, install plugins, or contact a credential manager.
 
 Cloudflare build variables are distinct from runtime variables. These
@@ -99,6 +102,20 @@ After building, use `pnpm exec wrangler deploy --dry-run --config
 dist/server/wrangler.json` for a credential-free bundle check. A build or dry-run
 does not establish deployment, Registry installation, or a successful payment.
 
+## Credential-free CI compilation
+
+The `Registry build` CI job runs the actual `pnpm run build:registry` command
+with synthetic non-secret resource identities, then inspects the adapter's
+emitted `dist/server/wrangler.json` for `LOADER`, the shipping catalog and proof
+mode off. The aggregate `Store verification` check requires this job as well as
+the desktop and phone checks. This covers the Cloudflare compilation path that
+the Node-adapter browser jobs do not exercise.
+
+The job has no deployment credentials and never provisions, deploys or installs
+plugins. It is not a real Workers Builds run, a resource-permission check or
+installed-store proof. The live Workers Builds acceptance in #203 and its
+separate deployment gate remain unchanged.
+
 Configuration follows the installed EmDash 1.2.0 / Cloudflare adapter and
 Wrangler 4.145.0 schemas. Cloudflare's [Workers Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/)
 describe build/deploy commands and the separation of build and runtime variables.
@@ -109,8 +126,8 @@ describe build/deploy commands and the separation of build and runtime variables
 Only the generated Registry configuration supports this opt-in. Set build
 variables `DINKUS_REGISTRY_ACCESS_ENABLED=1` and
 `DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN=<team>.cloudflareaccess.com`. The generated
-config carries that selection into the build and runtime; default Node and
-native demo builds keep their existing authentication. Leave the flag unset
+config carries that selection into the build and runtime; Node builds keep
+their existing authentication. Leave the flag unset
 or `0` to retain passkeys.
 
 Provision `CF_ACCESS_AUDIENCE` as a runtime secret using the approved process.
@@ -161,18 +178,20 @@ and callbacks remain intact. Node and other Cloudflare profiles keep their
 existing runners. A reported failure after a write is not proof of rollback;
 inspect and reuse the persisted record before retrying creation.
 
-## Checkout status public dispatch
+## Server cart public dispatch
 
-The browser-facing `/api/checkout/status` endpoint requires an Origin matching
-both the configured site origin and the incoming request URL. It preserves the
-installed guest-route admission gate, then calls the existing public-only
-EmDash dispatcher from request locals with a fixed Commerce status Request.
-Only the validated origin, capability, content type and accept headers are
-forwarded; no browser cookie or authorization header is forwarded. The route
-never falls back to HTTP self-fetch, a private handler, or native Commerce.
-Missing locals or dispatcher admission remains unavailable. Request and
-serialized result sizes remain bounded; only validated checkout projection
-fields are returned. Status does not start a payment.
+The cart pages and forms (`/cart`, `/cart/add`, `/cart/change`, `/cart.js`,
+`/cart/update.js`, `POST /checkout`, `/checkout/success`) call Commerce's
+`checkout/guest/prepare`, `cart` and `start` routes in-process through the
+public-only EmDash dispatcher from request locals (`src/features/guest-cart/server-cart.ts`).
+They preserve the installed guest-route admission gate and send only the
+configured store origin, the cart key from the HttpOnly `dk_cart` cookie, and
+fixed content type and accept headers; no browser cookie or authorization
+header is forwarded. Form posts must come from the store's own origin. There is
+no HTTP self-fetch, private handler, or native Commerce fallback; missing
+locals or dispatcher admission shows the cart as unavailable. The browser-facing
+`/api/checkout/status` route is gone: a cart read runs Commerce's payment check,
+and the thank-you page is drawn on the server from the order behind the cookie.
 
 ## Commerce runtime profile
 

@@ -1,0 +1,94 @@
+{
+  "source": "369642f330c9929c3148d26b453e54f85a5d493a",
+  "recorded_at": "2026-11-06T19:00:52.781818+00:00",
+  "environment": {
+    "node": "24.22.0",
+    "pnpm": "11.9.0",
+    "os": "linux",
+    "architecture": "arm64",
+    "ci_context": "explicit synthetic context; not a hosted run"
+  },
+  "helper_sha256": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "artifact": {
+    "mode": "pack",
+    "manifestSha256": "5dee12bd505aa2d3da0ea4b809628085dbdc4a87683e0148a6dcf915c643c478",
+    "bytes": 39365638,
+    "files": 823
+  },
+  "local_zip_transport": {
+    "wall_seconds": 1.7223354390007444,
+    "zip_bytes": 12080246,
+    "not_github_service_timing": true
+  },
+  "results": {
+    "playground-build-exact": {
+      "exit": 0,
+      "wall_seconds": 9.882452873000148,
+      "timed_out": false,
+      "finished_at": "2026-11-06T18:59:25.849369+00:00",
+      "outer_pid_present": false
+    },
+    "session-removal": {
+      "exit": 0,
+      "wall_seconds": 0.06726861499919323,
+      "timed_out": false,
+      "finished_at": "2026-11-06T18:59:52.717127+00:00",
+      "outer_pid_present": false
+    },
+    "artifact-pack": {
+      "exit": 0,
+      "wall_seconds": 0.8227802670007804,
+      "timed_out": false,
+      "finished_at": "2026-11-06T18:59:53.618541+00:00",
+      "outer_pid_present": false
+    },
+    "artifact-restore": {
+      "exit": 0,
+      "wall_seconds": 1.6251818790005927,
+      "timed_out": false,
+      "finished_at": "2026-11-06T19:00:13.162843+00:00",
+      "outer_pid_present": false
+    },
+    "restored-wrangler-dry-run": {
+      "exit": 0,
+      "wall_seconds": 4.976781514997128,
+      "timed_out": false,
+      "finished_at": "2026-11-06T19:00:18.206111+00:00",
+      "outer_pid_present": false
+    },
+    "quick-qualified": {
+      "exit": 0,
+      "wall_seconds": 29.533990814998106,
+      "timed_out": false,
+      "finished_at": "2026-11-06T18:58:05.007544+00:00",
+      "outer_pid_present": false
+    },
+    "ledger-validate": {
+      "exit": 0,
+      "wall_seconds": 0.16799176399945281,
+      "timed_out": false,
+      "finished_at": "2026-11-06T18:58:47.682765+00:00",
+      "outer_pid_present": false
+    },
+    "chromium-launch": {
+      "exit": 0,
+      "wall_seconds": 1.7224439769997844,
+      "timed_out": false,
+      "finished_at": "2026-11-06T18:59:45.716046+00:00",
+      "outer_pid_present": false
+    }
+  },
+  "wrangler": {
+    "version": "4.145.0",
+    "dry_run": true,
+    "restored_asset_files_read": 137,
+    "total_upload_kib": 20157.46,
+    "gzip_kib": 5216.7,
+    "deployed": false
+  },
+  "limitations": [
+    "Local transport timing is not GitHub artifact-service timing.",
+    "Production deployment and hosted partial reruns are not exercised.",
+    "Final publication-head hosted CI and review remain pending."
+  ]
+}

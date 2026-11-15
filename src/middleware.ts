@@ -10,15 +10,16 @@ import {
   validatePublicSearchQuery,
 } from "./features/security/public-boundary.js";
 import { acquireGuestCheckoutAdmission, canDispatchInstalledGuestCheckout } from "./features/guest-cart/checkout-admission.js";
-import { GUEST_CHECKOUT_STATUS_ENDPOINT } from "./features/guest-cart/checkout-protocol.js";
 import {
    ensurePlaygroundDemoCatalog,
 } from "./features/playground/demo-commerce-seed.js";
+import { ensureDemoCatalogThroughCommerce, type CommerceSeedRuntime } from "./features/playground/demo-registry-seed.js";
 import {
   filterPublicSearchApiResponse,
 } from "./features/store-shell/index.js";
 import { storefrontUpgrader } from "./features/store-shell/storefront-upgrades.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
+import { madeBeforeRegistryCommerce, restartPlaygroundStore } from "./features/playground/store-generation.js";
 import {
   ensureDemoShopperOrder,
   isPlaygroundLeadStorageConfigured,
@@ -39,8 +40,6 @@ import {
   checkoutJsonError,
   checkoutLimited,
   checkoutRouteKind,
-  nativeCheckoutPath,
-  NATIVE_COMMERCE_PLUGIN_ID,
   isCheckoutEnabled,
   MAX_CHECKOUT_BODY_BYTES,
   SANDBOX_CLIENT_IP_MESSAGE,
@@ -59,11 +58,11 @@ let demoProfileSeeded = false;
 
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
-  /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|start|status)$/;
+  /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|cart|start)$/;
 const NATIVE_SHOPPER_ACCOUNT_PATH =
   /^\/_emdash\/api\/plugins\/dinkus-commerce\/account\/(sign-in\/start|sign-in\/verify|sign-out|orders|profile)$/;
 const SHOPPER_ACCOUNT_ROUTE_PATH = new RegExp(
-  `^/_emdash/api/plugins/(?:${COMMERCE_REGISTRY_RUNTIME_ID}|${NATIVE_COMMERCE_PLUGIN_ID})/account/(sign-in/start|sign-in/verify|sign-out|orders|profile)$`,
+  `^/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/account/(sign-in/start|sign-in/verify|sign-out|orders|profile)$`,
 );
 
 type ShopperAccountRouteKind =
@@ -139,11 +138,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
     ((context.locals as { __playgroundEnv?: Record<string, unknown> }).__playgroundEnv ??
       process.env) as Record<string, unknown>;
   (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv = playgroundEnv;
-  // Resolve (and publish on locals) the persistent binding store once, so the
-  // /api/checkout/status route authorizes against the same store start wrote.
+  // Resolve (and publish on locals) the persistent binding store once, so a cart read authorizes against
+  // the same store start wrote.
   const playgroundBindings = isPlayground ? playgroundCheckoutBindingsFor(context.locals) : undefined;
 
-  // Publishing a product page puts its Commerce product on sale; the playground runs native Commerce.
+  // Publishing a product page puts its Commerce product on sale. Every store, the playground included, runs
+  // Commerce's Registry build (template-one-build-registry-20261031).
   const productOnSale = () => {
     const runtime = context.locals.emdash as unknown as OnSaleRuntime | undefined;
     const user = (context.locals as { user?: unknown }).user;
@@ -152,7 +152,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       url: context.url,
       runtime,
       user,
-      commercePluginId: isPlayground || isDemoCatalogProfile() ? NATIVE_COMMERCE_PLUGIN_ID : COMMERCE_REGISTRY_RUNTIME_ID,
+      commercePluginId: COMMERCE_REGISTRY_RUNTIME_ID,
       currentUser: () => (runtime ? storedUser(runtime, user) : Promise.resolve(user)),
       pendingSales: runtime?.db
         ? (new PluginStorageRepository(runtime.db as never, PRODUCT_URL_PLUGIN_ID, PENDING_SALES, []) as unknown as PendingSales)
@@ -163,7 +163,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   async function checkoutRouteAdmitted(): Promise<boolean> {
     const installed = { runtime: context.locals.emdash, request: context.request };
     // Readiness is advisory for new checkout entry. An existing capability must
-    // still reach Commerce's current start/status checks when the advisory is stale.
+    // still reach Commerce's current cart and start checks when the advisory is stale.
     return pathForms.some((path) => path.endsWith("/prepare"))
       ? Boolean(await acquireGuestCheckoutAdmission(installed))
       : canDispatchInstalledGuestCheckout(installed);
@@ -178,20 +178,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     if (guarded) {
       applySecurityHeaders(guarded.headers);
       return guarded;
-    }
-    if (checkoutKind === "status" && isPlayground && playgroundCheckoutConfigured(playgroundEnv)) {
-      const statusAttemptId = await readStatusAttemptId(context.request);
-      if (statusAttemptId === TOO_LARGE) {
-        const refused = checkoutJsonError(413, "Checkout request is too large.");
-        applySecurityHeaders(refused.headers);
-        return refused;
-      }
-      const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
-      if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings, playgroundEnv))) {
-        const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
-        applySecurityHeaders(refused.headers);
-        return refused;
-      }
     }
   }
 
@@ -218,13 +204,25 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (isPlayground) {
-    // EmDash seeds CMS content into each per-visitor DB; Commerce items live in
-    // plugin storage, so create the synthetic demo catalog once per session.
+    // EmDash seeds CMS content into each per-visitor DB; the visitor's Commerce (its Registry build, installed
+    // in the store) is set up through its own routes once per session: catalog, connection, sample orders.
+    // A visitor's requests are an Administrator's, so they carry EmDash's full runtime.
     const session = context.cookies.get("emdash_playground")?.value;
-    if (session && !seededPlaygroundSessions.has(session)) {
+    const runtime = context.locals.emdash as unknown as CommerceSeedRuntime | undefined;
+    if (session && !seededPlaygroundSessions.has(session) && typeof runtime?.handlePluginApiRoute === "function") {
       const db = (context.locals as { __playgroundDb: Parameters<typeof ensurePlaygroundDemoCatalog>[0] }).__playgroundDb;
-      await ensurePlaygroundDemoCatalog(db, { playground: true });
+      // A store the playground made before it ran Commerce's Registry build starts over (Ronald, 1 Nov 2026).
+      if (await madeBeforeRegistryCommerce(db).catch(() => false)) {
+        const restarted = restartPlaygroundStore(context.request);
+        applySecurityHeaders(restarted.headers);
+        return restarted;
+      }
       seededPlaygroundSessions.add(session);
+      await ensurePlaygroundDemoCatalog(db, { runtime, origin: context.url.origin }).catch((error: unknown) => {
+        // A fresh store builds Commerce's indexes on its first requests; the next request tries again.
+        seededPlaygroundSessions.delete(session);
+        console.error("[playground-seed] failed", error);
+      });
     }
   } else if (context.locals.emdash) {
     // An older store takes the template's newer schema on its own database, D1 or
@@ -234,19 +232,24 @@ export const onRequest = defineMiddleware(async (context, next) => {
       mode: process.env.EMDASH_MIGRATIONS_MODE ?? import.meta.env.EMDASH_MIGRATIONS_MODE,
     });
   }
-  if (!isPlayground && isDemoCatalogProfile() && !demoProfileSeeded) {
-    // The demo profile (native-development catalog + proof storefront) gets the
-    // same create-only-if-missing demo catalog. Shipping stores never do.
+  const demoSeedRuntime = context.locals.emdash as unknown as Parameters<typeof ensureDemoCatalogThroughCommerce>[0] | undefined;
+  if (!isPlayground && isDemoCatalogProfile() && !demoProfileSeeded && typeof demoSeedRuntime?.handlePluginApiRoute === "function") {
+    // The demo store (proof storefront profile) gets the same create-only-if-missing demo catalog, written
+    // through the installed Commerce Registry build's own private routes. Those need EmDash's full runtime,
+    // which it attaches to a signed-in person's requests (an anonymous visitor's requests carry only the
+    // public dispatcher), so the seed runs on the first signed-in request: the setup and sign-in calls every
+    // proof run makes first, or the owner opening the admin of a fresh demo. Shipping stores never seed. A
+    // fresh install builds Commerce's unique indexes on its first requests, so a refused seed is tried again.
     demoProfileSeeded = true;
-    const { getDb } = await import("emdash/runtime");
-    await ensurePlaygroundDemoCatalog(await getDb() as Parameters<typeof ensurePlaygroundDemoCatalog>[0])
+    await ensureDemoCatalogThroughCommerce(demoSeedRuntime, COMMERCE_REGISTRY_RUNTIME_ID, context.url.origin)
       .catch((error: unknown) => { demoProfileSeeded = false; console.error("[demo-seed] failed", error); });
   }
 
   // Sandbox checkout opens ONLY for a playground session with the flag on and
   // every Payments value present; the request has already passed body
-  // validation, the visitor-IP check and the limiter above. Registry-path calls
-  // from the cart are served by the playground's native Commerce routes.
+  // validation, the visitor-IP check and the limiter above. The cart's call
+  // reaches the visitor's own Commerce (its Registry build), whose Payments
+  // calls pass the playground's checkout guard with this visitor's IP and session.
   if (checkoutKind && isPlayground && playgroundCheckoutConfigured(playgroundEnv)) {
     const clientIp = visitorIp(context.request);
     if (!clientIp && checkoutKind === "start") {
@@ -256,44 +259,28 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
     const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
     const response = await withCheckoutVisitor(clientIp ?? "", sessionId, async () => {
-      // Dispatch straight to the playground's native Commerce route. An Astro
-      // rewrite (next(path)) cannot do this: the Registry and native paths match
-      // the same dynamic EmDash plugin route, so the rewrite keeps the Registry
-      // plugin id and the cart's request 404s.
-      const nativeResponse = await dispatchNativeCheckout(context.locals, context.request, context.url, checkoutKind);
-      if (checkoutKind === "status") {
-        return authorizeNativeStatusResponse(nativeResponse, sessionId, playgroundBindings, playgroundEnv);
+      const commerceResponse = await next();
+      // A cart read is also the status check: a paid order shows only to the visitor who paid.
+      if (checkoutKind === "cart") {
+        return authorizePlaygroundStatusResponse(commerceResponse, sessionId, playgroundBindings, playgroundEnv);
       }
-      return nativeResponse;
+      return commerceResponse;
     }, playgroundBindings);
     applySecurityHeaders(response.headers);
     return response;
   }
-
-  // Status recovery (/api/checkout/status) dispatches in-process to the native
-  // Commerce route; give its Payments lookup the same visitor context.
-  if (isPlayground && context.url.pathname === GUEST_CHECKOUT_STATUS_ENDPOINT &&
-      playgroundCheckoutConfigured(playgroundEnv)) {
-    const sessionId = context.cookies.get("emdash_playground")?.value ?? "";
-    const statusAttemptId = await readStatusAttemptId(context.request);
-    if (statusAttemptId === TOO_LARGE) {
-      const refused = checkoutJsonError(413, "Checkout request is too large.");
-      applySecurityHeaders(refused.headers);
-      return refused;
-    }
-    if (statusAttemptId !== null && !(await playgroundAttemptBelongsToVisitor(statusAttemptId, sessionId, playgroundBindings, playgroundEnv))) {
-      const refused = checkoutJsonError(403, "Checkout visitor session is not authorized.");
-      applySecurityHeaders(refused.headers);
-      return refused;
-    }
-    const response = await withCheckoutVisitor(visitorIp(context.request) ?? "", sessionId, () => next(), playgroundBindings);
-    applySecurityHeaders(response.headers);
-    return response;
+  // Without the full checkout configuration the playground's checkout routes never reach Commerce.
+  if (checkoutKind && isPlayground) {
+    const refused = checkoutJsonError(503, "Playground checkout is unavailable.");
+    applySecurityHeaders(refused.headers);
+    return refused;
   }
 
+  // The playground wraps the visitor's Commerce account routes with its updates opt-in, sign-in limiter and
+  // verified-lead record; other stores reach the installed plugin's own account routes directly.
   const accountKind = shopperAccountRouteKind(context.url.pathname);
-  if (accountKind && (isPlayground || isDemoCatalogProfile())) {
-    const response = await dispatchNativeShopperAccount(
+  if (accountKind && isPlayground) {
+    const response = await dispatchPlaygroundShopperAccount(
       context.locals,
       context.request,
       context.url,
@@ -459,18 +446,6 @@ async function boundedCheckoutBody(request: Request): Promise<string | null | ty
   return new TextDecoder().decode(bytes);
 }
 
-async function readStatusAttemptId(request: Request): Promise<string | null | typeof TOO_LARGE> {
-  const raw = await boundedCheckoutBody(request);
-  if (raw === TOO_LARGE) return TOO_LARGE;
-  if (raw === null || raw === "") return null;
-  try {
-    const body = JSON.parse(raw) as { attemptId?: unknown };
-    return typeof body.attemptId === "string" && body.attemptId.length > 0 ? body.attemptId : null;
-  } catch {
-    return null;
-  }
-}
-
 type PublicPluginResult = {
   success: boolean;
   data?: unknown;
@@ -479,43 +454,8 @@ type PublicPluginResult = {
 };
 type PublicPluginDispatcher = (pluginId: string, method: string, path: string, request: Request) => Promise<PublicPluginResult>;
 
-/**
- * Runs a guest checkout call on the playground's native Commerce plugin through
- * EmDash's public plugin-route boundary (public routes only), answering with
- * the same `{ success, data }` / `{ success, error }` envelope and status
- * mapping as EmDash's own plugin API route. The request URL, headers and the
- * already-validated body are forwarded unchanged, so Commerce's own origin and
- * capability checks still decide.
- */
-async function dispatchNativeCheckout(
-  locals: unknown,
-  request: Request,
-  url: URL,
-  kind: NonNullable<ReturnType<typeof checkoutRouteKind>>,
-): Promise<Response> {
-  const dispatch = (locals as { emdash?: { handlePublicPluginApiRoute?: PublicPluginDispatcher } } | undefined)
-    ?.emdash?.handlePublicPluginApiRoute;
-  if (typeof dispatch !== "function") return checkoutJsonError(503, "Checkout is not available yet.");
-  const target = new URL(nativeCheckoutPath(kind), url);
-  const forwarded = new Request(target, {
-    method: "POST",
-    headers: request.headers,
-    body: await request.text(),
-  });
-  const result = await dispatch(NATIVE_COMMERCE_PLUGIN_ID, "POST", `checkout/guest/${kind}`, forwarded);
-  const headers = { "Cache-Control": "private, no-store" };
-  if (!result?.success) {
-    const code = result?.error?.code ?? "PLUGIN_ERROR";
-    const message = code === "INTERNAL_ERROR" ? "Plugin route error" : result?.error?.message ?? "Plugin route error";
-    const status = result?.status ?? (code === "NOT_FOUND" ? 404 : 400);
-    const details = code !== "INTERNAL_ERROR" && result?.error?.details && typeof result.error.details === "object" &&
-      !Array.isArray(result.error.details) ? { details: result.error.details } : {};
-    return Response.json({ success: false, error: { code, message, ...details } }, { status, headers });
-  }
-  return Response.json({ success: true, data: result.data }, { status: 200, headers });
-}
-
-async function authorizeNativeStatusResponse(
+/** A terminal status is shown only to the visitor whose session started that payment. */
+async function authorizePlaygroundStatusResponse(
   response: Response,
   sessionId: string,
   bindings: Parameters<typeof playgroundAttemptBelongsToVisitor>[2],
@@ -556,7 +496,7 @@ async function resolveDemoOrPlaygroundDb(
   }
 }
 
-async function dispatchNativeShopperAccount(
+async function dispatchPlaygroundShopperAccount(
   locals: unknown,
   request: Request,
   url: URL,
@@ -676,20 +616,25 @@ async function dispatchNativeShopperAccount(
     }
   }
 
-  const target = new URL(`/_emdash/api/plugins/${NATIVE_COMMERCE_PLUGIN_ID}/account/${kind}`, url);
+  const target = new URL(`/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/account/${kind}`, url);
   const forwarded = new Request(target, {
     method,
     headers: request.headers,
     ...(forwardedBody !== undefined ? { body: forwardedBody } : {}),
   });
   const result = await withShopperAccountRequest(url.origin, env, () =>
-    dispatch(NATIVE_COMMERCE_PLUGIN_ID, method, `account/${kind}`, forwarded),
+    dispatch(COMMERCE_REGISTRY_RUNTIME_ID, method, `account/${kind}`, forwarded),
   );
   if (!result?.success) {
     const code = result?.error?.code ?? "PLUGIN_ERROR";
     const message = code === "INTERNAL_ERROR" ? "Plugin route error" : result?.error?.message ?? "Plugin route error";
     const status = result?.status ?? (code === "NOT_FOUND" ? 404 : 400);
     return Response.json({ success: false, error: { code, message } }, { status, headers });
+  }
+  // Commerce's Registry routes refuse in-band ({ ok: false, error }), as in every store: a wrong or expired
+  // PIN, a rate limit or a denied session goes back to the shopper as Commerce gave it, and records no lead.
+  if ((result.data as { ok?: unknown } | null | undefined)?.ok === false) {
+    return Response.json({ success: true, data: result.data }, { status: 200, headers });
   }
   if (kind === "sign-in/verify" && result.data && typeof result.data === "object") {
     const profile = (result.data as { profile?: { email?: unknown } }).profile;

@@ -1,6 +1,9 @@
 /**
  * Fresh and existing visitor databases: a real EmDash-migrated SQLite database
- * seeded the way the playground middleware seeds it. The merchant settings
+ * seeded the way the playground middleware seeds it. The visitor's Commerce is its Registry build
+ * (template-one-build-registry-20261031); a stand-in for EmDash's runtime answers its routes as an
+ * already-seeded, already-connected store, since the catalog and Connect themselves are proved against the
+ * real build by the playground's local and preview runs and the proof store's browser tests. The merchant settings
  * bootstrap runs only for a fresh store, saved settings survive repeat seeding
  * (an isolate restart), and checkout bindings persisted in an existing database
  * stay readable and authoritative after re-seeding.
@@ -12,7 +15,6 @@ import { Kysely } from "kysely";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  COMMERCE_PLUGIN_ID,
   ORDERS_COLLECTION,
   loadMerchantStoreSettings,
   saveMerchantStoreSettings,
@@ -20,7 +22,7 @@ import {
 } from "@dinkuskit/commerce";
 import {
   CUSTOMER_SESSION_HEADER,
-  NATIVE_SHOPPER_ACCOUNT_STORAGE,
+  SANDBOX_SHOPPER_ACCOUNT_STORAGE,
   bindShopperAccountRuntime,
   readShopperAccountOrders,
   readShopperAccountProfile,
@@ -30,7 +32,8 @@ import {
 import { listOrdersForEmail, type OrdersCollection } from "@dinkuskit/commerce/features/orders";
 import { applySeed } from "emdash/seed";
 import { readFileSync } from "node:fs";
-import { ensurePlaygroundDemoCatalog } from "../../src/features/playground/demo-commerce-seed.js";
+import { ensurePlaygroundDemoCatalog, PLAYGROUND_COMMERCE_ID } from "../../src/features/playground/demo-commerce-seed.js";
+import { DEMO_PRODUCTS } from "../../scripts/demo-seed-policy.js";
 import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../../src/features/playground/demo-orders.js";
 import { newlyDoneSteps, readTourState, recordShopVisit, tourSteps, visitorOrderCount } from "../../src/features/playground-tour/state.js";
 import { playgroundDinkusKitFetch } from "../../src/features/playground-plugins/dinkuskit-stand-in.js";
@@ -58,6 +61,27 @@ async function visitorDb(): Promise<Kysely<never>> {
   return visitor;
 }
 beforeEach(async () => { db = await visitorDb(); });
+
+const COMMERCE_PLUGIN_ID = PLAYGROUND_COMMERCE_ID;
+/** EmDash's runtime as the seed sees it: Commerce answers as a store whose demo catalog exists and that is connected. */
+const seededRuntime = (target: Kysely<never>) => ({
+  db: target,
+  getPluginRouteMeta: () => ({ public: false }),
+  async handlePluginApiRoute(_pluginId: string, _method: string, path: string) {
+    if (path === "catalog") return { success: true, data: { products: DEMO_PRODUCTS.map((product) => ({ catalogItemId: `item-${product.sku}`, sku: product.sku })) } };
+    if (path === "admin") return { success: true, data: { blocks: [{ type: "context", text: "Connected to DinkusKit.com, store playground." }] } };
+    return { success: false, error: { code: "NOT_FOUND", message: path } };
+  },
+});
+/** Every demo SKU's catalog item, as Commerce holds them once the seed's routes have run. */
+const DEMO_SKUS = DEMO_PRODUCTS.flatMap((product) => [product.sku, ...(product.variant?.members.map((member) => member.sku) ?? [])]);
+const seed = async (target: Kysely<never> = db) => {
+  const catalog = new PluginStorageRepository<Record<string, unknown>>(target as never, COMMERCE_PLUGIN_ID, "catalog_items", []);
+  for (const sku of new Set(DEMO_SKUS)) {
+    if (!(await catalog.get(`item-${sku}`))) await catalog.put(`item-${sku}`, { recordKind: "catalog-item", itemId: `item-${sku}`, sku, name: sku });
+  }
+  return ensurePlaygroundDemoCatalog(target as never, { runtime: seededRuntime(target), origin: "https://playground.dinkuskit.com" });
+};
 afterEach(async () => { await db.destroy(); });
 
 const settingsOf = () => loadMerchantStoreSettings(createSettingsAccess(new OptionsRepository(db as never), COMMERCE_PLUGIN_ID));
@@ -65,32 +89,32 @@ const settingsOf = () => loadMerchantStoreSettings(createSettingsAccess(new Opti
 describe("playground visitor database state", () => {
   it("bootstraps US merchant settings once for a fresh store", async () => {
     expect((await settingsOf()).revision).toBeNull();
-    await ensurePlaygroundDemoCatalog(db as never);
+    await seed(db);
     const fresh = await settingsOf();
     expect(fresh.revision).not.toBeNull();
     expect(fresh.settings).toMatchObject({ storeCountry: "US", sellingCountries: ["US"], shippingCountries: ["US"] });
   });
 
   it("preserves saved settings, including an empty country list, across repeat seeding", async () => {
-    await ensurePlaygroundDemoCatalog(db as never);
+    await seed(db);
     const settings = createSettingsAccess(new OptionsRepository(db as never), COMMERCE_PLUGIN_ID);
     const before = await loadMerchantStoreSettings(settings);
     await saveMerchantStoreSettings(settings, { expectedRevision: before.revision, storeCountry: "US",
       sellingCountries: ["US"], shippingCountries: [], requirePhoneNumber: true });
     const saved = await settingsOf();
-    await ensurePlaygroundDemoCatalog(db as never);
-    await ensurePlaygroundDemoCatalog(db as never);
+    await seed(db);
+    await seed(db);
     const after = await settingsOf();
     expect(after.revision).toBe(saved.revision);
     expect(after.settings).toMatchObject({ shippingCountries: [], requirePhoneNumber: true });
   });
 
   it("keeps persisted checkout bindings authoritative in an existing database after re-seeding", async () => {
-    await ensurePlaygroundDemoCatalog(db as never);
+    await seed(db);
     const expiresAt = Date.now() + 30 * 60_000;
     await playgroundCheckoutBindingStore(db as never).put("attempt-existing", {
       recordKind: "playground-checkout-binding", attemptId: "attempt-existing", sessionId: "visitor-a", expiresAt });
-    await ensurePlaygroundDemoCatalog(db as never);
+    await seed(db);
     // A new store instance over the same database, as after an isolate restart.
     const reopened = playgroundCheckoutBindingStore(db as never);
     expect(await playgroundAttemptBelongsToVisitor("attempt-existing", "visitor-a", reopened)).toBe(true);
@@ -105,22 +129,22 @@ describe("playground visitor database state", () => {
 
     const runtimeForDb = (targetDb: Kysely<never>) => {
       const storage = {
-        [NATIVE_SHOPPER_ACCOUNT_STORAGE.customers]: new PluginStorageRepository(
+        [SANDBOX_SHOPPER_ACCOUNT_STORAGE.customers]: new PluginStorageRepository(
           targetDb as never,
           COMMERCE_PLUGIN_ID,
-          NATIVE_SHOPPER_ACCOUNT_STORAGE.customers,
+          SANDBOX_SHOPPER_ACCOUNT_STORAGE.customers,
           [],
         ),
-        [NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes]: new PluginStorageRepository(
+        [SANDBOX_SHOPPER_ACCOUNT_STORAGE.loginCodes]: new PluginStorageRepository(
           targetDb as never,
           COMMERCE_PLUGIN_ID,
-          NATIVE_SHOPPER_ACCOUNT_STORAGE.loginCodes,
+          SANDBOX_SHOPPER_ACCOUNT_STORAGE.loginCodes,
           [],
         ),
-        [NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions]: new PluginStorageRepository(
+        [SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions]: new PluginStorageRepository(
           targetDb as never,
           COMMERCE_PLUGIN_ID,
-          NATIVE_SHOPPER_ACCOUNT_STORAGE.sessions,
+          SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions,
           [],
         ),
         [ORDERS_COLLECTION]: new PluginStorageRepository<OrderRecord>(
@@ -130,7 +154,7 @@ describe("playground visitor database state", () => {
           [],
         ),
       };
-      return bindShopperAccountRuntime(storage, NATIVE_SHOPPER_ACCOUNT_STORAGE, {
+      return bindShopperAccountRuntime(storage, SANDBOX_SHOPPER_ACCOUNT_STORAGE, {
         runtimeSiteUrl: trustedOrigin,
         constructorSiteUrl: trustedOrigin,
         topLevelSiteUrl: trustedOrigin,
@@ -148,7 +172,7 @@ describe("playground visitor database state", () => {
       });
     };
 
-    await ensurePlaygroundDemoCatalog(db as never);
+    await seed(db);
     // Populate a pre-upgrade paid order in the existing visitor DB before any shopper account seed/sign-in runs.
     await ensurePreUpgradeShopperOrder(db as never);
     const issued = await mintDemoShopperSession(db as never, trustedOrigin, {
@@ -176,7 +200,7 @@ describe("playground visitor database state", () => {
     expect(savedProfile.ok).toBe(true);
 
     // Re-seed both the playground catalog and demo shopper order, and open a fresh runtime (isolate restart).
-    await ensurePlaygroundDemoCatalog(db as never);
+    await seed(db);
     await ensureDemoShopperOrder(db as never);
     currentMs = baseMs + 5 * 60_000;
     const reopenedRuntimeA = runtimeForDb(db);
@@ -297,8 +321,8 @@ describe("playground visitor database state", () => {
     const placed = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
     await placed.put("ord_visitor_1003", { number: 1003, revision: 1, paidOrder: { orderId: "ord_visitor_1003" } });
     await new PluginStorageRepository<{ next: number }>(db as never, COMMERCE_PLUGIN_ID, "order_numbers", []).put("next", { next: 1004 });
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    await seed(db);
+    await seed(db);
     const existing = await numbersIn(db);
     expect(existing.samples).toEqual([1004, 1005]);
     expect(new Set(existing.all).size).toBe(existing.all.length);
@@ -307,7 +331,7 @@ describe("playground visitor database state", () => {
 
     // A fresh store, where the shopper demo adds its orders after the samples.
     const fresh = await visitorDb();
-    await ensurePlaygroundDemoCatalog(fresh as never, { playground: true });
+    await seed(fresh);
     await ensureDemoShopperOrder(fresh as never);
     await ensurePreUpgradeShopperOrder(fresh as never);
     const later = await numbersIn(fresh);
@@ -319,14 +343,14 @@ describe("playground visitor database state", () => {
   });
 
   it("ticks the playground tour off from what the visitor's own store holds", async () => {
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    await seed(db);
     // The shipped sample's practice label and the sample orders are the playground's, not the visitor's.
     const first = await readTourState(db as never, true);
     expect(first).toEqual({ productEdited: false, paymentsConnected: false, orders: 0, labels: 0, shopVisited: false, checkoutOpen: true });
     expect(await newlyDoneSteps(db as never, tourSteps(first))).toEqual([]);
 
     // Change a product the way Commerce's Products page saves it.
-    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalogItems", []);
+    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalog_items", []);
     const [item] = (await items.query({ limit: 1 })).items;
     await items.put(item!.id, { ...item!.data, title: "Renamed by the visitor" });
 
@@ -353,7 +377,7 @@ describe("playground visitor database state", () => {
   });
 
   it("ticks Edit a product when the visitor publishes a change to a product page in Content > Products", async () => {
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    await seed(db);
     expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
 
     // Publishing writes the page's live values; a new short description is enough.
@@ -368,7 +392,7 @@ describe("playground visitor database state", () => {
   });
 
   it("doesn't tick Edit a product for a new product that is only a draft, until it is published", async () => {
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    await seed(db);
     expect(await readTourState(db as never, true)).toMatchObject({ productEdited: false });
 
     const pages = new ContentRepository(db as never);
@@ -380,7 +404,7 @@ describe("playground visitor database state", () => {
   });
 
   it("keeps the progress a visitor made before the tour replaced the welcome card", async () => {
-    await ensurePlaygroundDemoCatalog(db as never, { playground: true });
+    await seed(db);
     const options = new OptionsRepository(db as never);
     // The welcome card's first look at the untouched catalog, kept under its own plugin id.
     await readTourState(db as never, true);
@@ -389,7 +413,7 @@ describe("playground visitor database state", () => {
     await options.set("plugin:dinkus-playground-welcome:catalog-baseline", untouched);
 
     // Before the tour: the visitor renamed a product and finished Payments' Connect, which Payments saved itself.
-    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalogItems", []);
+    const items = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, "catalog_items", []);
     const [item] = (await items.query({ limit: 1 })).items;
     await items.put(item!.id, { ...item!.data, title: "Renamed before the tour" });
     await options.set("plugin:r_3brsc2on3bu673rn:state:registry-v2-control", { phase: "complete", flowId: "flow_before" });
@@ -400,7 +424,7 @@ describe("playground visitor database state", () => {
 
     // A Connect that never finished doesn't count.
     const unfinished = await visitorDb();
-    await ensurePlaygroundDemoCatalog(unfinished as never, { playground: true });
+    await seed(unfinished);
     await new OptionsRepository(unfinished as never).set("plugin:r_3brsc2on3bu673rn:state:registry-v2-control", { phase: "pending" });
     expect(await readTourState(unfinished as never, true)).toMatchObject({ productEdited: false, paymentsConnected: false });
     await unfinished.destroy();

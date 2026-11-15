@@ -6,6 +6,7 @@ import { GuestCheckoutReturn } from "../../features/guest-cart/ui.ts";
 import { STORE_TITLE, readStorefrontProfile } from "../../features/store-shell/index.js";
 import { isCheckoutEnabled, SANDBOX_SESSION_NOTICE, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
+import { loadCheckoutReturn } from "../../features/guest-cart/server-return.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -29,9 +30,11 @@ const contactHref = (() => {
 Astro.response.headers.set("Cache-Control", "no-store");
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo: isDemoCatalogProfile(), checkoutEnabled: isCheckoutEnabled() });
-// Sandbox returns use the same capability-scoped controller as every store:
-// only Commerce's durable paid order confirms, and only then is the purchased
-// cart settled. No Stripe session id from the URL is looked up or trusted.
+// The page is drawn on the server from the cart cookie: only Commerce's durable paid order confirms, and
+// the Stripe session named in the URL is never looked up or trusted (template-thank-you-server-20261113).
+const result = await loadCheckoutReturn({ locals: Astro.locals, request: Astro.request, url: Astro.url, cookies: Astro.cookies })
+  .catch(() => ({ kind: "unavailable" }) as const);
+if (result.kind === "not-paid") return Astro.redirect(result.redirect, 303);
 ---
 <!doctype html>
 <html lang="en">
@@ -40,13 +43,14 @@ const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDe
     <meta name="viewport" content="width=device-width" />
     <meta name="robots" content="noindex, nofollow" />
     <title>Order confirmation | {STORE_TITLE}</title>
+    {result.kind === "confirming" && <meta http-equiv="refresh" content={`${result.refreshSeconds};url=${result.refreshUrl}`} />}
   </head>
   <body data-storefront-profile={profile}>
     <div class="store-demo-banner" data-store-demo-banner role="status">Demo checkout &mdash; No real payments or fulfillment.</div>
     <StoreHeader profile={profile} />
     <main>
       {sandboxCheckout && <p class="store-sandbox-notice" role="note" data-sandbox-checkout-return>Test mode checkout. {SANDBOX_SESSION_NOTICE}</p>}
-      <GuestCheckoutReturn contactHref={contactHref} />
+      <GuestCheckoutReturn result={result} contactHref={contactHref} />
     </main>
     <StoreFooter profile={profile} />
   </body>

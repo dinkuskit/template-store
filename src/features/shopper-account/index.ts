@@ -100,6 +100,8 @@ export type ShopperOrderItem = Readonly<{
   variantSelections?: readonly ShopperOrderVariantChoice[];
   delivery: ShopperDeliveryAddress | null;
   phone: string | null;
+  /** Commerce's current completion; older account projections may omit it. */
+  completed?: Readonly<{ at: string; carrier?: string; tracking?: string }> | null;
 }>;
 
 export type ShopperOrderCatalogSnapshot = Readonly<{
@@ -439,6 +441,18 @@ export function formatOrderMoney(money: Readonly<{ currency: string; minor: stri
   const minor = Number(money.minor);
   if (!Number.isSafeInteger(minor) || minor < 0) return "$0.00";
   return `$${(minor / 100).toFixed(2)}`;
+}
+
+/** Only definitive authentication failure invalidates a browser capability.
+ * The SDK transports Commerce business denials inside an HTTP 200 envelope;
+ * callers must unwrap it first. Other business, transport and server errors
+ * do not establish that the session has been revoked.
+ */
+export function isShopperSessionDenied(status: number, body: unknown): boolean {
+  return status === 401 || (
+    status === 200 && isRecord(body) && body.ok === false &&
+    isRecord(body.error) && body.error.code === "SESSION_DENIED"
+  );
 }
 
 export function unwrapPluginEnvelope(payload: unknown): Record<string, unknown> | null {

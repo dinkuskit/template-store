@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
 
 import { collectionPath } from "../../src/features/store-shell/index.js";
-import { COMMERCE_NATIVE_PLUGIN_ID } from "../../src/features/commerce-catalog/installed.js";
+import { COMMERCE_ID } from "./helpers/product-page";
 
 function inventoryishUrl(url: string): boolean {
   return /configure-inventory|@dinkuskit\/inventory|dinkuskit\.inventory|dinkus-inventory|\/api\/proof\/stock/iu.test(
@@ -12,7 +12,7 @@ function inventoryishUrl(url: string): boolean {
   );
 }
 
-test("shipping profile uses installed catalog and fail-closes without a native plugin", async ({
+test("shipping profile uses installed catalog and fail-closes without an installed Commerce", async ({
   page,
   browser,
   request,
@@ -32,8 +32,9 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   expect((await request.post("/api/proof/stock", { data: { commandId: "shipping-blocked", delta: "-3", reason: "proof-change" } })).status()).toBe(404);
   expect((await request.get("/proof")).status()).toBe(404);
 
+  // The shipping store mounts no Commerce at all: nothing answers at the Registry runtime id.
   const installedCatalog = await request.get(
-    `/_emdash/api/plugins/${COMMERCE_NATIVE_PLUGIN_ID}/catalog/public`,
+    `/_emdash/api/plugins/${COMMERCE_ID}/catalog/public`,
   );
   expect(installedCatalog.ok()).toBe(false);
 
@@ -41,7 +42,7 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   watch(context);
   const admin = await context.newPage();
   watch(admin);
-  await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/plugins/dinkus-commerce/products");
+  await admin.goto(`/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/plugins/${COMMERCE_ID}/products`);
   try {
     await expect(admin.getByRole("button", { name: "Get Started" })).toBeVisible({ timeout: 30_000 });
     await admin.getByRole("button", { name: "Get Started" }).click();
@@ -126,14 +127,16 @@ test("shipping profile uses installed catalog and fail-closes without a native p
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   expect((await request.get("/shipping")).status()).toBe(200);
   expect((await request.get("/returns")).status()).toBe(200);
+  // The policy pages are EmDash content and always show their own text, with or without Commerce
+  // (GrillTrack policy-pages-content-20261031).
   await page.goto("/shipping");
-  await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
-  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
+  await expect(page.locator("[data-shipping-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-shipping-policy-unset]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/);
   await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
   await page.goto("/returns");
-  await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
-  await expect(page.locator("[data-policy-body]")).toHaveCount(0);
+  await expect(page.locator("[data-return-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-return-policy-unset]")).toHaveCount(0);
   await expect(page.locator("main")).not.toContainText(/\$\d|\d+ days/);
   await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
   const googleFeed = await request.get("/feeds/google-merchant.xml");

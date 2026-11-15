@@ -3,25 +3,21 @@ import { resolve } from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { armWelcomeObserver, dismissWelcome as dismissWhenReady } from "./helpers/welcome";
+
 const libraryHeadline = "Welcome to the shop";
 const editedHeadline = "Welcome, rewritten on this page";
 const originalHeadline = "Everyday essentials, clearly presented";
 const proofRoot = resolve("runs/home-opener-section-20260926/browser");
 
 async function dismissWelcome(page: Page): Promise<void> {
-  const welcome = page.getByRole("dialog", { name: /Welcome to EmDash/ });
-  try {
-    await expect(page.getByRole("button", { name: "Get Started" })).toBeVisible({
-      timeout: 30_000,
-    });
-    await page.getByRole("button", { name: "Get Started" }).click();
-  } catch {
-    await expect(welcome).toHaveCount(0);
-  }
-  await expect(welcome).toHaveCount(0);
+  // Seeded home entry title. Visible once that document is in the editor,
+  // including after the legacy plugin editor is retired.
+  await dismissWhenReady(page, page.locator('input[value="DinkusKit Store Starter"]'));
 }
 
 async function openHomeEditor(page: Page): Promise<void> {
+  await armWelcomeObserver(page);
   await page.goto(
     "/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/pages/home",
   );

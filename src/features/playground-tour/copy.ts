@@ -20,7 +20,7 @@ export const TOUR_COPY_DEFAULTS = {
   },
   "connect-payments": {
     title: "Connect Payments",
-    text: "Open Payments and press Connect, then Authorize Payments at DinkusKit. On a real store you approve this once at DinkusKit.com; here it's pretend, and Payments shows Stripe test mode ready.",
+    text: "Open Payment settings and press Connect, then Authorize Payments at DinkusKit. On a real store you approve this once at DinkusKit.com; here it's pretend, and Payments shows Stripe test mode ready.",
   },
   "place-order": {
     title: "Place a test order",
@@ -32,7 +32,7 @@ export const TOUR_COPY_DEFAULTS = {
   },
   "ship-order": {
     title: "Ship an order",
-    text: "Open Shipping and press Connect, then open a paid order and press Make practice label. Practice labels are free and mark the order shipped.",
+    text: "Open Shipments and press Connect, then open a paid order and press Make practice label. Practice labels are free and mark the order shipped.",
   },
   "real-store": {
     title: "Start your real store",

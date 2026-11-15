@@ -1,73 +1,62 @@
 ---
 import { canAddCommerceProductToCart } from "./index.js";
+import { GUEST_CART_MAX_QUANTITY } from "./intent.js";
 import type { PublicCommerceProduct, PublicCommerceVariant } from "../commerce-catalog/index.js";
 
 interface Props {
   product: PublicCommerceProduct;
   variants?: readonly PublicCommerceVariant[];
+  /** With variants: the product's own Commerce id; the page's option buttons join this form by `formId`. */
+  productId?: string;
+  formId?: string;
 }
 
-const { product, variants = [] } = Astro.props;
+const { product, variants = [], productId, formId = `add-to-cart-${product.id}` } = Astro.props;
 const sellableVariants = variants.filter((member) => member.availability.sellable);
 const singleSellable = canAddCommerceProductToCart(product);
 const allowed = singleSellable || sellableVariants.length > 0;
+// A product with sizes sends its id and the chosen options, and Commerce works out the variant
+// (template-cart-size-picker-20261113); a single product sends its item id.
+const byOptions = variants.length > 0 && Boolean(productId);
 const qtyInputId = `guest-cart-add-qty-${product.id}`;
 ---
 {allowed ? (
-  <div class="guest-cart-add">
-    <div class="guest-cart-add__single" data-add-to-cart-single>
+  <div class="guest-cart-add" data-add-to-cart-root>
+    <form id={formId} class="guest-cart-add__single" method="post" action="/cart/add" data-add-to-cart-form data-add-to-cart-single>
+      {byOptions ? <input type="hidden" name="productId" value={productId} /> : <input type="hidden" name="id" value={product.id} />}
       <div class="guest-cart-add__qty">
         <label for={qtyInputId}>Quantity</label>
         <div class="guest-cart-add__stepper">
-          <button
-            type="button"
-            class="guest-cart-add__step"
-            data-add-to-cart-qty-step="-1"
-            data-add-to-cart-qty-decrease
-            aria-label="Decrease quantity"
-          >{"\u2212"}</button>
-          <input
-            id={qtyInputId}
-            type="text"
-            inputmode="numeric"
-            min="1"
-            max="99"
-            value="1"
-            data-add-to-cart-qty
-          />
-          <button
-            type="button"
-            class="guest-cart-add__step"
-            data-add-to-cart-qty-step="1"
-            data-add-to-cart-qty-increase
-            aria-label="Increase quantity"
-          >+</button>
+          <button type="button" class="guest-cart-add__step" data-add-to-cart-qty-step="-1" data-add-to-cart-qty-decrease aria-label="Decrease quantity">{"−"}</button>
+          <input id={qtyInputId} name="quantity" type="number" inputmode="numeric" min="1" max={String(GUEST_CART_MAX_QUANTITY)} value="1" data-add-to-cart-qty />
+          <button type="button" class="guest-cart-add__step" data-add-to-cart-qty-step="1" data-add-to-cart-qty-increase aria-label="Increase quantity">+</button>
         </div>
       </div>
       <button
-        type="button"
+        type="submit"
         data-add-to-cart={product.id}
         data-add-to-cart-sellable={String(singleSellable)}
-        disabled={!singleSellable}
-      >{singleSellable ? "Add to cart" : "Sold out"}</button>
-    </div>
+        disabled={!singleSellable && !byOptions}
+      >{singleSellable || byOptions ? "Add to cart" : "Sold out"}</button>
+    </form>
     <p data-add-to-cart-status hidden role="status"></p>
   </div>
 ) : null}
 <style>
   .guest-cart-add{margin-top:1rem;display:grid;gap:.85rem}
   .guest-cart-add :global([hidden]){display:none}
-  .guest-cart-add__single:not([hidden]){display:flex;flex-wrap:wrap;align-items:flex-end;gap:.65rem}
+  .guest-cart-add__single{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.65rem}
   .guest-cart-add__qty{display:grid;gap:.3rem}
   .guest-cart-add__qty label{font-size:.9rem;font-weight:700}
   .guest-cart-add__stepper{display:inline-flex;align-items:center;border:1px solid var(--store-line,#d8d2c7);border-radius:.4rem;background:var(--store-surface,#fff);overflow:hidden}
-  .guest-cart-add__stepper input{width:3.25rem;padding:.45rem .35rem;border:0;border-inline:1px solid var(--store-line,#d8d2c7);background:transparent;color:inherit;font:inherit;font-weight:700;text-align:center}
+  .guest-cart-add__stepper input{width:3.25rem;padding:.45rem .35rem;border:0;border-inline:1px solid var(--store-line,#d8d2c7);background:transparent;color:inherit;font:inherit;font-weight:700;text-align:center;-moz-appearance:textfield}
+  .guest-cart-add__stepper input::-webkit-inner-spin-button,.guest-cart-add__stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   .guest-cart-add button{padding:.7rem 1rem;border:0;border-radius:.4rem;background:var(--dinkus-action-background);color:var(--dinkus-action-color);font:inherit;font-weight:800;cursor:pointer}
   .guest-cart-add button.guest-cart-add__step{padding:.45rem .65rem;border-radius:0;background:transparent;color:inherit;font-weight:800;line-height:1}
   .guest-cart-add button:disabled,.guest-cart-add input:disabled{opacity:.5;cursor:not-allowed}
   .guest-cart-add p{margin:.2rem 0 0;color:var(--store-muted)}
 </style>
 <script>
-  import { hydrateGuestCartControls } from "./guest-cart-client.ts";
-  hydrateGuestCartControls();
+  import { hydrateServerCartForms } from "./cart-script.ts";
+  hydrateServerCartForms();
 </script>

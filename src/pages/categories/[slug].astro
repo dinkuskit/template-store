@@ -4,11 +4,12 @@ import StoreHeader from "../../features/store-shell/StoreHeader.astro";
 import { getEmDashCollection } from "emdash";
 import MerchCatalog from "../../features/store-shell/MerchCatalog.astro";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
-import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../../features/playground-checkout/index.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf } from "../../features/playground-checkout/index.js";
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { readCommerceCatalog } from "../../features/commerce-catalog/index.js";
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext } from "../../features/store-shell/index.js";
 import { leftCommerceCatalog, withoutRemovedProducts } from "../../features/store-shell/merch-catalog.js";
+import { orderCategoryProducts } from "../../features/store-shell/category-product-order.js";
 import { commercePageLinks, hydrateProductCollectionMembership, readProductEntries } from "../../features/store-shell/product-routes.js";
 import "../../features/store-shell/global.css";
 
@@ -29,7 +30,7 @@ const listedCategory = collections.find((group) => group.slug === Astro.params.s
 if (!listedCategory) Astro.response.status = 404;
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 // A configured playground admits its sandbox checkout, as the cart page does.
-const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)))) ||
   Boolean(await acquireGuestCheckoutAdmission({
     runtime: Astro.locals.emdash,
     request: Astro.request,
@@ -44,7 +45,8 @@ const removedEntryIds = new Set(profile === "shipping" && catalogRead
     .filter((product) => leftCommerceCatalog(product.commerceItemId, commerceById.has(product.commerceItemId)))
     .map((product) => product.id)
   : []);
-const category = listedCategory ? withoutRemovedProducts([listedCategory], removedEntryIds)[0] : undefined;
+const visibleCategory = listedCategory ? withoutRemovedProducts([listedCategory], removedEntryIds)[0] : undefined;
+const category = visibleCategory ? await orderCategoryProducts(visibleCategory) : undefined;
 const commerceProducts = new Map(productLinks.products.flatMap((product) => {
   const commerce = commerceById.get(product.commerceItemId);
   return commerce ? [[product.id, commerce] as const] : [];

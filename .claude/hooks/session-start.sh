@@ -18,12 +18,28 @@ report() {
   printf -- '- %s\n' "${status[@]}"
 }
 
-# Node: AGENTS.md pins .nvmrc; prefer an nvm install of it when PATH has another.
+# Node: AGENTS.md pins .nvmrc. The cloud image puts an older Node first on PATH
+# and keeps nvm in /opt/nvm, not ~/.nvm, so find nvm wherever it lives, install
+# the pinned Node with it when missing, and put that Node first for the session.
 want="v$(tr -d '[:space:]' < .nvmrc)"
-nvm_bin="$HOME/.nvm/versions/node/$want/bin"
-if [ "$(node -v 2>/dev/null)" != "$want" ] && [ -x "$nvm_bin/node" ]; then
-  export PATH="$nvm_bin:$PATH"
-  [ -n "${CLAUDE_ENV_FILE:-}" ] && printf 'export PATH="%s:$PATH"\n' "$nvm_bin" >> "$CLAUDE_ENV_FILE"
+if [ "$(node -v 2>/dev/null)" != "$want" ]; then
+  nvm_bin=""
+  for dir in "${NVM_DIR:-}" "$HOME/.nvm" /opt/nvm /usr/local/nvm; do
+    [ -n "$dir" ] && [ -s "$dir/nvm.sh" ] || continue
+    if [ ! -x "$dir/versions/node/$want/bin/node" ]; then
+      # nvm.sh reads unset variables; run it in a subshell without -u.
+      ( set +u; export NVM_DIR="$dir"; . "$dir/nvm.sh" --no-use && nvm install "$want" ) >&2 ||
+        status+=("nvm install $want failed in $dir; the network policy must allow nodejs.org")
+    fi
+    if [ -x "$dir/versions/node/$want/bin/node" ]; then
+      nvm_bin="$dir/versions/node/$want/bin"
+      break
+    fi
+  done
+  if [ -n "$nvm_bin" ]; then
+    export PATH="$nvm_bin:$PATH"
+    [ -n "${CLAUDE_ENV_FILE:-}" ] && printf 'export PATH="%s:$PATH"\n' "$nvm_bin" >> "$CLAUDE_ENV_FILE"
+  fi
 fi
 have="$(node -v 2>/dev/null || echo none)"
 want_pnpm="$(node -p 'require("./package.json").packageManager.split("@")[1]' 2>/dev/null)"
@@ -35,8 +51,8 @@ if [ "$have" != "$want" ] || [ "$have_pnpm" != "$want_pnpm" ]; then
 fi
 status+=("node $have (pnpm $have_pnpm)")
 
-# sqlite3 CLI: scripts/scheduled-index-harness.mjs shells out to it, and CI's
-# Ubuntu runner already has it.
+# sqlite3 CLI: the browser tests read the proof store's SQLite database with it,
+# and CI's Ubuntu runner already has it.
 if command -v sqlite3 >/dev/null 2>&1; then
   status+=("sqlite3 present")
 elif [ "$(id -u)" = 0 ] && command -v apt-get >/dev/null 2>&1 &&

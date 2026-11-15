@@ -13,7 +13,7 @@ const enabled = {
 
 test("only a selected Registry Cloudflare build enables Access", () => {
   assert.equal(selectedRegistryAccessOptions({}), undefined);
-  assert.equal(selectedRegistryAccessOptions({ ...enabled, DINKUS_WRANGLER_CONFIG: "wrangler.jsonc" }), undefined);
+  assert.equal(selectedRegistryAccessOptions({ ...enabled, DINKUS_WRANGLER_CONFIG: "wrangler.playground.jsonc" }), undefined);
   assert.equal(selectedRegistryAccessOptions({ ...enabled, DINKUS_HOSTING_PROFILE: "node" }), undefined);
   assert.equal(selectedRegistryAccessOptions({ ...enabled, DINKUS_REGISTRY_ACCESS_ENABLED: "0" }), undefined);
   assert.deepEqual(selectedRegistryAccessOptions(enabled), registryAccessOptions(enabled));

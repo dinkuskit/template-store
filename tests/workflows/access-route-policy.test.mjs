@@ -23,11 +23,10 @@ test("generated Access policy has no plugin wildcard and exposes only declared p
   assert.deepEqual(policy.commerce.publicRoutes, [
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/catalog/public/item",
-    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/policies/public",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/store-proof",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/prepare",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/start",
-    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/status",
+    "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/cart",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/checkout/guest/readiness",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/start",
     "/_emdash/api/plugins/r_gshdrqaldna3r7sn/account/sign-in/verify",
@@ -77,7 +76,7 @@ test("wildcard audit checks only deployment policy inputs and catches named-plug
       "Exact route: /_emdash/api/plugins/dinkus-commerce/catalog/public",
       "Wildcard route: /_emdash/api/plugins/dinkus-commerce/*",
     ].join("\n"));
-    await writeFile(join(dir, "wrangler.jsonc"), JSON.stringify({
+    await writeFile(join(dir, "wrangler.playground.jsonc"), JSON.stringify({
       access: ["/_emdash/api/plugins/dinkus-payments/checkout"],
     }));
     const commerce = await mkdtemp(join(tmpdir(), "access-routes-commerce-"));
@@ -129,6 +128,17 @@ test("wildcard audit checks only deployment policy inputs and catches named-plug
         { cwd: root, encoding: "utf8", env },
       );
       assert.equal(JSON.parse(exactResult.stdout).wildcardPluginBypass, false);
+
+      // The committed Worker config is a policy input too.
+      await writeFile(join(dir, "wrangler.playground.jsonc"), JSON.stringify({
+        access: ["/_emdash/api/plugins/dinkus-payments/*"],
+      }));
+      const configResult = await execFileAsync(
+        process.execPath,
+        ["scripts/verify-access-routes.mjs"],
+        { cwd: root, encoding: "utf8", env },
+      );
+      assert.equal(JSON.parse(configResult.stdout).wildcardPluginBypass, true);
     } finally {
       await rm(commerce, { recursive: true, force: true });
     }

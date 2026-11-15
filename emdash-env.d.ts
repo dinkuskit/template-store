@@ -54,7 +54,16 @@ export interface PageLayoutQueryCardV1Block {
 
 export type PageLayoutQueryCardBlock = PageLayoutQueryCardV1Block;
 
-export type PageLayoutBlock = PageLayoutHomeOpenerBlock | PageLayoutRichTextBlock | PageLayoutQueryCardBlock;
+export interface PageLayoutMissingLocalRendererV1Block {
+  _type: "missing_local_renderer";
+  _version: 1;
+  _key: string;
+  "title"?: string | null;
+}
+
+export type PageLayoutMissingLocalRendererBlock = PageLayoutMissingLocalRendererV1Block;
+
+export type PageLayoutBlock = PageLayoutHomeOpenerBlock | PageLayoutRichTextBlock | PageLayoutQueryCardBlock | PageLayoutMissingLocalRendererBlock;
 
 export interface Page {
   id: string;
@@ -120,10 +129,6 @@ export interface Product {
   terms?: Record<string, TaxonomyTerm[]>;
 }
 
-export interface CategoryReferences {
-  products: ReferencePage<Product>;
-}
-
 export interface ProductReferences {
   categories: ReferencePage<Category>;
 }
@@ -135,7 +140,6 @@ declare module "emdash" {
     products: Product;
   }
   interface EmDashCollectionReferences {
-    categories: CategoryReferences;
     products: ProductReferences;
   }
 }

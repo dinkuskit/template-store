@@ -1,0 +1,74 @@
+{
+  "source": "Unauthenticated public GitHub Actions job metadata; not logs or billing",
+  "records": [
+    {
+      "run_id": 42085964891,
+      "job_id": 127455434684,
+      "url": "https://github.com/dinkuskit/template-store/actions/runs/42085964891/job/127455434684",
+      "metadata_source": "https://api.github.com/repos/dinkuskit/template-store/actions/jobs/127455434684",
+      "source_sha": "baf1e31876733f6c1fc97238c59b83a86358b841",
+      "conclusion": "success",
+      "job_envelope_seconds": 89.0,
+      "steps": [
+        {
+          "name": "Run pnpm prepare:sources",
+          "seconds": 30.0
+        },
+        {
+          "name": "Run pnpm exec astro build --config astro.playground.config.mjs",
+          "seconds": 12.0
+        },
+        {
+          "name": "Remove unused Astro session binding",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 41540423892,
+      "job_id": 125607826354,
+      "url": "https://github.com/dinkuskit/template-store/actions/runs/41540423892/job/125607826354",
+      "metadata_source": "https://api.github.com/repos/dinkuskit/template-store/actions/jobs/125607826354",
+      "source_sha": "b1789ce2c6652309d2b08efeaec1bb56dd1f90a4",
+      "conclusion": "success",
+      "job_envelope_seconds": 91.0,
+      "steps": [
+        {
+          "name": "Run pnpm prepare:sources",
+          "seconds": 31.0
+        },
+        {
+          "name": "Run pnpm exec astro build --config astro.playground.config.mjs",
+          "seconds": 13.0
+        },
+        {
+          "name": "Remove unused Astro session binding",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "run_id": 41463727311,
+      "job_id": 125344727813,
+      "url": "https://github.com/dinkuskit/template-store/actions/runs/41463727311/job/125344727813",
+      "metadata_source": "https://api.github.com/repos/dinkuskit/template-store/actions/jobs/125344727813",
+      "source_sha": "65052a0fa5eb3e4e0c8f883ee53bf7d8942f6dbe",
+      "conclusion": "success",
+      "job_envelope_seconds": 111.0,
+      "steps": [
+        {
+          "name": "Run pnpm prepare:sources",
+          "seconds": 31.0
+        },
+        {
+          "name": "Run pnpm exec astro build --config astro.playground.config.mjs",
+          "seconds": 11.0
+        },
+        {
+          "name": "Remove unused Astro session binding",
+          "seconds": 0.0
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import LiveSearch from "emdash/ui/search";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
-import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf } from "../features/playground-checkout/index.js";
 import { storeBannerText } from "../features/store-shell/checkout-copy.js";
 import {
   STORE_TITLE,
@@ -19,7 +19,7 @@ import "../features/store-shell/global.css";
 const profile = readStorefrontProfile();
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const checkoutAvailable =
-  Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+  Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)))) ||
   Boolean(
     await acquireGuestCheckoutAdmission({
       runtime: Astro.locals.emdash,

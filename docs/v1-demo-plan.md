@@ -1,5 +1,7 @@
 # Same-template hosted demo plan
 
+> **Retired plan.** demo.dinkuskit.com, the `dinkuskit-template-demo` Worker this plan is about, was retired on 18 Oct 2026 ([dinkuskit/dinkuskit#51](https://github.com/dinkuskit/dinkuskit/pull/51)); the public store is the playground and the live test store is beta.sm0ky.dev (GrillTrack `hosted-demo-retired-20261031`). Kept for history; nothing here is to be run.
+
 Status: WAITING_FOR_HUMAN for deployment; source/checkout readiness gates remain.
 Proposed target: `demo.dinkuskit.com`. This is a suggestion, not an existing URL
 or a DNS/account authorization. “Try the demo” has no verified target yet.

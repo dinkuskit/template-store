@@ -23,6 +23,12 @@ fi
 
 pnpm prepare:sources
 
+# The browser tests' proof store runs Commerce's Registry build (template-one-build-registry-20261031);
+# the pinned Commerce is fetched and built once per commit before Playwright starts the stores.
+if [[ "$MODE" != "quick" ]]; then
+  node scripts/prepare-paired-commerce.mjs
+fi
+
 # browser runs only the build and the browser tests; the phone CI job uses it
 # beside a full run that owns every other check.
 if [[ "$MODE" == "browser" ]]; then

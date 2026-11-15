@@ -71,20 +71,31 @@ function jobBody(job) {
 }
 
 test("verification and build jobs remain available to labeled PRs", () => {
-  for (const job of ["workflows", "verify-desktop", "verify-phone", "build-playground"]) {
+  for (const job of ["workflows", "verify-desktop", "verify-phone", "build-registry", "build-playground"]) {
     assert.match(jobBody(job), /^    if: github.event.action != 'closed'$/mu);
   }
   assert.match(jobBody("verify"), /^    if: \$\{\{ !cancelled\(\) && github.event.action != 'closed' \}\}$/mu);
 });
 
-test("Store verification requires both desktop and phone halves", () => {
+test("Store verification requires desktop, phone and the Registry build", () => {
   const body = jobBody("verify");
   assert.match(body, /^    name: Store verification$/mu);
-  assert.match(body, /^    needs: \[verify-desktop, verify-phone\]$/mu);
+  assert.match(body, /^    needs: \[verify-desktop, verify-phone, build-registry\]$/mu);
   assert.match(body, /test "\$DESKTOP" = success/u);
   assert.match(body, /test "\$PHONE" = success/u);
+  assert.match(body, /REGISTRY: \$\{\{ needs\.build-registry\.result \}\}/u);
+  assert.match(body, /test "\$REGISTRY" = success/u);
   assert.match(jobBody("verify-desktop"), /VERIFY_E2E_PROJECTS: chromium-desktop,shipping-chromium-desktop$/mu);
   assert.match(jobBody("verify-phone"), /VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile$/mu);
+});
+
+test("Registry CI compiles the actual store without deployment credentials", () => {
+  const body = jobBody("build-registry");
+  assert.match(body, /pnpm run build:registry\n/u);
+  assert.match(body, /node \.github\/scripts\/assert-registry-build\.mjs/u);
+  assert.match(body, /EMDASH_SITE_URL: https:\/\/store\.example\.test/u);
+  assert.doesNotMatch(body, /secrets\.|environment:|--config-only|--dry-run|wrangler (?:deploy|preview)|WORKERS_CI:/u);
+  assert.doesNotMatch(body, /^    needs:/mu);
 });
 
 test("playground builds beside verification but deploys only after it", () => {

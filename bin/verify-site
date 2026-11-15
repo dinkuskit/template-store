@@ -503,6 +503,7 @@ for (const path of productPaths) {
   const skuAttribute = page.body.match(/\bdata-product-sku\s*=\s*(?:"([^"]*)"|'([^']*)')/u);
   const sku = skuAttribute ? decodeHTMLAttribute(skuAttribute[1] ?? skuAttribute[2]) : undefined;
   const commerceLinked = Boolean(sku);
+  const variantPage = /\bdata-variant-members(?:\s|=|>)/u.test(page.body);
   if (commerceLinked) commerceLinkedPages += 1;
   if (products.length !== 1) {
     jsonLdFailures += 1;
@@ -516,9 +517,15 @@ for (const path of productPaths) {
     result("Product JSON-LD (#35)", "FAIL", `${path} editorial preview emits an Offer`);
     continue;
   }
-  if (commerceLinked && product.sku !== sku) {
+  // The visible parent/default SKU is not the selected member's identity (#213).
+  // Browser acceptance compares member metadata to Commerce's anonymous projection.
+  if (commerceLinked && !variantPage && product.sku !== sku) {
     jsonLdFailures += 1;
     result("Product JSON-LD (#35)", "FAIL", `${path} JSON-LD sku ${product.sku} does not match visible SKU ${sku}`);
+  }
+  if (commerceLinked && variantPage && (product.offers ? typeof product.sku !== "string" || !product.sku : product.sku !== undefined)) {
+    jsonLdFailures += 1;
+    result("Product JSON-LD (#35)", "FAIL", `${path} variant metadata must pair an Offer with a member SKU, or omit both`);
   }
   if (product.offers?.inventoryLevel !== undefined || Object.hasOwn(product, "inventoryLevel")) {
     jsonLdFailures += 1;

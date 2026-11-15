@@ -5,11 +5,11 @@ The following table records the **historical 2026-10-06 pairing evidence**. It
 is not the current dependency list or a current release/live-install verdict.
 
 Current source pins are authoritative in [`package.json`](../package.json):
-Commerce `v0.7.0-beta.4` / `b3494cbcb932680c16dda0bebc6a6ffd68456a4d`,
+Commerce `v0.9.0-beta.1` / `eccac2668077d951ab36dc1f6ca43c1fe2a27e50`,
 `emdash`, `@emdash-cms/cloudflare`, `@emdash-cms/auth`, and
-`@emdash-cms/blocks` `1.4.0`; playground Payments `v0.4.0` /
-`82c19d0d347d2c78a8e44dd2a3b2f00e530beb84`, and playground Ship `v0.3.0` /
-`dab45d0df69a5f39158b603ff2b8236c6af6fe54`. The Inventory source remains
+`@emdash-cms/blocks` `1.4.0`; playground Payments `v0.5.0` /
+`4589ac818017b5a65cdde29a60aaec23aca5f795`, and playground Ship `v0.3.1` /
+`b032a1d689baf6674b900a3c9c57c191d64733e6`. The Inventory source remains
 `5889c7d59398376da51ac400d5c1f1214aba2c6b` for explicit development proof,
 with Inventory off in shipping v1. A pin or tag does not prove a released,
 installed, upgraded, or deployed pair; that needs exact-artifact evidence.
@@ -70,7 +70,7 @@ registry bundle or released tarball digest.
 | Bundles | Commerce / relevant owner contract | Not a blocker for this bounded native qualification; unimplemented with no bundle affordance |
 | Registry pair | Commerce + Template release artifact owners | Exact qualified pre-release artifacts adopted locally; official Registry release/delivery/install proof pending |
 | Blocks runtime | Template composition / EmDash public native Blocks | Current candidate uses EmDash 1.0.1 public native Blocks plus local legacy Portable Text presentation and Unknown fallbacks; no `@dinkuskit/blocks` dependency or registration. The archived `dinkuskit/blocks` repository is not used anywhere |
-| Hosted demo | Template exact working pair, isolated synthetic state | Plan only; no approved deploy or verified URL |
+| Hosted demo | Template exact working pair, isolated synthetic state | Retired 18 Oct 2026 for the playground (`hosted-demo-retired-20261031`) |
 
 The 2026-10-06 composition used EmDash 1.0.1 public native Blocks and collection APIs
 for first-class `layout` renderers. `astro.config.mjs` registers native

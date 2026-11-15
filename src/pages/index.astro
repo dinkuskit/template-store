@@ -10,7 +10,7 @@ import UnknownBlock from "../features/store-shell/blocks/UnknownBlock.astro";
 import CommerceCatalog from "../features/commerce-catalog/CommerceCatalog.astro";
 import { readCommerceCatalog } from "../features/commerce-catalog/index.js";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
-import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf } from "../features/playground-checkout/index.js";
 import {
   STORE_DESCRIPTION,
   STORE_TITLE,
@@ -38,7 +38,7 @@ if (productLinks.errors.length > 0) {
 const productPaths = new Map(productLinks.products.map((product) => [product.commerceItemId, canonicalProductPath(product.slug)]));
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 // A configured playground admits its sandbox checkout, as the cart page does.
-const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)))) ||
   Boolean(await acquireGuestCheckoutAdmission({
     runtime: Astro.locals.emdash,
     request: Astro.request,

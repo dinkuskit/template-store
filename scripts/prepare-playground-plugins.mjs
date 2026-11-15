@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { bundlePlugin } from "@emdash-cms/plugin-cli";
+import { ensurePairedCommerceBuild, pairedCommerceHead, pairedCommercePin, PAIRED_COMMERCE_DIR_ENV } from "./lib/paired-commerce.mjs";
 
 // The playground installs Payments and Ship as Registry plugins, as a real
 // store does. Each comes from its exact release tag and is packed with the
@@ -59,4 +60,27 @@ for (const [name, pin] of Object.entries(pins)) {
   }
   writeFileSync(stampPath, `${JSON.stringify({ tag: pin.tag, commit: pin.commit }, null, 2)}\n`);
   console.log(`playground plugins: ${name} ${pin.tag} packed`);
+}
+
+// Commerce runs in the playground as its Registry build too, the store's own pinned Commerce
+// (template-one-build-registry-20261031, playground-commerce-until-part-2-20261022). The paired library builds
+// it once per commit, as it does for local dev and the proof store; this copies the built plugin and its
+// manifest into the package shape Payments and Ship take. A developer's DINKUS_PAIRED_COMMERCE_DIR is honoured.
+{
+  const pin = pairedCommercePin(root);
+  const dir = ensurePairedCommerceBuild({ root });
+  if (!dir) throw new Error(`The playground needs Commerce's Registry build; ${PAIRED_COMMERCE_DIR_ENV} is set empty.`);
+  const packed = resolve(outRoot, "commerce", "package");
+  rmSync(resolve(outRoot, "commerce"), { recursive: true, force: true });
+  mkdirSync(packed, { recursive: true });
+  copyFileSync(resolve(dir, "dist/sandbox/plugin.mjs"), resolve(packed, "backend.js"));
+  copyFileSync(resolve(dir, "dist/sandbox/manifest.json"), resolve(packed, "manifest.json"));
+  const packedManifest = JSON.parse(readFileSync(resolve(packed, "manifest.json"), "utf8"));
+  const developer = process.env[PAIRED_COMMERCE_DIR_ENV] !== undefined;
+  if (!developer && packedManifest.version !== pin.tag.slice(1)) {
+    throw new Error(`commerce ${pin.tag} built as version ${packedManifest.version}.`);
+  }
+  const commit = pairedCommerceHead(dir) ?? pin.commit;
+  writeFileSync(resolve(outRoot, "commerce", "source.json"), `${JSON.stringify({ tag: developer ? null : pin.tag, commit }, null, 2)}\n`);
+  console.log(`playground plugins: commerce ${developer ? dir : pin.tag} ready`);
 }

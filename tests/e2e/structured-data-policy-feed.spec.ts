@@ -1,31 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { expect, test, type APIResponse, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   buildProductJsonLd,
   buildProductPreviewJsonLd,
-  type StructuredPoliciesInput,
-  type StructuredReturnPolicy,
-  type StructuredShippingPolicy,
 } from "../../.artifacts/source-deps/commerce/src/features/structured-data/index.ts";
-import { openProductsList } from "./helpers/product-page";
+import { COMMERCE_API, catalogOp, listCatalog, openProductsList, setStockStatus } from "./helpers/product-page";
 
-const RETURN_CATEGORIES = ["MerchantReturnFiniteReturnWindow", "MerchantReturnNotPermitted", "MerchantReturnUnlimitedWindow"] as const;
-const RETURN_METHODS = ["ReturnByMail", "ReturnInStore", "ReturnAtKiosk"] as const;
-const RETURN_FEES = ["FreeReturn", "ReturnFeesCustomerResponsibility", "ReturnShippingFees"] as const;
-
-function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
-  return value && (allowed as readonly string[]).includes(value) ? value as T : undefined;
-}
-
-const PLUGIN = "/_emdash/api/plugins/dinkus-commerce";
-const LIST_ROUTE = `${PLUGIN}/catalog-items/list`;
-const IDENTIFIERS_ROUTE = `${PLUGIN}/catalog-items/set-identifiers`;
-const AVAILABILITY_ROUTE = `${PLUGIN}/catalog-items/set-manual-availability`;
-const ELIGIBILITY_ROUTE = `${PLUGIN}/catalog-items/set-feed-eligibility`;
-const SHIPPING_ROUTE = `${PLUGIN}/settings/shipping-policy`;
-const RETURN_ROUTE = `${PLUGIN}/settings/return-policy`;
 const HOSTILE = "</script><script>alert(1)</script>";
 const SHIRT_GTIN = "4006381333931";
 
@@ -34,13 +16,6 @@ function unwrap(body: unknown): Record<string, unknown> {
     return (body as { data: Record<string, unknown> }).data;
   }
   return (body ?? {}) as Record<string, unknown>;
-}
-
-async function adminPost(admin: Page, path: string, data: Record<string, unknown>): Promise<APIResponse> {
-  return admin.request.post(path, {
-    data,
-    headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
-  });
 }
 
 function dollarsToMinor(text: string): string {
@@ -52,11 +27,11 @@ function dollarsToMinor(text: string): string {
 async function catalogId(admin: Page, sku: string): Promise<string> {
   let found = "";
   await expect.poll(async () => {
-    const listed = await adminPost(admin, LIST_ROUTE, {});
-    if (!listed.ok()) return "";
-    const products = unwrap(await listed.json()).products;
-    if (!Array.isArray(products)) return "";
-    found = products.find((product) => product && typeof product === "object" && product.sku === sku)?.catalogItemId ?? "";
+    try {
+      found = (await listCatalog(admin.request)).find((product) => product.sku === sku)?.catalogItemId ?? "";
+    } catch {
+      found = "";
+    }
     return found;
   }, { timeout: 60_000 }).not.toBe("");
   return found;
@@ -67,50 +42,29 @@ async function productScript(page: Page): Promise<Record<string, unknown>> {
   return JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "") as Record<string, unknown>;
 }
 
-async function policyInput(page: Page): Promise<StructuredPoliciesInput> {
+/**
+ * The policy pages are EmDash content and always show their own text; the published returns page names itself as
+ * the store's return policy by link only (GrillTrack policy-pages-content-20261031).
+ */
+async function expectPolicyPages(page: Page): Promise<void> {
   await page.goto("/shipping");
-  const shippingNode = page.locator("[data-shipping-policy]");
-  let shipping: StructuredShippingPolicy | null = null;
-  if (await shippingNode.count()) {
-    const mode = await shippingNode.getAttribute("data-shipping-mode");
-    const configurationId = await shippingNode.getAttribute("data-shipping-configuration-id");
-    if ((mode === "free" || mode === "flat") && configurationId) {
-      const minor = await shippingNode.getAttribute("data-shipping-minor");
-      const countries = await shippingNode.getAttribute("data-shipping-countries");
-      const handlingMin = await shippingNode.getAttribute("data-handling-min");
-      const handlingMax = await shippingNode.getAttribute("data-handling-max");
-      const transitMin = await shippingNode.getAttribute("data-transit-min");
-      const transitMax = await shippingNode.getAttribute("data-transit-max");
-      shipping = {
-        revision: Number(await shippingNode.getAttribute("data-policy-revision")),
-        configurationId,
-        mode,
-        ...(minor ? { amount: { currency: "USD" as const, minor } } : {}),
-        ...(countries ? { shippingDestinationCountries: countries.split(",") } : {}),
-        ...(handlingMin && handlingMax ? { handlingTimeDays: { min: Number(handlingMin), max: Number(handlingMax) } } : {}),
-        ...(transitMin && transitMax ? { transitTimeDays: { min: Number(transitMin), max: Number(transitMax) } } : {}),
-      };
-    }
-  }
+  await expect(page.locator("[data-shipping-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-shipping-policy-unset]")).toHaveCount(0);
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/u);
   await page.goto("/returns");
-  const returnNode = page.locator("[data-return-policy]");
-  let returns: StructuredReturnPolicy | null = null;
-  if (await returnNode.count()) {
-    const category = oneOf(await returnNode.getAttribute("data-return-category"), RETURN_CATEGORIES);
-    const method = oneOf(await returnNode.getAttribute("data-return-method"), RETURN_METHODS);
-    const fees = oneOf(await returnNode.getAttribute("data-return-fees"), RETURN_FEES);
-    const countries = await returnNode.getAttribute("data-return-countries");
-    const days = await returnNode.getAttribute("data-return-days");
-    returns = {
-      revision: Number(await returnNode.getAttribute("data-policy-revision")),
-      ...(countries ? { applicableCountry: countries.split(",") } : {}),
-      ...(category ? { returnPolicyCategory: category } : {}),
-      ...(days ? { merchantReturnDays: Number(days) } : {}),
-      ...(method ? { returnMethod: method } : {}),
-      ...(fees ? { returnFees: fees } : {}),
-    };
-  }
-  return { ...(shipping ? { shipping } : {}), ...(returns ? { returns } : {}) };
+  await expect(page.locator("[data-return-policy-body]")).toContainText("Edit this page in EmDash");
+  await expect(page.locator("[data-return-policy-unset]")).toHaveCount(0);
+  const returnsCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
+  await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
+  const storePolicy = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent() ?? "") as Record<string, unknown>;
+  expect(storePolicy).toEqual({
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    name: expect.any(String),
+    url: new URL("/", returnsCanonical ?? "").href,
+    hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", merchantReturnLink: returnsCanonical },
+  });
 }
 
 test("published Commerce products, policies, and feeds share one public revision", async ({ page, request, browser }, testInfo) => {
@@ -126,8 +80,6 @@ test("published Commerce products, policies, and feeds share one public revision
   let mediumHoodieId = "";
   let originalDescription: string | undefined;
   let productEntryId = "";
-  let shippingPageEntryId = "";
-  let originalShippingPageData: Record<string, unknown> | undefined;
   const footerPolicies = page.getByRole("navigation", { name: "Policies & Care" });
   try {
     await page.goto("/");
@@ -141,18 +93,7 @@ test("published Commerce products, policies, and feeds share one public revision
     const mugId = await catalogId(admin, "DEMO-HOSTED-MUG");
     const hoodieId = await catalogId(admin, "DEMO-HOSTED-HOODIE-S");
 
-    await page.goto("/shipping");
-    const shippingAlreadySet = await page.locator("[data-shipping-policy]").count();
-    if (shippingAlreadySet === 0) {
-      await expect(page.locator("[data-shipping-policy-unset]")).toHaveText("Shipping policy is not configured.");
-      await expect(page.locator("[data-policy-body]")).toHaveCount(0);
-      await expect(page.locator("main")).not.toContainText(/\$\d|\b[A-Z]{2}\b|\d+ days/u);
-    }
-    await page.goto("/returns");
-    if (await page.locator("[data-return-policy]").count() === 0) {
-      await expect(page.locator("[data-return-policy-unset]")).toHaveText("Return policy is not configured.");
-      await expect(page.locator("[data-policy-body]")).toHaveCount(0);
-    }
+    await expectPolicyPages(page);
 
     await page.goto("/products/demo-shirt");
     await expect(page.locator("h1")).toHaveText("Dinkus Demo Heavyweight T-Shirt");
@@ -162,8 +103,6 @@ test("published Commerce products, policies, and feeds share one public revision
     await expect(page.locator("[data-product-status]")).toHaveText("In stock");
     const canonical = await page.locator('link[rel="canonical"]').getAttribute("href");
     expect(new URL(canonical ?? "").pathname).toBe("/products/demo-shirt");
-    const initialPolicies = await policyInput(page);
-    await page.goto("/products/demo-shirt");
     const initialScript = await productScript(page);
     const description = await page.locator(".product-detail__description").innerText();
     expect(initialScript).toEqual(buildProductJsonLd({
@@ -179,8 +118,8 @@ test("published Commerce products, policies, and feeds share one public revision
         name: await page.locator("h1").innerText(),
         ...(description ? { description } : {}),
       },
-      ...(initialPolicies.shipping || initialPolicies.returns ? { policies: initialPolicies } : {}),
     }));
+    expect(JSON.stringify(initialScript)).not.toMatch(/hasMerchantReturnPolicy|shippingDetails/u);
     expect(initialScript).not.toHaveProperty("inventoryLevel");
     expect(JSON.stringify(initialScript)).not.toContain("8 available");
     expect((initialScript.offers as { url?: string }).url).toBe(canonical);
@@ -190,21 +129,33 @@ test("published Commerce products, policies, and feeds share one public revision
     const hoodieMembers = JSON.parse(await page.locator("[data-variant-members]").textContent() ?? "[]") as { id: string; values: Record<string, string> }[];
     mediumHoodieId = hoodieMembers.find((member) => member.values.Color === "Black" && member.values.Size === "Medium")?.id ?? "";
     expect(mediumHoodieId).not.toBe("");
-    const mediumUnavailable = await adminPost(admin, AVAILABILITY_ROUTE, { catalogItemId: mediumHoodieId, status: "out-of-stock" });
-    expect(mediumUnavailable.ok(), await mediumUnavailable.text()).toBe(true);
+    await setStockStatus(admin.request, mediumHoodieId, "out-of-stock", { regular: "60.00", sale: "" });
     await page.reload();
     const hoodieCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
     await expect(page.locator("[data-product-sku]")).toHaveAttribute("data-product-sku", "DEMO-HOSTED-HOODIE-S");
     await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
     const initialHoodie = await productScript(page);
-    expect(initialHoodie.offers).toMatchObject({ price: "56.00", priceCurrency: "USD", availability: "https://schema.org/InStock" });
+    const publicHoodie = await request.get(`${COMMERCE_API}/catalog/public/item?itemId=${encodeURIComponent(mediumHoodieId)}`);
+    expect(publicHoodie.ok()).toBe(true);
+    const publicMembers = (await publicHoodie.json()).data.variants.members as { catalogItemId: string; sku?: string }[];
+    const expectMemberMetadata = (metadata: Record<string, unknown>, memberId: string, price: string, availability: string) => {
+      const member = publicMembers.find(value => value.catalogItemId === memberId);
+      expect(member).toBeDefined();
+      if (member!.sku) {
+        expect(metadata.sku).toBe(member!.sku);
+        expect(metadata.offers).toMatchObject({ price, priceCurrency: "USD", availability: `https://schema.org/${availability}`, url: hoodieCanonical });
+      } else {
+        expect(metadata).not.toHaveProperty("sku");
+        expect(metadata).not.toHaveProperty("offers");
+      }
+    };
+    expectMemberMetadata(initialHoodie, hoodieMembers.find(member => member.values.Color === "Black" && member.values.Size === "Small")!.id, "56.00", "InStock");
     await page.getByLabel("Medium").check();
     await expect(page.locator("[data-variant-price]")).toHaveText("$60.00");
     await expect(page.locator("[data-product-status]")).toHaveText("Out of stock");
     await expect(page.locator("[data-product-status]")).toHaveAttribute("data-availability-status", "out-of-stock");
     const selectedHoodie = await productScript(page);
-    expect(selectedHoodie.offers).toMatchObject({ price: "60.00", priceCurrency: "USD", availability: "https://schema.org/OutOfStock", url: hoodieCanonical });
-    expect(selectedHoodie.sku).toBe(await page.locator("[data-product-sku]").getAttribute("data-product-sku"));
+    expectMemberMetadata(selectedHoodie, mediumHoodieId, "60.00", "OutOfStock");
     expect(selectedHoodie.url).toBe(hoodieCanonical);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", hoodieCanonical ?? "");
     await expect(page).toHaveURL(/\/products\/demo-hoodie$/);
@@ -233,8 +184,7 @@ test("published Commerce products, policies, and feeds share one public revision
       await expect(page.locator("[data-product-sku]")).toHaveCount(0);
     }
 
-    const identified = await adminPost(admin, IDENTIFIERS_ROUTE, { catalogItemId: shirtId, gtin: SHIRT_GTIN });
-    expect(identified.ok(), await identified.text()).toBe(true);
+    await catalogOp(admin.request, { op: "identifiers", catalogItemId: shirtId, gtin: SHIRT_GTIN });
     await page.goto("/products/demo-shirt");
     await expect.poll(async () => {
       await page.reload();
@@ -286,206 +236,40 @@ test("published Commerce products, policies, and feeds share one public revision
     }, { timeout: 20_000 }).toBe(originalDescription);
     originalDescription = undefined;
 
-    const projectKey = testInfo.project.name.includes("mobile") ? "mobile" : "desktop";
-    const revisions = [
-      {
-        shipping: {
-          configurationId: `issue35-${projectKey}-a`,
-          mode: "flat",
-          amount: { currency: "USD", minor: projectKey === "mobile" ? "900" : "500" },
-          shippingDestinationCountries: ["US"],
-          handlingTimeDays: { min: 1, max: 2 },
-          transitTimeDays: { min: 3, max: 5 },
-        },
-        returns: {
-          applicableCountry: ["US"],
-          returnPolicyCategory: "MerchantReturnFiniteReturnWindow",
-          merchantReturnDays: projectKey === "mobile" ? 21 : 30,
-          returnMethod: "ReturnByMail",
-          returnFees: "FreeReturn",
-        },
-      },
-      {
-        shipping: {
-          configurationId: `issue35-${projectKey}-b`,
-          mode: "flat",
-          amount: { currency: "USD", minor: projectKey === "mobile" ? "1100" : "700" },
-          shippingDestinationCountries: ["CA"],
-          handlingTimeDays: { min: 2, max: 4 },
-          transitTimeDays: { min: 4, max: 6 },
-        },
-        returns: {
-          applicableCountry: ["CA"],
-          returnPolicyCategory: "MerchantReturnFiniteReturnWindow",
-          merchantReturnDays: projectKey === "mobile" ? 45 : 14,
-          returnMethod: "ReturnByMail",
-          returnFees: "ReturnShippingFees",
-        },
-      },
-    ] as const;
-    let previousShipping = 0;
+    // The store's policies are its EmDash pages; the product's JSON-LD carries no shipping or return terms.
+    await expectPolicyPages(page);
     await page.goto("/shipping");
-    if (await page.locator("[data-shipping-policy]").count()) {
-      previousShipping = Number(await page.locator("[data-shipping-policy]").getAttribute("data-policy-revision"));
-    }
-    let previousReturn = 0;
+    await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
     await page.goto("/returns");
-    if (await page.locator("[data-return-policy]").count()) {
-      previousReturn = Number(await page.locator("[data-return-policy]").getAttribute("data-policy-revision"));
-    }
-    for (const revision of revisions) {
-      const shippingWrite = await adminPost(admin, SHIPPING_ROUTE, { ...revision.shipping });
-      expect(shippingWrite.ok(), await shippingWrite.text()).toBe(true);
-      const returnWrite = await adminPost(admin, RETURN_ROUTE, { ...revision.returns });
-      expect(returnWrite.ok(), await returnWrite.text()).toBe(true);
-      await page.goto("/shipping");
-      await expect.poll(async () => {
-        await page.reload();
-        return page.locator("[data-shipping-policy]").getAttribute("data-policy-revision");
-      }, { timeout: 20_000 }).not.toBe(String(previousShipping));
-      const shippingRevision = Number(await page.locator("[data-shipping-policy]").getAttribute("data-policy-revision"));
-      expect(shippingRevision).toBeGreaterThan(previousShipping);
-      previousShipping = shippingRevision;
-      await expect(page.locator("[data-shipping-policy]")).toContainText(
-        `$${Number(revision.shipping.amount.minor) / 100}`,
-      );
-      await expect(page.locator("[data-shipping-policy]")).not.toContainText("Revision");
-      await expect(page.locator("[data-shipping-countries]")).toHaveAttribute(
-        "data-shipping-countries",
-        revision.shipping.shippingDestinationCountries.join(","),
-      );
-      await expect(page.locator("[data-shipping-policy-body]")).toContainText("Order processing & cut-off times");
-      await expect(page.locator("[data-shipping-policy-body]")).toContainText("Carrier tracking & delivery");
-      await expect(footerPolicies.getByRole("link", { name: "Shipping", exact: true })).toHaveAttribute("aria-current", "page");
-      await page.goto("/returns");
-      await expect.poll(async () => {
-        await page.reload();
-        return page.locator("[data-return-policy]").getAttribute("data-policy-revision");
-      }, { timeout: 20_000 }).not.toBe(String(previousReturn));
-      const returnRevision = Number(await page.locator("[data-return-policy]").getAttribute("data-policy-revision"));
-      expect(returnRevision).toBeGreaterThan(previousReturn);
-      previousReturn = returnRevision;
-      await expect(page.locator("[data-return-policy]")).toContainText(`${revision.returns.merchantReturnDays} days`);
-      await expect(page.locator("[data-return-policy]")).toContainText("Return by mail");
-      await expect(page.locator("[data-return-policy]")).toContainText(
-        revision.returns.returnFees === "FreeReturn" ? "Free returns" : "Return shipping fees apply",
-      );
-      await expect(page.locator("[data-return-policy]")).not.toContainText("ReturnByMail");
-      await expect(page.locator("[data-return-policy]")).not.toContainText("ReturnShippingFees");
-      await expect(page.locator("[data-return-policy]")).not.toContainText("Revision");
-      await expect(page.locator("[data-return-policy-body]")).toContainText("Item condition & eligibility");
-      await expect(page.locator("[data-return-policy-body]")).toContainText("How to initiate a return");
-      await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
-      const policies = await policyInput(page);
-      await page.goto("/products/demo-shirt");
-      const shirtCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
-      const script = await productScript(page);
-      expect(script).toEqual(buildProductJsonLd({
-        product: {
-          id: shirtId,
-          name: "Dinkus Demo Heavyweight T-Shirt",
-          sku: "DEMO-HOSTED-SHIRT",
-          price: { currency: "USD", minor: "3200" },
-          availability: { status: "in-stock", sellable: true, listable: true },
-          gtin: SHIRT_GTIN,
-        },
-        page: {
-          url: shirtCanonical ?? "",
-          name: "Dinkus Demo Heavyweight T-Shirt",
-          description: "A substantial cotton tee with an easy everyday fit.",
-        },
-        policies,
-      }));
-      expect(JSON.stringify(script)).not.toContain("inventoryLevel");
-    }
-
-    const shippingEntryResp = await admin.request.get("/_emdash/api/content/pages/shipping");
-    expect(shippingEntryResp.ok(), await shippingEntryResp.text()).toBe(true);
-    const shippingEntry = unwrap(await shippingEntryResp.json()).item as { id: string; data: Record<string, unknown> };
-    shippingPageEntryId = shippingEntry.id;
-    originalShippingPageData = shippingEntry.data;
-    const customShippingHeading = `Dispatch schedule (${projectKey})`;
-    const customShippingBody = "Orders placed before the daily cut-off leave the warehouse the next business day.";
-    const savedShippingPage = await admin.request.put(`/_emdash/api/content/pages/${shippingEntry.id}?locale=en`, {
-      headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
-      data: {
-        data: {
-          ...shippingEntry.data,
-          content: [
-            {
-              _type: "block",
-              _key: "custom-shipping-heading",
-              style: "h2",
-              children: [{ _type: "span", _key: "custom-shipping-heading-span", text: customShippingHeading }],
-            },
-            {
-              _type: "block",
-              _key: "custom-shipping-body",
-              style: "normal",
-              children: [{ _type: "span", _key: "custom-shipping-body-span", text: customShippingBody }],
-            },
-          ],
-        },
-      },
-    });
-    expect(savedShippingPage.ok(), await savedShippingPage.text()).toBe(true);
-    const publishedShippingPage = await admin.request.post(`/_emdash/api/content/pages/${shippingEntry.id}/publish?locale=en`, {
-      headers: { "X-EmDash-Request": "1" },
-    });
-    expect(publishedShippingPage.ok(), await publishedShippingPage.text()).toBe(true);
-    await page.goto("/shipping");
-    await expect.poll(async () => {
-      await page.reload();
-      return page.locator("[data-shipping-policy-body]").innerText();
-    }, { timeout: 20_000 }).toContain(customShippingHeading);
-    await expect(page.locator("[data-shipping-policy-body]")).toContainText(customShippingBody);
-    await expect(page.locator("[data-shipping-policy]")).toHaveAttribute("data-policy-revision", String(previousShipping));
-    const restoredShippingPage = await admin.request.put(`/_emdash/api/content/pages/${shippingEntry.id}?locale=en`, {
-      headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
-      data: { data: originalShippingPageData },
-    });
-    expect(restoredShippingPage.ok(), await restoredShippingPage.text()).toBe(true);
-    const republishedShippingPage = await admin.request.post(`/_emdash/api/content/pages/${shippingEntry.id}/publish?locale=en`, {
-      headers: { "X-EmDash-Request": "1" },
-    });
-    expect(republishedShippingPage.ok(), await republishedShippingPage.text()).toBe(true);
-    await expect.poll(async () => {
-      await page.reload();
-      return page.locator("[data-shipping-policy-body]").innerText();
-    }, { timeout: 20_000 }).toContain("Order processing & cut-off times");
-    originalShippingPageData = undefined;
-
-    for (const [category, label] of [
-      ["MerchantReturnFiniteReturnWindow", "Limited return window"],
-      ["MerchantReturnNotPermitted", "Returns not accepted"],
-      ["MerchantReturnUnlimitedWindow", "Unlimited return window"],
-    ] as const) {
-      const changed = await adminPost(admin, RETURN_ROUTE, {
-        applicableCountry: ["CA"],
-        returnPolicyCategory: category,
-        ...(category === "MerchantReturnFiniteReturnWindow" ? { merchantReturnDays: 14 } : {}),
-      });
-      expect(changed.ok(), await changed.text()).toBe(true);
-      await page.goto("/returns");
-      const policy = page.locator("[data-return-policy]");
-      await expect(policy).toHaveAttribute("data-return-category", category);
-      await expect(policy.locator("dd").first()).toHaveText(label);
-      await expect(policy).not.toContainText(category.replace("MerchantReturn", ""));
-      await page.screenshot({ path: resolve(root, `returns-${category}.png`), fullPage: true, animations: "disabled" });
-    }
-    const restoredReturns = await adminPost(admin, RETURN_ROUTE, { ...revisions[revisions.length - 1].returns });
-    expect(restoredReturns.ok(), await restoredReturns.text()).toBe(true);
+    await expect(footerPolicies.getByRole("link", { name: "Returns", exact: true })).toHaveAttribute("aria-current", "page");
     await page.goto("/products/demo-shirt");
+    const shirtCanonical = await page.locator('link[rel="canonical"]').getAttribute("href");
+    const script = await productScript(page);
+    expect(script).toEqual(buildProductJsonLd({
+      product: {
+        id: shirtId,
+        name: "Dinkus Demo Heavyweight T-Shirt",
+        sku: "DEMO-HOSTED-SHIRT",
+        price: { currency: "USD", minor: "3200" },
+        availability: { status: "in-stock", sellable: true, listable: true },
+        gtin: SHIRT_GTIN,
+      },
+      page: {
+        url: shirtCanonical ?? "",
+        name: "Dinkus Demo Heavyweight T-Shirt",
+        description: "A substantial cotton tee with an easy everyday fit.",
+      },
+    }));
+    expect(JSON.stringify(script)).not.toMatch(/hasMerchantReturnPolicy|shippingDetails/u);
     await page.screenshot({ path: resolve(root, "demo-shirt-jsonld.png"), fullPage: true, animations: "disabled" });
     await page.goto("/shipping");
     await page.screenshot({ path: resolve(root, "shipping-policy.png"), fullPage: true, animations: "disabled" });
     await page.goto("/returns");
     await page.screenshot({ path: resolve(root, "return-policy.png"), fullPage: true, animations: "disabled" });
 
-    const shirtChannels = await adminPost(admin, ELIGIBILITY_ROUTE, { catalogItemId: shirtId, channels: ["google-merchant"] });
-    expect(shirtChannels.ok(), await shirtChannels.text()).toBe(true);
-    const capChannels = await adminPost(admin, ELIGIBILITY_ROUTE, { catalogItemId: capId, channels: ["meta-catalog"] });
-    expect(capChannels.ok(), await capChannels.text()).toBe(true);
+    // Feed channels are the product panel's feed choices, saved through the catalog route's feeds op.
+    await catalogOp(admin.request, { op: "feeds", catalogItemId: shirtId, channels: ["google-merchant"] });
+    await catalogOp(admin.request, { op: "feeds", catalogItemId: capId, channels: ["meta-catalog"] });
     await page.goto("/products/demo-shirt");
     const shirtLink = await page.locator('link[rel="canonical"]').getAttribute("href");
     await page.goto("/products/demo-cap");
@@ -510,7 +294,22 @@ test("published Commerce products, policies, and feeds share one public revision
     expect(metaBody).not.toContain(shirtId);
     expect(metaBody).not.toContain(mugId);
     expect(metaBody).not.toContain(hoodieId);
-    for (const feedPath of ["/feeds/google-merchant.xml/", "/feeds/meta-catalog.csv/", "/shipping/", "/returns/"]) {
+    // The JSON catalog feed lists every product the owner approved for a feed, with its page link.
+    const agentCatalog = await request.get("/feeds/agent-catalog.json");
+    expect(agentCatalog.status()).toBe(200);
+    expect(agentCatalog.headers()["content-type"]).toContain("json");
+    const agentCatalogBody = (await agentCatalog.json()) as {
+      schema: string;
+      products: { id: string; canonicalUrl: string; gtin?: string }[];
+    };
+    expect(agentCatalogBody.schema).toBe("dinkuskit.commerce.agent-catalog-feed/v1");
+    const listed = new Map(agentCatalogBody.products.map((item) => [item.id, item]));
+    expect(listed.get(shirtId)?.canonicalUrl).toBe(shirtLink);
+    expect(listed.get(shirtId)?.gtin).toBe(SHIRT_GTIN);
+    expect(listed.get(capId)?.canonicalUrl).toBe(capLink);
+    expect(listed.has(mugId)).toBe(false);
+    expect(listed.has(hoodieId)).toBe(false);
+    for (const feedPath of ["/feeds/google-merchant.xml/", "/feeds/meta-catalog.csv/", "/feeds/agent-catalog.json/", "/shipping/", "/returns/"]) {
       const slash = await request.get(feedPath, { maxRedirects: 0 });
       expect(slash.status(), feedPath).not.toBe(200);
       if (slash.status() === 301 || slash.status() === 302) {
@@ -519,10 +318,10 @@ test("published Commerce products, policies, and feeds share one public revision
     }
   } finally {
     if (mediumHoodieId) {
-      await adminPost(admin, AVAILABILITY_ROUTE, { catalogItemId: mediumHoodieId, status: "in-stock" });
+      await setStockStatus(admin.request, mediumHoodieId, "in-stock", { regular: "60.00", sale: "" }).catch(() => {});
     }
     if (shirtId) {
-      await adminPost(admin, IDENTIFIERS_ROUTE, { catalogItemId: shirtId, gtin: null });
+      await catalogOp(admin.request, { op: "identifiers", catalogItemId: shirtId, gtin: null }).catch(() => {});
     }
     if (originalDescription !== undefined && productEntryId) {
       const current = await admin.request.get(`/_emdash/api/content/products/${productEntryId}`);
@@ -536,15 +335,6 @@ test("published Commerce products, policies, and feeds share one public revision
           headers: { "X-EmDash-Request": "1" },
         });
       }
-    }
-    if (originalShippingPageData !== undefined && shippingPageEntryId) {
-      await admin.request.put(`/_emdash/api/content/pages/${shippingPageEntryId}?locale=en`, {
-        headers: { "X-EmDash-Request": "1", "content-type": "application/json" },
-        data: { data: originalShippingPageData },
-      });
-      await admin.request.post(`/_emdash/api/content/pages/${shippingPageEntryId}/publish?locale=en`, {
-        headers: { "X-EmDash-Request": "1" },
-      });
     }
     await adminContext.close();
   }

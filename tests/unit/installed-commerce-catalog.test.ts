@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  readInstalledCatalogListing,
   readInstalledCommerceCatalog,
   readInstalledCommerceProduct,
   readInstalledCommerceProducts,
@@ -29,6 +30,14 @@ describe("installed Commerce public catalog consumer", () => {
       expect([...request.headers]).toEqual([]);
       expect([...new URL(request.url).searchParams.keys()].every(key => key === "cursor")).toBe(true);
     }
+  });
+
+  it("reads the owner's catalog switch from the public catalog, listed unless Commerce says off", async () => {
+    expect(await readInstalledCatalogListing(context([{ products: [item()] }]))).toBe(true);
+    expect(await readInstalledCatalogListing(context([{ products: [item()], offCatalog: true }]))).toBe(false);
+    expect(await readInstalledCatalogListing(context([{ products: [], offCatalog: "yes" }]))).toBe(true);
+    await expect(readInstalledCatalogListing(context([null]))).rejects.toThrow("Installed public catalog unavailable");
+    await expect(readInstalledCatalogListing({ request: new Request("https://shop.example.test/"), runtime: null })).rejects.toThrow();
   });
 
   it("does not fall back to a native plugin in the shipping profile", async () => {
@@ -111,6 +120,38 @@ describe("installed Commerce public catalog consumer", () => {
     });
   });
 
+  const simpleDigital = () => ({ ...item("guide"), variants: {
+    schema: "dinkuskit.commerce.product-variants/v1", productId: "guide", options: [],
+    members: [{ catalogItemId: "guide", selections: [], fulfillment: "digital",
+      price: item().price, availability: item().availability }],
+  } });
+
+  it("preserves the sole zero-option member's fulfillment on list, detail and cart lookups", async () => {
+    const [listed] = await readInstalledCommerceCatalog(context([{ products: [simpleDigital()] }]));
+    const detail = await readInstalledCommerceProduct("guide", context([simpleDigital()]));
+    const cart = (await readInstalledCommerceProducts(["guide"], context([simpleDigital()]))).get("guide");
+    for (const product of [listed, detail, cart]) {
+      expect(product).toMatchObject({ id: "guide", name: "Neutral product", sku: "NEUTRAL", fulfillment: "digital",
+        price: { unitMinor: "125" }, availability: { sellable: true } });
+      expect(product?.variants ?? []).toEqual([]);
+    }
+  });
+
+  it.each([
+    undefined,
+    { ...simpleDigital().variants, schema: "unknown" },
+    { ...simpleDigital().variants, productId: "another" },
+    { ...simpleDigital().variants, options: [{}] },
+    { ...simpleDigital().variants, members: [] },
+    { ...simpleDigital().variants, members: [...simpleDigital().variants.members, ...simpleDigital().variants.members] },
+    { ...simpleDigital().variants, members: [{ catalogItemId: "another", selections: [], fulfillment: "digital" }] },
+    { ...simpleDigital().variants, members: [{ catalogItemId: "guide", selections: [{}], fulfillment: "digital" }] },
+    { ...simpleDigital().variants, members: [{ catalogItemId: "guide", selections: [], fulfillment: "unknown" }] },
+  ])("requires an unambiguous matching default member before omitting delivery", async (variants) => {
+    const product = await readInstalledCommerceProduct("guide", context([{ ...item("guide"), variants }]));
+    expect(product?.fulfillment).toBe("physical");
+  });
+
   const hoodie = (members: { id: string; minor: string }[]) => ({
     id: "hoodie", name: "Demo hoodie", sku: "DEMO-HOODIE",
     availability: { status: "in-stock", sellable: false, listable: true },
@@ -118,6 +159,18 @@ describe("installed Commerce public catalog consumer", () => {
       members: members.map(m => ({ catalogItemId: m.id, selections: [], price: { currency: "USD", minor: m.minor },
         availability: { status: "in-stock", sellable: true, listable: true }, fulfillment: "physical" })) },
   });
+
+  const sized = {
+    ...hoodie([]),
+    variants: { schema: "dinkuskit.commerce.product-variants/v1", productId: "hoodie",
+      options: [{ optionId: "size", label: "Size", values: [{ valueId: "s", label: "Small" }, { valueId: "l", label: "Large" }] }],
+      members: [
+        { catalogItemId: "hoodie-s", selections: [{ optionId: "size", optionLabel: "Size", valueId: "s", valueLabel: "Small" }],
+          price: { currency: "USD", minor: "4000" }, availability: { status: "in-stock", sellable: true, listable: true }, fulfillment: "physical" },
+        { catalogItemId: "hoodie-l", selections: [{ optionId: "size", optionLabel: "Size", valueId: "l", valueLabel: "Large" }],
+          price: { currency: "USD", minor: "4500" }, availability: { status: "out-of-stock", sellable: false, listable: true }, fulfillment: "physical" },
+      ] },
+  };
 
   it("renders all items when a variant product has no top-level price, using a from-price", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -144,8 +197,8 @@ describe("installed Commerce public catalog consumer", () => {
     const product = await readInstalledCommerceProduct("hoodie", context([value]));
     expect(product?.price.regularText).toBe("from $56.00");
     expect(product?.variants).toEqual([
-      { id: "hoodie-s", selections: [["Size", "Small"]], unitMinor: "5600", priceText: "$56.00", availability: { status: "in-stock", sellable: true } },
-      { id: "hoodie-m", selections: [["Size", "Medium"]], unitMinor: "6000", priceText: "$60.00", availability: { status: "out-of-stock", sellable: false } },
+      { id: "hoodie-s", selections: [["Size", "Small"]], unitMinor: "5600", priceText: "$56.00", availability: { status: "in-stock", sellable: true }, fulfillment: "physical" },
+      { id: "hoodie-m", selections: [["Size", "Medium"]], unitMinor: "6000", priceText: "$60.00", availability: { status: "out-of-stock", sellable: false }, fulfillment: "physical" },
     ]);
   });
 
@@ -185,19 +238,32 @@ describe("installed Commerce public catalog consumer", () => {
 
   it("looks up only the requested items for a cart, one public item call each", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const ctx = context([item("hat"), null, { ...item("bad"), price: undefined }, hoodie([{ id: "hoodie-s", minor: "4000" }])]);
+    const ctx = context([item("hat"), null, { ...item("bad"), price: undefined }, sized]);
     const products = await readInstalledCommerceProducts(["hat", "gone", "bad", "hoodie-s"], ctx);
     expect(ctx.runtime.handlePublicPluginApiRoute).toHaveBeenCalledTimes(4);
     const calls = ctx.runtime.handlePublicPluginApiRoute.mock.calls as unknown as [string, string, string, Request][];
     expect(calls.map(([, , route]) => route)).toEqual(Array(4).fill("catalog/public/item"));
     expect(calls.map(([, , , request]) => new URL(request.url).searchParams.get("itemId"))).toEqual(["hat", "gone", "bad", "hoodie-s"]);
     expect(products.get("hat")?.price.regularText).toBe("$1.25");
-    // Missing, malformed and variant-member ids resolve as the whole-catalog read does: not found.
     expect(products.get("gone")).toBeNull();
     expect(products.get("bad")).toBeNull();
-    expect(products.get("hoodie-s")).toBeNull();
+    // Commerce answers a member id with its whole product; the cart reads the member it asked for.
+    expect(products.get("hoodie-s")).toMatchObject({
+      id: "hoodie-s", name: "Demo hoodie \u2014 Small", sku: "",
+      price: { listable: true, regularText: "$40.00", saleText: null, unitMinor: "4000" },
+      availability: { status: "in-stock", sellable: true, listable: true },
+    });
+    expect(products.get("hoodie-s")).not.toHaveProperty("variants");
     expect(warn).toHaveBeenCalledTimes(1);
     warn.mockRestore();
+  });
+
+  it("never prices a cart line from the product or a sibling member", async () => {
+    // hoodie is the product's own id; Commerce lists only hoodie-s and hoodie-l (sold out).
+    const products = await readInstalledCommerceProducts(["hoodie", "hoodie-l", "hoodie-m"], context([sized, sized, sized]));
+    expect(products.get("hoodie")).toBeNull();
+    expect(products.get("hoodie-l")).toMatchObject({ price: { unitMinor: "4500" }, availability: { status: "out-of-stock", sellable: false } });
+    expect(products.get("hoodie-m")).toBeNull();
   });
 
   it("fails a cart lookup when Commerce cannot answer, so the cart keeps its lines", async () => {

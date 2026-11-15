@@ -19,8 +19,11 @@ const PLAYGROUND_USER_CREATED_AT = "2026-10-22T00:00:00.000Z";
  * without the binding; when present, it limits only database initialization.
  */
 export const onRequest = defineMiddleware(async (context, next) => {
+  // A local proof also reads the process environment, but never the Site URL the Worker derives from the
+  // request for EmDash: checkout trusts only a provisioned EMDASH_SITE_URL.
+  const { EMDASH_SITE_URL: _derivedSiteUrl, ...proofProcessEnv } = process.env;
   const runtimeEnv: Record<string, unknown> = {
-    ...(process.env.DINKUS_LOCAL_PROOF === "1" ? process.env : {}),
+    ...(process.env.DINKUS_LOCAL_PROOF === "1" ? proofProcessEnv : {}),
     ...(env as Record<string, unknown>),
     ...(process.env.DINKUS_LOCAL_PROOF === "1" && process.env.DINKUS_LOCAL_PROOF_NOW
       ? { DINKUS_LOCAL_PROOF_NOW: process.env.DINKUS_LOCAL_PROOF_NOW }

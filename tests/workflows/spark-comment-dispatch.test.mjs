@@ -56,9 +56,11 @@ test("Spark binder preserves maintainer publication and rejects unrelated or amb
 	}
 });
 
-test("manual Spark admission remains nonpublishing and rejects a moved base", () => {
+test("manual Spark admission remains nonpublishing and binds pull.base.sha when main advances", () => {
 	assert.equal(bind({ kind: "workflow_dispatch" }).outputs.publish, "false");
 	const r = bind({ command: "review", actor: "maintainer", association: "OWNER", defaultHead: "c".repeat(40) });
-	assert.notEqual(r.status, 0);
-	assert.match(r.stderr, /Base moved during admission/);
+	assert.equal(r.status, 0, r.stderr);
+	assert.equal(r.outputs.requested, "true");
+	assert.equal(r.outputs.base_sha, base);
+	assert.equal(r.outputs.head_sha, head);
 });

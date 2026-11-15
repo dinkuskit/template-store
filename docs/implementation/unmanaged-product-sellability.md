@@ -15,8 +15,9 @@ of Commerce's unmanaged contract:
   `setCatalogItemManualAvailability`;
 - render status and sellability with no quantity;
 - expose availability changes only through a proof-mode HTTP endpoint that
-  accepts the same `{ catalogItemId, status }` body as Commerce's authenticated
-  `catalog-items/set-manual-availability` action.
+  accepts a `{ catalogItemId, status }` body, the manual status Commerce's
+  product panel saves as stock status (its Registry build has no separate
+  `set-manual-availability` route).
 
 It does not own managed Inventory quantity, visual EmDash Commerce UI, the
 persisted Manage Stock toggle, price, cart, checkout, payments, shipping, or

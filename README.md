@@ -132,35 +132,56 @@ pnpm verify
 pnpm dev
 ```
 
-For a disposable local demo with a fresh Wrangler state, run:
+Commerce runs one build here, the Registry (sandboxed) one, as every store
+installs it (GrillTrack `template-one-build-registry-20261031`). `pnpm dev`
+mounts the pinned Commerce's Registry bundle through EmDash's `sandboxed: [...]`
+and its workerd runner (`astro dev` hands it to Miniflare), once
+`pnpm prepare:commerce` has fetched and built that pin under
+`.artifacts/paired-commerce/<commit>` (about two minutes, once per pin). This
+is EmDash's documented plugin loop: build the plugin, run the site. To work on
+Commerce itself, build it in its own checkout (`npm run build`) and point the
+store at it:
+
+```bash
+DINKUS_PAIRED_COMMERCE_DIR=../commerce pnpm dev
+```
+
+For a disposable local demo on a fresh database, run:
 
 ```bash
 pnpm dev:fresh
 ```
 
-This removes `.wrangler/state`, prepares and builds the pinned sources,
-initializes the Commerce catalog index, bundles and seeds the demo data, and
-starts `wrangler dev` with `DINKUS_CATALOG_PROFILE=native-development`.
-Stale local Wrangler state can otherwise leave the catalog empty and produce
-`uidx_plugin_dinkus-commerce_catalogItems_skuKey was not created` errors.
+This removes `.artifacts/dev`, prepares the pinned sources and the Commerce
+Registry bundle, and starts `astro dev` on the proof storefront profile, which
+seeds the demo catalog through the installed Commerce's own routes on the first
+signed-in request: open `/_emdash/admin` once and the shop fills.
+`DINKUS_CATALOG_PROFILE=native-development`, the retired native copy, is
+refused.
 
 ### Disposable playground
 
-The public playground is a separate Worker application and does not use the
-demo Worker or its D1 database:
+The public playground is a separate Worker application with its own
+`wrangler.playground.jsonc`; the store has no other committed Wrangler config:
 
 ```bash
 pnpm prepare:sources
-pnpm exec astro dev --config astro.playground.config.mjs
 pnpm exec astro build --config astro.playground.config.mjs
-pnpm exec wrangler dev --config dist/server/wrangler.json
+pnpm exec wrangler dev --config dist/server/wrangler.json --upstream-protocol https
 ```
 
 Visit `/playground`. EmDash creates an anonymous admin session backed by a
 private Durable Object SQLite database, applies this repository's
-`seed/seed.json`, and expires the database after about one hour. Checkout
-continues to render the existing unavailable state; the playground has no
-payment or coupon bindings. Every response is noindex.
+`seed/seed.json`, and expires the database after about one hour. Every
+response is noindex.
+
+Each visitor's store installs Commerce, Payments and Ship in-store under their
+Registry ids: Commerce is the store's pinned Registry build, the same one every
+other store runs (template-one-build-registry-20261031). The first page view
+seeds the demo catalog through Commerce's own routes and connects Commerce to
+the playground's pretend DinkusKit.com, which needs the store on https; locally,
+`--upstream-protocol https` gives the Worker the playground's https address.
+Checkout stays unavailable unless it is configured as below.
 
 The opt-in Stripe TEST sandbox checkout (`src/features/playground-checkout/`)
 stays off unless `DINKUS_CHECKOUT_ENABLED="1"` and all of its env is
@@ -169,10 +190,20 @@ provisioned by infra outside the committed Wrangler config: `PAYMENTS_URL`,
 `PLAYGROUND_CHECKOUT_LIMITER` binding, and `EMDASH_SITE_URL`. The last is the
 canonical https origin of that deployment (for example
 `https://playground.dinkuskit.com`, or `https://pr-N.playground.dinkuskit.com`
-for a preview), not a secret. `/api/checkout/status` confirms paid returns only
-against it, so without a valid value the cart shows checkout as unavailable.
+for a preview), not a secret. The server cart sends only this origin to
+Commerce, so without a valid value the cart shows checkout as unavailable.
 The `main` deploy passes `--keep-vars`, so these values, once set on the
-`dinkuskit-template-playground` Worker, survive every deploy.
+`dinkuskit-template-playground` Worker, survive every deploy. `PAYMENTS_URL`
+must be `https://payments.dinkuskit.com`, the Payments host Commerce may call.
+
+Two real-HTTP proofs run the built playground Worker under `wrangler dev`:
+`pnpm verify:playground-http` (a paid TEST order against a local Payments
+stand-in, visitor binding, restart, expiry, missing origin) and
+`pnpm verify:playground-account-http` (shopper sign-in, orders, profile, leads
+and refusals). Each builds the playground first; pass `--no-build` to the
+script to reuse a build. `pnpm verify:playground-cutover` builds the playground
+from before Commerce's Registry build in a worktree, makes a visitor store on
+it, and shows that store starting over on a fresh store under this build.
 
 Before a public preview is enabled, infra-keeper must add a Cloudflare Rate
 Limit bindings named `PLAYGROUND_CREATION_LIMITER` and
@@ -213,7 +244,7 @@ is approved. Wrangler deploys the build's generated
 `dist/server/wrangler.json` (from `wrangler.playground.jsonc`, whose `main`
 stays `src/playground-worker.ts` so the Astro build can resolve it).
 
-The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build`,
+The Dinkus packages are pre-release exact Git pins. `pnpm dev`, `pnpm build:registry`,
 and the verifiers prepare Commerce's exact source in an ignored checkout, then
 resolve Commerce and Inventory through their package-root source entries because
 neither has an installable release yet. See

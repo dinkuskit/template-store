@@ -5,17 +5,14 @@ import { DatabaseSync } from "node:sqlite";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { armWelcomeObserver, dismissWelcome as dismissWhenReady } from "./helpers/welcome";
+
 const proofRoot = resolve("runs/admin-product-categories-20261021/browser");
 
 async function dismissWelcome(page: Page): Promise<void> {
-  const welcome = page.getByRole("dialog", { name: /Welcome to EmDash/ });
-  try {
-    await expect(page.getByRole("button", { name: "Get Started" })).toBeVisible({ timeout: 30_000 });
-    await page.getByRole("button", { name: "Get Started" }).click();
-  } catch {
-    await expect(welcome).toHaveCount(0);
-  }
-  await expect(welcome).toHaveCount(0);
+  // The hats editor's title field. It remains after the older-store test removes
+  // the products list, and it is on the page at both call sites before that.
+  await dismissWhenReady(page, page.getByText("Category title"));
 }
 
 test("the admin names product categories plainly and a category lists its products", async ({ page }, testInfo) => {
@@ -23,6 +20,7 @@ test("the admin names product categories plainly and a category lists its produc
   const root = resolve(proofRoot, testInfo.project.name);
   await mkdir(root, { recursive: true });
 
+  await armWelcomeObserver(page);
   await page.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/categories/hats");
   await expect(page).toHaveURL(/\/_emdash\/admin\/content\/categories\/hats/u);
   await dismissWelcome(page);
@@ -59,6 +57,7 @@ test("an older store's category editor gains its products list with the links it
     .data.items as { slug: string; label: string; type: string; validation?: Record<string, unknown> }[])
     .find((field) => field.slug === "products");
 
+  await armWelcomeObserver(page);
   await page.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/categories/hats");
   await dismissWelcome(page);
   const seeded = await categoryField();

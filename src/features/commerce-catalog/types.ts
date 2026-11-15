@@ -33,9 +33,13 @@ export interface PublicCommerceProduct {
 
 export interface PublicCommerceVariant {
   id: string;
+  /** The member's own public Commerce SKU; older projections omit it. */
+  sku?: string;
   /** Option label to value label, e.g. [["Size", "Small"]]. */
   selections: readonly (readonly [string, string])[];
   unitMinor: string;
   priceText: string;
   availability: Pick<StorefrontAvailabilityResult, "status" | "sellable">;
+  /** The member's own fulfillment as Commerce projects it; absent when Commerce sends none or an unknown value. */
+  fulfillment?: "physical" | "digital";
 }

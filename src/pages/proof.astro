@@ -4,7 +4,7 @@ import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import { getEmDashCollection } from "emdash";
 
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
-import { playgroundCheckoutAdmission, playgroundCheckoutConfigured } from "../features/playground-checkout/index.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf } from "../features/playground-checkout/index.js";
 import MerchCatalog from "../features/store-shell/MerchCatalog.astro";
 import ManagedProductAvailability from "../features/managed-product-availability/ManagedProductAvailability.astro";
 import UnmanagedProductSellability from "../features/unmanaged-product-sellability/UnmanagedProductSellability.astro";
@@ -45,7 +45,7 @@ if (profile !== "proof" || !demonstrations) {
   });
 }
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
-const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)))) ||
   Boolean(await acquireGuestCheckoutAdmission({
     runtime: Astro.locals.emdash,
     request: Astro.request,

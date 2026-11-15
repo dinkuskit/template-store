@@ -7,6 +7,9 @@ import {
 } from "../../scripts/lib/offline-e2e-environment.mjs";
 
 const root = "/workspace/template-store";
+// The paired Commerce Registry build the proof store mounts (template-one-build-registry-20261031); the
+// resolver is injected so the test needs no built Commerce.
+const pairedCommerce = (env) => env.DINKUS_PAIRED_COMMERCE_DIR === undefined ? "/workspace/commerce-build" : env.DINKUS_PAIRED_COMMERCE_DIR || null;
 
 test("builds a shipping child environment from disposable paths and loopback origin", () => {
   const env = buildOfflineE2EEnvironment({
@@ -25,9 +28,11 @@ test("builds a shipping child environment from disposable paths and loopback ori
     root,
     profile: "shipping",
     port: "4638",
-  });
+  }, pairedCommerce);
 
   assert.equal(env.DINKUS_STOREFRONT_PROFILE, "shipping");
+  // The shipping store mounts no Commerce: its installed catalog path fails closed.
+  assert.equal(env.DINKUS_PAIRED_COMMERCE_DIR, "");
   assert.equal(env.DINKUS_TEMPLATE_DB_URL, "file:./.artifacts/e2e-shipping/content.db");
   assert.equal(env.DINKUS_TEMPLATE_UPLOADS_DIR, "./.artifacts/e2e-shipping/uploads");
   assert.equal(env.EMDASH_SITE_URL, "http://127.0.0.1:4638");
@@ -55,14 +60,18 @@ test("validates profile and port before a disposable reset can be attempted", ()
   );
 });
 
-test("pins proof to its own disposable database and upload root", () => {
+test("pins proof to its own disposable database and upload root, on the paired Commerce Registry build", () => {
   const env = buildOfflineE2EEnvironment({}, {
     root,
     profile: "proof",
     port: 4637,
-  });
+  }, pairedCommerce);
 
-  assert.equal(env.DINKUS_CATALOG_PROFILE, "native-development");
+  assert.equal("DINKUS_CATALOG_PROFILE" in env, false);
+  assert.equal(env.DINKUS_PAIRED_COMMERCE_DIR, "/workspace/commerce-build");
+  // A developer's own Commerce checkout is honored; a missing build stops the proof store before it starts.
+  assert.equal(buildOfflineE2EEnvironment({ DINKUS_PAIRED_COMMERCE_DIR: "/workspace/my-commerce" }, { root, profile: "proof", port: 4637 }, pairedCommerce).DINKUS_PAIRED_COMMERCE_DIR, "/workspace/my-commerce");
+  assert.throws(() => buildOfflineE2EEnvironment({}, { root, profile: "proof", port: 4637 }, () => null), /pnpm prepare:commerce/);
   assert.deepEqual(
     {
       db: env.DINKUS_TEMPLATE_DB_URL,
@@ -80,7 +89,7 @@ test("pins proof to its own disposable database and upload root", () => {
 test("launcher validated options compose with the environment builder for both profiles", () => {
   for (const profile of ["proof", "shipping"]) {
     const options = validateOfflineE2EOptions({ root, profile, port: 4637 });
-    const env = buildOfflineE2EEnvironment({}, options);
+    const env = buildOfflineE2EEnvironment({}, options, pairedCommerce);
     assert.equal(options.root, root);
     assert.equal(env.DINKUS_TEMPLATE_DB_URL, `file:./${options.relativeDir}/content.db`);
     assert.equal(env.EMDASH_SITE_URL, options.siteOrigin);

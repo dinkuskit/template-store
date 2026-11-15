@@ -4,7 +4,7 @@ import {
   buildProductJsonLd,
   buildProductPreviewJsonLd,
 } from "@dinkuskit/commerce/features/structured-data";
-import { allowsProductJsonLd, jsonLdScript } from "../../src/features/store-shell/structured-data.js";
+import { allowsProductJsonLd, jsonLdScript, storeReturnPolicyJsonLd } from "../../src/features/store-shell/structured-data.js";
 
 describe("#35 Commerce structured data contract", () => {
   it("permits product metadata only on successful responses, including editorial previews", () => {
@@ -58,7 +58,21 @@ describe("#35 Commerce structured data contract", () => {
     });
   });
 
-  it("omits shipping and returns when Commerce has no policy records", () => {
+  it("names the store's returns page as its return policy, by link only", () => {
+    expect(storeReturnPolicyJsonLd({
+      storeName: "Dinkus Store",
+      storeUrl: "https://shop.example.test/",
+      returnsUrl: "https://shop.example.test/returns",
+    })).toEqual({
+      "@context": "https://schema.org",
+      "@type": "OnlineStore",
+      name: "Dinkus Store",
+      url: "https://shop.example.test/",
+      hasMerchantReturnPolicy: { "@type": "MerchantReturnPolicy", merchantReturnLink: "https://shop.example.test/returns" },
+    });
+  });
+
+  it("omits shipping and returns from Product JSON-LD: the store's policies are its pages", () => {
     const jsonLd = buildProductJsonLd({
       product: {
         id: "hat",
@@ -132,24 +146,23 @@ describe("#35 Commerce structured data contract", () => {
     }
   });
 
-  it("exposes /shipping and /returns under Policies & Care in StoreFooter and pairs PortableText with configured policies", () => {
+  it("exposes /shipping and /returns under Policies & Care in StoreFooter, each always showing its EmDash text", () => {
     const footer = readFileSync(new URL("../../src/features/store-shell/StoreFooter.astro", import.meta.url), "utf8");
     expect(footer).toContain('aria-label="Policies & Care"');
     expect(footer).toContain('href="/shipping"');
     expect(footer).toContain('href="/returns"');
 
-    const shippingPage = readFileSync(new URL("../../src/pages/shipping.astro", import.meta.url), "utf8");
-    expect(shippingPage).toContain("data-shipping-policy");
-    expect(shippingPage).toContain("data-shipping-policy-unset");
-    expect(shippingPage).toContain("data-shipping-policy-body");
-    expect(shippingPage).toContain("<PortableText value={content}");
-    expect(shippingPage).toContain("<StoreFooter profile={profile} />");
-
+    for (const [name, kind] of [["shipping", "shipping"], ["returns", "return"]] as const) {
+      const page = readFileSync(new URL(`../../src/pages/${name}.astro`, import.meta.url), "utf8");
+      expect(page).toContain(`data-${kind}-policy-body`);
+      expect(page).toContain(`data-${kind}-policy-unset`);
+      expect(page).toContain("<PortableText value={content}");
+      expect(page).toContain("<StoreFooter profile={profile} />");
+      // No Commerce facts box: the page reads no policy records.
+      expect(page).not.toMatch(/readInstalledCommercePolicies|policies\/public|<dl\b/u);
+    }
     const returnsPage = readFileSync(new URL("../../src/pages/returns.astro", import.meta.url), "utf8");
-    expect(returnsPage).toContain("data-return-policy");
-    expect(returnsPage).toContain("data-return-policy-unset");
-    expect(returnsPage).toContain("data-return-policy-body");
-    expect(returnsPage).toContain("<PortableText value={content}");
-    expect(returnsPage).toContain("<StoreFooter profile={profile} />");
+    expect(returnsPage).toContain("storeReturnPolicyJsonLd(");
+    expect(returnsPage).toContain("content.length > 0 && !isPreview");
   });
 });

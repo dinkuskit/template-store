@@ -1,0 +1,72 @@
+{
+  "observed_at": "2026-11-06T19:02:02.568681+00:00",
+  "helper_sha256_fixture": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "helper_sha256_target_after": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "results": [
+    {
+      "case": "wrong-toolchain",
+      "fixture_kind": "synthetic self-consistent manifest with simulated trusted producer output; not emitted by real pack",
+      "expectation": "refuse before destination mutation",
+      "simulated_manifest_sha256": "90fccee207e4704a8da1d1bb06a7772f8aad92b8215eb670065c4f8f50a2d5cb",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact source, run, trust, toolchain or build inputs differ\n"
+      },
+      "destination_exists": false
+    },
+    {
+      "case": "session-top",
+      "fixture_kind": "synthetic self-consistent manifest with simulated trusted producer output; not emitted by real pack",
+      "expectation": "refuse before destination mutation",
+      "simulated_manifest_sha256": "1d8ecc2abd587d3e8f1730b7c7268ef262775fc2a525c19904bd17abcbb9aec3",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact still contains SESSION\n"
+      },
+      "destination_exists": false
+    },
+    {
+      "case": "session-previews",
+      "fixture_kind": "synthetic self-consistent manifest with simulated trusted producer output; not emitted by real pack",
+      "expectation": "refuse before destination mutation",
+      "simulated_manifest_sha256": "44ce909533d07fae3a3913c8257e8e5ebae8603dadf5b12af71ebb376772f022",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact still contains SESSION\n"
+      },
+      "destination_exists": false
+    },
+    {
+      "case": "external-main",
+      "fixture_kind": "synthetic self-consistent manifest with simulated trusted producer output; not emitted by real pack",
+      "expectation": "refuse before destination mutation",
+      "simulated_manifest_sha256": "699928197985e1b39d171eccabb29974194993b97c60e9aecd2e7bc51c2737dc",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Unsafe artifact member path\n"
+      },
+      "destination_exists": false
+    },
+    {
+      "case": "external-assets",
+      "fixture_kind": "synthetic self-consistent manifest with simulated trusted producer output; not emitted by real pack",
+      "expectation": "refuse before destination mutation",
+      "simulated_manifest_sha256": "4c4ee1499f19c94aaf6b266ef0a2f53eee9005bc4272d04966acdda4321ad6bc",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Unsafe artifact member path\n"
+      },
+      "destination_exists": false
+    }
+  ]
+}

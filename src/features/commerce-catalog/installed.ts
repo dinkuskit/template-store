@@ -11,12 +11,9 @@ import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js
 const ROUTE = "catalog/public";
 const ITEM_ROUTE = "catalog/public/item";
 const STATUSES = new Set(["in-stock", "low-stock", "out-of-stock", "available-on-backorder", "availability-unavailable"]);
-export const COMMERCE_NATIVE_PLUGIN_ID = "dinkus-commerce";
-
+/** Every store, the playground included, runs Commerce's Registry build (template-one-build-registry-20261031). */
 function installedPluginId(): string {
-  return process.env.DINKUS_CATALOG_PROFILE === "native-development"
-    ? COMMERCE_NATIVE_PLUGIN_ID
-    : COMMERCE_REGISTRY_RUNTIME_ID;
+  return COMMERCE_REGISTRY_RUNTIME_ID;
 }
 
 export interface InstalledCatalogContext {
@@ -73,10 +70,13 @@ function variantMembers(variants: unknown): PublicCommerceVariant[] {
     if (!selections.length) continue;
     members.push({
       id: member.catalogItemId,
+      // Do not substitute the product/default member's SKU when this fact is absent.
+      ...(typeof member.sku === "string" && member.sku.trim() && member.sku.length <= 1024 ? { sku: member.sku } : {}),
       selections,
       unitMinor: minor,
       priceText: formatUsdMinor(minor),
       availability: { status: availability.status as PublicCommerceVariant["availability"]["status"], sellable: availability.sellable },
+      ...(member.fulfillment === "physical" || member.fulfillment === "digital" ? { fulfillment: member.fulfillment } : {}),
     });
   }
   return members;
@@ -110,6 +110,16 @@ function feedChannels(value: Record<string, unknown>): PublicFeedChannel[] | "in
   return channels.sort();
 }
 
+/** A product without choices still has one concrete member in Commerce's v1 projection. */
+function simpleFulfillment(variants: unknown, id: string): "physical" | "digital" {
+  if (!object(variants) || variants.schema !== "dinkuskit.commerce.product-variants/v1" || variants.productId !== id ||
+      !Array.isArray(variants.options) || variants.options.length !== 0 ||
+      !Array.isArray(variants.members) || variants.members.length !== 1) return "physical";
+  const member = variants.members[0];
+  return object(member) && member.catalogItemId === id && Array.isArray(member.selections) && member.selections.length === 0 &&
+    member.fulfillment === "digital" ? "digital" : "physical";
+}
+
 function product(value: unknown): ProductResult {
   const id = object(value) && typeof value.id === "string" && /^[a-zA-Z0-9_-]+$/.test(value.id) ? value.id : null;
   const fail = (reason: string): ProductResult => ({ id, reason });
@@ -137,10 +147,9 @@ function product(value: unknown): ProductResult {
     ...(typeof value.mpn === "string" && value.mpn ? { mpn: value.mpn } : {}),
     ...(typeof value.brand === "string" && value.brand ? { brand: value.brand } : {}),
     ...(channels !== undefined ? { feedChannels: channels } : {}),
-    // Commerce's installed public projection does not expose simple-item
-    // fulfillment yet; fail closed to physical so checkout never omits a
-    // required delivery address.
-    fulfillment: "physical",
+    // Keep the concrete default member's explicit fulfillment, without inventing a
+    // variant picker. Older or ambiguous projections still require delivery.
+    fulfillment: simpleFulfillment(value.variants, id),
     // Commerce projects customerPays only; never reconstruct a regular/sale pair.
     price: { listable: true, regularText, saleText: null, ...(unitMinor ? { unitMinor } : {}) },
     availability: {
@@ -155,6 +164,23 @@ function product(value: unknown): ProductResult {
     ...(value.variants !== undefined ? { variants: variantMembers(value.variants) } : {}),
     ...(typeof value.page === "string" && value.page ? { page: value.page } : {}),
   } };
+}
+
+/**
+ * Whether the owner lists this store in the DinkusKit cross-store catalog: the switch in
+ * Commerce settings, on unless Commerce's public catalog says `offCatalog`
+ * (GrillTrack `agent-catalog-toggle-home-20261113`, dinkuskit). A Commerce older than the
+ * switch never says it, so its store is listed.
+ */
+export async function readInstalledCatalogListing({ runtime, request }: InstalledCatalogContext): Promise<boolean> {
+  const pluginId = installedPluginId();
+  if (!runtime || !publicGetRoute(runtime, pluginId, ROUTE)) {
+    throw new Error("Installed public catalog unavailable");
+  }
+  const url = new URL(`/_emdash/api/plugins/${pluginId}/${ROUTE}`, request.url);
+  const result = await runtime.handlePublicPluginApiRoute(pluginId, "GET", ROUTE, new Request(url, { method: "GET" }));
+  if (!result.success || !object(result.data)) throw new Error("Installed public catalog unavailable");
+  return result.data.offCatalog !== true;
 }
 
 /** Public-only SSR dispatch preserves the installed plugin's original context. */
@@ -236,8 +262,8 @@ export async function readInstalledCommerceProduct(
 /**
  * The product a published page sells, found by the page's entry id, which
  * Commerce keeps (template-no-commerce-box-20261029); null when that page
- * sells nothing on the shop. A Commerce that predates the lookup refuses it,
- * which throws, so the caller can fall back to an older store's field.
+ * sells nothing on the shop. A Commerce that cannot answer throws, and the
+ * caller treats the page as unavailable.
  */
 export async function readInstalledCommerceProductByPage(
   pageId: string,
@@ -250,11 +276,34 @@ export async function readInstalledCommerceProductByPage(
 }
 
 /**
+ * The product a cart line's id buys. Commerce answers a variant member's id
+ * with its whole product, so a product with choices is read through the
+ * chosen member: its own price, availability and fulfillment, never the
+ * product's "from" price or another member. A member Commerce no longer lists is null.
+ */
+export function cartLineProduct(item: PublicCommerceProduct, itemId: string): PublicCommerceProduct | null {
+  if (!item.variants?.length) return item.id === itemId ? item : null;
+  const member = item.variants.find(variant => variant.id === itemId);
+  if (!member) return null;
+  const { variants: _variants, ...rest } = item;
+  return {
+    ...rest,
+    id: member.id,
+    name: `${item.name} \u2014 ${member.selections.map(([, value]) => value).join(" / ")}`,
+    // Commerce projects no member SKU; the product's SKU would name a different item.
+    sku: "",
+    price: { listable: true, regularText: member.priceText, saleText: null, unitMinor: member.unitMinor },
+    availability: { ...member.availability, listable: true },
+    // Commerce projects each member's fulfillment, so a digital Size checks out without a delivery address;
+    // without one, fail closed to physical as for simple products.
+    fulfillment: member.fulfillment ?? "physical",
+  };
+}
+
+/**
  * Reads only the requested items, one public item lookup each, instead of the
- * whole catalog. Matches the catalog read: an item Commerce no longer lists,
- * or one whose projection is invalid, comes back null; a variant member id
- * resolves to its parent product, which the catalog lists under the parent id,
- * so it is null too.
+ * whole catalog. An item Commerce no longer lists, or one whose projection is
+ * invalid, comes back null; a variant member id comes back as that member.
  */
 export async function readInstalledCommerceProducts(
   itemIds: readonly string[],
@@ -265,7 +314,7 @@ export async function readInstalledCommerceProducts(
     if (parsed !== null && !("product" in parsed)) {
       console.warn("Skipping invalid installed catalog item", { id: parsed.id, reason: parsed.reason });
     }
-    return [itemId, parsed !== null && "product" in parsed && parsed.product.id === itemId ? parsed.product : null];
+    return [itemId, parsed !== null && "product" in parsed ? cartLineProduct(parsed.product, itemId) : null];
   }));
   return new Map(found);
 }

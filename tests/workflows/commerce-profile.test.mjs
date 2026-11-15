@@ -38,10 +38,7 @@ for (const profile of ["stable", "beta"]) {
           define: commerceProfileDefine({ DINKUS_COMMERCE_PROFILE: profile }) });
         const api = await import(pathToFileURL(outfile));
         assert.equal(api.COMMERCE_REGISTRY_RUNTIME_ID, runtimeId);
-        assert.equal(api.GUEST_CHECKOUT_PREPARE_ENDPOINT, `/_emdash/api/plugins/${runtimeId}/checkout/guest/prepare`);
-        assert.equal(api.GUEST_CHECKOUT_START_ENDPOINT, `/_emdash/api/plugins/${runtimeId}/checkout/guest/start`);
-        assert.equal(api.GUEST_CHECKOUT_STATUS_ENDPOINT, "/api/checkout/status");
-        for (const route of ["prepare", "start", "status"]) {
+        for (const route of ["prepare", "cart", "start"]) {
           assert.equal(api.evaluatePublicBoundary("POST", `/_emdash/api/plugins/${runtimeId}/checkout/guest/${route}`).allowed, true);
           assert.equal(api.isExactGuestCheckoutPath(`/_emdash/api/plugins/${otherId}/checkout/guest/${route}`), false);
           assert.equal(api.evaluatePublicBoundary("POST", `/_emdash/api/plugins/${otherId}/checkout/guest/${route}`).allowed, false);
@@ -51,7 +48,9 @@ for (const profile of ["stable", "beta"]) {
         }
         const calls = [];
         const backend = {
-          getPluginRouteMeta: (id, path) => id === runtimeId ? manifest.routes.find(r => r.name === path) ?? null : null,
+          // The fixture predates Commerce's cart route (commerce-server-cart-20261113); it is public POST like start.
+          getPluginRouteMeta: (id, path) => id !== runtimeId ? null
+            : manifest.routes.find(r => r.name === path) ?? (path === "checkout/guest/cart" ? { name: path, public: true, methods: ["POST"] } : null),
           async handlePluginApiRoute(id, method, path, request) {
             calls.push({ id, method, path, url: request.url });
             return { success: true, data: path === "checkout/guest/readiness"
@@ -75,13 +74,6 @@ for (const profile of ["stable", "beta"]) {
           const denied = { ...runtime, getPluginRouteMeta: (id, path) => path === "checkout/guest/start" ? bad : backend.getPluginRouteMeta(id, path) };
           assert.equal(api.canDispatchInstalledGuestCheckout({ runtime: denied, request }), false);
         }
-        const transports = [];
-        const transport = { fetch: async (url) => { transports.push(url); return Response.json({ok:false,error:{code:"CAPABILITY_DENIED"}}); } };
-        await api.callGuestCheckout({kind:"prepare"}, null, transport);
-        const retention = { capabilityId: "cap", capability: "cap.synthetic", attemptId: null };
-        await api.callGuestCheckout({kind:"start", intent:{version:1,lines:[{id:"one",quantity:1}]}}, retention, transport);
-        await api.callGuestCheckout({kind:"status"}, retention, transport);
-        assert.deepEqual(transports, [api.GUEST_CHECKOUT_PREPARE_ENDPOINT, api.GUEST_CHECKOUT_START_ENDPOINT, api.GUEST_CHECKOUT_STATUS_ENDPOINT]);
       }
     } finally { await rm(directory, { recursive: true, force: true }); }
   });
@@ -96,29 +88,31 @@ for (const profile of ["stable", "beta"]) {
       { name: "account/orders", methods: ["GET"], public: true },
       { name: "account/profile", methods: ["GET", "POST"], public: true },
     ];
-    // Commerce 0.5.0 adds Connect's public receipt route after the store policies route.
-    const manifestRoutes = manifest.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic }));
-    const connectReceiptAt = manifestRoutes.findIndex((route) => route.name === "policies/public") + 1;
-    // Commerce 0.6.0 adds the product panel and the publish check, both private, after admin; 0.7.0 adds the
-    // product media panel and the catalog route agents use, also private.
-    const productScreenAt = manifestRoutes.findIndex((route) => route.name === "admin") + 1;
+    // The pinned Commerce's routes, in source order. 0.9.0 drops the store policies route (no-policy-records)
+    // and the Registry status route (a cart read does its job, commerce-cart-read-is-status-20261113), and adds
+    // the shopper's cart (commerce-server-cart-20261113).
     assert.deepEqual(
       extracted.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
       [
-        ...manifestRoutes.slice(0, connectReceiptAt),
+        { name: "catalog/public", methods: ["GET"], public: true },
+        { name: "catalog/public/item", methods: ["GET"], public: true },
         { name: "store-proof", methods: ["GET"], public: true },
-        ...manifestRoutes.slice(connectReceiptAt, productScreenAt),
+        { name: "admin", methods: ["POST"], public: false },
         { name: "product-panel", methods: ["POST"], public: false },
         { name: "product-media-panel", methods: ["POST"], public: false },
         { name: "catalog-items/set-on-sale", methods: ["POST"], public: false },
         { name: "catalog", methods: ["POST"], public: false },
-        ...manifestRoutes.slice(productScreenAt),
+        { name: "orders", methods: ["POST"], public: false },
+        { name: "checkout/guest/prepare", methods: ["POST"], public: true },
+        { name: "checkout/guest/start", methods: ["POST"], public: true },
+        { name: "checkout/guest/cart", methods: ["POST"], public: true },
+        { name: "checkout/guest/readiness", methods: ["GET"], public: true },
         ...shopperAccountRoutes,
       ],
     );
     assert.ok(extracted.routes.every(r => r.path.startsWith(`/_emdash/api/plugins/${runtimeId}/`)));
     assert.equal(extracted.routes.find(r => r.name === "admin").public, false);
-    for (const route of ["checkout/guest/prepare", "checkout/guest/start", "checkout/guest/status"]) {
+    for (const route of ["checkout/guest/prepare", "checkout/guest/start", "checkout/guest/cart"]) {
       assert.equal(extracted.routes.find(r => r.name === route).public, true);
     }
     assert.throws(() => extractCommerceRoutes(source, { profile: otherId }), /DINKUS_COMMERCE_PROFILE/);

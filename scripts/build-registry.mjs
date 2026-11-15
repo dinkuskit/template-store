@@ -109,7 +109,9 @@ export function registryConfig(env) {
 export function registryBuildEnv(env, config) {
   const childEnv = { ...env, ...config.vars,
     DINKUS_HOSTING_PROFILE: "cloudflare", ASTRO_ADAPTER: "cloudflare",
-    DINKUS_WRANGLER_CONFIG: configRelativePath };
+    DINKUS_WRANGLER_CONFIG: configRelativePath,
+    // A Registry store installs Commerce from the Registry itself; it never bundles the paired build.
+    DINKUS_PAIRED_COMMERCE_DIR: "" };
   delete childEnv.CLOUDFLARE_ENV;
   return childEnv;
 }
@@ -133,7 +135,8 @@ if (import.meta.main) {
         mkdirSync(dirname(configPath), { recursive: true });
         writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
         if (!args.includes("--config-only")) {
-          const build = spawnSync(process.execPath, [resolve(root, "scripts/build-demo.mjs")], {
+          // registryBuildEnv carries the shipping vars and selects this config; Astro reads both.
+          const build = spawnSync("pnpm", ["exec", "astro", "build"], {
             cwd: root, env: registryBuildEnv(process.env, config),
             stdio: args.includes("--json") ? ["ignore", process.stderr, process.stderr] : "inherit",
           });

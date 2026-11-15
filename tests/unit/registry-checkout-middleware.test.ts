@@ -40,7 +40,7 @@ describe("installed checkout middleware", () => {
       expect(next).toHaveBeenCalledOnce();
       expect(dispatch).toHaveBeenCalledOnce();
     });
-    for (const route of ["start", "status"]) {
+    for (const route of ["start", "cart"]) {
       it(`${hosting}: ${route} reaches Commerce without an advisory readiness check`, async () => {
         const { response, next, dispatch } = await invoke(hosting, false, "shipping", route);
         expect(response?.status).toBe(200);
@@ -55,12 +55,6 @@ describe("installed checkout middleware", () => {
       expect(response?.headers.get("cache-control")).toBe("no-store");
     });
   }
-  it("refuses Registry checkout against the native catalog profile before dispatch", async () => {
-    const { response, next, dispatch } = await invoke("node", true, "native-development");
-    expect(response?.status).toBe(503);
-    expect(next).not.toHaveBeenCalled();
-    expect(dispatch).not.toHaveBeenCalled();
-  });
 });
 
 
@@ -73,6 +67,14 @@ describe("installed checkout dispatch boundary", () => {
     expect(canDispatchInstalledGuestCheckout({ runtime: {
       handlePublicPluginApiRoute, getRuntimePluginSettingsSchema: () => null,
     } })).toBe(false);
+    // The playground's in-store Commerce has no Registry manifest; its public routes still decide.
+    expect(canDispatchInstalledGuestCheckout({ runtime: {
+      handlePublicPluginApiRoute, getRuntimePluginSettingsSchema: () => null,
+    } }, { inStore: true })).toBe(true);
+    expect(canDispatchInstalledGuestCheckout({ runtime: {
+      handlePublicPluginApiRoute, getRuntimePluginSettingsSchema: () => null,
+      getPluginRouteMeta: () => ({ public: false, methods: ["POST"] }),
+    } }, { inStore: true })).toBe(false);
     expect(canDispatchInstalledGuestCheckout({ runtime: {
       handlePublicPluginApiRoute,
       getPluginRouteMeta: () => ({ public: false, methods: ["POST"] }),

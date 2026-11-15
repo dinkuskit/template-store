@@ -45,15 +45,13 @@ async function main(): Promise<void> {
     await runMigrations(db as never);
     // A running store does this on its own (template-store-self-upgrade-20261028);
     // here every step runs again, which also repairs a local database.
-    const waiting: string[] = [];
-    const upgrades = await upgradeStorefront(db, { all: true, waiting });
+    const upgrades = await upgradeStorefront(db, { all: true });
     console.log(
       JSON.stringify({
         action: "search-upgrade",
         database: databasePath,
         collections: Object.keys(STOREFRONT_SEARCHABLE_COLLECTIONS),
         upgrades,
-        ...(waiting.length ? { waiting } : {}),
       }),
     );
   } finally {

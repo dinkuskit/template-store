@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Kysely, sql } from "kysely";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
@@ -14,9 +14,6 @@ import {
   ensureStorefrontCategoryProducts,
   ensureStorefrontPageAddresses,
   ensureStorefrontProductFields,
-  LINK_HOLDING_COMMERCE,
-  olderVersion,
-  pagesWithoutCommerceLink,
   removeStorefrontCommerceBox,
 } from "../../src/features/store-shell/product-schema-upgrade.js";
 
@@ -174,10 +171,9 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
     expect(await pageAddress()).toBe("/info/{slug}");
   });
 
-  // template-no-commerce-box-20261029: Commerce holds a page's product, so the box comes off once no live page needs it.
+  // template-drop-older-store-box-20261101: Commerce holds a page's product and the store never reads the box,
+  // so it comes off whatever it still says.
   describe("taking the Commerce product box off", () => {
-    const BETA = "r_fjzjvld3ssb4j63o";
-    const pageId = async (slug: string) => (await sql<{ id: string }>`select id from ec_products where slug = ${slug}`.execute(db)).rows[0]!.id;
     const store = (plugin: string, collection: string, id: string, data: unknown = {}) =>
       sql`insert into _plugin_storage (plugin_id, collection, id, data) values (${plugin}, ${collection}, ${id}, ${JSON.stringify(data)})`.execute(db);
     const hasBox = async () => (await fields())[COMMERCE_PRODUCT_FIELD] !== undefined;
@@ -188,110 +184,18 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
       for (const entry of seedNow().content.products) expect(entry.data).not.toHaveProperty(COMMERCE_PRODUCT_FIELD);
     });
 
-    it("comes off a store whose box names no real Commerce product, as the seed's demonstrations don't", async () => {
-      // A typed "123" with no Commerce product 123 sells nothing either.
-      await sql`update ec_products set commerce_item_id = '123' where slug = 'canvas-cap'`.execute(db);
-      expect(await pagesWithoutCommerceLink(db)).toEqual([]);
-      await removeStorefrontCommerceBox(db);
+    it("comes off at once, even while a page's box names a Commerce product Commerce links to no page", async () => {
+      await sql`update ec_products set commerce_item_id = ' 123 ' where slug = 'canvas-cap'`.execute(db);
+      await store("r_fjzjvld3ssb4j63o", "catalog_items", "123", { name: "Ryan Test Hat" });
+      await sql`insert into _plugin_state (plugin_id, version, status, source) values ('r_fjzjvld3ssb4j63o', '0.7.0-beta.2', 'active', 'registry')`.execute(db);
+      await expect(removeStorefrontCommerceBox(db)).resolves.toBeUndefined();
       expect(await hasBox()).toBe(false);
       expect((await sql<{ name: string }>`select name from pragma_table_info('ec_products')`.execute(db)).rows.map((row) => row.name)).not.toContain(COMMERCE_PRODUCT_FIELD);
+      // The page and Commerce's product are kept; only the box is gone.
+      expect((await sql<{ n: number }>`select count(*) as n from ec_products where slug = 'canvas-cap'`.execute(db)).rows[0]!.n).toBe(1);
+      expect((await sql<{ n: number }>`select count(*) as n from _plugin_storage where id = '123'`.execute(db)).rows[0]!.n).toBe(1);
       // A store without the box is left as it is.
       await expect(removeStorefrontCommerceBox(db)).resolves.toBeUndefined();
-    });
-
-    it("waits while a live page's box names a Commerce product Commerce doesn't link to it, and comes off once it does", async () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const cap = await pageId("canvas-cap");
-      await sql`update ec_products set commerce_item_id = ' 123 ' where slug = 'canvas-cap'`.execute(db);
-      await store(BETA, "catalog_items", "123", { name: "Ryan Test Hat" });
-      expect(await pagesWithoutCommerceLink(db)).toEqual([{ id: cap, slug: "canvas-cap", itemId: "123" }]);
-      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
-      expect(await hasBox()).toBe(true);
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining("canvas-cap"));
-
-      // Another plugin's rows, or a link for another page, don't count.
-      await store("someone-else", "product_pages", `p:${cap}`);
-      await store(BETA, "product_pages", `p:${await pageId("everyday-tee")}`);
-      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
-
-      // The panel's pick links it.
-      await store(BETA, "product_pages", `e:${cap}`, { catalogItemId: "123" });
-      expect(await removeStorefrontCommerceBox(db)).toBeUndefined();
-      expect(await hasBox()).toBe(false);
-    });
-
-    it("waits while the store runs a Registry Commerce that links pages only through the box", async () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const install = (plugin: string, version: string, source = "registry") => sql`
-        insert into _plugin_state (plugin_id, version, status, source) values (${plugin}, ${version}, 'active', ${source})
-        on conflict (plugin_id) do update set version = excluded.version, source = excluded.source`.execute(db);
-      await install(BETA, "0.7.0-beta.2");
-      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining(`${BETA}@0.7.0-beta.2`));
-      await install(BETA, LINK_HOLDING_COMMERCE);
-      await install("r_gshdrqaldna3r7sn", "0.6.0");
-      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
-      // A Commerce the store's own config installs is the template's own pin, whatever its version says.
-      await install("r_gshdrqaldna3r7sn", "0.6.0", "config");
-      expect(await removeStorefrontCommerceBox(db)).toBeUndefined();
-      expect(await hasBox()).toBe(false);
-    });
-
-    it("orders Commerce versions as semver does, counting an unreadable one as older", () => {
-      expect(olderVersion("0.7.0-beta.2", "0.7.0-beta.3")).toBe(true);
-      expect(olderVersion("0.7.0-beta.10", "0.7.0-beta.3")).toBe(false);
-      expect(olderVersion("0.7.0-beta.3", "0.7.0-beta.3")).toBe(false);
-      expect(olderVersion("0.7.0", "0.7.0-beta.3")).toBe(false);
-      expect(olderVersion("0.6.9", "0.7.0-beta.3")).toBe(true);
-      expect(olderVersion("1.0.0", "0.7.0-beta.3")).toBe(false);
-      expect(olderVersion("0.7.0-alpha.9", "0.7.0-beta.3")).toBe(true);
-      expect(olderVersion("0.7.0-beta", "0.7.0-beta.3")).toBe(true);
-      expect(olderVersion("latest", "0.7.0-beta.3")).toBe(true);
-    });
-
-    it("counts every page whose box is the only record of its product, drafts and the trash included, on any install of Commerce", async () => {
-      vi.spyOn(console, "warn").mockImplementation(() => {});
-      const tee = await pageId("everyday-tee");
-      const hoodie = await pageId("pullover-hoodie-preview");
-      const waiting = async () => (await pagesWithoutCommerceLink(db)).map((page) => page.slug);
-      await sql`update ec_products set commerce_item_id = 'hat' where slug = 'everyday-tee'`.execute(db);
-      await store("dinkus-commerce", "catalogItems", "hat");
-      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
-      // A publish check's sale links it too.
-      await store("dinkus-commerce", "product_pages", `p:${tee}`, { entryId: tee, catalogItemId: "hat" });
-      expect(await pagesWithoutCommerceLink(db)).toEqual([]);
-      await sql`delete from _plugin_storage where id = ${`p:${tee}`}`.execute(db);
-
-      // A draft, a scheduled page and a page in the trash still need their product to publish or be restored.
-      await sql`update ec_products set status = 'draft', scheduled_at = null where slug = 'everyday-tee'`.execute(db);
-      expect(await waiting()).toEqual(["everyday-tee"]);
-      await sql`update ec_products set scheduled_at = '2030-01-01T00:00:00.000Z' where slug = 'everyday-tee'`.execute(db);
-      expect(await waiting()).toEqual(["everyday-tee"]);
-      await sql`update ec_products set deleted_at = '2026-10-29T00:00:00.000Z' where slug = 'everyday-tee'`.execute(db);
-      expect(await waiting()).toEqual(["everyday-tee"]);
-      expect(await removeStorefrontCommerceBox(db)).toBe("wait");
-
-      // A copy of a page that sells the product can't sell it: Commerce records the other page as the product's
-      // page, or the other page's panel picked it.
-      await sql`update ec_products set commerce_item_id = 'hat' where slug = 'pullover-hoodie-preview'`.execute(db);
-      expect((await waiting()).sort()).toEqual(["everyday-tee", "pullover-hoodie-preview"]);
-      await sql`update _plugin_storage set data = ${JSON.stringify({ pageId: hoodie })} where id = 'hat'`.execute(db);
-      expect(await waiting()).toEqual(["pullover-hoodie-preview"]);
-      await sql`update _plugin_storage set data = '{}' where id = 'hat'`.execute(db);
-      await store("dinkus-commerce", "product_pages", `e:${hoodie}`, { entryId: hoodie, catalogItemId: "hat" });
-      expect(await waiting()).toEqual([]);
-      await sql`delete from _plugin_storage where id = ${`e:${hoodie}`}`.execute(db);
-      await sql`update ec_products set commerce_item_id = null where slug = 'pullover-hoodie-preview'`.execute(db);
-
-      // An archived product can be restored, and its page would need it again.
-      await sql`update _plugin_storage set data = ${JSON.stringify({ archivedAt: "2026-10-29T00:00:00.000Z" })} where id = 'hat'`.execute(db);
-      expect(await waiting()).toEqual(["everyday-tee"]);
-      await sql`update _plugin_storage set data = '{}' where id = 'hat'`.execute(db);
-
-      // Deleting the page for good lets its product go.
-      await sql`delete from ec_products where slug = 'everyday-tee'`.execute(db);
-      expect(await removeStorefrontCommerceBox(db)).toBeUndefined();
-      expect(await hasBox()).toBe(false);
     });
   });
 });

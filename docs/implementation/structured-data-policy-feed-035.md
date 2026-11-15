@@ -8,41 +8,43 @@ Preview output contains exactly one Product with only the canonical URL and
 visible page facts. The template never assembles an Offer or invents a SKU,
 GTIN, price, or availability.
 
-A resolved public Commerce product, including the selected variant member's
-price and availability, emits one Product block. The visible SKU, GTIN, price,
-and availability are the same facts. The canonical link, Product `url`, and
+A resolved public Commerce product emits one Product block. Simple products
+keep their public SKU, GTIN, MPN, price and availability. Selected variants use
+only their own optional public member SKU with their price and availability;
+parent/default-member identifiers are never substituted. The visible SKU line
+still identifies the parent/default product (PR #146's deferred display policy),
+not the selected member. Member GTIN/MPN are not projected and are omitted.
+
+Commerce 0.8.0 has no public member SKU. On those older payloads, or if the
+optional member SKU is malformed, variant selections retain only preview
+Product page facts, without SKU or Offer. Price, availability, picker and cart
+behavior are unchanged. Commerce PR #260 proposes the authoritative member
+field; this consumer accepts it without changing the exact 0.8.0 pin or claiming
+a new signed Registry release. Neither CMS labels nor parent identity can fill
+the missing fact. The canonical link, Product `url`, and
 Offer `url` use the page origin (`Astro.site`, otherwise the request URL) and
 the published `/products/{entry id}` path. 404, removed, and unavailable
 (503) routes emit no Product block. The preview builder keeps valid published
 editorial pages truthful without requiring a fabricated Commerce identifier.
 
-`/shipping` and `/returns` render the same Commerce policy revision that
-JSON-LD embeds. When a policy record is configured, `/shipping` and `/returns`
-pair the authoritative Commerce `<dl data-shipping-policy>` /
-`<dl data-return-policy>` summary box with the merchant-authored EmDash CMS
-`entry.data.content` (`PortableText`) policy body (`[data-policy-body]`).
-Both policy pages are exposed in the global Store Footer (`StoreFooter.astro`)
-under **Policies & Care** (`aria-label="Policies & Care"`). Native development
-has no mounted `policies/public` route, so that profile reads
-`readPublicStorePoliciesFromStorage` from
-`@dinkuskit/commerce/features/store-policies` after the public route is
-unavailable. An installed or shipping profile does not open policy storage. An
-invalid public payload still fails. With no policy records, both pages fail
-closed—rendering only `[data-shipping-policy-unset]` /
-`[data-return-policy-unset]` without `[data-policy-body]` or fabricated dollar
-amounts, country codes, or day counts—and JSON-LD omits `shippingDetails` and
-`hasMerchantReturnPolicy`. Seeds stay neutral.
-
-The policy consumer validates amount/mode consistency, configured country
-lists, day bounds, URLs, and known return enums before returning either record.
-It reuses Commerce's exported money validation. Null policies and omitted
-optional fields remain valid; malformed fields follow the existing failure
-path instead of reaching policy text or JSON-LD. Native-development reads pass
-through the same validation.
-
-Return categories display as `Limited return window`, `Returns not accepted`,
-or `Unlimited return window`. The original Commerce enum remains in the
-`data-return-category` attribute for policy and JSON-LD verification.
+`/shipping` and `/returns` are the store's policies: EmDash pages the merchant
+writes, which always show their own `PortableText` body (`[data-policy-body]`),
+or `[data-shipping-policy-unset]` / `[data-return-policy-unset]` when the page
+has no text (GrillTrack `policy-pages-content-20261031`, superseding this
+decision's policy part; Commerce `policy-pages-are-content-20261031` retires
+its policy records). There is no Commerce facts box and no policy read. Both
+pages are exposed in the global Store Footer (`StoreFooter.astro`) under
+**Policies & Care** (`aria-label="Policies & Care"`). Product JSON-LD carries no
+`shippingDetails` or `hasMerchantReturnPolicy`: structured shipping and return
+terms are deferred, and shipping markup will derive from Commerce's checkout
+settings and shipping destinations when it comes. A published returns page with
+text names itself as the store-wide return policy by link only: one
+`OnlineStore` block whose `hasMerchantReturnPolicy` is a `MerchantReturnPolicy`
+with `merchantReturnLink` set to the page's canonical URL
+(`storeReturnPolicyJsonLd`); Google reads a store-wide return policy from that
+link alone, and a merchant's Search Console or Merchant Center settings take
+precedence over markup. Seeds stay neutral: no rates, country codes or day
+counts.
 
 JSON-LD embedded with `set:html` escapes `<` so a merchant description cannot
 close the script tag.
@@ -62,8 +64,7 @@ The exact Commerce `0.3.0` source pin is
 `288199275f61aec084c0e1e72b370ec74ea35369`. Its `catalog/public` and
 `catalog/public/item` projections carry `feedChannels`; the existing parser
 passes a non-empty projection to the feed builders and excludes missing or
-empty eligibility. Native-development may still use its explicitly isolated
-storage fallback. Shipping and registry profiles do not open that collection.
+empty eligibility; no profile opens Commerce storage.
 Primary and gallery media ids resolve through the same approved media lookup
 as storefront images. Only resolved public image URLs enter the Commerce feed
 builders; payload-supplied URLs and unreadable or unsafe media are omitted.

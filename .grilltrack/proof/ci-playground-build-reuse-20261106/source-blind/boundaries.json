@@ -1,0 +1,258 @@
+{
+  "observed_at": "2026-11-06T19:00:24.084971+00:00",
+  "helper_sha256_fixture": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "helper_sha256_target_after": "5d33fd01bfbe547157e531c6123efd68e1705ad9fddd100a02e7d44a1cd09611",
+  "results": [
+    {
+      "case": "pack-session-top",
+      "expectation": "refuse before staged payload",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact still contains SESSION\n"
+      },
+      "artifact_exists": false
+    },
+    {
+      "case": "pack-session-previews",
+      "expectation": "refuse before staged payload",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact still contains SESSION\n"
+      },
+      "artifact_exists": false
+    },
+    {
+      "case": "pack-external-main",
+      "expectation": "refuse before staged payload",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Unsafe artifact member path\n"
+      },
+      "artifact_exists": false
+    },
+    {
+      "case": "pack-external-assets",
+      "expectation": "refuse before staged payload",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Unsafe artifact member path\n"
+      },
+      "artifact_exists": false
+    },
+    {
+      "case": "ordinary-binding-positive",
+      "expectation": "preserve populated ordinary binding",
+      "pass": true,
+      "pack": {
+        "exit": 0,
+        "stdout": "{\"mode\":\"pack\",\"manifestSha256\":\"3d0ba6bd0086c6297033ecafb04b241cadf54dc7d89548c9bf8ebbc3825c7d0c\",\"bytes\":557,\"files\":6}\n",
+        "stderr": ""
+      },
+      "restore": {
+        "exit": 0,
+        "stdout": "{\"mode\":\"restore\",\"manifestSha256\":\"3d0ba6bd0086c6297033ecafb04b241cadf54dc7d89548c9bf8ebbc3825c7d0c\",\"files\":6}\n",
+        "stderr": ""
+      },
+      "expected": {
+        "client": {
+          "type": "dir",
+          "mode": 493
+        },
+        "client/.assetsignore": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 15,
+          "sha256": "171b5adb36aa21cf4ec3f0fd9ffa5e10fe17e5c781e0df408b4146069808028b"
+        },
+        "client/assets": {
+          "type": "dir",
+          "mode": 493
+        },
+        "client/assets/data.bin": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 256,
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        },
+        "client/empty": {
+          "type": "dir",
+          "mode": 493
+        },
+        "client/index.html": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 49,
+          "sha256": "6f576e36a87289f16d7aeb55e4e60202af3c8f3e7dc0c2d69d6d8719db2bc336"
+        },
+        "server": {
+          "type": "dir",
+          "mode": 493
+        },
+        "server/entry.mjs": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 70,
+          "sha256": "2486924561e6a4c21114cc3064fa0f545181464d6f7facb349f69c167824b7f5"
+        },
+        "server/executable.sh": {
+          "type": "file",
+          "mode": 493,
+          "bytes": 17,
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+        },
+        "server/wrangler.json": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 150,
+          "sha256": "6fdc4de060262e48f5535a7fa82f5a84f2db55309416afbd3bacf9c9bbb15ed4"
+        }
+      },
+      "observed": {
+        "client": {
+          "type": "dir",
+          "mode": 493
+        },
+        "client/.assetsignore": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 15,
+          "sha256": "171b5adb36aa21cf4ec3f0fd9ffa5e10fe17e5c781e0df408b4146069808028b"
+        },
+        "client/assets": {
+          "type": "dir",
+          "mode": 493
+        },
+        "client/assets/data.bin": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 256,
+          "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+        },
+        "client/empty": {
+          "type": "dir",
+          "mode": 493
+        },
+        "client/index.html": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 49,
+          "sha256": "6f576e36a87289f16d7aeb55e4e60202af3c8f3e7dc0c2d69d6d8719db2bc336"
+        },
+        "server": {
+          "type": "dir",
+          "mode": 493
+        },
+        "server/entry.mjs": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 70,
+          "sha256": "2486924561e6a4c21114cc3064fa0f545181464d6f7facb349f69c167824b7f5"
+        },
+        "server/executable.sh": {
+          "type": "file",
+          "mode": 493,
+          "bytes": 17,
+          "sha256": "306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb"
+        },
+        "server/wrangler.json": {
+          "type": "file",
+          "mode": 420,
+          "bytes": 150,
+          "sha256": "6fdc4de060262e48f5535a7fa82f5a84f2db55309416afbd3bacf9c9bbb15ed4"
+        }
+      }
+    },
+    {
+      "case": "pack-protected-.env.local",
+      "expectation": "refuse before staged payload without reading protected content",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "protected_file_access_observed": false,
+      "artifact_exists": false
+    },
+    {
+      "case": "pack-protected-.dev.vars",
+      "expectation": "refuse before staged payload without reading protected content",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "protected_file_access_observed": false,
+      "artifact_exists": false
+    },
+    {
+      "case": "pack-protected-.npmrc",
+      "expectation": "refuse before staged payload without reading protected content",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "protected_file_access_observed": false,
+      "artifact_exists": false
+    },
+    {
+      "case": "restore-protected-.env",
+      "expectation": "refuse before destination mutation without reading protected content",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "protected_file_access_observed": false,
+      "destination_exists": false
+    },
+    {
+      "case": "restore-protected-.env.local",
+      "expectation": "refuse before destination mutation without reading protected content",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "protected_file_access_observed": false,
+      "destination_exists": false
+    },
+    {
+      "case": "restore-protected-.dev.vars",
+      "expectation": "refuse before destination mutation without reading protected content",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "protected_file_access_observed": false,
+      "destination_exists": false
+    },
+    {
+      "case": "restore-protected-.npmrc",
+      "expectation": "refuse before destination mutation without reading protected content",
+      "pass": true,
+      "receipt": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "playground-build-artifact: Artifact contains a configuration or credential file\n"
+      },
+      "protected_file_access_observed": false,
+      "destination_exists": false
+    }
+  ]
+}

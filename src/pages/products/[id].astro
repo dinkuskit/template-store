@@ -12,13 +12,8 @@ import { productDetailComponents } from "../../features/store-shell/blocks/index
 import UnknownBlock from "../../features/store-shell/blocks/UnknownBlock.astro";
 import { legacyPortableTextComponents } from "../../features/store-shell/portable-text/index.js";
 import { readInstalledCommerceProduct, readInstalledCommerceProductByPage } from "../../features/commerce-catalog/installed.js";
-import { COMMERCE_NATIVE_PLUGIN_ID } from "../../features/commerce-catalog/installed.js";
-import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../features/guest-cart/checkout-protocol.js";
-import { readInstalledCommercePolicies } from "../../features/commerce-policies/index.js";
-import {
-  buildProductJsonLd,
-  buildProductPreviewJsonLd,
-} from "@dinkuskit/commerce/features/structured-data";
+import { buildProductPreviewJsonLd } from "@dinkuskit/commerce/features/structured-data";
+import { linkedProductJsonLd } from "../../features/store-shell/linked-product-jsonld.js";
 import { allowsProductJsonLd, canonicalUrl, jsonLdScript } from "../../features/store-shell/structured-data.js";
 import { availabilityLabels } from "../../features/commerce-catalog/index.js";
 import { demoPlaceholderImage } from "../../features/playground/demo-products.js";
@@ -26,7 +21,7 @@ import { variantPickerView, NO_OFFER_JSON_LD_KEY, type VariantPickerMember } fro
 import { STORE_TITLE, categoryPath, loadStorefrontRouteContext, productPath } from "../../features/store-shell/index.js";
 import { hydrateProductCollectionMembership, productPageOffersCart, readProductEntries } from "../../features/store-shell/product-routes.js";
 import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
-import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
+import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
 import "../../features/store-shell/global.css";
 
@@ -34,7 +29,7 @@ const productCollection = await getEmDashCollection<"products", Record<string, u
 const products = { ...productCollection, entries: await hydrateProductCollectionMembership(productCollection.entries) };
 const categoryEntries = await getEmDashCollection<"categories", Record<string, unknown>>("categories", { status: "published" });
 // Commerce keeps which page sells each product (template-no-commerce-box-20261029): this page's product is
-// found by the page's entry id. A Commerce that cannot answer leaves an older store's field to name it.
+// found by the page's entry id; the store never reads an older store's field (template-drop-older-store-box-20261101).
 const pageEntry = products.entries.find((entry) => productPath(entry.id) === Astro.url.pathname);
 const pageEntryId = typeof pageEntry?.data.id === "string" ? pageEntry.data.id : "";
 let pageLookupFailed = false;
@@ -78,7 +73,7 @@ if (item && !linkedProduct && (profile === "shipping" || item.availabilitySource
       (productLinks.products.find((product) => product.id === item.id)?.commerceItemId) ?? "",
       { runtime: Astro.locals.emdash, request: Astro.request },
     );
-    // An older store's field can still name a product Commerce now sells on another page; it is not this page's.
+    // A product Commerce sells on another page is not this page's.
     if (linkedProduct?.page && linkedProduct.page !== pageEntryId) linkedProduct = null;
   } catch {
     lookupUnavailable = profile === "shipping";
@@ -90,7 +85,7 @@ if (item && profile === "shipping" && item.availabilitySource !== "preview") {
 // A shipping store's page whose Commerce product left the catalog (archived)
 // is gone for shoppers, like Shopify and WooCommerce: a 404 that says so.
 const linkedItemId = item ? productLinks.products.find((product) => product.id === item.id)?.commerceItemId ?? "" : "";
-// A published page Commerce lists no product for, and no older field names, is gone for shoppers the same way.
+// A published page Commerce lists no product for is gone for shoppers the same way.
 const unlinkedPage = Boolean(pageEntry) && !linked && productLinks.unlinked.includes(pageEntry!.id);
 if (unlinkedPage && profile === "shipping" && pageLookupFailed) {
   lookupUnavailable = true;
@@ -103,11 +98,16 @@ if (noLongerAvailable) Astro.response.status = 404;
 // DINKUS_CHECKOUT_ENABLED is on; other proof profiles never do.
 const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
 const isDemo = isDemoCatalogProfile();
-const checkoutEnabled = playgroundCheckoutConfigured();
+const checkoutEnabled = playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals));
 const offersCart = productPageOffersCart({ profile, isPlayground, isDemo, checkoutEnabled });
 const sandboxCheckout = showsSandboxCheckoutNotice({ profile, isPlayground, isDemo, checkoutEnabled });
 const variants = linkedProduct?.variants ?? [];
-const selectedVariant = variants.find((member) => member.availability.sellable) ?? variants[0] ?? null;
+// ?variant=<id> opens the page on that variant, like Shopify (template-cart-size-picker-20261113).
+const askedVariant = Astro.url.searchParams.get("variant");
+const selectedVariant = variants.find((member) => member.id === askedVariant) ??
+  variants.find((member) => member.availability.sellable) ?? variants[0] ?? null;
+// The option buttons belong to the Add to cart form, so the chosen size goes with it even without script.
+const addFormId = "product-add-to-cart";
 // One picker per option (Color, then Size), like Shopify or WooCommerce
 // product pages. The browser matches the picked values to one member.
 const variantOptions = [...new Set(variants.flatMap((member) => member.selections.map(([option]) => option)))]
@@ -130,7 +130,7 @@ const cartProduct = linkedProduct && selectedVariant
   : linkedProduct;
 const linkedStatus = selectedVariant?.availability.status ?? linkedProduct?.availability.status;
 // A configured playground admits its sandbox checkout, as the cart page does.
-const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured())) ||
+const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)))) ||
   Boolean(await acquireGuestCheckoutAdmission({
     runtime: Astro.locals.emdash,
     request: Astro.request,
@@ -152,49 +152,25 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
   "in-stock": "In stock", "out-of-stock": "Out of stock", "available-on-backorder": "Available on backorder",
   "availability-unavailable": "Availability unavailable", "low-stock": "Low stock",
 } as Record<string, string>)[unmanaged.storefront.status] ?? "Availability unavailable" : "Preview only · not purchasable";
-const policies = linkedProduct
-  ? await readInstalledCommercePolicies(
-    { runtime: Astro.locals.emdash, request: Astro.request },
-    process.env.DINKUS_CATALOG_PROFILE === "native-development"
-      ? COMMERCE_NATIVE_PLUGIN_ID
-      : COMMERCE_REGISTRY_RUNTIME_ID,
-  ).catch(() => null)
-  : null;
 const productCanonical = item
   ? canonicalUrl(`/products/${item.id}`, Astro.site, Astro.url)
   : "";
 // Produce every selectable block on the server through the Commerce builder.
 // The browser only selects a prepared block; it never recalculates an Offer.
-const linkedProductJsonLd = (variant: (typeof variants)[number] | null) => {
+const selectedProductJsonLd = (variant: (typeof variants)[number] | null) => {
   if (!linkedProduct || !item || !productName) return null;
-  const priceMinor = variant?.unitMinor ?? linkedProduct.price.unitMinor;
-  return buildProductJsonLd({
-    product: {
-      id: linkedProduct.id,
-      name: productName,
-      sku: linkedProduct.sku,
-      ...(priceMinor ? { price: { currency: "USD" as const, minor: priceMinor } } : {}),
-      availability: variant
-        ? { ...variant.availability, listable: true as const }
-        : linkedProduct.availability,
-      ...(linkedProduct.gtin ? { gtin: linkedProduct.gtin } : {}),
-      ...(linkedProduct.mpn ? { mpn: linkedProduct.mpn } : {}),
-      ...(linkedProduct.brand ? { brand: linkedProduct.brand } : {}),
-    },
-    page: {
-      url: productCanonical,
-      name: productName,
-      ...(item.description ? { description: item.description } : {}),
-    },
-    ...(policies ? { policies } : {}),
-  });
+  return linkedProductJsonLd(linkedProduct, {
+    url: productCanonical,
+    name: productName,
+    ...(item.description ? { description: item.description } : {}),
+  }, variant);
 };
 // Editorial pages use the preview builder. Unavailable routes emit no data.
 const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item && productName &&
   (item.availabilitySource === "preview" || !lookupUnavailable) &&
   !noLongerAvailable
   ? linkedProduct
-    ? linkedProductJsonLd(selectedVariant)
+    ? selectedProductJsonLd(selectedVariant)
     : buildProductPreviewJsonLd({
       url: productCanonical,
       name: productName,
@@ -205,7 +181,7 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
 // A picked combination with no member shows Product facts without an Offer.
 const variantJsonLd = productJsonLd && linkedProduct && item && productName && variants.length
   ? {
-    ...Object.fromEntries(variants.map((variant) => [variant.id, linkedProductJsonLd(variant)])),
+    ...Object.fromEntries(variants.map((variant) => [variant.id, selectedProductJsonLd(variant)])),
     [NO_OFFER_JSON_LD_KEY]: buildProductPreviewJsonLd({
       url: productCanonical,
       name: productName,
@@ -246,10 +222,10 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
             {linkedProduct?.mpn && <p class="product-detail__identifier" data-product-mpn={linkedProduct.mpn}>MPN {linkedProduct.mpn}</p>}
             {linkedProduct?.brand && <p class="product-detail__identifier" data-product-brand={linkedProduct.brand}>Brand {linkedProduct.brand}</p>}
             {linkedProduct && <p class="product-detail__price" data-product-price>{linkedProduct.price.saleText ? <><s data-regular-price>{linkedProduct.price.regularText}</s> <strong data-sale-price>{linkedProduct.price.saleText}</strong></> : <strong data-regular-price data-variant-price>{selectedVariant?.priceText ?? linkedProduct.price.regularText}</strong>}</p>}
-            {variantOptions.map((option, index) => <fieldset class="product-variants" data-product-variants data-variant-option={option.label}>
+            {variantOptions.map((option) => <fieldset class="product-variants" data-product-variants data-variant-option={option.label}>
               <legend>{option.label}</legend>
               {option.values.map((value) => <label class="product-variant">
-                <input type="radio" name={`variant-option-${index}`} value={value} checked={value === selectedValue(option.label)}
+                <input type="radio" name={`options[${option.label}]`} form={addFormId} value={value} checked={value === selectedValue(option.label)}
                   data-variant-choice data-variant-option={option.label}
                   data-variant-sold-out={String(initialPicker.soldOut[option.label]?.[value] ?? true)} />
                 <span>{value}</span><span class="product-variant__sold-out"> (sold out)</span>
@@ -259,8 +235,8 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
             <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
-            {cartProduct && offersCart && <AddToCart product={cartProduct} variants={variants} />}
-            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>Demo product. Cart and checkout are unavailable.</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            {cartProduct && offersCart && <AddToCart product={cartProduct} variants={variants} productId={linkedProduct?.id} formId={addFormId} />}
+            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>{offersCart ? "Demo product. Checkout is unavailable." : "Demo product. Cart and checkout are unavailable."}</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>
@@ -305,6 +281,12 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
       add.dataset.addToCartSellable = String(view.sellable);
       if (add instanceof HTMLButtonElement) add.disabled = !view.sellable;
       add.textContent = view.buttonLabel;
+    }
+    // The earlier Add belongs to the previous selection; keep actionable persistence alerts.
+    const addStatus = document.querySelector<HTMLElement>("[data-add-to-cart-status]");
+    if (addStatus?.getAttribute("role") === "status") {
+      addStatus.hidden = true;
+      addStatus.textContent = "";
     }
   }
   for (const input of choices) input.addEventListener("change", update);

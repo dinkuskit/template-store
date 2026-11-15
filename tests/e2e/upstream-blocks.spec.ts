@@ -3,19 +3,17 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
+import { armWelcomeObserver, dismissWelcome } from "./helpers/welcome";
+
 const proofRoot = resolve("runs/upstream-blocks-20260926/browser");
 const headers = { "X-EmDash-Request": "1" };
 const missingNativeType = "missing_local_renderer";
 const originalAllowedTypes = ["home_opener", "rich_text", "query_card"];
 
 async function welcome(admin: Page): Promise<void> {
-  const dialog = admin.getByRole("dialog", { name: /Welcome to EmDash/ });
-  try {
-    await admin.getByRole("button", { name: "Get Started" }).click({ timeout: 30_000 });
-  } catch {
-    await expect(dialog).toHaveCount(0);
-  }
-  await expect(dialog).toHaveCount(0);
+  // Same home document as home-opener. The title input is entry data, not the
+  // retired plugin surface this spec replaces with native blocks.
+  await dismissWelcome(admin, admin.locator('input[value="DinkusKit Store Starter"]'));
 }
 
 async function publishHome(admin: Page): Promise<void> {
@@ -125,6 +123,7 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
   expect((await request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
   const context = await browser.newContext();
   const admin = await context.newPage();
+  await armWelcomeObserver(admin);
   await admin.goto("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/pages/home");
   await expect(admin).toHaveURL(/\/_emdash\/admin\/content\/pages\/home/);
   await welcome(admin);

@@ -21,9 +21,10 @@ export const TOUR_ADMIN_PAGE = { path: "/tour", label: "Playground tour", icon: 
 /** The storefront page that shows the whole tour; its words are the CMS page of the same slug. */
 export const TOUR_SHOP_PATH = "/playground-tour";
 
-const COMMERCE = "dinkus-commerce";
+/** The visitor's Commerce: its Registry build, under its Registry runtime id (template-one-build-registry-20261031). */
+const COMMERCE: string = PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce;
 // The storefront shows the names, prices and photos Commerce keeps in these.
-const CATALOG_COLLECTIONS = ["catalogItems", "catalogPrices", "catalogMedia"] as const;
+const CATALOG_COLLECTIONS = ["catalog_items", "catalog_prices", "catalog_media"] as const;
 const CATALOG_PAGE_LIMIT = 100;
 const CATALOG_MAX_PAGES = 10;
 const option = (key: string) => `plugin:${TOUR_PLUGIN_ID}:${key}`;
@@ -181,11 +182,11 @@ const adminPath = (path: string) => `/_emdash/admin${path}`;
 export function tourSteps(state: TourState): TourStep[] {
   return [
     { id: "edit-product", copy: "edit-product", done: state.productEdited, href: adminPath("/content/products"), button: "Open Products", inAdmin: true },
-    { id: "connect-payments", copy: "connect-payments", done: state.paymentsConnected, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`), button: "Open Payments", inAdmin: true },
+    { id: "connect-payments", copy: "connect-payments", done: state.paymentsConnected, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.payments}/status`), button: "Open Payment settings", inAdmin: true },
     state.checkoutOpen
       ? { id: "place-order", copy: "place-order", done: state.orders > 0, href: "/", button: "Open your shop", inAdmin: false }
       : { id: "place-order", copy: "look-at-shop", done: state.shopVisited, href: "/", button: "Open your shop", inAdmin: false },
-    { id: "ship-order", copy: "ship-order", done: state.labels > 0, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`), button: "Open Shipping", inAdmin: true },
+    { id: "ship-order", copy: "ship-order", done: state.labels > 0, href: adminPath(`/plugins/${PLAYGROUND_INSTALLED_PLUGIN_IDS.ship}/shipping`), button: "Open Shipments", inAdmin: true },
     { id: "real-store", copy: "real-store", done: false, href: START_REAL_STORE_URL, button: "Start your real store", inAdmin: false },
   ];
 }
