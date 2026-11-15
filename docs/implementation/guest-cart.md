@@ -41,6 +41,20 @@ exact compatible artifact pairing are met. Inventory is not needed for the
 unmanaged v1 path. Shipping must follow its owner's actual contract; do not
 invent rates. New checkout attempts use 1800..1860s; historical exact-1800 originals replay unchanged.
 
+## Shopper profile defaults
+
+Checkout fills only empty contact and delivery fields from the signed-in
+shopper's saved profile. After the response body is decoded, it rechecks the
+requesting session token; a replacement sign-in (even for the same email),
+sign-out, expiry or unavailable browser storage makes that response obsolete.
+Typed checkout values and newer sessions stay intact. This is optional form
+prefill, not checkout or account authorization.
+
+`tests/unit/checkout-shopper-prefill.test.ts` covers delayed headers and JSON,
+unchanged-session defaults and optional failures. The desktop/phone browser
+regression is `tests/e2e/checkout-shopper-prefill.spec.ts`; its profile, cart and
+prepare responses are synthetic, and it permits no payment or account writes.
+
 ## Browser presentation boundaries
 
 Unknown cart details use a neutral position label such as Item 1; confirmed
