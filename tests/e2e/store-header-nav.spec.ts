@@ -231,7 +231,7 @@ test("the seeded main menu leads from every store page to the shop and its categ
     await request.delete(`/_emdash/api/content/products/${lifecycleId}`, { headers: csrfHeaders });
   }
 
-  // Published product entry whose linked Commerce catalog item was archived/removed is excluded from search:
+  // Published product entry whose linked Commerce catalog item left the catalog is excluded from search:
   const invalidProductSlug = `archived-link-${testInfo.project.name.replace(/[^a-z0-9]/giu, "-").toLowerCase()}`;
   const createdInvalid = await request.post("/_emdash/api/content/products", {
     headers: csrfHeaders,
@@ -255,8 +255,11 @@ test("the seeded main menu leads from every store page to the shop and its categ
       headers: csrfHeaders,
     });
     expect(publishedInvalid.ok(), await publishedInvalid.text()).toBe(true);
-    // The owner archives the page's product in Commerce; the page stays published.
-    await catalogOp(request, { op: "archive", catalogItemId: ghostId, archived: true });
+    // The owner clears the product's price in Commerce, so it leaves the public catalog while the page
+    // stays published. Commerce has no archive of its own: archiving is moving the page to the Trash
+    // (catalog-archive-is-page-trash-20261115), which takes the page out of search with it.
+    const cleared = await catalogOp<{ saved: boolean; message: string | null }>(request, { op: "prices", catalogItemId: ghostId, regular: "", sale: "", stockStatus: "out-of-stock" });
+    expect(cleared.saved, cleared.message ?? "").toBe(true);
 
     await page.goto("/search?q=Orphaned");
     await expect(page.locator(`[data-search-result="${invalidProductSlug}"]`)).toHaveCount(0);
