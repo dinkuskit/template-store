@@ -70,6 +70,8 @@ function variantMembers(variants: unknown): PublicCommerceVariant[] {
     if (!selections.length) continue;
     members.push({
       id: member.catalogItemId,
+      // Do not substitute the product/default member's SKU when this fact is absent.
+      ...(typeof member.sku === "string" && member.sku.trim() && member.sku.length <= 1024 ? { sku: member.sku } : {}),
       selections,
       unitMinor: minor,
       priceText: formatUsdMinor(minor),

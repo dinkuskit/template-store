@@ -8,9 +8,20 @@ Preview output contains exactly one Product with only the canonical URL and
 visible page facts. The template never assembles an Offer or invents a SKU,
 GTIN, price, or availability.
 
-A resolved public Commerce product, including the selected variant member's
-price and availability, emits one Product block. The visible SKU, GTIN, price,
-and availability are the same facts. The canonical link, Product `url`, and
+A resolved public Commerce product emits one Product block. Simple products
+keep their public SKU, GTIN, MPN, price and availability. Selected variants use
+only their own optional public member SKU with their price and availability;
+parent/default-member identifiers are never substituted. The visible SKU line
+still identifies the parent/default product (PR #146's deferred display policy),
+not the selected member. Member GTIN/MPN are not projected and are omitted.
+
+Commerce 0.8.0 has no public member SKU. On those older payloads, or if the
+optional member SKU is malformed, variant selections retain only preview
+Product page facts, without SKU or Offer. Price, availability, picker and cart
+behavior are unchanged. Commerce PR #260 proposes the authoritative member
+field; this consumer accepts it without changing the exact 0.8.0 pin or claiming
+a new signed Registry release. Neither CMS labels nor parent identity can fill
+the missing fact. The canonical link, Product `url`, and
 Offer `url` use the page origin (`Astro.site`, otherwise the request URL) and
 the published `/products/{entry id}` path. 404, removed, and unavailable
 (503) routes emit no Product block. The preview builder keeps valid published

@@ -307,7 +307,7 @@
     }
 
     .store-main-nav__expand {
-      min-width: 1.75rem;
+      min-width: 2.75rem;
       margin-left: 0.1rem;
     }
 
@@ -378,9 +378,9 @@
   .store-header__search-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
     padding: 0.22rem 0.3rem 0.22rem 0.85rem;
-    border: 1.5px solid var(--store-ink-border);
+    border: 1.5px solid var(--store-vault-muted);
     border-radius: 999px;
     background: var(--store-vault-bg);
     color: var(--store-vault-ink);
@@ -394,12 +394,12 @@
 
   .store-header__search-input {
     width: 11.5rem;
+    min-height: 2.75rem;
     border: 0;
     background: transparent;
     color: var(--store-vault-ink);
     font: inherit;
     font-size: 0.82rem;
-    outline: none;
   }
 
   .store-header__search-input::placeholder {
@@ -407,10 +407,13 @@
   }
 
   .store-header__search-go {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     padding: 0.28rem 0.68rem;
     border: 0;
     border-radius: 999px;
-    background: var(--store-accent);
+    /* Small labels need a deeper accent than decorative brand marks. */
+    background: color-mix(in srgb, var(--store-accent) 80%, var(--store-vault-bg));
     color: var(--store-accent-ink);
     font-family: var(--font-mono);
     font-size: 0.68rem;
@@ -609,9 +612,9 @@
   .store-footer__widgets :where(.widget-search) {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
     padding: 0.28rem 0.35rem 0.28rem 0.9rem;
-    border: 1.5px solid var(--store-vault-line);
+    border: 1.5px solid var(--store-vault-muted);
     border-radius: 999px;
     background: #0b111d;
   }
@@ -619,20 +622,22 @@
   .store-footer__widgets :where(.widget-search__input) {
     flex: 1 1 8rem;
     min-width: 0;
+    min-height: 2.75rem;
     padding: 0.35rem 0;
     border: 0;
     background: transparent;
     color: var(--store-vault-ink);
     font: inherit;
     font-size: 0.85rem;
-    outline: none;
   }
 
   .store-footer__widgets :where(.widget-search__button) {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     padding: 0.36rem 0.8rem;
     border: 0;
     border-radius: 999px;
-    background: var(--store-accent);
+    background: color-mix(in srgb, var(--store-accent) 80%, var(--store-vault-bg));
     color: var(--store-accent-ink);
     font-family: var(--font-mono);
     font-size: 0.72rem;
@@ -702,15 +707,17 @@
   .store-switcher-pills {
     display: inline-flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
+    gap: 0.5rem;
   }
 
   .store-switcher-pill {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
     padding: 0.32rem 0.68rem;
-    border: 1.5px solid var(--store-vault-line);
+    border: 1.5px solid var(--store-vault-muted);
     border-radius: 999px;
     background: var(--store-vault-surface);
     color: var(--store-vault-ink);
@@ -718,6 +725,19 @@
     font-size: 0.74rem;
     font-weight: 700;
     cursor: pointer;
+  }
+
+  .store-header__search-go:hover,
+  .store-footer__widgets :where(.widget-search__button:hover),
+  .store-switcher-pill:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+
+  .store-header__search-go:active,
+  .store-footer__widgets :where(.widget-search__button:active),
+  .store-switcher-pill:active {
+    box-shadow: inset 0 0 0 2px currentColor;
   }
 
   .store-switcher-pill[aria-pressed="true"] {
@@ -747,7 +767,7 @@
   }
 
   .store-preset-pill--aizome[aria-pressed="true"] {
-    background: #d1492f;
+    background: color-mix(in srgb, #d1492f 80%, #101827);
     color: #fffefb;
     border-color: #f4f1ea;
     box-shadow: 2px 2px 0 #101827;
@@ -765,7 +785,7 @@
   }
 
   .store-preset-pill--forest[aria-pressed="true"] {
-    background: #c85a32;
+    background: color-mix(in srgb, #c85a32 80%, #0f1f18);
     color: #fcfbf7;
     border-color: #f4efe6;
     box-shadow: 2px 2px 0 #0f1f18;

@@ -135,14 +135,27 @@ test("published Commerce products, policies, and feeds share one public revision
     await expect(page.locator("[data-product-sku]")).toHaveAttribute("data-product-sku", "DEMO-HOSTED-HOODIE-S");
     await expect(page.locator("[data-variant-price]")).toHaveText("$56.00");
     const initialHoodie = await productScript(page);
-    expect(initialHoodie.offers).toMatchObject({ price: "56.00", priceCurrency: "USD", availability: "https://schema.org/InStock" });
+    const publicHoodie = await request.get(`${COMMERCE_API}/catalog/public/item?itemId=${encodeURIComponent(mediumHoodieId)}`);
+    expect(publicHoodie.ok()).toBe(true);
+    const publicMembers = (await publicHoodie.json()).data.variants.members as { catalogItemId: string; sku?: string }[];
+    const expectMemberMetadata = (metadata: Record<string, unknown>, memberId: string, price: string, availability: string) => {
+      const member = publicMembers.find(value => value.catalogItemId === memberId);
+      expect(member).toBeDefined();
+      if (member!.sku) {
+        expect(metadata.sku).toBe(member!.sku);
+        expect(metadata.offers).toMatchObject({ price, priceCurrency: "USD", availability: `https://schema.org/${availability}`, url: hoodieCanonical });
+      } else {
+        expect(metadata).not.toHaveProperty("sku");
+        expect(metadata).not.toHaveProperty("offers");
+      }
+    };
+    expectMemberMetadata(initialHoodie, hoodieMembers.find(member => member.values.Color === "Black" && member.values.Size === "Small")!.id, "56.00", "InStock");
     await page.getByLabel("Medium").check();
     await expect(page.locator("[data-variant-price]")).toHaveText("$60.00");
     await expect(page.locator("[data-product-status]")).toHaveText("Out of stock");
     await expect(page.locator("[data-product-status]")).toHaveAttribute("data-availability-status", "out-of-stock");
     const selectedHoodie = await productScript(page);
-    expect(selectedHoodie.offers).toMatchObject({ price: "60.00", priceCurrency: "USD", availability: "https://schema.org/OutOfStock", url: hoodieCanonical });
-    expect(selectedHoodie.sku).toBe(await page.locator("[data-product-sku]").getAttribute("data-product-sku"));
+    expectMemberMetadata(selectedHoodie, mediumHoodieId, "60.00", "OutOfStock");
     expect(selectedHoodie.url).toBe(hoodieCanonical);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", hoodieCanonical ?? "");
     await expect(page).toHaveURL(/\/products\/demo-hoodie$/);
