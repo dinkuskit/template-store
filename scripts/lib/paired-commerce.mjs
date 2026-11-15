@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { commerceProfile } from "../../src/features/commerce-profile/profiles.mjs";
 
 // The Commerce this store runs: the Registry (sandboxed) build, the one build Commerce keeps
 // (template-one-build-registry-20261031), mounted through EmDash's `sandboxed: [...]` the way a Registry
@@ -33,6 +34,14 @@ export function pairedCommercePin(root = projectRoot) {
 /** The Registry package the pin's build is: a pre-release tag is the beta package, a release the stable one. */
 export function pairedCommerceProfile(pin) {
   return pin.tag.includes("-") ? "beta" : "stable";
+}
+
+/**
+ * The Registry id the store and playground builds install Commerce under: DINKUS_COMMERCE_PROFILE when set,
+ * otherwise the pin's package, as both configs choose it.
+ */
+export function pairedCommerceRuntimeId(env = process.env, root = projectRoot) {
+  return commerceProfile(env.DINKUS_COMMERCE_PROFILE ?? pairedCommerceProfile(pairedCommercePin(root))).runtimeId;
 }
 
 /** Where the pin's build lives, one directory per commit, under ignored .artifacts. */

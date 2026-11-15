@@ -23,13 +23,15 @@ import {
   startPlaygroundVisitor,
   startPlaygroundWorker,
 } from "./lib/playground-worker-proof.mjs";
+import { pairedCommerceRuntimeId } from "./lib/paired-commerce.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const artifact = resolve(root, ".artifacts/playground-http-proof");
 rmSync(artifact, { recursive: true, force: true });
 mkdirSync(artifact, { recursive: true });
 const persistTo = join(artifact, "state");
-const COMMERCE = "/_emdash/api/plugins/r_gshdrqaldna3r7sn";
+// The id the playground build installs the pinned Commerce under (a beta pin is the beta listing).
+const COMMERCE = `/_emdash/api/plugins/${pairedCommerceRuntimeId()}`;
 const trace = [];
 const calls = [];
 
