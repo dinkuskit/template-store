@@ -65,11 +65,17 @@ then production: `bin/verify-site <origin>`. It performs read-only GET/HEAD
 checks and crawls the homepage, sitemap-linked internal URLs, and nested
 internal links discovered on child pages until the queue is empty. A deployment
 is complete only after the production run passes. Product JSON-LD and the
-public feed checks run from fetched bytes. A commerce-linked product page
-(one that shows a Commerce SKU) must contain exactly one Product block whose
-sku and canonical URL match the page. A valid editorial page must also contain
-exactly one page-facts-only Product block with no Offer; 404, removed, and 503
-routes emit none. When those linked pages are present, the slashless feed URLs
+public feed checks run from fetched bytes. A resolved Commerce product page
+must contain exactly one Product block with the page's canonical URL. Simple
+products retain their own SKU and Offer. A selected variant uses only its own
+public member SKU and its own price and availability for the Offer, never the
+parent/default member's identity. With Commerce 0.8.0's no-member-SKU payload,
+or a missing/malformed member SKU, the selection emits page facts only, with
+no SKU or Offer. A paired release carrying Commerce #260's member-SKU projection
+restores the selected member's own SKU and Offer; this PR keeps the exact
+0.8.0 pin and does not claim a new signed release. A valid editorial page also
+contains exactly one page-facts-only Product block with no Offer; 404, removed,
+and 503 routes emit none. When those linked pages are present, the slashless feed URLs
 must answer 200. With only editorial pages or an empty catalog, valid empty
 200 feeds pass; unavailable Commerce still fails closed with 503. Malformed
 empty documents, wrong content types, and other errors fail verification.
