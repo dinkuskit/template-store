@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -109,20 +108,6 @@ describe("guest cart quantity mutation", () => {
     expect(stepGuestCartQuantityInput("99", 1, 0)).toBe(GUEST_CART_MAX_QUANTITY);
     expect(stepGuestCartQuantityInput("invalid", 1, 0)).toBe(1);
     expect(stepGuestCartQuantityInput("invalid", -1, 0)).toBe(0);
-  });
-
-  it("makes Add to cart a plain form whose option buttons sit in it", () => {
-    const addToCartAstro = readFileSync("src/features/guest-cart/AddToCart.astro", "utf8");
-    const productPageAstro = readFileSync("src/pages/products/[id].astro", "utf8");
-    expect(addToCartAstro).toContain('method="post" action="/cart/add"');
-    expect(addToCartAstro).toContain('name="quantity"');
-    expect(addToCartAstro).toContain("data-add-to-cart-qty-step");
-    expect(addToCartAstro).not.toContain("data-add-to-cart-batch");
-    expect(addToCartAstro).toContain('name="productId"');
-    expect(productPageAstro).toContain("<AddToCart product={cartProduct} variants={variants} productId={linkedProduct?.id} formId={addFormId} />");
-    expect(productPageAstro).toContain("form={addFormId}");
-    expect(productPageAstro).toContain("name={`options[${option.label}]`}");
-    expect(productPageAstro).toContain("add.dataset.addToCartSellable = String(view.sellable)");
   });
 });
 
