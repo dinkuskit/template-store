@@ -99,6 +99,12 @@ export function ensurePairedCommerceBuild({ env = process.env, root = projectRoo
   run("git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"], dir);
   if (pairedCommerceHead(dir) !== pin.commit) throw new Error(`Fetched Commerce did not resolve to ${pin.commit}`);
   run("npm", ["ci", "--ignore-scripts", "--no-audit", "--no-fund"], dir);
+  // A beta tag sits on a main commit whose files still carry the last release's version: Commerce's Cut beta
+  // stamps the beta version into its checkout before building and never commits it. Do the same, so the
+  // build is the one the beta listing published.
+  if (pairedCommerceProfile(pin) === "beta") {
+    run("node", ["scripts/release-flow.mjs", "stamp-beta-version", "--version", pin.tag.slice(1)], dir);
+  }
   run("npm", ["run", "build"], dir);
   if (!hasRegistryBuild(dir)) throw new Error(`Commerce ${pin.tag} built no Registry bundle under ${dir}`);
   log(`paired commerce: ${pin.tag} ${pin.commit.slice(0, 12)} built`);
