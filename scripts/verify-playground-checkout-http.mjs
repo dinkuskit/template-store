@@ -96,6 +96,7 @@ buildPlaygroundWorker();
 let server = await startPlaygroundWorker({ name: "checkout-proof", port, vars: READY, persistTo });
 const base = server.base;
 const PROOF_EMAIL = "proof@example.test";
+const PROOF_TRACKING = "9400111899223100001234";
 
 async function request(path, cookie, body, capability = "capability-proof", origin = PLAYGROUND_PROOF_SITE) {
   const before = calls.length;
@@ -131,7 +132,10 @@ async function page(path, cookie) {
     email: html.match(/data-guest-checkout-email>([^<]+)</)?.[1] ?? null,
     shipTo: html.match(/data-guest-checkout-address>([^<]+)</)?.[1] ?? null,
     billTo: html.match(/data-guest-checkout-billing>([^<]+)</)?.[1] ?? null,
-    contactShown: html.includes(PROOF_EMAIL) || html.includes("1 Test Way") };
+    contactShown: html.includes(PROOF_EMAIL) || html.includes("1 Test Way"),
+    // Where Orders has the order now, with the owner's tracking once Completed (commerce-guest-order-status-20261115).
+    fulfillment: html.match(/data-guest-checkout-fulfillment="([a-z]+)"/)?.[1] ?? null,
+    tracking: html.match(/data-guest-checkout-tracking>Tracking number: ([^<]+)</)?.[1] ?? null };
   trace.push(entry);
   return entry;
 }
@@ -264,10 +268,11 @@ const paidRead = (entry) => entry.status === 200 && checkoutOf(entry)?.state ===
 // Another visitor's store has no such cart: Commerce answers 403, or 200 with CAPABILITY_DENIED. Either way no order and no Payments call.
 const denied = (entry) => entry.status === 403 || (entry.status === 200 && entry.body?.data?.ok === false && ["CAPABILITY_DENIED", "ORIGIN_DENIED"].includes(entry.body.data.error?.code));
 const refused = (entry) => denied(entry) && entry.paymentsCalls === 0 && !JSON.stringify(entry.body ?? {}).includes("orderId") &&
-  !JSON.stringify(entry.body ?? {}).includes(PROOF_EMAIL);
+  !JSON.stringify(entry.body ?? {}).includes(PROOF_EMAIL) && !JSON.stringify(entry.body ?? {}).includes(PROOF_TRACKING);
 const paidPage = (entry) => entry.status === 200 && entry.state === "paid" && typeof entry.order === "string" &&
   entry.email === PROOF_EMAIL && entry.shipTo?.startsWith("1 Test Way") === true && entry.billTo?.includes("1 Test Way") === true;
-const hiddenPage = (entry) => entry.status === 200 && entry.state !== "paid" && entry.order === null && entry.paymentsCalls === 0 && !entry.contactShown;
+const hiddenPage = (entry) => entry.status === 200 && entry.state !== "paid" && entry.order === null && entry.paymentsCalls === 0 && !entry.contactShown &&
+  entry.fulfillment === null && entry.tracking === null;
 const cases = {};
 async function returnMatrix(label) {
   cases[`${label}:page:authorized`] = await page("/checkout/success?session_id=cs_ignored", cookie);
@@ -293,7 +298,18 @@ stripePaid = true;
 await returnMatrix("live");
 const emptied = await page("/cart", cookie);
 // What the paying shopper sees: the order with its email and addresses, on a desktop and a phone.
-{
+await screenshots("thank-you-paid");
+// The owner marks the order Completed with USPS tracking; the next read of the paying shopper's page shows it, and
+// still nobody else's (commerce-guest-order-status-20261115).
+const paidOrderId = checkoutOf(cases["live:registry:authorized"])?.order?.orderId;
+const completeResponse = await fetch(`${base}${COMMERCE}/orders`, { method: "POST", headers: {
+  "content-type": "application/json", origin: PLAYGROUND_PROOF_SITE, cookie: session, "cf-connecting-ip": "203.0.113.7", "x-emdash-request": "1",
+}, body: JSON.stringify({ action: "complete", orderId: paidOrderId, version: 1, carrier: "USPS", tracking: PROOF_TRACKING }) });
+const completion = { status: completeResponse.status, body: await completeResponse.json().catch(() => null) };
+trace.push({ path: `${COMMERCE}/orders`, status: completion.status, body: completion.body });
+await returnMatrix("shipped");
+await screenshots("thank-you-shipped");
+async function screenshots(prefix) {
   const { chromium, devices } = await import("@playwright/test");
   // PLAYWRIGHT_CHROMIUM_PATH points at a preinstalled Chromium when the pinned browser is not downloaded.
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {});
@@ -305,7 +321,7 @@ const emptied = await page("/cart", cookie);
     }));
     const tab = await context.newPage();
     await tab.goto(`${base}/checkout/success`);
-    await tab.screenshot({ path: join(artifact, `thank-you-paid-${name}.png`), fullPage: true, animations: "disabled" });
+    await tab.screenshot({ path: join(artifact, `${prefix}-${name}.png`), fullPage: true, animations: "disabled" });
     await context.close();
   }
   await browser.close();
@@ -363,9 +379,23 @@ if (emptied.status !== 200) failures.push(`the cart after payment answered ${emp
 for (const [key, entry] of Object.entries(cases)) {
   // The paying visitor sees the paid order live and after a restart; every foreign, reset and expired case
   // is refused, or shows no order, before any Payments call.
-  const authorized = /^(live|restarted):.*:authorized$/.test(key);
+  const authorized = /^(live|shipped|restarted):.*:authorized$/.test(key);
   const ok = key.includes(":page:") ? (authorized ? paidPage(entry) : hiddenPage(entry)) : (authorized ? paidRead(entry) : refused(entry));
   if (!ok) failures.push(`${key} -> ${entry.status} ${JSON.stringify(entry.body ?? { state: entry.state, order: entry.order })?.slice(0, 200)}`);
+}
+// Processing before the owner acts; Completed with the tracking after, on the page and in Commerce's cart read.
+const orderOf = (entry) => checkoutOf(entry)?.order ?? null;
+const fulfillment = {
+  before: { page: cases["live:page:authorized"].fulfillment, read: orderOf(cases["live:registry:authorized"])?.status ?? null },
+  completed: { status: completion.status, result: completion.body?.data?.result ?? completion.body?.result ?? null },
+  after: { page: cases["shipped:page:authorized"].fulfillment, tracking: cases["shipped:page:authorized"].tracking,
+    read: orderOf(cases["shipped:registry:authorized"])?.status ?? null, readTracking: orderOf(cases["shipped:registry:authorized"])?.completed?.tracking ?? null },
+  restarted: { page: cases["restarted:page:authorized"].fulfillment, tracking: cases["restarted:page:authorized"].tracking },
+};
+if (fulfillment.before.page !== "processing" || fulfillment.before.read !== "processing" || fulfillment.completed.result !== "saved" ||
+    fulfillment.after.page !== "completed" || fulfillment.after.tracking !== PROOF_TRACKING || fulfillment.after.read !== "completed" ||
+    fulfillment.after.readTracking !== PROOF_TRACKING || fulfillment.restarted.page !== "completed" || fulfillment.restarted.tracking !== PROOF_TRACKING) {
+  failures.push(`the order status on the thank-you page: ${JSON.stringify(fulfillment)}`);
 }
 const sessionCalls = calls.filter((call) => call.path === "/v1/checkout/session");
 if (!sizePicker.refused || !sizePicker.cartUntouched || !sizePicker.merged || sizePicker.paymentsCalls !== 0) failures.push(`the size picker wrote a cart that did not fit: ${JSON.stringify(sizePicker)}`);
@@ -379,6 +409,7 @@ console.log(`contactHiddenFromOthers: ${["foreign", "reset"].every((who) => hidd
     const entry = cases[`live:registry:${who}`];
     return [who, { status: entry.status, code: entry.body?.data?.error?.code ?? null, order: JSON.stringify(entry.body ?? {}).includes("orderId"), email: JSON.stringify(entry.body ?? {}).includes(PROOF_EMAIL), paymentsCalls: entry.paymentsCalls }];
   })))}`);
+console.log(`orderStatus: ${JSON.stringify(fulfillment)}`);
 console.log(`restartRecoveryPaid: ${paidPage(cases["restarted:page:authorized"]) && paidRead(cases["restarted:registry:authorized"])}`);
 console.log(`expiredRefused: ${hiddenPage(cases["expired:page:authorized"]) && refused(cases["expired:registry:authorized"])}`);
 console.log(`fieldCorrection: ${JSON.stringify(fieldCorrection)}`);
