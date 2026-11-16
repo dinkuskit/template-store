@@ -97,7 +97,7 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
   s{color:var(--store-muted)}
   [data-guest-cart-line-reason]{color:var(--store-muted);line-height:1.5}
   .guest-cart-qty{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.25rem 0 0;min-width:0}
-  [data-guest-cart-qty]{width:4.5rem;max-width:100%;padding:.45rem .55rem;border:1px solid var(--store-line);border-radius:.4rem;font:inherit;background:var(--store-surface)}
+  [data-guest-cart-qty]{width:4.5rem;max-width:100%;min-height:44px;padding:.45rem .55rem;border:1px solid var(--store-line);border-radius:.4rem;font:inherit;background:var(--store-surface)}
   [data-guest-cart-line] form button{padding:.6rem .9rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
   [data-guest-cart-line] form:last-child{grid-column:1/-1;justify-self:start}
   [data-guest-cart-line] button:disabled,[data-guest-cart-qty]:disabled{opacity:.5;cursor:not-allowed}

@@ -1,5 +1,9 @@
 # Guest cart and Commerce handoff
 
+## Enhanced server-cart changes
+
+Quantity and Remove forms are captured at submission and sent in order. Each response replaces the currently attached cart section, so overlapping changes cannot leave the first response's lines and subtotal onscreen after both save; later edits cannot change an already queued quantity. A failed enhancement uses that captured plain form and stops unsent queued work while the browser navigates. This does not serialize Add or WebMCP operations, change Commerce's cart authority, or alter script-off forms.
+
 The authorized issue #20 extension preserves the existing template visual
 language and EmDash composition. The cart belongs to the shopper presentation
 layer. Its browser cache contains only validated product identities and positive
