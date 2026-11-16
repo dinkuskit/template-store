@@ -82,7 +82,13 @@ empty documents, wrong content types, and other errors fail verification.
 An origin with no product URL does not fail only because the product pages
 or feed routes are absent. A trailing slash on a feed URL must not
 be a second document. Feeds consume only the installed public `feedChannels`
-projection and do not open storage.
+projection and do not open storage. Feed facts also supply optional host-owned
+`content.variantUrls` using the product page's `?variant=<id>` selection for each
+projected member, retaining the family canonical and excluding unpublished
+pages. The current Commerce pin ignores that additive field; concrete-row
+consumption proposed in Commerce #282 needs separate release qualification.
+`tests/unit/commerce-feeds.test.ts` covers these joins without changing price,
+stock or eligibility authority.
 
 ## Authorized guest cart
 

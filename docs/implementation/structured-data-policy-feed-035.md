@@ -56,9 +56,22 @@ The stable feed endpoints are:
 
 They use `buildGoogleMerchantFeed` and `buildMetaCatalogFeed` from
 `@dinkuskit/commerce/features/feeds`. A trailing slash is not a second
-document. Each row links the published product canonical. Identity is the
-Commerce item id. A catalog item with no published CMS page is omitted. Price
-is included only when the public item has top-level `unitMinor`.
+document. The host supplies the published family canonical and, for each
+projected selectable member, an optional `content.variantUrls` landing URL using
+the product page's `?variant=<id>` selection. Request query parameters are never
+copied; simple products retain only their canonical. Commerce owns row identity,
+prices, availability and eligibility. A catalog item with no published CMS page
+is omitted.
+
+Commerce PR #282 proposes consuming these member landings when flattening
+Google/Meta rows. The current pin's serializers ignore this additive host
+metadata, so supplying it alone does not enable member rows or change the
+Registry pin. Qualify the consumer release separately; no external channel
+connection or complete Google/Meta admission is implied. Run
+`node scripts/verify-feed-variant-landings.mjs` for actual built-Worker
+phone/desktop, script-on/off checks of selected options, member price/stock and
+unchanged canonical links. It leaves checkout unconfigured and makes no cart
+or payment requests; `--no-build` reuses an already qualified playground build.
 
 The exact Commerce `0.3.0` source pin is
 `288199275f61aec084c0e1e72b370ec74ea35369`. Its `catalog/public` and
