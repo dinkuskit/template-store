@@ -7,6 +7,18 @@ test("variant availability is a retained polite status without moving picker foc
   await page.goto("/");
   await page.goto("/products/demo-hoodie");
   const status = page.locator("[data-product-status]");
+  for (const label of await page.locator(".product-variant").all()) {
+    const box = await label.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+  if (page.viewportSize()!.width <= 768) {
+    for (const control of await page.locator("[data-add-to-cart-qty], [data-add-to-cart-qty-step]").all()) {
+      const box = await control.boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+    }
+  }
   await expect(status).toHaveText("In stock");
   await expect(status).toHaveRole("status");
   await expect(status).toHaveAttribute("aria-atomic", "true");
