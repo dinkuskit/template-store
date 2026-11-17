@@ -36,8 +36,8 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
         type="submit"
         data-add-to-cart={product.id}
         data-add-to-cart-sellable={String(singleSellable)}
-        disabled={!singleSellable && !byOptions}
-      >{singleSellable || byOptions ? "Add to cart" : "Sold out"}</button>
+        disabled={!singleSellable}
+      >{singleSellable ? "Add to cart" : "Sold out"}</button>
     </form>
     <p data-add-to-cart-status hidden role="status"></p>
   </div>
@@ -49,6 +49,7 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
   .guest-cart-add__qty{display:grid;gap:.3rem}
   .guest-cart-add__qty label{font-size:.9rem;font-weight:700}
   .guest-cart-add__stepper{display:inline-flex;align-items:center;border:1px solid var(--store-line,#d8d2c7);border-radius:.4rem;background:var(--store-surface,#fff);overflow:hidden}
+  .guest-cart-add__stepper :is(input,button){min-width:44px;min-height:44px}
   .guest-cart-add__stepper input{width:3.25rem;padding:.45rem .35rem;border:0;border-inline:1px solid var(--store-line,#d8d2c7);background:transparent;color:inherit;font:inherit;font-weight:700;text-align:center;-moz-appearance:textfield}
   .guest-cart-add__stepper input::-webkit-inner-spin-button,.guest-cart-add__stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   .guest-cart-add button{padding:.7rem 1rem;border:0;border-radius:.4rem;background:var(--dinkus-action-background);color:var(--dinkus-action-color);font:inherit;font-weight:800;cursor:pointer}
