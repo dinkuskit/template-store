@@ -5,7 +5,7 @@ The following table records the **historical 2026-10-06 pairing evidence**. It
 is not the current dependency list or a current release/live-install verdict.
 
 Current source pins are authoritative in [`package.json`](../package.json):
-Commerce `v0.9.0-beta.1` / `eccac2668077d951ab36dc1f6ca43c1fe2a27e50`,
+Commerce `v0.9.0-beta.2` / `b4604332d889ed5af5309fc94674c3188cd33c52`,
 `emdash`, `@emdash-cms/cloudflare`, `@emdash-cms/auth`, and
 `@emdash-cms/blocks` `1.4.0`; playground Payments `v0.5.0` /
 `4589ac818017b5a65cdde29a60aaec23aca5f795`, and playground Ship `v0.3.1` /
