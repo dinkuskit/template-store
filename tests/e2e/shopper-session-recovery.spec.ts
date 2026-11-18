@@ -95,11 +95,11 @@ test("revocation clears shared storage, another tab recovers, and a new sign-in 
   await page.reload();
   await expect(page.locator("[data-account-status]")).toHaveText(expiredMessage);
   expect(await stored(tab)).toBeNull();
-  // An already-rendered tab must recover on either profile action, not silently
-  // keep showing an account after the shared capability has been removed.
-  await tab.locator("[data-account-profile-clear]").click();
+  // Shared-state removal now clears the other tab proactively, before either
+  // profile action can be taken using a stale displayed identity.
   await expect(tab.locator("[data-account-signed-out]")).toBeVisible();
-  await expect(tab.locator("[data-account-status]")).toHaveText(expiredMessage);
+  await expect(tab.locator("[data-account-status]")).toHaveText("Your shopper session ended. Sign in again.");
+  await expect(tab.locator("[data-account-profile-phone]")).toHaveValue("");
   await tab.reload();
   await expect(tab.locator("[data-account-status]")).toBeHidden();
   await page.route("**/account/sign-in/start", route => route.fulfill({ json: { success: true, data: { ok: true } } }));
@@ -143,8 +143,9 @@ test("a late denial for an old capability cannot erase another tab's new sign-in
   const response = page.waitForResponse("**/account/orders");
   release();
   await response;
-  // Let the response handler finish before checking storage and retrying.
-  await expect(page.locator("[data-account-status]")).toBeHidden();
+  // The changed-session notice replaces the old silent stale view. The late
+  // denial must not overwrite that notice or discard the newer capability.
+  await expect(page.locator("[data-account-status]")).toContainText("changed in another tab");
   expect(await stored(page)).toEqual(newSession);
   await page.reload();
   await expect(page.locator("[data-account-signed-in]")).toBeVisible();
