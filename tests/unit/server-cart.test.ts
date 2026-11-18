@@ -27,7 +27,7 @@ import { postAdd, postChange, postUpdate } from "../../src/features/guest-cart/c
 import { loadCheckoutReturn } from "../../src/features/guest-cart/server-return.js";
 
 type Line = { catalogItemId: string; quantity: number };
-type Attempt = { attemptId: string; state: "pending" | "paid" | "released-retry"; redirectUrl: string | null };
+type Attempt = { attemptId: string; state: "pending" | "paid" | "released-retry"; redirectUrl: string | null; order?: Record<string, unknown> };
 
 /** A stand-in for Commerce's public guest routes: prepare, cart (read or versioned replace) and start. */
 function fakeCommerce() {
@@ -46,6 +46,7 @@ function fakeCommerce() {
           orderId: "order:1001", receiptId: "rcpt_1",
           lines: [{ catalogItemId: "item_hat", name: "Hat", quantity: 2, unitPrice: { currency: "USD", minor: "1500" } }],
           total: { currency: "USD", minor: "3000" },
+          ...attempt.order,
         }
       : null,
   });
@@ -417,6 +418,28 @@ describe("thank-you page", () => {
     expect(paid).toMatchObject({ kind: "paid", order: { orderNumber: "1001", totals: [{ label: "Total", amount: "$30.00" }] } });
     expect(jar.jar.get(CART_COUNT_COOKIE)).toBe("0");
     expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
+  });
+
+  it("shows where Commerce has the order now: Processing, or Completed with carrier and tracking, never delivered", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 2 });
+    const cart = commerce.carts.get("cap1")!;
+    const read = async () => {
+      const result = await loadCheckoutReturn(context(commerce, jar, { url: "https://shop.test/checkout/success" }));
+      return result.kind === "paid" ? result.order.fulfillment : "not paid";
+    };
+    cart.attempt = { attemptId: "att_1", state: "paid", redirectUrl: null };
+    expect(await read()).toBeNull();
+    cart.attempt.order = { status: "processing", completed: null };
+    expect(await read()).toEqual({ status: "Processing", carrier: null, tracking: null });
+    cart.attempt.order = { status: "completed", completed: { at: "2026-11-15T12:00:00.000Z", carrier: "USPS", tracking: "9400 1000" } };
+    expect(await read()).toEqual({ status: "Completed", carrier: "USPS", tracking: "9400 1000" });
+    cart.attempt.order = { status: "completed", completed: { at: "2026-11-15T12:00:00.000Z" } };
+    expect(await read()).toEqual({ status: "Completed", carrier: null, tracking: null });
+    // Anything else Commerce might say is no status at all.
+    cart.attempt.order = { status: "delivered", completed: { at: "x", tracking: "1" } };
+    expect(await read()).toBeNull();
   });
 
   it("reloads while the payment is confirming, then stops after the last check", async () => {
