@@ -63,10 +63,18 @@ async function submitAdd(form: HTMLFormElement, submitter: HTMLElement | null): 
   }
 }
 
-/** Send a cart-page form with fetch and swap in the cart the server drew after the change. */
-async function submitChange(form: HTMLFormElement): Promise<void> {
-  const section = form.closest("[data-server-cart]");
-  if (!section) return form.submit();
+/** A failed enhancement still uses the captured plain form; queued, unsent changes stop on navigation. */
+function submitPlainChange(form: HTMLFormElement): false {
+  form.hidden = true;
+  document.body.append(form);
+  HTMLFormElement.prototype.submit.call(form);
+  return false;
+}
+
+/** Send a captured cart-page form and replace the currently attached section, not an earlier response's node. */
+async function submitChange(form: HTMLFormElement): Promise<boolean> {
+  const section = document.querySelector("[data-server-cart]");
+  if (!section) return submitPlainChange(form);
   section.setAttribute("aria-busy", "true");
   try {
     const response = await fetch(form.action, {
@@ -77,12 +85,13 @@ async function submitChange(form: HTMLFormElement): Promise<void> {
     });
     const html = await response.text();
     const next = new DOMParser().parseFromString(html, "text/html").querySelector("[data-server-cart]");
-    if (!response.ok || !next) return form.submit();
-    section.replaceWith(next);
+    if (!response.ok || !next) return submitPlainChange(form);
+    document.querySelector("[data-server-cart]")?.replaceWith(next);
     renderCartCount();
     next.querySelector<HTMLElement>("[role=alert], [data-guest-cart-empty]")?.focus?.();
+    return true;
   } catch {
-    form.submit();
+    return submitPlainChange(form);
   }
 }
 
@@ -115,6 +124,10 @@ export function hydrateServerCartForms(): void {
   if (scope[BOUND]) return;
   scope[BOUND] = true;
   installStorefrontWebMcp({ onCartChanged: (count) => void cartChangedElsewhere(count) });
+  // Each accepted form keeps its values even when a preceding response replaces its row.
+  // Send changes in submission order: overlapping HTML responses must not redraw an older cart.
+  let changes = Promise.resolve(true);
+  let pendingChanges = 0;
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
@@ -123,7 +136,19 @@ export function hydrateServerCartForms(): void {
       void submitAdd(form, (event as SubmitEvent).submitter ?? null);
     } else if (form.matches("[data-cart-change-form]")) {
       event.preventDefault();
-      void submitChange(form);
+      const captured = form.cloneNode(true) as HTMLFormElement;
+      captured.action = form.action;
+      pendingChanges += 1;
+      document.querySelector("[data-server-cart]")?.setAttribute("aria-busy", "true");
+      changes = changes.then(async (continueEnhancing) => {
+        if (!continueEnhancing) return false;
+        const updated = await submitChange(captured);
+        pendingChanges -= 1;
+        const section = document.querySelector("[data-server-cart]");
+        if (pendingChanges > 0) section?.setAttribute("aria-busy", "true");
+        else section?.removeAttribute("aria-busy");
+        return updated;
+      });
     }
   });
   document.addEventListener("click", (event) => {
