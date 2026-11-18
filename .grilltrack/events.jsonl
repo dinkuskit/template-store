@@ -249,3 +249,5 @@
 {"action": "decision_proposed", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-timing-20261113"}, "event_id": "cedd7d93-c575-4e0d-9c29-2b48921bfbe2"}
 {"action": "decision_locked", "at": "2026-11-13T16:12:37+00:00", "data": {"decision_id": "template-cart-timing-20261113"}, "event_id": "779ef697-a54c-487e-aeb5-e481a8fa4d78"}
 {"action": "shared_understanding_confirmed", "at": "2026-11-13T16:12:37+00:00", "data": {"summary": "Ronald answered each cart question in the cart thread on 13 Nov 2026 (14:04-16:10 UTC) and on #226 in the sweep thread (15:43). Commerce-side locks: commerce-server-cart-20261113, commerce-cart-agent-writes-20261113, commerce-cart-expiry-20261113 in dinkuskit/commerce."}, "event_id": "acfe2ec5-b582-48ef-a478-cbca4b011671"}
+{"action": "decision_proposed", "at": "2026-11-15T16:28:24+00:00", "data": {"decision_id": "template-thank-you-order-status-20261115"}, "event_id": "a0dd89ee-2269-4ac4-a7ae-73cfd9571ebb"}
+{"action": "decision_locked", "at": "2026-11-15T16:28:24+00:00", "data": {"decision_id": "template-thank-you-order-status-20261115"}, "event_id": "631c1a49-5a5b-434f-8e86-ab327d069e7a"}
