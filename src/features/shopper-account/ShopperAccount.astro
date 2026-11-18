@@ -87,26 +87,31 @@ const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
 
           <label for="account-profile-name">Recipient</label>
           <input id="account-profile-name" data-account-profile-name maxlength="200" autocomplete="shipping name" />
+          <p id="account-profile-name-error" class="account-field-error" data-account-profile-error="name" role="alert" hidden></p>
 
           <label for="account-profile-line1">Address line 1</label>
           <input id="account-profile-line1" data-account-profile-line1 maxlength="200" autocomplete="shipping address-line1" />
+          <p id="account-profile-line1-error" class="account-field-error" data-account-profile-error="line1" role="alert" hidden></p>
 
           <label for="account-profile-line2">Address line 2 <span>(optional)</span></label>
           <input id="account-profile-line2" data-account-profile-line2 maxlength="200" autocomplete="shipping address-line2" />
 
           <label for="account-profile-city">City</label>
           <input id="account-profile-city" data-account-profile-city maxlength="200" autocomplete="shipping address-level2" />
+          <p id="account-profile-city-error" class="account-field-error" data-account-profile-error="city" role="alert" hidden></p>
 
           <label for="account-profile-region">State or region <span>(optional)</span></label>
           <input id="account-profile-region" data-account-profile-region maxlength="200" autocomplete="shipping address-level1" />
 
           <label for="account-profile-postal-code">Postal code</label>
           <input id="account-profile-postal-code" data-account-profile-postal-code maxlength="200" autocomplete="shipping postal-code" />
+          <p id="account-profile-postal-code-error" class="account-field-error" data-account-profile-error="postal-code" role="alert" hidden></p>
 
           <label for="account-profile-country">Country</label>
           <select id="account-profile-country" data-account-profile-country autocomplete="shipping country">
             <option value="US">United States</option>
           </select>
+          <p id="account-profile-country-error" class="account-field-error" data-account-profile-error="country" role="alert" hidden></p>
 
           <div class="account-form__actions">
             <button type="submit" data-account-profile-save>Save shipping profile</button>
@@ -272,6 +277,13 @@ const { playgroundMode = false, previewUnavailableOrigin } = Astro.props;
   .account-form {
     display: grid;
     gap: 0.55rem;
+  }
+  .account-form .account-field-error {
+    margin: 0;
+    color: var(--store-alert-ink);
+  }
+  .account-form [aria-invalid="true"] {
+    border-color: var(--store-alert-ink);
   }
   .account-verify-form {
     margin-top: 1.25rem;
