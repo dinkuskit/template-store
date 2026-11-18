@@ -6,14 +6,19 @@ import { resolve } from "node:path";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 
 import { COMMERCE_SKU_INDEX, listCatalog, openProductsList, sellProduct } from "./helpers/product-page";
+import { exerciseCartRedrawFocus } from "./helpers/cart-redraw-focus";
 
 // The cart lives in Commerce; the browser holds only its key in an HttpOnly cookie
 // (template-cart-real-form-20261113, template-cart-count-cookie-20261113).
 
-async function storeWithProduct(browser: Browser, testInfo: TestInfo, suffix: string) {
+async function storeWithProduct(browser: Browser, testInfo: TestInfo, suffix: string, openAdmin = true) {
   const adminContext = await browser.newContext({ viewport: testInfo.project.use.viewport });
   const admin = await adminContext.newPage();
-  await openProductsList(admin);
+  if (openAdmin) await openProductsList(admin);
+  else {
+    const signedIn = await adminContext.request.get("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/products");
+    expect(signedIn.ok()).toBe(true);
+  }
   expect(existsSync(".artifacts/e2e/content.db")).toBe(true);
   // The installed Commerce (the Registry build) builds its unique indexes on a fresh store's first requests.
   await expect.poll(
@@ -33,6 +38,25 @@ async function storeWithProduct(browser: Browser, testInfo: TestInfo, suffix: st
   await adminContext.close();
   return { name, sku, itemId, productPath: `/products/${sku.toLowerCase()}` };
 }
+
+test("enhanced cart redraws retain current keyboard focus without stealing it back", async ({ browser }, testInfo) => {
+  test.setTimeout(240_000);
+  const first = await storeWithProduct(browser, testInfo, "focus-first", false);
+  const second = await storeWithProduct(browser, testInfo, "focus-second", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  try {
+    for (const product of [first, second]) {
+      const response = await context.request.post("/cart/add", {
+        form: { id: product.itemId, quantity: "1" },
+        headers: { origin: new URL(testInfo.project.use.baseURL!).origin },
+      });
+      expect(response.ok()).toBe(true);
+    }
+    const shopper = await context.newPage();
+    await shopper.goto("/cart");
+    await exerciseCartRedrawFocus(shopper);
+  } finally { await context.close(); }
+});
 
 async function cookieNamed(page: Page, name: string) {
   return (await page.context().cookies()).find((cookie) => cookie.name === name);
