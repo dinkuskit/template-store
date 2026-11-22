@@ -98,8 +98,10 @@ jobs:
       - if: needs.plan.outputs.browser == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          path: .artifacts/paired-commerce
-          key: paired-commerce-${{ hashFiles('package.json') }}-${{ runner.os }}
+          path: |
+            .artifacts/paired-commerce
+            .artifacts/paired-reviews
+          key: paired-plugins-${{ hashFiles('package.json') }}-${{ runner.os }}
       - if: needs.plan.outputs.browser == 'true'
         run: bin/verify-web checks
       - if: needs.plan.outputs.browser != 'true'
@@ -149,8 +151,10 @@ jobs:
       - if: needs.plan.outputs.browser == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          path: .artifacts/paired-commerce
-          key: paired-commerce-${{ hashFiles('package.json') }}-${{ runner.os }}
+          path: |
+            .artifacts/paired-commerce
+            .artifacts/paired-reviews
+          key: paired-plugins-${{ hashFiles('package.json') }}-${{ runner.os }}
       - if: needs.plan.outputs.browser == 'true'
         run: bin/verify-web browser
         env:

@@ -34,6 +34,8 @@ pnpm prepare:sources
 # the pinned Commerce is fetched and built once per commit before Playwright starts the stores.
 if [[ "$MODE" != "quick" ]]; then
   node scripts/prepare-paired-commerce.mjs
+  # The proof store also runs the pinned DinkusKit Reviews, for the product page's stars and reviews.
+  node scripts/prepare-paired-reviews.mjs
 fi
 
 # browser runs only the build and the browser tests; checks runs everything

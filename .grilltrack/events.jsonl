@@ -268,3 +268,6 @@
 {"action": "decision_superseded", "at": "2026-11-22T16:41:17+00:00", "data": {"affected": [], "decision_id": "shopper-accounts-playground-20261020", "replacement_id": "template-order-lookup-page-20261122"}, "event_id": "9719bd3d-40fa-41ce-a7a1-9c27d5d7ba21"}
 {"action": "decision_proposed", "at": "2026-11-22T19:19:27+00:00", "data": {"decision_id": "template-review-page-20261122"}, "event_id": "ba9403e9-f35c-4528-bb64-0a36ab573295"}
 {"action": "decision_locked", "at": "2026-11-22T19:19:27+00:00", "data": {"decision_id": "template-review-page-20261122"}, "event_id": "3a9af4ca-a3f4-4910-a6a0-e26cc7cb9be9"}
+{"action": "decision_proposed", "at": "2026-11-22T20:41:06+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "ac790c01-5adc-44c4-82aa-c370e1b5883a"}
+{"action": "decision_locked", "at": "2026-11-22T20:41:06+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "cee59855-9775-4b09-82b6-678e3ab0366d"}
+{"action": "decision_proposed", "at": "2026-11-22T20:44:20+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "65f6ebf3-9d47-44e8-aa79-01532ba2ecbc"}
