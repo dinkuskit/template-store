@@ -231,6 +231,19 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
                 <span>{value}</span><span class="product-variant__sold-out"> (sold out)</span>
               </label>)}
             </fieldset>)}
+            {variants.length > 0 && <noscript>
+              <style is:inline>[data-product-variants]{display:none!important}</style>
+              <form method="get" action={Astro.url.pathname} class="product-options-fallback" data-product-options-fallback>
+                <label for="product-option">Product option</label>
+                <p id="product-option-help">View an option to check its price and availability before adding it.</p>
+                <select id="product-option" name="variant" aria-describedby="product-option-help">
+                  {variants.map(member => <option value={member.id} selected={member.id === selectedVariant?.id}>
+                    {member.selections.map(([, value]) => value).join(" / ")} — {member.priceText} · {availabilityLabels[member.availability.status]}
+                  </option>)}
+                </select>
+                <button type="submit">View option</button>
+              </form>
+            </noscript>}
             {variantMembers.length > 0 && <script type="application/json" data-variant-members set:html={jsonLdScript(variantMembers)} />}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
@@ -373,6 +386,13 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
   .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
   .product-detail__notice{line-height:1.5;color:var(--store-muted)}
   .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
+  .product-options-fallback{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin:1rem 0}
+  .product-options-fallback label{flex-basis:100%;font-weight:800}
+  .product-options-fallback p{flex-basis:100%;margin:0;color:var(--store-muted);line-height:1.5}
+  .product-options-fallback select{width:14rem;max-width:100%;min-height:44px;padding:.5rem;background:var(--store-surface);color:var(--store-ink);border:1.5px solid currentColor;border-radius:.4rem;font:inherit}
+  .product-options-fallback button{min-height:44px;padding:.7rem 1rem;border:1.5px solid currentColor;border-radius:.4rem;background:var(--store-surface);color:var(--store-ink);font:inherit;font-weight:800;cursor:pointer}
+  .product-options-fallback button:hover{background:var(--store-surface-subtle)}
+  .product-options-fallback button:active{transform:translateY(1px)}
   .product-variants{display:flex;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}
   .product-variant{display:inline-flex;min-height:44px;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
   .product-variant__sold-out{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
