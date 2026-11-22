@@ -33,7 +33,7 @@ export const FALLBACK_FOOTER_SHOP_LINKS: readonly Pick<StoreMenuItem, "label" | 
 export const FALLBACK_FOOTER_POLICIES_LINKS: readonly Pick<StoreMenuItem, "label" | "url">[] = [
   { label: "Shipping", url: "/shipping" },
   { label: "Returns", url: "/returns" },
-  { label: "Account", url: "/account" },
+  { label: "Track order", url: "/track-order" },
   { label: "Shopping bag", url: "/cart" },
   { label: "Search", url: "/search" },
 ];

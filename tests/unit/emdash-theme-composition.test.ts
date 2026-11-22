@@ -33,7 +33,7 @@ const PUBLIC_STOREFRONT_PAGES = [
   "src/pages/products/[id].astro",
   "src/pages/cart.astro",
   "src/pages/checkout/index.astro",
-  "src/pages/account.astro",
+  "src/pages/track-order.astro",
   "src/pages/checkout/success.astro",
   "src/pages/shipping.astro",
   "src/pages/returns.astro",

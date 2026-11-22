@@ -16,7 +16,7 @@ for (const feature of [
   "dinkus.managed-product-availability",
   "dinkus.unmanaged-product-sellability",
   "dinkus.guest-cart",
-  "dinkus.shopper-account",
+  "dinkus.order-lookup",
   "dinkus.test-checkout-host",
   "dinkus.paired-checkout-consumer",
 ]) {
@@ -97,10 +97,10 @@ for (const path of [
   "src/features/guest-cart/index.ts",
   "src/features/guest-cart/GuestCheckout.astro",
   "src/pages/checkout/index.astro",
-  "src/features/shopper-account/index.ts",
-  "src/features/shopper-account/ui.ts",
+  "src/features/order-lookup/index.ts",
+  "src/features/order-lookup/ui.ts",
+  "src/pages/track-order.astro",
   "src/pages/account.astro",
-  "src/pages/api/account/demo-session.ts",
   "src/features/test-checkout-host/index.ts",
   "src/features/paired-checkout/index.ts",
   "scripts/verify-checkout-package.mjs",
@@ -154,11 +154,10 @@ for (const relative of [
   "src/pages/cart.astro",
   "src/pages/checkout/index.astro",
   "src/pages/account.astro",
+  "src/pages/track-order.astro",
   "src/pages/api/guest-cart/snapshot.ts",
-  "src/pages/api/account/demo-session.ts",
   "src/pages/api/proof/stock.ts",
   "src/pages/api/proof/unmanaged-availability.ts",
-  "src/pages/api/proof/shopper-account.ts",
 ]) {
   const source = readFileSync(resolve(root, relative), "utf8");
   if (
