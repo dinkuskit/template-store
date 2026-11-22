@@ -4236,6 +4236,22 @@
           "review_source_identity": null,
           "to": "verified",
           "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
+        },
+        {
+          "at": "2026-11-22T16:41:17+00:00",
+          "choice": "Pin @dinkuskit/commerce c42597bddd35d949f4e69f8ca97cc26206200da0; add Account link in StoreHeader and /account page with 6-digit OTP sign-in, matching paid order history, and saved shipping address + phone editor; prefill /cart contact and delivery fields from active shopper profile; keep playground.dinkuskit.com immediately browsable with two /account sign-in paths: (1) Verified Email + Updates Opt-In sending real 6-digit OTP via Cloudflare EMAIL (send_email) and recording verified opt-in emails to PLAYGROUND_LEADS_DB (D1), and (2) Opt-Out Instant Demo Sign-In signing straight into shopper@example.com with a pre-seeded demo order and zero D1 lead logging.",
+          "from": "verified",
+          "implementation_ref": "src/pages/api/account/demo-session.ts",
+          "note": "Shopper accounts moved out of Commerce into the Accounts plugin (commerce-order-lookup-20261122); until Accounts ships, the template shows an order lookup page at /track-order and /account redirects there.",
+          "repair_required": false,
+          "review_classifications": [
+            "reject_false_positive"
+          ],
+          "review_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md",
+          "review_result": "findings",
+          "review_source_identity": "git:ab93cf76f2dab73d5edb4a47c4782a9443d96a03",
+          "to": "superseded",
+          "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
         }
       ],
       "id": "shopper-accounts-playground-20261020",
@@ -4287,9 +4303,9 @@
       "review_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md",
       "review_result": "findings",
       "review_source_identity": "git:ab93cf76f2dab73d5edb4a47c4782a9443d96a03",
-      "status": "verified",
-      "superseded_by": null,
-      "updated_at": "2026-10-21T13:56:06+00:00",
+      "status": "superseded",
+      "superseded_by": "template-order-lookup-page-20261122",
+      "updated_at": "2026-11-22T16:41:17+00:00",
       "verification_ref": ".grilltrack/proof/shopper-accounts-playground-20261020/PROOF.md"
     },
     {
@@ -6545,9 +6561,50 @@
     {
       "baseline_ref": null,
       "candidate_refs": [],
+      "choice": "A server-drawn Track your order page at /track-order (order number + checkout email, a plain form that posts to itself and asks Commerce's orders/lookup inside the server, no script; Commerce limits wrong guesses). The header link reads Track order. The old /account sign-in, saved address, order history, checkout prefill and the playground's emailed-PIN lead sign-up and instant demo sign-in are removed; /account answers a temporary 302 to /track-order so existing Account menu links keep working with no seed change, until the Accounts plugin brings sign-in back to /account.",
+      "context_ref": "dinkuskit/commerce GrillTrack commerce-order-lookup-20261122",
+      "created_at": "2026-11-22T16:41:17+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-22T16:41:17+00:00",
+          "choice": "A server-drawn Track your order page at /track-order (order number + checkout email, a plain form that posts to itself and asks Commerce's orders/lookup inside the server, no script; Commerce limits wrong guesses). The header link reads Track order. The old /account sign-in, saved address, order history, checkout prefill and the playground's emailed-PIN lead sign-up and instant demo sign-in are removed; /account answers a temporary 302 to /track-order so existing Account menu links keep working with no seed change, until the Accounts plugin brings sign-in back to /account.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-order-lookup-page-20261122",
+      "implementation_ref": null,
+      "question": "Where does the store's order lookup page live, and what happens to the old shopper account page until the Accounts plugin ships?",
+      "rationale": "The owner chose two steps on 2026-11-22 (Commerce drops its shopper code first, the template follows to beta with it) and chose /track-order on 2026-11-22 over /tracking and /track: WooCommerce ships its order tracking form without a page, and its themes and docs make that page /track-order; Shopify has no built-in guest lookup and its tracking apps add a track-order page. The owner did not want the lookup at /account.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T16:41:17+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
       "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
       "context_ref": null,
-      "created_at": "2026-11-22T18:42:09+00:00",
+      "created_at": "2026-11-22T20:15:39+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -6556,7 +6613,7 @@
       "domain": "agent catalog feed listing",
       "history": [
         {
-          "at": "2026-11-22T18:42:09+00:00",
+          "at": "2026-11-22T20:15:39+00:00",
           "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
           "from": "proposed",
           "implementation_ref": null,
@@ -6582,7 +6639,7 @@
       "review_source_identity": null,
       "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-22T18:42:09+00:00",
+      "updated_at": "2026-11-22T20:15:39+00:00",
       "verification_ref": null
     }
   ],
@@ -6606,5 +6663,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T18:42:09+00:00"
+  "updated_at": "2026-11-22T20:15:39+00:00"
 }

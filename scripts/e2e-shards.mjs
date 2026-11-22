@@ -22,8 +22,6 @@ const NAMED = [
     "structured-data-policy-feed",
     "home-opener-section",
     "cms-pages-and-redirects",
-    "shopper-code-input",
-    "shopper-order-shipment",
   ],
   [
     "admin-product-categories",
@@ -31,12 +29,11 @@ const NAMED = [
     "merch-catalog",
     "managed-product-availability",
     "store-footer-contrast",
-    "shopper-account",
+    "order-lookup",
   ],
   [
     "upstream-blocks",
     "unmanaged-product-sellability",
-    "shopper-session-recovery",
     "store-header-nav",
     "product-pages",
   ],
@@ -73,5 +70,5 @@ if (!/^[1-9][0-9]*$/u.test(arg ?? "") || shard > SHARDS) {
   process.exit(2);
 }
 // Playwright reads each argument as a regular expression over the spec path, so
-// anchor it: shopper-account must not also select shopper-account-contrast.
+// anchor it: one name must not also select a longer name that starts with it.
 for (const file of plan(shard)) console.log(`tests/e2e/${file}\\.spec\\.ts$`);
