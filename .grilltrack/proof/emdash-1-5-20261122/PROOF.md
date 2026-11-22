@@ -21,6 +21,13 @@ EmDash 1.5 names plugin unique indexes `uidx_plugin_` plus a SHA-256 prefix. On 
 the catalog's two indexes are `uidx_plugin_914b72f0…` (`commandId`) and `uidx_plugin_617097d8…` (`skuKey`),
 which `tests/e2e/helpers/plugin-index.ts` computes. The browser tests now wait for those names.
 
+## A filled 1.4.0 store upgraded
+
+`upgrade-from-1-4-0.md`: a store filled on main (EmDash 1.4.0, Commerce 0.9.0-beta.2) was started on this
+build. 1.5 applied 092-097 and renamed Commerce's unique indexes. Every product, page answer, catalog entry
+and Commerce storage count read the same before and after. New products, carts and checkout then worked on
+it, and a duplicate SKU was still refused with Commerce's own message.
+
 ## Checks
 
 `bin/verify-web checks` passed: `astro check`, `vitest run` (unit tests), the workflow tests, the
