@@ -88,6 +88,11 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
         <label for="guest-cart-email">Email</label>
         <input id="guest-cart-email" name="email" data-guest-cart-email type="email" maxlength="254" autocomplete="email" value={value("email")} {...invalidAttrs("email")} />
         {fieldError("email") && <p id={errorId("email")} data-guest-cart-contact-error="email" role="alert">{fieldError("email")}</p>}
+        {/* Starts unticked (commerce-abandoned-cart-email-20261122); a refused post keeps the shopper's choice. */}
+        <label class="guest-cart-news" data-guest-cart-news-row>
+          <input type="checkbox" name="news" data-guest-cart-news checked={value("news") === "on"} />
+          Email me with news and offers
+        </label>
         {view.needsDelivery && (
           <div class="guest-cart-delivery" data-guest-cart-delivery>
             <h2>Delivery address</h2>
@@ -225,6 +230,8 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
   .guest-cart-delivery[hidden]{display:none}
   .guest-cart-contact .guest-cart-billing-same{display:flex;gap:.5rem;align-items:center;margin-top:.75rem;font-weight:600}
   .guest-cart-contact .guest-cart-billing-same input{width:auto}
+  .guest-cart-contact .guest-cart-news{display:flex;gap:.5rem;align-items:center;margin-top:.75rem;font-weight:600}
+  .guest-cart-contact .guest-cart-news input{width:auto}
   .guest-cart-contact .guest-cart-billing-same[hidden]{display:none}
   .guest-cart-coupon{display:grid;gap:.5rem;margin:0 0 1.25rem;padding:1rem;border:1px dashed #3c4c6b;border-radius:.6rem;color:#b8c0cf;background:#11192a}
   .guest-cart-coupon label{font-weight:700;color:#f7f4ee}

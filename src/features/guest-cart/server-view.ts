@@ -6,7 +6,7 @@ import {
   type GuestCartCatalogSnapshot,
   type GuestCartView,
 } from "./present.js";
-import { cartErrorText, readServerCart, type ServerCartContext, type ServerCartResult } from "./server-cart.js";
+import { cartErrorText, cartKeyId, readServerCart, type ServerCartContext, type ServerCartResult } from "./server-cart.js";
 
 export type ServerCartPage = Readonly<{
   result: ServerCartResult;
@@ -16,6 +16,8 @@ export type ServerCartPage = Readonly<{
   openPayment: string | null;
   notice: string | null;
   error: string | null;
+  /** Arrived from the abandoned cart email's stop link: the cart it opened, which the confirmation names. */
+  askStop: string | null;
 }>;
 
 /** The Stripe page an open payment waits on; only Stripe's own checkout host is ever linked. */
@@ -61,13 +63,16 @@ export async function loadServerCartPage(ctx: ServerCartContext, checkoutAdmitte
   });
   const errorCode = ctx.url.searchParams.get("cart_error");
   const added = ctx.url.searchParams.get("added");
+  const stop = ctx.url.searchParams.get("stop");
   const unreadable = !result.ok && result.error.code !== "NO_CART";
   return {
     result,
     view,
     snapshots,
     openPayment: openPaymentUrl(result),
-    notice: added && /^\d{1,2}$/u.test(added) ? "Added to your cart." : null,
+    notice: added && /^\d{1,2}$/u.test(added) ? "Added to your cart."
+      : ctx.url.searchParams.has("stopped") ? "Done. You won't get cart reminder emails from this store again." : null,
+    askStop: stop && cartKeyId(stop) === stop ? stop : null,
     error: errorCode && /^[A-Z_]{2,40}$/u.test(errorCode)
       ? cartErrorText(errorCode)
       : unreadable ? cartErrorText(result.ok ? "UNAVAILABLE" : result.error.code) : null,

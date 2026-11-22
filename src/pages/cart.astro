@@ -2,6 +2,7 @@
 import StoreFooter from "../features/store-shell/StoreFooter.astro";
 import StoreHeader from "../features/store-shell/StoreHeader.astro";
 import { GuestCart } from "../features/guest-cart/ui.ts";
+import { loadServerCartPage } from "../features/guest-cart/server-view.js";
 import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
 import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
 import SandboxCheckoutNotice from "../features/playground-checkout/SandboxCheckoutNotice.astro";
@@ -23,6 +24,13 @@ const sandboxCheckout = showsSandboxCheckoutNotice(gate);
 // Only a configured playground session admits checkout; everything else stays closed.
 const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)));
 const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
+const cartAdmission = playgroundAdmission ?? (isPlayground ? undefined : checkoutAdmission ?? undefined);
+// Read here, not inside the cart component: reading the cart may correct the cart cookies, which only the page's
+// own frontmatter can still do once the response starts streaming.
+const cartPage = await loadServerCartPage(
+  { locals: Astro.locals, request: Astro.request, url: Astro.url, cookies: Astro.cookies },
+  Boolean(cartAdmission),
+);
 ---
 <!doctype html>
 <html lang="en">
@@ -36,7 +44,7 @@ const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
     <StoreHeader profile={profile} />
     <main>
       {sandboxCheckout && <SandboxCheckoutNotice />}
-      <GuestCart checkoutAdmission={playgroundAdmission ?? (isPlayground ? undefined : checkoutAdmission ?? undefined)} />
+      <GuestCart checkoutAdmission={cartAdmission} page={cartPage} />
     </main>
     <StoreFooter profile={profile} />
   </body>
