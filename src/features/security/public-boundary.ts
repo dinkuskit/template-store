@@ -55,8 +55,9 @@ export function isStorefrontPagePath(pathname: string): boolean {
 
 const GUEST_CHECKOUT_POST_PATH =
   new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/checkout/guest/(prepare|cart|start)$`);
-// The store site's own cart and checkout forms (template-cart-real-form-20261113), Shopify's paths.
-const STORE_CART_POST_PATH = /^\/cart\/(?:(?:add|change)(?:\.js)?|update\.js)$/;
+// The store site's own cart and checkout forms (template-cart-real-form-20261113), Shopify's paths, and the
+// abandoned cart email's stop confirmation (commerce-abandoned-cart-email-20261122).
+const STORE_CART_POST_PATH = /^\/cart\/(?:(?:add|change)(?:\.js)?|update\.js|stop)$/;
 const STORE_CHECKOUT_FORM_PATH = /^\/checkout$/;
 // The order lookup form posts to its own page, which asks Commerce inside the server (commerce-order-lookup-20261122).
 const STORE_ORDER_LOOKUP_FORM_PATH = /^\/track-order$/;

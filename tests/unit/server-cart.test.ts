@@ -23,7 +23,7 @@ import {
   startServerCheckout,
   type ServerCartContext,
 } from "../../src/features/guest-cart/server-cart.js";
-import { postAdd, postChange, postUpdate } from "../../src/features/guest-cart/cart-routes.js";
+import { getPickUp, postAdd, postChange, postStop, postUpdate } from "../../src/features/guest-cart/cart-routes.js";
 import { loadCheckoutReturn } from "../../src/features/guest-cart/server-return.js";
 
 type Line = { catalogItemId: string; quantity: number };
@@ -202,6 +202,14 @@ describe("server cart", () => {
     expect(commerce.calls.find((call) => call.route === "start")?.body).toEqual({ contact: { email: "a@example.test" } });
     expect(await startServerCheckout(context(commerce, fakeCookies()), { email: "a@example.test" })).toMatchObject({ ok: false, error: { code: "NO_CART" } });
   });
+
+  it("sends the news tick only when the shopper ticked it (commerce-abandoned-cart-email-20261122)", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 1 });
+    await startServerCheckout(context(commerce, jar), { email: "a@example.test" }, true);
+    expect(commerce.calls.find((call) => call.route === "start")?.body).toEqual({ contact: { email: "a@example.test" }, news: true });
+  });
 });
 
 describe("store forms", () => {
@@ -239,6 +247,17 @@ describe("store forms", () => {
     expect(readContactForm(form, true).error).toMatchObject({ field: "delivery[region]" });
     form.set("email", "nope");
     expect(readContactForm(form, true)).toMatchObject({ contact: null, error: { field: "email" }, values: { email: "nope" } });
+  });
+
+  it("reads the unticked news box as no, and keeps a tick on a refused post", () => {
+    const form = new FormData();
+    form.set("email", "a@example.test");
+    for (const [field, value] of Object.entries({ name: "Bill", line1: "9 Way", city: "Billtown", postalCode: "00009", country: "US" })) form.set(`billing[${field}]`, value);
+    expect(readContactForm(form, false)).toMatchObject({ error: null, news: false, values: { news: "" } });
+    form.set("news", "on");
+    expect(readContactForm(form, false)).toMatchObject({ error: null, news: true });
+    form.set("email", "");
+    expect(readContactForm(form, false)).toMatchObject({ error: { field: "email" }, values: { news: "on" } });
   });
 
   it("takes writes only from this store", () => {
@@ -460,5 +479,59 @@ describe("thank-you page", () => {
     expect(await loadCheckoutReturn(context(commerce, jar, { url: "https://shop.test/checkout/success" })))
       .toEqual({ kind: "not-paid", redirect: "/cart?cart_error=NOT_PAID" });
     expect(await loadCheckoutReturn(context(commerce, fakeCookies(), { url: "https://shop.test/checkout/success" }))).toEqual({ kind: "no-cart" });
+  });
+});
+
+describe("abandoned cart email links (commerce-abandoned-cart-email-20261122)", () => {
+  function getContext(commerce: ReturnType<typeof fakeCommerce>, jar: ReturnType<typeof fakeCookies>, path: string, id: string) {
+    const ctx = context(commerce, jar, { url: `https://shop.test${path}` });
+    return { ...ctx, params: { id } } as never;
+  }
+
+  it("makes the email's cart this browser's cart and opens it", async () => {
+    const commerce = fakeCommerce();
+    await addToServerCart(context(commerce, fakeCookies()), { catalogItemId: "item_hat", quantity: 2 });
+    const jar = fakeCookies({ [CART_COOKIE]: "other.secret" });
+    const picked = await getPickUp(getContext(commerce, jar, "/cart/c/cap1?key=secret", "cap1"));
+    expect(picked.status).toBe(303);
+    expect(picked.headers.get("location")).toBe("/cart");
+    expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
+    expect(jar.set.find((cookie) => cookie.name === CART_COOKIE)?.options).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/" });
+    expect(jar.jar.get(CART_COUNT_COOKIE)).toBe("2");
+    const stop = await getPickUp(getContext(commerce, fakeCookies(), "/cart/c/cap1?key=secret&stop=1", "cap1"));
+    expect(stop.headers.get("location")).toBe("/cart?stop=cap1");
+  });
+
+  it("opens the cart page and keeps the browser's own cart when Commerce refuses the link", async () => {
+    const commerce = fakeCommerce();
+    for (const [path, id] of [["/cart/c/cap9?key=secret", "cap9"], ["/cart/c/cap1?key=bad%20key", "cap1"], ["/cart/c/cap1", "cap1"]]) {
+      const jar = fakeCookies({ [CART_COOKIE]: "mine.secret" });
+      const answer = await getPickUp(getContext(commerce, jar, path, id));
+      expect(answer.headers.get("location")).toBe("/cart");
+      expect(jar.jar.get(CART_COOKIE)).toBe("mine.secret");
+    }
+  });
+
+  it("stops cart reminder emails only when the shopper confirms from this store, for the cart the link opened", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 1 });
+    const confirm = (cart: string | null) => { const form = new FormData(); if (cart !== null) form.set("cart", cart); return form; };
+    const stops = () => commerce.calls.filter((call) => "stop" in call.body).length;
+    const cross = await postStop(apiContext(commerce, jar, "/cart/stop", confirm("cap1"), { origin: "https://evil.test" }));
+    expect(cross.headers.get("location")).toBe("/cart?cart_error=INVALID_CART");
+    // Another email's link replaced this browser's cart after the stop page opened: nothing is stopped.
+    for (const cart of ["cap2", null, "cap1.secret"]) {
+      const changed = await postStop(apiContext(commerce, jar, "/cart/stop", confirm(cart)));
+      expect(changed.headers.get("location")).toBe("/cart?cart_error=STOP_LINK");
+    }
+    expect(stops()).toBe(0);
+    const stopped = await postStop(apiContext(commerce, jar, "/cart/stop", confirm("cap1")));
+    expect(stopped.headers.get("location")).toBe("/cart?stopped=1");
+    expect(commerce.calls.at(-1)).toEqual({ route: "cart", body: { stop: true }, key: "cap1.secret" });
+    // A key Commerce refuses (unknown or revoked) stops nothing.
+    const refused = await postStop(apiContext(commerce, fakeCookies({ [CART_COOKIE]: "cap9.secret" }), "/cart/stop", confirm("cap9")));
+    expect(refused.headers.get("location")).toBe("/cart?cart_error=STOP_EXPIRED");
+    expect(stops()).toBe(2);
   });
 });

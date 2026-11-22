@@ -51,7 +51,7 @@ if (Astro.request.method === "POST") {
     values = read.values;
     error = { field: null, message: page.view.checkoutReason };
   } else {
-    const started = await startServerCheckout(cartContext, read.contact);
+    const started = await startServerCheckout(cartContext, read.contact, read.news);
     if (started.ok && started.checkout.state === "paid") return Astro.redirect("/checkout/success", 303);
     const payment = started.ok ? openPaymentUrl(started) : null;
     if (payment) return Astro.redirect(payment, 303);
