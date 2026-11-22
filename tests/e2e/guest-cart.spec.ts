@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 
+import type { DinkusStorefrontActions } from "../../src/features/guest-cart/webmcp";
 import { COMMERCE_SKU_INDEX, listCatalog, openProductsList, sellProduct } from "./helpers/product-page";
 
 // The cart lives in Commerce; the browser holds only its key in an HttpOnly cookie
@@ -273,6 +274,59 @@ test("a second cart change is ignored until the saved cart is drawn", async ({ b
     expect(changesSent).toBe(1);
   } finally {
     release();
+    await context.close();
+  }
+});
+
+test("a WebMCP change redraws the cart after a held shopper save", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const { itemId } = await storeWithProduct(browser, testInfo, "lock-webmcp", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  const held = Promise.withResolvers<void>();
+  const saved = Promise.withResolvers<void>();
+  try {
+    const added = await context.request.post("/cart/add", {
+      form: { id: itemId, quantity: "1" },
+      headers: { origin: new URL(testInfo.project.use.baseURL!).origin, accept: "text/html" },
+    });
+    expect(added.ok()).toBe(true);
+    const shopper = await context.newPage();
+    await shopper.goto("/cart");
+    await shopper.waitForFunction(() => "Dinkus" in window);
+    const section = shopper.locator("[data-server-cart]");
+    const quantity = section.locator("[data-guest-cart-qty]");
+    const subtotal = section.locator("[data-guest-cart-subtotal-amount]");
+    await shopper.route("**/cart/change", async (route) => {
+      // Commerce has saved 3 and the server has drawn that cart, but the browser has neither result yet.
+      const response = await route.fetch();
+      expect(response.ok()).toBe(true);
+      saved.resolve();
+      await held.promise;
+      await route.fulfill({ response });
+    });
+    await quantity.fill("3");
+    await section.getByRole("button", { name: "Update" }).click();
+    await saved.promise;
+    await expect(section).toHaveAttribute("aria-busy", "true");
+
+    const agent = await shopper.evaluate(async (id) => {
+      const { Dinkus } = window as unknown as { Dinkus: { actions: DinkusStorefrontActions } };
+      const before = await Dinkus.actions.getCart();
+      if (!before.ok || before.itemCount !== 3) throw new Error("The agent must see the saved shopper update first");
+      return Dinkus.actions.updateCart({ version: before.version, lines: [{ id, quantity: 5 }] });
+    }, itemId);
+    expect(agent).toMatchObject({ ok: true, cart: { itemCount: 5, subtotalMinor: 12000 } });
+    await expect(quantity).toBeDisabled();
+    held.resolve();
+
+    const wire = await (await context.request.get("/cart.js")).json();
+    expect(wire).toMatchObject({ ok: true, cart: { itemCount: 5, lines: [{ catalogItemId: itemId, quantity: 5 }] } });
+    await expect(quantity).toBeEnabled();
+    await expect(quantity).toHaveValue(String(wire.cart.lines[0].quantity));
+    await expect(subtotal).toHaveText("$120.00");
+    await expect(shopper.locator("[data-guest-cart-count]").first()).toHaveText(String(wire.cart.itemCount));
+  } finally {
+    held.resolve();
     await context.close();
   }
 });

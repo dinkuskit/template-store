@@ -90,21 +90,6 @@ async function submitChange(form: HTMLFormElement): Promise<void> {
   }
 }
 
-/** An agent changed the cart: follow it in the badge and, on the cart page, redraw the cart. */
-async function cartChangedElsewhere(count: number): Promise<void> {
-  renderCartCount(count);
-  const section = document.querySelector("[data-server-cart]");
-  if (!section) return;
-  try {
-    const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
-    const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
-    // Do not swap out the disabled controls while a shopper change is saving.
-    if (response.ok && next && !section.hasAttribute("aria-busy")) section.replaceWith(next);
-  } catch {
-    // The next visit draws the current cart.
-  }
-}
-
 function stepQuantity(button: HTMLElement): void {
   const input = button.closest("[data-add-to-cart-root]")?.querySelector<HTMLInputElement>("[data-add-to-cart-qty]");
   if (!input) return;
@@ -119,8 +104,31 @@ export function hydrateServerCartForms(): void {
   renderCartCount();
   if (scope[BOUND]) return;
   scope[BOUND] = true;
-  installStorefrontWebMcp({ onCartChanged: (count) => void cartChangedElsewhere(count) });
   let savingChange = false;
+  let redrawAfterSave = false;
+
+  async function redrawCart(): Promise<void> {
+    const section = document.querySelector("[data-server-cart]");
+    if (!section) return;
+    if (savingChange) {
+      redrawAfterSave = true;
+      return;
+    }
+    try {
+      const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
+      const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
+      // A save may have started while the refresh was fetching. Don't replace its locked controls.
+      if (savingChange) redrawAfterSave = true;
+      else if (response.ok && next) section.replaceWith(next);
+    } catch {
+      // The next visit draws the current cart.
+    }
+  }
+
+  installStorefrontWebMcp({ onCartChanged: (count) => {
+    renderCartCount(count);
+    void redrawCart();
+  } });
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
@@ -147,6 +155,10 @@ export function hydrateServerCartForms(): void {
         section.removeAttribute("aria-busy");
         for (const control of controls) control.disabled = false;
         savingChange = false;
+        if (redrawAfterSave) {
+          redrawAfterSave = false;
+          void redrawCart();
+        }
       });
     }
   });
