@@ -90,7 +90,6 @@ export function registryConfig(env) {
       DINKUS_CATALOG_PROFILE: "shipping",
       DINKUS_STOREFRONT_PROFILE: "shipping",
       DINKUS_PROOF_MODE: "0",
-      DINKUS_LAUNCH_INDEXABLE: "0",
       DINKUS_EMDASH_ADMIN_ENABLED: adminEnabled,
       EMDASH_SITE_URL: siteUrl.origin,
       DINKUS_REGISTRY_ACCESS_ENABLED: accessOptions ? "1" : "0",

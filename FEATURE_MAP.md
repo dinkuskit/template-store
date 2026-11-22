@@ -48,9 +48,14 @@ Commerce holds which page sells it: product pages have no Commerce product box
 slugs are editorial URL input, never identity. Duplicate or invalid published
 links fail closed. `/shop/{id}`, legacy category digests, `/home`, and slash
 variants are redirect inputs only, and redirect responses are `302`/`no-store`
-until verified for a later `301`. Demos, previews, and staging are noindex by
-default; a real merchant store must explicitly set
-`DINKUS_LAUNCH_INDEXABLE=1`. Noindex controls search visibility, not access.
+until verified for a later `301`. EmDash's Go live (Settings > General) is the
+store's one search-engine switch (GrillTrack template-site-visibility-20261122,
+`src/features/site-visibility`): while the store is in staging every storefront
+response carries `X-Robots-Tag: noindex, nofollow`; once Live, none does. A new
+store and a store upgraded to EmDash 1.5 start in staging (storefront upgrade
+`007_start_in_staging`); the proof storefront and the playground are always
+noindex. `DINKUS_LAUNCH_INDEXABLE` is retired. Noindex controls search
+visibility, not access.
 
 Category pages honor the CMS's ordered **Products in this category** references,
 read through the SDK's published/edit-preview reference query and all of its
