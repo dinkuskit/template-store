@@ -1,0 +1,30 @@
+---
+import { REVIEWS_ANCHOR, ratingText, starFill, type ProductRatingView } from "./index.js";
+
+interface Props {
+  rating: ProductRatingView;
+}
+
+// The rating under the product's title, as Shopify's Dawn theme shows it: stars, "4.5 / 5" and the count,
+// and the count leads to the reviews as WooCommerce's does (template-product-rating-20261122).
+const { rating } = Astro.props;
+const fill = starFill(rating.value);
+const label = `${ratingText(rating.value)} out of 5 stars, ${rating.count} ${rating.count === 1 ? "review" : "reviews"}`;
+---
+<p class="product-rating" data-product-rating={ratingText(rating.value)} data-product-rating-count={rating.count}>
+  <span class="product-rating__stars" role="img" aria-label={label}>
+    <span aria-hidden="true">{"★".repeat(fill.full)}{fill.half ? <span class="product-rating__half">★</span> : null}<span class="product-rating__empty">{"★".repeat(fill.empty)}</span></span>
+  </span>
+  <span aria-hidden="true">{ratingText(rating.value)} / 5</span>
+  <a href={`#${REVIEWS_ANCHOR}`} aria-label={`Read ${rating.count} ${rating.count === 1 ? "review" : "reviews"}`}>({rating.count})</a>
+</p>
+
+<style>
+  .product-rating{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.25rem 0 .75rem;color:var(--store-muted);font-size:.95rem}
+  .product-rating__stars{color:var(--store-ink);font-size:1.15rem;letter-spacing:.05em;line-height:1}
+  .product-rating__empty,.product-rating__half{color:color-mix(in srgb,var(--store-ink) 25%,transparent)}
+  .product-rating__half{position:relative;display:inline-block}
+  .product-rating__half::before{content:"★";position:absolute;inset:0 auto 0 0;width:50%;overflow:hidden;color:var(--store-ink)}
+  .product-rating a{color:inherit;display:inline-flex;align-items:center;min-height:44px;min-width:44px}
+  .product-rating a:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
+</style>

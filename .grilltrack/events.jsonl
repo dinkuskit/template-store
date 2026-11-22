@@ -276,7 +276,11 @@
 {"action": "decision_implemented", "at": "2026-11-22T20:37:30+00:00", "data": {"decision_id": "template-site-visibility-20261122"}, "event_id": "3c7e6eeb-8e51-45cc-8e61-7cafba0b811f"}
 {"action": "focus_started", "at": "2026-11-22T20:37:30+00:00", "data": {"cadence": "sequential", "domain": "agent catalog feed listing"}, "event_id": "2afeedae-4a42-4dd2-a445-d0dabb7c0f62"}
 {"action": "shared_understanding_confirmed", "at": "2026-11-22T20:37:30+00:00", "data": {"summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."}, "event_id": "7da9c77c-81bc-49a8-b1a7-5ee3a9c69e48"}
-{"action": "decision_proposed", "at": "2026-11-22T21:19:34+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "993ea3b1-b98a-4112-bdb7-2fc78b79be4f"}
-{"action": "decision_locked", "at": "2026-11-22T21:19:35+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "0054040c-f5b1-46ad-afb7-77240cfa46e4"}
-{"action": "decision_proposed", "at": "2026-11-22T21:19:35+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "e6fdb4ae-59a0-443d-849c-b208f08c787a"}
-{"action": "decision_locked", "at": "2026-11-22T21:19:35+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "cd7c5124-5017-4c65-9716-9da05c164729"}
+{"action": "decision_proposed", "at": "2026-11-22T21:16:42+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "35520242-d912-4d83-a3a4-a857812a82dc"}
+{"action": "decision_locked", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "950de504-adac-4c24-9316-406e7678780d"}
+{"action": "decision_proposed", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "93be8361-1b4a-4092-b668-882bba3ed02e"}
+{"action": "decision_locked", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "e5f17cf4-994b-4ed2-b1fa-1ad7f6f58ba8"}
+{"action": "decision_proposed", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "f216dd0d-a824-446c-acf8-5b1cfe0841e1"}
+{"action": "decision_locked", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "92e01969-ff9c-4520-815d-94b27a766261"}
+{"action": "decision_proposed", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "7ad25633-cde2-44aa-b38b-fd5ea868155f"}
+{"action": "decision_locked", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "8746e8d0-6566-4972-8ea6-974cddd0e9d4"}

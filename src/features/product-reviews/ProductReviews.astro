@@ -1,0 +1,49 @@
+---
+import { REVIEWS_ANCHOR, moreReviewsHref, reviewsHeading, type ProductReviewsView } from "./index.js";
+
+interface Props {
+  view: ProductReviewsView;
+  productName: string;
+}
+
+// The product's published reviews below the product, drawn on the server, newest first, a page at a time
+// (template-product-reviews-list-20261122). Every review is from a buyer of the product, and says so.
+const { view, productName } = Astro.props;
+const ANONYMOUS = "Verified buyer";
+---
+<section class="product-reviews" id={REVIEWS_ANCHOR} data-product-reviews={view.rating.count} aria-labelledby="product-reviews-title">
+  <h2 id="product-reviews-title">{reviewsHeading(view.rating.count, productName)}</h2>
+  <ol>
+    {view.reviews.map((review) => (
+      <li class="product-review" data-product-review={review.id}>
+        <p class="product-review__stars" role="img" aria-label={`${review.stars} out of 5 stars`}><span aria-hidden="true">{"★".repeat(review.stars)}<span class="product-review__empty">{"★".repeat(5 - review.stars)}</span></span></p>
+        <p class="product-review__meta">
+          <strong>{review.name}</strong>
+          {review.name !== ANONYMOUS && <span data-product-review-verified>(verified buyer)</span>}
+          <span aria-hidden="true">–</span>
+          <time datetime={review.date}>{review.dateText}</time>
+        </p>
+        {review.body && <p class="product-review__body">{review.body}</p>}
+        {review.reply && <div class="product-review__reply" data-product-review-reply><strong>Reply from the store</strong><p>{review.reply}</p></div>}
+      </li>
+    ))}
+  </ol>
+  {view.next && <p><a class="product-reviews__more" data-product-reviews-more rel="nofollow" href={moreReviewsHref(Astro.url, view.next)}>More reviews</a></p>}
+</section>
+
+<style>
+  .product-reviews{width:min(72rem,calc(100% - 2rem));margin:3rem auto;overflow-wrap:anywhere}
+  h2{font-size:clamp(1.5rem,4vw,2rem);letter-spacing:-.03em;margin:0 0 1rem}
+  ol{list-style:none;margin:0;padding:0;display:grid;gap:1rem}
+  .product-review{padding:1rem 1.25rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface)}
+  .product-review p{margin:.25rem 0;line-height:1.6}
+  .product-review__stars{color:var(--store-ink);font-size:1.1rem;letter-spacing:.05em}
+  .product-review__empty{opacity:.25}
+  .product-review__meta{display:flex;flex-wrap:wrap;gap:.4rem;color:var(--store-muted);font-size:.95rem}
+  .product-review__meta strong{color:var(--store-ink)}
+  .product-review__body{white-space:pre-line}
+  .product-review__reply{margin-top:.75rem;padding:.6rem 1rem;border-left:4px solid var(--store-accent)}
+  .product-review__reply p{white-space:pre-line}
+  .product-reviews__more{display:inline-flex;align-items:center;min-height:44px;margin-top:1rem;color:inherit;font-weight:800}
+  .product-reviews__more:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
+</style>
