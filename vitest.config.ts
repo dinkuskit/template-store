@@ -35,7 +35,7 @@ export default defineConfig({
     include: ["tests/unit/**/*.test.ts"],
     server: {
       deps: {
-        inline: ["@astrojs/cloudflare", "@emdash-cms/cloudflare"],
+        inline: ["@astrojs/cloudflare", "@emdash-cms/cloudflare", "@dinkuskit/courier"],
       },
     },
   },

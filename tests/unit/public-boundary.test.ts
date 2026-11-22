@@ -98,10 +98,14 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("HEAD", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", "/cart/").status).toBe(405);
     // The store's own forms post to Shopify's paths (template-cart-real-form-20261113).
-    for (const path of ["/checkout", "/cart/add", "/cart/add.js", "/cart/change", "/cart/change.js", "/cart/update.js"]) {
+    for (const path of ["/checkout", "/cart/add", "/cart/add.js", "/cart/change", "/cart/change.js", "/cart/update.js", "/cart/stop"]) {
       expect(evaluatePublicBoundary("POST", path).allowed).toBe(true);
     }
     expect(evaluatePublicBoundary("GET", "/cart/add").status).toBe(405);
+    expect(evaluatePublicBoundary("GET", "/cart/stop").status).toBe(405);
+    // The abandoned cart email's link is a plain storefront GET (commerce-abandoned-cart-email-20261122).
+    expect(evaluatePublicBoundary("GET", "/cart/c/86cb100a-a24d-40b8-980c-4d2907cde3a3", "?key=d0a86ad0472078253d24c08a370541f8920df8f0b66b1ce8e6287a7cfc78d2de&stop=1").allowed).toBe(true);
+    expect(evaluatePublicBoundary("POST", "/cart/c/86cb100a-a24d-40b8-980c-4d2907cde3a3").allowed).toBe(false);
     expect(evaluatePublicBoundary("POST", "/cart/update").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/cart.js").status).toBe(405);
     expect(evaluatePublicBoundary("PUT", "/checkout/success/").status).toBe(405);
@@ -259,14 +263,18 @@ describe("public boundary access evaluation", () => {
     expect(headers.get("Permissions-Policy")).toBe("camera=(), microphone=(), geolocation=()");
   });
 
-  it("keeps every profile noindex until an explicit launch setting", () => {
+  it("leaves a store's search visibility to Go live and keeps the proof storefront noindex", () => {
+    // template-site-visibility-20261122: staging is the store's noindex (src/features/site-visibility).
     const shipping = new Headers();
     applySecurityHeaders(shipping, { DINKUS_STOREFRONT_PROFILE: "shipping" });
-    expect(shipping.get("X-Robots-Tag")).toBe("noindex, nofollow");
-    expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBe(true);
+    expect(shipping.get("X-Robots-Tag")).toBeNull();
+    expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "shipping" })).toBe(false);
+    expect(demoNoIndexEnabled({})).toBe(false);
+    // The retired launch switch no longer changes anything.
+    expect(demoNoIndexEnabled({ DINKUS_LAUNCH_INDEXABLE: "0" })).toBe(false);
     expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "proof" })).toBe(true);
-    expect(demoNoIndexEnabled({ DINKUS_DEMO_NOINDEX: "1" })).toBe(true);
-    expect(demoNoIndexEnabled({ DINKUS_LAUNCH_INDEXABLE: "1" })).toBe(false);
+    expect(demoNoIndexEnabled({ DINKUS_STOREFRONT_PROFILE: "development" })).toBe(true);
+    expect(demoNoIndexEnabled({ DINKUS_PROOF_MODE: "1" })).toBe(true);
   });
 });
 
@@ -440,6 +448,21 @@ describe("worker boundary handler", () => {
     expect(astroFetch).not.toHaveBeenCalled();
   });
 
+  it("asks search engines to skip every answer the Worker makes itself, on a merchant store too", async () => {
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const headers = { "cf-connecting-ip": "198.51.100.1" };
+    // No storefront profile: a merchant store, whose pages follow EmDash's Go live instead.
+    const env = { RATE_LIMITER: limiter, DINKUS_STOREFRONT_PROFILE: "shipping" };
+    for (const [path, status] of [["/cart/", 302], ["/products/hoodie-black/", 301], ["/checkout/", 301]] as const) {
+      const res = await worker.fetch(new Request(`http://store.test${path}`, { headers }), env, dummyCtx);
+      expect(res.status, path).toBe(status);
+      expect(res.headers.get("X-Robots-Tag"), path).toBe("noindex, nofollow");
+    }
+    const refused = await worker.fetch(new Request("http://store.test/cart/", { method: "POST", headers }), env, dummyCtx);
+    expect(refused.status).toBe(405);
+    expect(refused.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  });
+
   it("permanently redirects scoped non-cart slash variants before the route allowlist", async () => {
     const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
     const headers = { "cf-connecting-ip": "198.51.100.1" };
@@ -466,9 +489,19 @@ describe("worker boundary handler", () => {
     expect(astroFetch).not.toHaveBeenCalled();
   });
 
-  it("reads demo noindex policy from the Worker env binding", () => {
+  it("reads the proof noindex policy from the Worker env binding", () => {
     const headers = new Headers();
-    applySecurityHeaders(headers, { DINKUS_DEMO_NOINDEX: "1" });
+    applySecurityHeaders(headers, { DINKUS_STOREFRONT_PROFILE: "proof" });
     expect(headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  });
+
+  it("keeps a noindex the store already set on the response", async () => {
+    // The storefront middleware sets staging's noindex; the Worker's own headers never remove it.
+    astroFetch.mockClear();
+    astroFetch.mockResolvedValueOnce(new Response("<p>Shop</p>", { headers: { "X-Robots-Tag": "noindex, nofollow" } }));
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const request = new Request("http://demo.dinkuskit.com/", { headers: { "cf-connecting-ip": "198.51.100.1" } });
+    const res = await worker.fetch(request, { RATE_LIMITER: limiter, DINKUS_STOREFRONT_PROFILE: "shipping" }, dummyCtx);
+    expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
   });
 });
