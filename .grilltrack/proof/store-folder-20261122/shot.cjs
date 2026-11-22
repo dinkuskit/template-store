@@ -1,0 +1,22 @@
+const { chromium } = require("playwright");
+(async () => {
+  const b = await chromium.launch();
+  const page = await b.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2 });
+  const base = "http://localhost:4399";
+  await page.goto(base + "/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin", { timeout: 180000 });
+  const gs = page.getByRole("button", { name: "Get Started" });
+  await page.getByLabel("Admin navigation").waitFor({ timeout: 60000 });
+  await page.waitForTimeout(3000);
+  if (await gs.isVisible().catch(() => false)) await gs.click();
+  else await page.keyboard.press("Escape");
+  await page.getByRole("dialog").waitFor({ state: "detached", timeout: 10000 }).catch(() => {});
+  const nav = page.getByLabel("Admin navigation");
+  const store = nav.getByText("Store", { exact: true }).first();
+  await store.click();
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: "store-folder.png" });
+  await page.getByText("Payment settings", { exact: true }).first().click();
+  await page.waitForTimeout(6000);
+  await page.screenshot({ path: "store-folder-payments.png" });
+  await b.close();
+})().catch(e => { console.error(e); process.exit(1); });

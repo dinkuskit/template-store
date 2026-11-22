@@ -6388,6 +6388,49 @@
       "superseded_by": null,
       "updated_at": "2026-11-13T16:12:37+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Yes. When Commerce's cart read carries order.status (Commerce commerce-guest-order-status-20261115), the server thank-you page adds an Order status section: Processing, or Completed with Carrier and Tracking number when the owner recorded them. It never says delivered. The 'What happens next' note shows only while the order is Processing. With no status from Commerce the page is unchanged.",
+      "context_ref": null,
+      "created_at": "2026-11-15T16:28:24+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-thank-you-server-20261113"
+      ],
+      "domain": "Server-side cart (store site)",
+      "history": [
+        {
+          "at": "2026-11-15T16:28:24+00:00",
+          "choice": "Yes. When Commerce's cart read carries order.status (Commerce commerce-guest-order-status-20261115), the server thank-you page adds an Order status section: Processing, or Completed with Carrier and Tracking number when the owner recorded them. It never says delivered. The 'What happens next' note shows only while the order is Processing. With no status from Commerce the page is unchanged.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-thank-you-order-status-20261115",
+      "implementation_ref": null,
+      "question": "Should the thank-you page show the order's status, carrier and tracking number?",
+      "rationale": "Ronald agreed to commerce#275 on 15 Nov as the server cart's follow-up. Like Shopify's order status page, a guest sees fulfillment and tracking without an account. Uses the shopper account's labels (Processing, Completed, Carrier, Tracking number).",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-15T16:28:24+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -6410,5 +6453,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-13T16:12:37+00:00"
+  "updated_at": "2026-11-15T16:28:24+00:00"
 }

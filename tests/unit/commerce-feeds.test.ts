@@ -143,6 +143,44 @@ describe("installed Commerce feed facts", () => {
     expect(meta).not.toContain("commerce-orphan");
   });
 
+  it("provides published member landing URLs without changing the family canonical or Commerce facts", async () => {
+    const member = (id: string, label: string, status = "in-stock", sellable = true) => ({
+      catalogItemId: id, selections: [{ optionId: "size", optionLabel: "Size", valueId: label, valueLabel: label }],
+      price: { currency: "USD", minor: "3400" }, availability: { status, sellable, listable: true }, fulfillment: "physical",
+    });
+    const items = [catalogItem("commerce-hat", {
+      price: undefined, feedChannels: ["google-merchant", "meta-catalog"],
+      variants: { schema: "dinkuskit.commerce.product-variants/v1", productId: "commerce-hat", options: [],
+        members: [member("hat-m", "M"), member("hat-l", "L", "available-on-backorder"), member("hat-xl", "XL", "out-of-stock", false),
+          member("unsafe&member", "Invalid")] },
+    }), catalogItem("commerce-orphan", { feedChannels: ["google-merchant"] }), catalogItem("commerce-cap")];
+    const original = structuredClone(items);
+    const ctx = context(items);
+    ctx.request = new Request("http://internal.invalid/feeds/google-merchant.xml?variant=foreign&token=not-forwarded");
+    const facts = await buildInstalledCommerceFeedFacts(ctx);
+    expect(facts[0]!.content).toMatchObject({
+      canonicalUrl: "https://shop.example.test/products/hat",
+      variantUrls: {
+        "hat-m": "https://shop.example.test/products/hat?variant=hat-m",
+        "hat-l": "https://shop.example.test/products/hat?variant=hat-l",
+        "hat-xl": "https://shop.example.test/products/hat?variant=hat-xl",
+      },
+    });
+    expect(facts[1]!.content).not.toHaveProperty("variantUrls");
+    expect(facts[0]!.product.variants!.members.map(m => [m.catalogItemId, m.price?.minor, m.availability.status])).toEqual([
+      ["hat-m", "3400", "in-stock"], ["hat-l", "3400", "available-on-backorder"], ["hat-xl", "3400", "out-of-stock"],
+    ]);
+    expect(JSON.stringify(facts)).not.toMatch(/internal.invalid|foreign|not-forwarded|unsafe&member|commerce-orphan/);
+    expect(items).toEqual(original);
+    const requestOriginFacts = await buildInstalledCommerceFeedFacts({ ...ctx, site: null,
+      request: new Request("https://request.example.test/feeds/meta-catalog.csv?variant=foreign"),
+    });
+    expect(requestOriginFacts[0]!.content.canonicalUrl).toBe("https://request.example.test/products/hat");
+    expect(requestOriginFacts[0]!.content).toMatchObject({ variantUrls: {
+      "hat-xl": "https://request.example.test/products/hat?variant=hat-xl",
+    } });
+  });
+
   it("puts a product the public catalog lists without feed channels in no feed", async () => {
     // Commerce's public catalog carries each product's approved channels; the store never reads its storage
     // for them (template-one-build-registry-20261031), so a stored eligibility the catalog omits counts for nothing.
