@@ -19,7 +19,7 @@ async function storeWithProduct(browser: Browser, testInfo: TestInfo, suffix: st
   await expect.poll(
     () => execFileSync("sqlite3", [
       ".artifacts/e2e/content.db",
-      "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%_catalog_items_%'",
+      "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%'",
     ], { encoding: "utf8" }),
     { timeout: 90_000 },
   ).toContain(COMMERCE_SKU_INDEX);
