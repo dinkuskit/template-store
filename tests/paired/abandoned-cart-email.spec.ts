@@ -186,5 +186,21 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   expect((await lateContext.cookies()).find((cookie) => cookie.name === "dk_cart")).toBeUndefined();
   await late.screenshot({ path: `${out}/link-after-cart-expired.png` });
   await lateContext.close();
+
+  // The 5-minute cleanup deletes the expired cart; the shopper's own browser then fills a new cart under the same
+  // id. The old email link still opens nothing: it never reaches the new cart.
+  sql((db) => db.prepare("DELETE FROM _plugin_storage WHERE plugin_id = ? AND collection = 'checkout_carts' AND id = ?").run(commerce, cartId));
+  await shopper.goto("/products/trail-mug");
+  await shopper.locator("[data-add-to-cart]").click();
+  await expect(shopper.locator("[data-add-to-cart-status]")).toHaveText("Added to your cart.");
+  expect(row("checkout_carts", cartId).cart.lines).toEqual([{ catalogItemId: id, quantity: 1 }]);
+  const replayContext = await fresh();
+  const replay = await replayContext.newPage();
+  await replay.goto(link);
+  await expect(replay).toHaveURL(/\/cart$/u);
+  await expect(replay.locator(`[data-guest-cart-line="${id}"]`)).toHaveCount(0);
+  expect((await replayContext.cookies()).find((cookie) => cookie.name === "dk_cart")).toBeUndefined();
+  await replay.screenshot({ path: `${out}/link-after-cart-made-again.png` });
+  await replayContext.close();
   await shopperContext.close();
 });
