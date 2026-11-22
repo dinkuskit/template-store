@@ -81,16 +81,10 @@ for (const profile of ["stable", "beta"]) {
     const source = ".artifacts/source-deps/commerce/src/plugin.ts";
     const extracted = extractCommerceRoutes(source, { profile });
     assert.equal(extracted.unsupported.length, 0);
-    const shopperAccountRoutes = [
-      { name: "account/sign-in/start", methods: ["POST"], public: true },
-      { name: "account/sign-in/verify", methods: ["POST"], public: true },
-      { name: "account/sign-out", methods: ["POST"], public: true },
-      { name: "account/orders", methods: ["GET"], public: true },
-      { name: "account/profile", methods: ["GET", "POST"], public: true },
-    ];
     // The pinned Commerce's routes, in source order. 0.9.0 drops the store policies route (no-policy-records)
     // and the Registry status route (a cart read does its job, commerce-cart-read-is-status-20261113), and adds
-    // the shopper's cart (commerce-server-cart-20261113).
+    // the shopper's cart (commerce-server-cart-20261113). 0.9.0-beta.4 drops the shopper account routes (sign-in moves
+    // to the Accounts plugin) and adds the order lookup (commerce-order-lookup-20261122).
     assert.deepEqual(
       extracted.routes.map(({ name, methods, public: isPublic }) => ({ name, methods, public: isPublic })),
       [
@@ -107,7 +101,7 @@ for (const profile of ["stable", "beta"]) {
         { name: "checkout/guest/start", methods: ["POST"], public: true },
         { name: "checkout/guest/cart", methods: ["POST"], public: true },
         { name: "checkout/guest/readiness", methods: ["GET"], public: true },
-        ...shopperAccountRoutes,
+        { name: "orders/lookup", methods: ["POST"], public: true },
       ],
     );
     assert.ok(extracted.routes.every(r => r.path.startsWith(`/_emdash/api/plugins/${runtimeId}/`)));

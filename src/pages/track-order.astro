@@ -1,0 +1,46 @@
+---
+import StoreFooter from "../features/store-shell/StoreFooter.astro";
+import StoreHeader from "../features/store-shell/StoreHeader.astro";
+import { OrderLookup } from "../features/order-lookup/ui.ts";
+import { lookUpOrder, type OrderLookupOutcome } from "../features/order-lookup/index.js";
+import { acquireGuestCheckoutAdmission } from "../features/guest-cart/checkout-admission.js";
+import { STORE_TITLE, readStorefrontProfile } from "../features/store-shell/index.js";
+import { playgroundCheckoutAdmission } from "../features/playground-checkout/index.js";
+import { playgroundCheckoutConfigured, playgroundEnvOf } from "../features/playground-checkout/payments-port.js";
+import { storeBannerText } from "../features/store-shell/checkout-copy.js";
+import "../features/store-shell/global.css";
+
+const profile = readStorefrontProfile();
+Astro.response.headers.set("Cache-Control", "no-store");
+const checkoutAdmission = await acquireGuestCheckoutAdmission({
+  runtime: Astro.locals.emdash,
+  request: Astro.request,
+}).catch(() => null);
+const isPlayground = Boolean((Astro.locals as { __playgroundDb?: unknown }).__playgroundDb);
+const playgroundAdmission = playgroundCheckoutAdmission(isPlayground, playgroundCheckoutConfigured(playgroundEnvOf(Astro.locals)));
+const effectiveAdmission = playgroundAdmission ?? checkoutAdmission;
+// Order number plus checkout email shows that one order (commerce-order-lookup-20261122), like WooCommerce's
+// Track your order page.
+let outcome: OrderLookupOutcome | null = null;
+if (Astro.request.method === "POST") {
+  outcome = await lookUpOrder({ locals: Astro.locals, request: Astro.request, url: Astro.url });
+  if (!outcome.ok) Astro.response.status = outcome.code === "LOOKUP_LIMITED" ? 429 : outcome.code === "UNAVAILABLE" ? 503 : 422;
+}
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{outcome?.ok ? `Order #${outcome.order.number}` : "Track your order"} | {STORE_TITLE}</title>
+  </head>
+  <body data-storefront-profile={profile}>
+    <div class="store-demo-banner" data-store-demo-banner data-checkout-available={String(Boolean(effectiveAdmission))} role="status">{storeBannerText(Boolean(effectiveAdmission))}</div>
+    <StoreHeader profile={profile} />
+    <main>
+      <OrderLookup outcome={outcome} />
+    </main>
+    <StoreFooter profile={profile} />
+  </body>
+</html>
