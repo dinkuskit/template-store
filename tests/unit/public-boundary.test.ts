@@ -444,6 +444,21 @@ describe("worker boundary handler", () => {
     expect(astroFetch).not.toHaveBeenCalled();
   });
 
+  it("asks search engines to skip every answer the Worker makes itself, on a merchant store too", async () => {
+    const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
+    const headers = { "cf-connecting-ip": "198.51.100.1" };
+    // No storefront profile: a merchant store, whose pages follow EmDash's Go live instead.
+    const env = { RATE_LIMITER: limiter, DINKUS_STOREFRONT_PROFILE: "shipping" };
+    for (const [path, status] of [["/cart/", 302], ["/products/hoodie-black/", 301], ["/checkout/", 301]] as const) {
+      const res = await worker.fetch(new Request(`http://store.test${path}`, { headers }), env, dummyCtx);
+      expect(res.status, path).toBe(status);
+      expect(res.headers.get("X-Robots-Tag"), path).toBe("noindex, nofollow");
+    }
+    const refused = await worker.fetch(new Request("http://store.test/cart/", { method: "POST", headers }), env, dummyCtx);
+    expect(refused.status).toBe(405);
+    expect(refused.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
+  });
+
   it("permanently redirects scoped non-cart slash variants before the route allowlist", async () => {
     const limiter = { limit: vi.fn().mockResolvedValue({ success: true }) };
     const headers = { "cf-connecting-ip": "198.51.100.1" };

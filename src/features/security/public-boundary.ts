@@ -404,3 +404,18 @@ export function applySecurityHeaders(
     headers.set(key, value);
   }
 }
+
+/**
+ * Headers for an answer the Worker makes itself: a slash redirect or a refusal.
+ * Those never reach Astro, so the storefront's staging check
+ * (src/features/site-visibility) can't see them. None of them is a page a search
+ * engine should keep, so each one asks search engines to stay away whether the
+ * store is in staging or Live; the page a redirect points to answers for itself.
+ */
+export function applyWorkerAnswerHeaders(
+  headers: Headers,
+  env: Record<string, unknown> = process.env,
+): void {
+  applySecurityHeaders(headers, env);
+  headers.set("X-Robots-Tag", "noindex, nofollow");
+}

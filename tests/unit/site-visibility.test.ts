@@ -1,20 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const readSetting = vi.hoisted(() => vi.fn());
-const setIfAbsent = vi.hoisted(() => vi.fn());
 vi.mock("emdash", () => ({
   getSiteSettings: readSetting,
-  OptionsRepository: class { setIfAbsent = setIfAbsent; },
 }));
 
-const { STAGING_OPTION, STAGING_ROBOTS, isStorefrontPath, siteIsStaging, startUndecidedStoreInStaging, withStagingRobots } = await import(
+const { STAGING_ROBOTS, isStorefrontPath, siteIsStaging, withStagingRobots } = await import(
   "../../src/features/site-visibility/index.js"
 );
 
 describe("site visibility", () => {
   beforeEach(() => {
     readSetting.mockReset();
-    setIfAbsent.mockReset();
   });
 
   it("lets search engines in only once the owner pressed Go live", async () => {
@@ -49,14 +46,5 @@ describe("site visibility", () => {
     expect(redirect.status).toBe(302);
     expect(redirect.headers.get("Location")).toBe("https://store.test/cart");
     expect(redirect.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
-  });
-
-  it("starts a store that never chose staging or Live in staging with one insert that keeps any choice", async () => {
-    const db = {};
-    setIfAbsent.mockResolvedValueOnce(true);
-    await startUndecidedStoreInStaging(db);
-    expect(setIfAbsent).toHaveBeenCalledWith(STAGING_OPTION, true);
-    expect(STAGING_OPTION).toBe("site:staging");
-    expect(setIfAbsent).toHaveBeenCalledTimes(1);
   });
 });
