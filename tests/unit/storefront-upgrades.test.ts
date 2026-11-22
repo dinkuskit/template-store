@@ -44,8 +44,10 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await recorded()).toBeNull();
     expect((await products()).visual_label?.required).toBe(1);
 
-    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products", "005_commerce_box_off", "006_store_folder"]);
+    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products", "005_commerce_box_off", "006_store_folder", "007_start_in_staging"]);
     expect(await recorded()).toEqual(ALL);
+    // template-site-visibility-20261122: an upgraded store that never chose starts in staging.
+    expect((await sql<{ value: string }>`select value from options where name = 'site:staging'`.execute(db)).rows[0]?.value).toBe("true");
     const after = await products();
     expect(after.visual_label).toMatchObject({ required: 0, label: VISUAL_LABEL_FIELD_LABEL });
     expect(after.summary && after.details).toBeTruthy();
@@ -68,6 +70,23 @@ describe("storefront upgrades a store runs on its own", () => {
     // Running it again, as pnpm search:upgrade does, changes nothing.
     await upgradeStorefront(db, { all: true });
     expect(await groups()).toMatchObject({ products: STORE_FOLDER_GROUP, categories: "Catalog" });
+  });
+
+  it("keeps the Live or staging choice an older store's owner already saved", async () => {
+    const staging = async () => (await sql<{ value: string }>`select value from options where name = 'site:staging'`.execute(db)).rows[0]?.value;
+    const options = new OptionsRepository(db as never);
+    // The owner pressed Go live before this upgrade ran.
+    await options.set("site:staging", false);
+    await upgradeStorefront(db);
+    expect(await staging()).toBe("false");
+    // Switched back to staging, then every step run again (pnpm search:upgrade): still staging.
+    await options.set("site:staging", true);
+    await upgradeStorefront(db, { all: true });
+    expect(await staging()).toBe("true");
+    // And Live again stays Live through a full rerun.
+    await options.set("site:staging", false);
+    await upgradeStorefront(db, { all: true });
+    expect(await staging()).toBe("false");
   });
 
   it("stops at a failed step without recording it, and the next run starts from that step", async () => {
