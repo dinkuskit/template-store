@@ -37,6 +37,22 @@ export type GuestCheckoutContact = Readonly<{
   billing?: GuestCheckoutDelivery;
 }>;
 
+/** Completed means the owner marked the order shipped, never that it was delivered. */
+export type GuestCheckoutFulfillment = Readonly<{
+  status: "processing" | "completed";
+  carrier?: string;
+  tracking?: string;
+}>;
+
+/** Commerce's order.status and order.completed; anything else reads as no status. */
+function parseFulfillment(status: unknown, completed: unknown): GuestCheckoutFulfillment | undefined {
+  if (status === "processing") return { status };
+  if (status !== "completed") return undefined;
+  const done = isObject(completed) ? completed : {};
+  const carrier = boundedText(done.carrier, 64), tracking = boundedText(done.tracking, 64);
+  return { status, ...(carrier ? { carrier } : {}), ...(tracking ? { tracking } : {}) };
+}
+
 export type GuestCheckoutProjection = Readonly<{
   schema: typeof GUEST_CHECKOUT_PROJECTION_SCHEMA;
   state: "pending" | "paid" | "recoverable-failure" | "released-retry";
@@ -51,6 +67,8 @@ export type GuestCheckoutProjection = Readonly<{
     contact?: GuestCheckoutContact;
     delivery?: GuestCheckoutDelivery;
     shippingMethod?: string;
+    /** Where Commerce's Orders has the order now (commerce-guest-order-status-20261115). */
+    fulfillment?: GuestCheckoutFulfillment;
   }> | null;
   contact?: GuestCheckoutContact;
   delivery?: GuestCheckoutDelivery;
@@ -268,6 +286,7 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
       (typeof rawOrder.email === "string" ? parseContact({ email: rawOrder.email }, orderDelivery) : undefined) ??
       topContact;
     const orderShippingMethod = boundedText(rawOrder.shippingMethod, 160) ?? topShippingMethod;
+    const fulfillment = parseFulfillment(rawOrder.status, rawOrder.completed);
     order = {
       orderId: value.order.orderId,
       receiptId: value.order.receiptId,
@@ -277,6 +296,7 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
       ...(orderContact ? { contact: orderContact } : {}),
       ...(orderDelivery && !orderContact?.delivery ? { delivery: orderDelivery } : {}),
       ...(orderShippingMethod ? { shippingMethod: orderShippingMethod } : {}),
+      ...(fulfillment ? { fulfillment } : {}),
     };
   }
   if (value.state === "paid" && !order) return null;

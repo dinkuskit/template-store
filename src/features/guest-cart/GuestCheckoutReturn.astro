@@ -102,8 +102,20 @@ const hasDestination = Boolean(order && (order.email || order.recipient || order
           </div>
         </section>
       )}
-      <h3>What happens next</h3>
-      <p>A confirmation email is coming. When your order ships, a shipping email with tracking will arrive.</p>
+      {order.fulfillment && (
+        <section class="guest-checkout-fulfillment" aria-labelledby="guest-checkout-fulfillment-title" data-guest-checkout-fulfillment={order.fulfillment.status.toLowerCase()}>
+          <h3 id="guest-checkout-fulfillment-title">Order status</h3>
+          <p data-guest-checkout-fulfillment-status>{order.fulfillment.status}</p>
+          {order.fulfillment.carrier && <p data-guest-checkout-carrier>Carrier: {order.fulfillment.carrier}</p>}
+          {order.fulfillment.tracking && <p data-guest-checkout-tracking>Tracking number: {order.fulfillment.tracking}</p>}
+        </section>
+      )}
+      {order.fulfillment?.status !== "Completed" && (
+        <>
+          <h3>What happens next</h3>
+          <p>A confirmation email is coming. When your order ships, a shipping email with tracking will arrive.</p>
+        </>
+      )}
       {contactHref && <p data-guest-checkout-contact>Questions? <a href={contactHref}>Contact the store</a>.</p>}
       <div class="ephemera-receipt-barcode" data-ephemera-barcode aria-hidden="true" set:html={receiptBarcodeSvg(`DK-${order.orderNumber}`)}></div>
     </div>

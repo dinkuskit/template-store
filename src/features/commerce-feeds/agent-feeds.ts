@@ -130,9 +130,12 @@ function hasPricedListableMember(product: AgentProductFeedFacts): boolean {
   return members.some((member) => member.availability.listable && member.price !== null && member.price !== undefined);
 }
 
+/**
+ * Every listable, priced product with a published page is listed; the Google and Meta feed boxes
+ * (`eligibility`) decide only those two feeds (GrillTrack template-agent-feed-lists-all-20261122).
+ */
 function agentEligible(product: AgentProductFeedFacts): boolean {
   return (
-    product.eligibility.length > 0 &&
     product.product.availability.listable &&
     (product.product.price !== undefined || hasPricedListableMember(product)) &&
     product.content.canonicalUrl.trim().length > 0 &&

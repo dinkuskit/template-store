@@ -14,7 +14,13 @@ export function readCartCount(cookie: string = typeof document === "undefined" ?
   return match ? Number(match[1]) : 0;
 }
 
+/** What the header's cart link says to a screen reader, whose aria-label hides the badge. */
+export function cartNavLabel(count: number): string {
+  return count === 0 ? "Cart" : `Cart, ${count} ${count === 1 ? "item" : "items"}`;
+}
+
 export function renderCartCount(count = readCartCount()): void {
+  for (const link of document.querySelectorAll<HTMLElement>("[data-guest-cart-nav]")) link.setAttribute("aria-label", cartNavLabel(count));
   for (const badge of document.querySelectorAll<HTMLElement>("[data-guest-cart-count]")) {
     badge.textContent = String(count);
     badge.hidden = count === 0;
