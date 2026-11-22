@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
 
 // Proof for the abandoned cart email (commerce-abandoned-cart-email-20261122) on this store with a Commerce
 // Registry build mounted from DINKUS_PAIRED_COMMERCE_DIR. The proof store has no Payments, so the shopper's
@@ -35,7 +36,7 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   const setup = await page.request.get("/_emdash/api/setup/dev-bypass");
   expect(setup.ok()).toBe(true);
   expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
-  await expect.poll(() => sql((db) => db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name=?").get(`uidx_plugin_${commerce}_catalog_items_commandId`)), { timeout: 90_000 }).toEqual({ n: 1 });
+  await expect.poll(() => sql((db) => db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name=?").get(pluginUniqueIndexName(commerce, "catalog_items", "commandId"))), { timeout: 90_000 }).toEqual({ n: 1 });
   const post = async (path: string, data: unknown) => {
     const response = await page.request.post(path, { headers, data });
     expect(response.ok(), await response.text()).toBe(true);
@@ -70,8 +71,8 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   await expect(shopper.getByText("Email me with news and offers")).toBeVisible();
   await shopper.locator("[data-guest-cart-contact]").screenshot({ path: `${out}/checkout-news-box.png` });
 
-  // The checkout Commerce's start saves with the tick, once its payment expired unpaid.
   const key = (await shopperContext.cookies()).find((cookie) => cookie.name === "dk_cart")!.value;
+  // The checkout Commerce's start saves with the tick, once its payment expired unpaid.
   const cartId = row("checkout_guest_capabilities", key.split(".")[0]!).cartId as string;
   const saved = row("checkout_carts", cartId);
   expect(saved.cart.lines).toEqual([{ catalogItemId: id, quantity: 1 }]);
@@ -128,18 +129,40 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
     await other.close();
   }
 
-  // The stop link asks first, then stops.
-  const stopper = await (await fresh()).newPage();
+  // A link Commerce refuses (a made-up or revoked key) opens the cart page and leaves this browser's cart alone.
+  const guessContext = await fresh();
+  await guessContext.addCookies([{ name: "dk_cart", value: key, url: origin }, { name: "dk_cart_count", value: "1", url: origin }]);
+  const guess = await guessContext.newPage();
+  await guess.goto(`/cart/c/${link.split("/cart/c/")[1]!.split("?")[0]}?key=${"0".repeat(64)}&stop=1`);
+  await expect(guess).toHaveURL(/\/cart$/u);
+  expect((await guessContext.cookies()).find((cookie) => cookie.name === "dk_cart")!.value).toBe(key);
+  await guessContext.close();
+  const stopCount = () => sql((db) => db.prepare("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = ? AND collection = 'cart_email_stops'").get(commerce));
+
+  // The stop link asks first, naming the cart its link opened.
+  const stopperContext = await fresh();
+  const stopper = await stopperContext.newPage();
+  const linkId = link.split("/cart/c/")[1]!.split("?")[0]!;
   await stopper.goto(stopLink);
-  await expect(stopper).toHaveURL(/\/cart\?stop=1$/u);
+  await expect(stopper).toHaveURL(new RegExp(`/cart\\?stop=${linkId}$`, "u"));
   await expect(stopper.getByText("Stop cart reminder emails from this store?")).toBeVisible();
   await stopper.screenshot({ path: `${out}/stop-link-asks.png` });
-  expect(sql((db) => db.prepare("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = ? AND collection = 'cart_email_stops'").get(commerce))).toEqual({ n: 0 });
+  // Another link opened in a second tab replaces this browser's cart: the first tab's confirmation stops nothing.
+  const second = await stopperContext.newPage();
+  await second.goto(`/cart/c/${key.split(".")[0]}?key=${key.split(".")[1]}`);
+  await expect(second).toHaveURL(/\/cart$/u);
+  await stopper.getByRole("button", { name: "Stop emails" }).click();
+  await expect(stopper).toHaveURL(/cart_error=STOP_LINK$/u);
+  await expect(stopper.getByText("Nothing was stopped: this browser now holds a different cart. Open the stop link in the email again.")).toBeVisible();
+  await stopper.screenshot({ path: `${out}/stop-link-changed-cart.png` });
+  expect(stopCount()).toEqual({ n: 0 });
+  await stopper.goto(stopLink);
   await stopper.getByRole("button", { name: "Stop emails" }).click();
   await expect(stopper).toHaveURL(/\/cart\?stopped=1$/u);
   await expect(stopper.getByText("Done. You won't get cart reminder emails from this store again.")).toBeVisible();
   await stopper.screenshot({ path: `${out}/stop-link-done.png` });
   const stopId = createHash("sha256").update(email).digest("hex");
   expect(row("cart_email_stops", stopId)).toMatchObject({ at: expect.stringMatching(/^\d+$/u) });
+  await stopperContext.close();
   await shopperContext.close();
 });

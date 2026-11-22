@@ -67,6 +67,7 @@ export const CART_ERROR_TEXT: Readonly<Record<string, string>> = Object.freeze({
   NO_CART: "Your cart is empty.",
   NOT_PAID: "Your payment was not completed. Your items are still in your cart.",
   STOP_EXPIRED: "That link has expired, so cart reminder emails could not be stopped here. Contact the store to stop them.",
+  STOP_LINK: "Nothing was stopped: this browser now holds a different cart. Open the stop link in the email again.",
   RATE_LIMITED: "Too many test checkouts from here. Try again in about 10 minutes.",
   PAYMENTS_UNAVAILABLE: "Checkout is not available yet.",
   INVENTORY_UNAVAILABLE: "An item in your cart just sold out. Check your cart and try again.",
@@ -454,10 +455,21 @@ export async function pickUpServerCart(ctx: ServerCartContext, id: string, secre
   return true;
 }
 
-/** The email's stop link, once the shopper confirms: no more cart reminder emails to that checkout's email. */
-export async function stopCartEmails(ctx: ServerCartContext): Promise<boolean> {
+/** A cart key's public half, as the stop link names its cart; never the secret. */
+export function cartKeyId(value: string | null | undefined): string | null {
+  const id = value?.split(".")[0] ?? "";
+  return /^[A-Za-z0-9_~-]{1,256}$/u.test(id) ? id : null;
+}
+
+/**
+ * The email's stop link, once the shopper confirms: no more cart reminder emails to that checkout's email. The
+ * confirmation names the cart its link opened; when another link has since replaced this browser's cart, nothing
+ * is stopped ("STOP_LINK"). Commerce refusing the key is "STOP_EXPIRED".
+ */
+export async function stopCartEmails(ctx: ServerCartContext, cartId: string | null): Promise<"STOPPED" | "STOP_LINK" | "STOP_EXPIRED"> {
   const key = readCartKey(ctx.cookies);
-  return Boolean(key && (await callCommerce(ctx, "cart", { stop: true }, key)).ok);
+  if (!key || !cartId || cartKeyId(key) !== cartId) return "STOP_LINK";
+  return (await callCommerce(ctx, "cart", { stop: true }, key)).ok ? "STOPPED" : "STOP_EXPIRED";
 }
 
 const ADDRESS_FIELDS = ["name", "line1", "line2", "city", "region", "postalCode", "country"] as const;

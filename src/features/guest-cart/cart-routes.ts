@@ -4,6 +4,7 @@ import {
   addToServerCart,
   cartJson,
   changeServerCart,
+  cartKeyId,
   pickUpServerCart,
   stopCartEmails,
   readAddForm,
@@ -158,12 +159,16 @@ export const postUpdate: APIRoute = async (context) => {
 export const getPickUp: APIRoute = async (context) => {
   const id = context.params.id ?? "", key = context.url.searchParams.get("key") ?? "";
   const picked = await pickUpServerCart(contextOf(context), id, key);
-  return redirect(picked && context.url.searchParams.has("stop") ? "/cart?stop=1" : "/cart");
+  // The confirmation names the cart this link opened, so a later link in another tab cannot change its target.
+  return redirect(picked && context.url.searchParams.has("stop") ? withQuery("/cart", "stop", id) : "/cart");
 };
 
 /** POST /cart/stop: the shopper confirmed stopping cart reminder emails. A plain form, so no script is needed. */
 export const postStop: APIRoute = async (context) => {
   if (!sameStoreRequest(context)) return refused(context, "FORBIDDEN");
-  const stopped = await stopCartEmails(contextOf(context));
-  return redirect(stopped ? "/cart?stopped=1" : withQuery("/cart", "cart_error", "STOP_EXPIRED"));
+  const form = await readBoundedForm(context.request, MAX_BODY_BYTES);
+  const cart = form?.get("cart");
+  // The confirmation names a cart key's public half only, never a whole key.
+  const answer = await stopCartEmails(contextOf(context), typeof cart === "string" && cartKeyId(cart) === cart ? cart : null);
+  return redirect(answer === "STOPPED" ? "/cart?stopped=1" : withQuery("/cart", "cart_error", answer));
 };

@@ -24,6 +24,7 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
   {page.error && <p data-guest-cart-status role="alert">{page.error}</p>}
   {page.askStop && (
     <form class="guest-cart-stop" method="post" action="/cart/stop" data-guest-cart-stop>
+      <input type="hidden" name="cart" value={page.askStop} />
       <p>Stop cart reminder emails from this store?</p>
       <button type="submit">Stop emails</button>
     </form>
