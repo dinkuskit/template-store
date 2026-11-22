@@ -21,7 +21,7 @@ self-upgrade step.
 
 ## Observed (Node 24.22.1, 2026-11-22)
 
-- `vitest run`: 65 files, 554 tests pass. `tests/unit/review-form.test.ts`
+- `vitest run`: 65 files, 555 tests pass. `tests/unit/review-form.test.ts`
   drives the page's server helper with Reviews' real answer shapes: the
   in-process call (same-origin headers, the store's own origin, the link taken
   from the page's address and never from a form field), the open form, each
@@ -61,6 +61,26 @@ routes; nothing is mocked.
 | Wrong secret; a product not in the order | 404, "This link does not work" (Reviews `CLOSED`) | 404 and 404 |
 | Post the Red hat form from another site | nothing kept (same-store rule) | 403 from the store's public-address rules; still one review for the order |
 | Rating record for Camp mug | value 5, count 1 after the first review (Reviews `refreshRating`) | `{ value: 5, count: 1, turn: 1 }`, then count 2 after the mobile run's review |
+
+### Refused posts and the longest allowed review (same setup, later the same day)
+
+Each refused case is a direct `POST` of the form (`stars=1`, words, a name)
+with same-site headers unless said otherwise. Before and after each one, every
+row of the plugin's `reviews` and `ratings` storage was read and compared byte
+for byte. Desktop and mobile Chromium, 2 pass; secrets are not shown.
+
+| Step | Expected (source) | Observed (desktop; mobile the same) |
+| --- | --- | --- |
+| POST with a wrong secret | 404, nothing kept (Reviews `CLOSED`) | 404, storage identical |
+| POST for a product not in the order, right secret | 404, nothing kept (Reviews `CLOSED`) | 404, storage identical |
+| POST with the right secret on a link asked 61 days ago | 404, nothing kept (Reviews `opens()`, 60 days) | 404, storage identical |
+| POST from another site, right secret, link still good | refused before Reviews is asked (same-store rule) | 403, storage identical |
+| The browser's own form with 2,000 Chinese characters (漢) and a 60-character name, 5 stars | 200, kept whole: the textarea allows 2,000 characters, and a plain form sends each as 9 bytes | form body 18,559 bytes; 200, `sent`; the kept review holds all 2,000 characters; rating `5 / 1` |
+| POST the same link again with 1 star | 200, "You already reviewed this", nothing changed (Reviews `done`) | 200, `already`, storage identical: still 5 stars, rating `5 / 1` |
+
+The 18,559-byte form is why the page's form limit is 32 KB: the first limit,
+16 KB, would have dropped that review. `tests/unit/review-form.test.ts` covers
+the same submission.
 
 Screenshots (`1-form.png`, `2-refused.png`, `3-thanks.png`, `4-already.png`,
 `5-wrong-secret.png`) and `trace.json` are kept under the ignored

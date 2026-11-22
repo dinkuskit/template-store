@@ -10,8 +10,12 @@ import { readBoundedForm, sameStoreRequest, trustedStoreOrigin, type ServerCartC
 export const REVIEW_PAGE_PATH = "/review";
 /** DinkusKit Reviews' Registry identity, derived by EmDash from its publisher and the slug `dinkus-reviews`. */
 export const REVIEWS_REGISTRY_RUNTIME_ID = "r_t7rmn7qidmbmuyge";
-/** Stars, 2,000 characters of words and a name fit well under 16 KB; a longer body is never parsed. */
-const MAX_FORM_BYTES = 16 * 1024;
+/**
+ * A plain form sends each character percent-encoded: up to 9 bytes for one counted character (a Chinese or
+ * Japanese character is 3 bytes, each sent as %XX). The longest review the form allows, 2,000 characters and a
+ * 60-character name, is therefore about 18.6 KB. 32 KB takes it whole; a longer body is never parsed.
+ */
+const MAX_FORM_BYTES = 32 * 1024;
 const MAX_RESPONSE_BYTES = 8 * 1024;
 
 export const REVIEW_FORM_TEXT = Object.freeze({

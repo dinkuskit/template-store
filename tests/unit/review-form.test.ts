@@ -134,4 +134,14 @@ describe("the review page at the store's public boundary", () => {
     applySecurityHeaders(usual, {});
     expect(usual.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
   });
+
+  it("takes the longest review the form allows in Chinese characters, which a plain form sends as 9 bytes each", async () => {
+    const words = "漢".repeat(2000), name = "名".repeat(60);
+    const form = new URLSearchParams({ stars: "5", body: words, name }).toString();
+    expect(new TextEncoder().encode(form).byteLength).toBeGreaterThan(18_000);
+    const { ctx, calls } = page({ write: { success: true, data: OPEN }, send: { success: true, data: { ok: true, result: "sent" } } }, { form });
+    expect(await sendReviewForm(ctx)).toEqual({ kind: "done", result: "sent" });
+    expect(calls.map((call) => call.path)).toEqual(["send"]);
+    expect(calls[0]!.body).toMatchObject({ stars: "5", body: words, name });
+  });
 });
