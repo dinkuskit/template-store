@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { DatabaseSync } from "node:sqlite";
+import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
 
 const commerce = process.env.DINKUS_PAIRED_RUNTIME_ID ?? "r_fjzjvld3ssb4j63o";
 const headers = { "X-EmDash-Request": "1" };
@@ -13,7 +14,7 @@ test("catalog cards summarize every listable member without changing selected-me
     const db = new DatabaseSync(process.env.DINKUS_PAIRED_DB ?? ".artifacts/paired/content.db");
     try {
       return (db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'index' AND name IN (?, ?)")
-        .get(`uidx_plugin_${commerce}_catalog_items_commandId`, `uidx_plugin_${commerce}_catalog_items_skuKey`) as { n: number }).n;
+        .get(pluginUniqueIndexName(commerce, "catalog_items", "commandId"), pluginUniqueIndexName(commerce, "catalog_items", "skuKey")) as { n: number }).n;
     } finally { db.close(); }
   }, { timeout: 90_000 }).toBe(2);
   const catalog = async (data: Record<string, unknown>) => {
