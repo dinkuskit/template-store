@@ -165,6 +165,20 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   await expect(stopper.getByText("Nothing was stopped: this browser now holds a different cart. Open the stop link in the email again.")).toBeVisible();
   await stopper.screenshot({ path: `${out}/stop-link-changed-cart.png` });
   expect(stopCount()).toEqual({ n: 0 });
+  // A stop link accepted while the cart lived, confirmed only after the cart's 30 days: Commerce refuses the key
+  // at the stop itself, so nothing is stopped.
+  const writeCart = (record: unknown) => sql((db) => db.prepare("UPDATE _plugin_storage SET data = ? WHERE plugin_id = ? AND collection = ? AND id = ?")
+    .run(JSON.stringify(record), commerce, "checkout_carts", cartId));
+  const live = row("checkout_carts", cartId);
+  await stopper.goto(stopLink);
+  await expect(stopper.getByText("Stop cart reminder emails from this store?")).toBeVisible();
+  writeCart({ ...live, cartExpires: String(Math.floor(Date.now() / 1000) - 1) });
+  await stopper.getByRole("button", { name: "Stop emails" }).click();
+  await expect(stopper).toHaveURL(/cart_error=STOP_EXPIRED$/u);
+  await expect(stopper.getByText("That link has expired, so cart reminder emails could not be stopped here.", { exact: false })).toBeVisible();
+  await stopper.screenshot({ path: `${out}/stop-after-cart-expired.png` });
+  expect(stopCount()).toEqual({ n: 0 });
+  writeCart(live);
   await stopper.goto(stopLink);
   await stopper.getByRole("button", { name: "Stop emails" }).click();
   await expect(stopper).toHaveURL(/\/cart\?stopped=1$/u);

@@ -1,20 +1,18 @@
 ---
 import { GUEST_CHECKOUT_LABEL, GUEST_CHECKOUT_REASON } from "./index.js";
 import type { GuestCheckoutAdmission } from "./index.js";
-import { loadServerCartPage } from "./server-view.js";
+import type { loadServerCartPage } from "./server-view.js";
 import { GUEST_CART_MAX_QUANTITY } from "./intent.js";
 
 interface Props {
   checkoutAdmission?: GuestCheckoutAdmission | null;
+  /** Loaded in the page's own frontmatter, where the cart cookies may still be written. */
+  page: Awaited<ReturnType<typeof loadServerCartPage>>;
 }
 
-const { checkoutAdmission = null } = Astro.props;
+const { checkoutAdmission = null, page } = Astro.props;
 // Drawn on the server from Commerce's cart (template-cart-real-form-20261113): it works with script off, and the
 // page script only swaps in a fresh copy of this section after a change.
-const page = await loadServerCartPage(
-  { locals: Astro.locals, request: Astro.request, url: Astro.url, cookies: Astro.cookies },
-  Boolean(checkoutAdmission),
-);
 const { view } = page;
 const canCheckout = view.checkoutEnabled && !page.openPayment;
 ---
