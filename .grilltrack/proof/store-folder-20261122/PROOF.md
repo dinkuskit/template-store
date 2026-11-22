@@ -5,30 +5,41 @@ Decision: `admin-one-store-folder-128` in dinkuskit/dinkuskit (step (a) of
 template store's Products and Product categories plus the Commerce, Payments and
 Ship pages.
 
-## What was run (22 Nov 2026)
+Screenshots are not kept in this repository (AGENTS.md: `.grilltrack/proof/` is
+text proof). They are committed with the companion Commerce PR, together with
+how they were taken:
+https://github.com/dinkuskit/commerce/blob/2a534a217a4e5b201362d3d5c05405025dbfc6f1/proof/store-folder-20261122/PROOF.md
 
-A fresh store from this branch's seed, on EmDash 1.4.0 under `astro dev` (Node,
-SQLite), with:
+## A fresh store (22 Nov 2026)
 
-- Commerce: the Registry build of the matching Commerce branch
-  (`claude/project-thread-972mi5`, base c325fe4), mounted through `sandboxed: [...]`
-  as `DINKUS_PAIRED_COMMERCE_DIR` does;
-- Payments (base ebea640) and Ship (base 55ca419): their branches packed with the
-  official Registry packager (`bundlePlugin`), mounted the way
-  `astro.playground.config.mjs` mounts the playground's packed plugins.
+A store made from this branch's seed on EmDash 1.4.0 under `astro dev` (Node,
+SQLite), with the companion Commerce Registry build mounted through
+`sandboxed: [...]` and the Payments and Ship branches packed with the official
+Registry packager. `shot.cjs` here signed in and took the pictures.
 
-Each plugin's manifest says `"group": "Store"`; the seed gives `products` and
-`categories` `"group": "Store"`. Setup ran through `/_emdash/api/setup/dev-bypass`,
-then `shot.cjs` signed in, opened the folder and took the pictures.
-
-## What it shows
-
-- `store-folder.png`: the sidebar's Content section has one **Store** folder with
+- [fresh-store-folder.png](https://github.com/dinkuskit/commerce/blob/2a534a217a4e5b201362d3d5c05405025dbfc6f1/proof/store-folder-20261122/fresh-store-folder.png): one Store folder with
   Product categories, Products, Payment settings, Shipments, Orders and Commerce
-  settings. There is no Dinkus Commerce, Dinkus Payments or Dinkus Ship folder.
-- `payment-settings-in-store.png`: Payment settings opens from that folder at its
-  usual address, with the folder still open around it.
+  settings. No Dinkus Commerce, Dinkus Payments or Dinkus Ship folder.
+- [fresh-payment-settings.png](https://github.com/dinkuskit/commerce/blob/2a534a217a4e5b201362d3d5c05405025dbfc6f1/proof/store-folder-20261122/fresh-payment-settings.png): Payment settings
+  opens from that folder at its usual address.
 
-A store made before this change gets the same folder from the self-upgrade step
-`006_store_folder` (tests/unit/storefront-upgrades.test.ts). That step leaves a
-folder the owner already gave a collection alone.
+## An existing store upgrading (22 Nov 2026)
+
+1. A store made and set up on main 84dfaf8: its seed and self-upgrade steps 001
+   to 005, 5 products and 3 product categories. The owner had put Product
+   categories in a folder of their own, "Catalog" (`_emdash_collections.nav_group`).
+2. [upgrade-1-before.png](https://github.com/dinkuskit/commerce/blob/2a534a217a4e5b201362d3d5c05405025dbfc6f1/proof/store-folder-20261122/upgrade-1-before.png): on main, Catalog holds
+   Product categories and Products sits loose under Content.
+3. The same database run on this branch (3ef68df). The first storefront request
+   ran `006_store_folder`; `dinkus:storefront-upgrades` now ends
+   `005_commerce_box_off`, `006_store_folder`.
+4. Read from the database afterwards: `products` group `Store`, `categories`
+   still `Catalog`, `pages` none; still 5 products and 3 product categories.
+   `/`, `/categories/hats`, `/categories/tees`,
+   `/products/ribbed-beanie-preview` and `/products/boxy-tee-preview` answer 200.
+5. [upgrade-2-after.png](https://github.com/dinkuskit/commerce/blob/2a534a217a4e5b201362d3d5c05405025dbfc6f1/proof/store-folder-20261122/upgrade-2-after.png) (desktop) and
+   [upgrade-3-after-phone.png](https://github.com/dinkuskit/commerce/blob/2a534a217a4e5b201362d3d5c05405025dbfc6f1/proof/store-folder-20261122/upgrade-3-after-phone.png) (phone, menu open):
+   Products joined the Store folder; the owner's Catalog folder is untouched.
+
+The same cases are in `tests/unit/storefront-upgrades.test.ts` (6 pass): the
+upgrade, an owner's own folder left alone, and a fresh store from the seed.
