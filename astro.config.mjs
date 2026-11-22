@@ -69,7 +69,7 @@ if (isCloudflare && !wranglerConfig) {
   );
 }
 
-// EmDash 1.4.0's sandbox() only reads the default Wrangler file. Keep a
+// EmDash 1.5.0's sandbox() still only reads the default Wrangler file. Keep a
 // dedicated deployment's runner aligned with the adapter's selected config, and
 // refuse to build a Worker that mounts Commerce without the Worker Loader it needs.
 function cloudflareSandbox() {

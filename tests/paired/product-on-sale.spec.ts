@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { DatabaseSync } from "node:sqlite";
 import { resolve } from "node:path";
+import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
 
 // Run by scripts/verify-paired-product-on-sale.mjs: this store's own middleware in front of a real
 // Commerce Registry build, installed under the beta profile's runtime id as a Registry store installs it.
@@ -105,7 +106,7 @@ test("publishing a product page sells its Commerce product, only for someone who
     const database = db();
     try {
       return database.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'index' AND name IN (?, ?)")
-        .get(`uidx_plugin_${commerce}_catalog_items_commandId`, `uidx_plugin_${commerce}_catalog_items_skuKey`) as { n: number };
+        .get(pluginUniqueIndexName(commerce, "catalog_items", "commandId"), pluginUniqueIndexName(commerce, "catalog_items", "skuKey")) as { n: number };
     } finally {
       database.close();
     }

@@ -159,10 +159,15 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
   const originalFactRails = (originalContent as Array<Record<string, unknown>>).filter((block) => block._type === "dinkus.fact-rail");
   expect(originalFactRails).toHaveLength(1);
 
-  const duplicateButton = admin.getByRole("button", { name: "Duplicate block" });
-  await expect(duplicateButton).toHaveCount(1);
-  await duplicateButton.click();
+  // EmDash 1.5 moved Duplicate into each block's actions menu ("<block> actions").
+  const blockActions = admin.locator("[data-block-key]").first().getByRole("button", { name: / actions$/u });
+  await expect(blockActions).toHaveCount(1);
+  await blockActions.click();
+  await admin.getByRole("menuitem", { name: "Duplicate", exact: true }).click();
   const copiedBlock = admin.locator("[data-block-key]").nth(1);
+  // 1.5 shows blocks collapsed; open the copy to edit it.
+  const copiedToggle = copiedBlock.getByRole("button", { name: "Home opener", exact: true });
+  if ((await copiedToggle.getAttribute("aria-expanded")) !== "true") await copiedToggle.click();
   const copiedHeadline = copiedBlock.getByRole("textbox", { name: "Headline" });
   await expect(copiedHeadline).toHaveValue("Everyday essentials, clearly presented");
   await copiedHeadline.fill("A separately edited opener copy");
@@ -235,8 +240,9 @@ test("first-class page blocks preserve the Portable Text rollback and render a b
     const addBlock = admin.getByRole("button", { name: "Add block", exact: true });
     await expect(addBlock).toBeVisible();
     await addBlock.click();
-    await admin.getByRole("textbox", { name: "Search block types" }).fill("Query card");
-    await admin.getByRole("button", { name: /Query card/u }).last().click();
+    // EmDash 1.5's block picker is a combobox with a list of options.
+    await admin.getByRole("combobox", { name: "Search block types" }).fill("Query card");
+    await admin.getByRole("option", { name: /Query card/u }).first().click();
     const queryEditor = admin.locator("[data-block-key]").filter({ hasText: "Query card" }).last();
     await expect(queryEditor).toBeVisible();
     await queryEditor.getByRole("textbox", { name: /Source collection slug/u }).fill(collection);
