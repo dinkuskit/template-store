@@ -20,13 +20,6 @@ import {
 import { storefrontUpgrader } from "./features/store-shell/storefront-upgrades.js";
 import { isDemoCatalogProfile } from "./features/playground/demo-products.js";
 import { madeBeforeRegistryCommerce, restartPlaygroundStore } from "./features/playground/store-generation.js";
-import {
-  ensureDemoShopperOrder,
-  isPlaygroundLeadStorageConfigured,
-  recordVerifiedPlaygroundLead,
-  revokeShopperSessionById,
-  withShopperAccountRequest,
-} from "./features/shopper-account/playground-runtime.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "./features/guest-cart/checkout-protocol.js";
 import {
   playgroundCheckoutConfigured,
@@ -60,32 +53,6 @@ let demoProfileSeeded = false;
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|cart|start)$/;
-const NATIVE_SHOPPER_ACCOUNT_PATH =
-  /^\/_emdash\/api\/plugins\/dinkus-commerce\/account\/(sign-in\/start|sign-in\/verify|sign-out|orders|profile)$/;
-const SHOPPER_ACCOUNT_ROUTE_PATH = new RegExp(
-  `^/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/account/(sign-in/start|sign-in/verify|sign-out|orders|profile)$`,
-);
-
-type ShopperAccountRouteKind =
-  | "sign-in/start"
-  | "sign-in/verify"
-  | "sign-out"
-  | "orders"
-  | "profile";
-
-function shopperAccountRouteKind(pathname: string): ShopperAccountRouteKind | null {
-  try {
-    for (const form of decodedForms(pathname)) {
-      const match = form.match(SHOPPER_ACCOUNT_ROUTE_PATH);
-      if (match?.[1]) {
-        return match[1] as ShopperAccountRouteKind;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 // While the site is in staging, every storefront response asks search engines to stay away.
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -118,6 +85,7 @@ const storeRequest = defineMiddleware(async (context, next) => {
     slashlessPath &&
     (slashlessPath === "/checkout" ||
       slashlessPath === "/account" ||
+      slashlessPath === "/track-order" ||
       slashlessPath === "/shipping" ||
       slashlessPath === "/returns" ||
       slashlessPath === "/search" ||
@@ -286,22 +254,6 @@ const storeRequest = defineMiddleware(async (context, next) => {
     return refused;
   }
 
-  // The playground wraps the visitor's Commerce account routes with its updates opt-in, sign-in limiter and
-  // verified-lead record; other stores reach the installed plugin's own account routes directly.
-  const accountKind = shopperAccountRouteKind(context.url.pathname);
-  if (accountKind && isPlayground) {
-    const response = await dispatchPlaygroundShopperAccount(
-      context.locals,
-      context.request,
-      context.url,
-      accountKind,
-      isPlayground,
-      playgroundEnv,
-    );
-    applySecurityHeaders(response.headers);
-    return response;
-  }
-
   if (isCloudflare && !isProofMode && !isPlayground) {
     const { request, url } = context;
     const check = evaluatePublicBoundary(
@@ -364,7 +316,7 @@ const storeRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  if (pathForms.some((path) => NATIVE_GUEST_CHECKOUT_POST_PATH.test(path) || NATIVE_SHOPPER_ACCOUNT_PATH.test(path))) {
+  if (pathForms.some((path) => NATIVE_GUEST_CHECKOUT_POST_PATH.test(path))) {
     const response = new Response(
       JSON.stringify({ error: "Native or source-alias checkout is not a supported install." }),
       {
@@ -487,188 +439,4 @@ async function authorizePlaygroundStatusResponse(
   } catch {
     return checkoutJsonError(503, "Checkout status unavailable.");
   }
-}
-
-async function resolveDemoOrPlaygroundDb(
-  locals: unknown,
-  isPlayground: boolean,
-): Promise<Parameters<typeof ensureDemoShopperOrder>[0] | null> {
-  if (isPlayground) {
-    const db = (locals as { __playgroundDb?: Parameters<typeof ensureDemoShopperOrder>[0] } | undefined)
-      ?.__playgroundDb;
-    return db ?? null;
-  }
-  try {
-    const { getDb } = await import("emdash/runtime");
-    return (await getDb()) as Parameters<typeof ensureDemoShopperOrder>[0];
-  } catch {
-    return null;
-  }
-}
-
-async function dispatchPlaygroundShopperAccount(
-  locals: unknown,
-  request: Request,
-  url: URL,
-  kind: ShopperAccountRouteKind,
-  isPlayground: boolean,
-  env: Record<string, unknown>,
-): Promise<Response> {
-  const headers = { "Cache-Control": "private, no-store" };
-  const dispatch = (locals as { emdash?: { handlePublicPluginApiRoute?: PublicPluginDispatcher } } | undefined)
-    ?.emdash?.handlePublicPluginApiRoute;
-  if (typeof dispatch !== "function") {
-    return Response.json(
-      { success: false, error: { code: "UNAVAILABLE", message: "Account service is not available right now." } },
-      { status: 503, headers },
-    );
-  }
-  const method = request.method.toUpperCase();
-  if (kind === "orders" && method !== "GET") {
-    return Response.json(
-      { success: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed." } },
-      { status: 405, headers },
-    );
-  }
-  if ((kind === "sign-in/start" || kind === "sign-in/verify" || kind === "sign-out") && method !== "POST") {
-    return Response.json(
-      { success: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed." } },
-      { status: 405, headers },
-    );
-  }
-  if (kind === "profile" && method !== "GET" && method !== "POST") {
-    return Response.json(
-      { success: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed." } },
-      { status: 405, headers },
-    );
-  }
-
-  const db = await resolveDemoOrPlaygroundDb(locals, isPlayground);
-  if (db) {
-    await ensureDemoShopperOrder(db).catch(() => {});
-  }
-
-  let forwardedBody: string | undefined;
-  let optedIn = false;
-  if (method === "POST") {
-    const raw = await boundedCheckoutBody(request);
-    if (raw === TOO_LARGE) {
-      return Response.json(
-        { success: false, error: { code: "INVALID_INPUT", message: "Account request is too large." } },
-        { status: 413, headers },
-      );
-    }
-    if (raw === null) {
-      return Response.json(
-        { success: false, error: { code: "INVALID_INPUT", message: "Account request body is invalid." } },
-        { status: 400, headers },
-      );
-    }
-    if (kind === "sign-in/start" || kind === "sign-in/verify") {
-      let parsed: Record<string, unknown>;
-      try {
-        const candidate = raw === "" ? {} : (JSON.parse(raw) as unknown);
-        if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-          throw new Error("not-object");
-        }
-        parsed = { ...(candidate as Record<string, unknown>) };
-      } catch {
-        return Response.json(
-          { success: false, error: { code: "INVALID_INPUT", message: "Account request body must be a JSON object." } },
-          { status: 400, headers },
-        );
-      }
-      optedIn = parsed.optInUpdates === true;
-      delete parsed.optInUpdates;
-      if ((kind === "sign-in/start" || kind === "sign-in/verify") && !optedIn) {
-        return Response.json(
-          {
-            success: false,
-            error: {
-              code: "OPT_IN_REQUIRED",
-              message:
-                "Check the updates opt-in box to receive a 6-digit email PIN, or use the instant demo account button below.",
-            },
-          },
-          { status: 400, headers },
-        );
-      }
-      if ((kind === "sign-in/start" || kind === "sign-in/verify") && isPlayground && !isPlaygroundLeadStorageConfigured(env)) {
-        return Response.json(
-          {
-            success: false,
-            error: {
-              code: "UNAVAILABLE",
-              message: "Durable playground opt-in storage is not configured right now.",
-            },
-          },
-          { status: 503, headers },
-        );
-      }
-      if (kind === "sign-in/start" && isPlayground) {
-        const limiter = (locals as { __playgroundCheckoutLimiter?: unknown } | undefined)?.__playgroundCheckoutLimiter;
-        if (limiter && (await checkoutLimited(request, limiter))) {
-          return Response.json(
-            {
-              success: false,
-              error: {
-                code: "RATE_LIMITED",
-                message: "Too many sign-in PIN requests from this connection. Please wait a few minutes or use the instant demo account.",
-              },
-            },
-            { status: 429, headers: { ...headers, "Retry-After": "60" } },
-          );
-        }
-      }
-      forwardedBody = JSON.stringify(parsed);
-    } else {
-      forwardedBody = raw;
-    }
-  }
-
-  const target = new URL(`/_emdash/api/plugins/${COMMERCE_REGISTRY_RUNTIME_ID}/account/${kind}`, url);
-  const forwarded = new Request(target, {
-    method,
-    headers: request.headers,
-    ...(forwardedBody !== undefined ? { body: forwardedBody } : {}),
-  });
-  const result = await withShopperAccountRequest(url.origin, env, () =>
-    dispatch(COMMERCE_REGISTRY_RUNTIME_ID, method, `account/${kind}`, forwarded),
-  );
-  if (!result?.success) {
-    const code = result?.error?.code ?? "PLUGIN_ERROR";
-    const message = code === "INTERNAL_ERROR" ? "Plugin route error" : result?.error?.message ?? "Plugin route error";
-    const status = result?.status ?? (code === "NOT_FOUND" ? 404 : 400);
-    return Response.json({ success: false, error: { code, message } }, { status, headers });
-  }
-  // Commerce's Registry routes refuse in-band ({ ok: false, error }), as in every store: a wrong or expired
-  // PIN, a rate limit or a denied session goes back to the shopper as Commerce gave it, and records no lead.
-  if ((result.data as { ok?: unknown } | null | undefined)?.ok === false) {
-    return Response.json({ success: true, data: result.data }, { status: 200, headers });
-  }
-  if (kind === "sign-in/verify" && result.data && typeof result.data === "object") {
-    const profile = (result.data as { profile?: { email?: unknown } }).profile;
-    const capability = (result.data as { capability?: { sessionId?: unknown } }).capability;
-    if (typeof profile?.email !== "string") {
-      return Response.json(
-        { success: false, error: { code: "UNAVAILABLE", message: "Could not record verified email opt-in." } },
-        { status: 503, headers },
-      );
-    }
-    try {
-      const recorded = await recordVerifiedPlaygroundLead(profile.email, env);
-      if (!recorded) {
-        throw new Error("Lead was not recorded.");
-      }
-    } catch {
-      if (db && typeof capability?.sessionId === "string") {
-        await revokeShopperSessionById(db, capability.sessionId).catch(() => {});
-      }
-      return Response.json(
-        { success: false, error: { code: "UNAVAILABLE", message: "Could not record verified email opt-in." } },
-        { status: 503, headers },
-      );
-    }
-  }
-  return Response.json({ success: true, data: result.data }, { status: 200, headers });
 }

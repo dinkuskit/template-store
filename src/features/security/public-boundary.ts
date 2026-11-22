@@ -12,6 +12,7 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/cart",
   "/checkout",
   "/account",
+  "/track-order",
   "/checkout/success",
   "/favicon.ico",
   "/robots.txt",
@@ -53,14 +54,11 @@ export function isStorefrontPagePath(pathname: string): boolean {
 
 const GUEST_CHECKOUT_POST_PATH =
   new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/checkout/guest/(prepare|cart|start)$`);
-const SHOPPER_ACCOUNT_POST_PATH =
-  new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/account/(sign-in/start|sign-in/verify|sign-out|profile)$`);
-const SHOPPER_ACCOUNT_GET_PATH =
-  new RegExp(`^/_emdash/api/plugins/${COMMERCE_RUNTIME_ID}/account/(orders|profile)$`);
 // The store site's own cart and checkout forms (template-cart-real-form-20261113), Shopify's paths.
 const STORE_CART_POST_PATH = /^\/cart\/(?:(?:add|change)(?:\.js)?|update\.js)$/;
 const STORE_CHECKOUT_FORM_PATH = /^\/checkout$/;
-const LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH = /^\/api\/account\/demo-session$/;
+// The order lookup form posts to its own page, which asks Commerce inside the server (commerce-order-lookup-20261122).
+const STORE_ORDER_LOOKUP_FORM_PATH = /^\/track-order$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 
 export const PUBLIC_STOREFRONT_SEARCH_COLLECTIONS = ["products", "categories", "pages"] as const;
@@ -108,6 +106,7 @@ function slashlessCollectionPath(pathname: string): string | undefined {
   }
   if (
     pathname === "/account/" ||
+    pathname === "/track-order/" ||
     pathname === "/shipping/" ||
     pathname === "/returns/" ||
     pathname === "/search/" ||
@@ -282,18 +281,15 @@ export function evaluatePublicBoundary(
   }
 
   const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
-  const isShopperAccountPost = pathForms.some((path) => SHOPPER_ACCOUNT_POST_PATH.test(path));
-  const isShopperAccountGet = pathForms.some((path) => SHOPPER_ACCOUNT_GET_PATH.test(path));
   const isStoreFormPost = normalizedMethod === "POST" &&
-    pathForms.some((path) => STORE_CART_POST_PATH.test(path) || STORE_CHECKOUT_FORM_PATH.test(path));
-  const isLocalAccountDemoSessionPost = pathForms.some((path) => LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH.test(path));
+    pathForms.some((path) => STORE_CART_POST_PATH.test(path) || STORE_CHECKOUT_FORM_PATH.test(path) || STORE_ORDER_LOOKUP_FORM_PATH.test(path));
   const isAllowedEmdashAdminRequest = allowEmdashAdmin;
 
   // 2. Reject mutations and non-read HTTP methods, except the exact
-  // Commerce guest and shopper account POSTs admitted below.
+  // Commerce guest POSTs and the store's own form posts admitted below.
   if (
     !isAllowedEmdashAdminRequest &&
-    ((normalizedMethod === "POST" && !isGuestCheckoutPost && !isShopperAccountPost && !isStoreFormPost && !isLocalAccountDemoSessionPost) ||
+    ((normalizedMethod === "POST" && !isGuestCheckoutPost && !isStoreFormPost) ||
       normalizedMethod === "PUT" ||
       normalizedMethod === "PATCH" ||
       normalizedMethod === "DELETE")
@@ -310,9 +306,7 @@ export function evaluatePublicBoundary(
     normalizedMethod !== "GET" &&
     normalizedMethod !== "HEAD" &&
     !isGuestCheckoutPost &&
-    !isShopperAccountPost &&
-    !isStoreFormPost &&
-    !isLocalAccountDemoSessionPost
+    !isStoreFormPost
   ) {
     return {
       allowed: false,
@@ -333,19 +327,10 @@ export function evaluatePublicBoundary(
     }
     return { allowed: true, status: 200 };
   }
-  if (SHOPPER_ACCOUNT_POST_PATH.test(decodedPath) || SHOPPER_ACCOUNT_GET_PATH.test(decodedPath)) {
-    if (normalizedMethod === "POST" && isShopperAccountPost) {
-      return { allowed: true, status: 200 };
-    }
-    if ((normalizedMethod === "GET" || normalizedMethod === "HEAD") && isShopperAccountGet) {
-      return { allowed: true, status: 200 };
-    }
-    return { allowed: false, status: 405, reason: "Method not allowed." };
-  }
-  if (STORE_CHECKOUT_FORM_PATH.test(decodedPath) && normalizedMethod === "POST") {
+  if ((STORE_CHECKOUT_FORM_PATH.test(decodedPath) || STORE_ORDER_LOOKUP_FORM_PATH.test(decodedPath)) && normalizedMethod === "POST") {
     return { allowed: true, status: 200 };
   }
-  if (STORE_CART_POST_PATH.test(decodedPath) || LOCAL_ACCOUNT_DEMO_SESSION_POST_PATH.test(decodedPath)) {
+  if (STORE_CART_POST_PATH.test(decodedPath)) {
     return normalizedMethod === "POST"
       ? { allowed: true, status: 200 }
       : { allowed: false, status: 405, reason: "Method not allowed." };

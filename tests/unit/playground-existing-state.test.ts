@@ -20,16 +20,6 @@ import {
   saveMerchantStoreSettings,
   type OrderRecord,
 } from "@dinkuskit/commerce";
-import {
-  CUSTOMER_SESSION_HEADER,
-  SANDBOX_SHOPPER_ACCOUNT_STORAGE,
-  bindShopperAccountRuntime,
-  readShopperAccountOrders,
-  readShopperAccountProfile,
-  signOutShopperSession,
-  updateShopperAccountProfile,
-} from "@dinkuskit/commerce/features/customers";
-import { listOrdersForEmail, type OrdersCollection } from "@dinkuskit/commerce/features/orders";
 import { applySeed } from "emdash/seed";
 import { readFileSync } from "node:fs";
 import { ensurePlaygroundDemoCatalog, PLAYGROUND_COMMERCE_ID } from "../../src/features/playground/demo-commerce-seed.js";
@@ -40,16 +30,6 @@ import { playgroundDinkusKitFetch } from "../../src/features/playground-plugins/
 import { runWithContext } from "emdash/request-context";
 import { playgroundCheckoutBindingStore } from "../../src/features/playground-checkout/binding-store.js";
 import { playgroundAttemptBelongsToVisitor } from "../../src/features/playground-checkout/binding-auth.js";
-import {
-  DEMO_SHOPPER_EMAIL,
-  DEMO_SHOPPER_ORDER_ID,
-} from "../../src/features/shopper-account/index.js";
-import {
-  PRE_UPGRADE_SHOPPER_ORDER_ID,
-  ensureDemoShopperOrder,
-  ensurePreUpgradeShopperOrder,
-  mintDemoShopperSession,
-} from "../../src/features/shopper-account/playground-runtime.js";
 
 let db: Kysely<never>;
 async function visitorDb(): Promise<Kysely<never>> {
@@ -122,188 +102,6 @@ describe("playground visitor database state", () => {
     expect(await playgroundAttemptBelongsToVisitor("attempt-missing", "visitor-a", reopened)).toBe(false);
   });
 
-  it("preserves existing shopper orders, saved profile addresses, and sessions across repeat seeding and rejects foreign/revoked/expired sessions", async () => {
-    const trustedOrigin = "https://playground.dinkuskit.com";
-    const baseMs = Date.parse("2026-10-20T18:00:00.000Z");
-    let currentMs = baseMs;
-
-    const runtimeForDb = (targetDb: Kysely<never>) => {
-      const storage = {
-        [SANDBOX_SHOPPER_ACCOUNT_STORAGE.customers]: new PluginStorageRepository(
-          targetDb as never,
-          COMMERCE_PLUGIN_ID,
-          SANDBOX_SHOPPER_ACCOUNT_STORAGE.customers,
-          [],
-        ),
-        [SANDBOX_SHOPPER_ACCOUNT_STORAGE.loginCodes]: new PluginStorageRepository(
-          targetDb as never,
-          COMMERCE_PLUGIN_ID,
-          SANDBOX_SHOPPER_ACCOUNT_STORAGE.loginCodes,
-          [],
-        ),
-        [SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions]: new PluginStorageRepository(
-          targetDb as never,
-          COMMERCE_PLUGIN_ID,
-          SANDBOX_SHOPPER_ACCOUNT_STORAGE.sessions,
-          [],
-        ),
-        [ORDERS_COLLECTION]: new PluginStorageRepository<OrderRecord>(
-          targetDb as never,
-          COMMERCE_PLUGIN_ID,
-          ORDERS_COLLECTION,
-          [],
-        ),
-      };
-      return bindShopperAccountRuntime(storage, SANDBOX_SHOPPER_ACCOUNT_STORAGE, {
-        runtimeSiteUrl: trustedOrigin,
-        constructorSiteUrl: trustedOrigin,
-        topLevelSiteUrl: trustedOrigin,
-        host: {
-          siteUrl: trustedOrigin,
-          storeName: "DinkusKit Playground",
-          now: () => Math.floor(currentMs / 1000),
-          loadOrdersForEmail: (emailKey: string) =>
-            listOrdersForEmail(storage[ORDERS_COLLECTION] as unknown as OrdersCollection, emailKey),
-          loadShippingCountries: async () => ({
-            requirePhoneNumber: false,
-            shippingCountries: ["US"],
-          }),
-        },
-      });
-    };
-
-    await seed(db);
-    // Populate a pre-upgrade paid order in the existing visitor DB before any shopper account seed/sign-in runs.
-    await ensurePreUpgradeShopperOrder(db as never);
-    const issued = await mintDemoShopperSession(db as never, trustedOrigin, {
-      DINKUS_LOCAL_PROOF: "1",
-      DINKUS_LOCAL_PROOF_NOW: String(currentMs),
-    });
-
-    const initialRuntimeA = runtimeForDb(db);
-    const savedProfile = await updateShopperAccountProfile(
-      initialRuntimeA,
-      {
-        delivery: {
-          name: "Existing Visitor Shopper",
-          line1: "900 Durable Ave",
-          line2: "Apt 4B",
-          city: "Portland",
-          region: "OR",
-          postalCode: "97205",
-          country: "US",
-        },
-        phone: "503-555-0144",
-      },
-      { [CUSTOMER_SESSION_HEADER]: issued.capability.session },
-    );
-    expect(savedProfile.ok).toBe(true);
-
-    // Re-seed both the playground catalog and demo shopper order, and open a fresh runtime (isolate restart).
-    await seed(db);
-    await ensureDemoShopperOrder(db as never);
-    currentMs = baseMs + 5 * 60_000;
-    const reopenedRuntimeA = runtimeForDb(db);
-
-    const ordersRes = await readShopperAccountOrders(reopenedRuntimeA, {
-      [CUSTOMER_SESSION_HEADER]: issued.capability.session,
-    });
-    expect(ordersRes.ok).toBe(true);
-    if (ordersRes.ok) {
-      expect(ordersRes.orders).toEqual([
-        expect.objectContaining({ orderId: DEMO_SHOPPER_ORDER_ID, number: 1001 }),
-        expect.objectContaining({ orderId: PRE_UPGRADE_SHOPPER_ORDER_ID, number: 1002 }),
-      ]);
-    }
-
-    const profileRes = await readShopperAccountProfile(reopenedRuntimeA, {
-      [CUSTOMER_SESSION_HEADER]: issued.capability.session,
-    });
-    expect(profileRes.ok).toBe(true);
-    if (profileRes.ok) {
-      expect(profileRes.profile).toMatchObject({
-        email: DEMO_SHOPPER_EMAIL,
-        delivery: expect.objectContaining({ line1: "900 Durable Ave", line2: "Apt 4B" }),
-        phone: "503-555-0144",
-      });
-    }
-
-    // Separate visitor database (Visitor B) must reject Visitor A's capability token before any read or write.
-    const dbB = new Kysely<never>({ dialect: createDialect({ url: ":memory:" }) });
-    try {
-      await runMigrations(dbB as never);
-      const runtimeB = runtimeForDb(dbB);
-      const foreignOrders = await readShopperAccountOrders(runtimeB, {
-        [CUSTOMER_SESSION_HEADER]: issued.capability.session,
-      });
-      expect(foreignOrders).toEqual({
-        ok: false,
-        error: expect.objectContaining({ code: "SESSION_DENIED" }),
-      });
-
-      const foreignProfileWrite = await updateShopperAccountProfile(
-        runtimeB,
-        {
-          delivery: {
-            name: "Attacker",
-            line1: "1 Spoof St",
-            city: "Portland",
-            region: "OR",
-            postalCode: "97201",
-            country: "US",
-          },
-        },
-        { [CUSTOMER_SESSION_HEADER]: issued.capability.session },
-      );
-      expect(foreignProfileWrite).toEqual({
-        ok: false,
-        error: expect.objectContaining({ code: "SESSION_DENIED" }),
-      });
-    } finally {
-      await dbB.destroy();
-    }
-
-    // Expiry refusal before any account read.
-    currentMs = Date.parse(issued.capability.expiresAt) + 1_000;
-    const expiredOrders = await readShopperAccountOrders(reopenedRuntimeA, {
-      [CUSTOMER_SESSION_HEADER]: issued.capability.session,
-    });
-    expect(expiredOrders).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "SESSION_DENIED" }),
-    });
-
-    // Mint a second demo session and verify it replaces the fixed demo session slot and sign-out revokes it immediately.
-    currentMs = baseMs + 10 * 60_000;
-    const secondSession = await mintDemoShopperSession(db as never, trustedOrigin, {
-      DINKUS_LOCAL_PROOF: "1",
-      DINKUS_LOCAL_PROOF_NOW: String(currentMs),
-    });
-    expect(secondSession.capability.sessionId).toBe("csess_demo_shopper");
-    expect(secondSession.capability.session).not.toBe(issued.capability.session);
-    const priorTokenAfterRotation = await readShopperAccountProfile(reopenedRuntimeA, {
-      [CUSTOMER_SESSION_HEADER]: issued.capability.session,
-    });
-    expect(priorTokenAfterRotation).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "SESSION_DENIED" }),
-    });
-    const signOutRes = await signOutShopperSession(
-      reopenedRuntimeA,
-      {},
-      { [CUSTOMER_SESSION_HEADER]: secondSession.capability.session },
-    );
-    expect(signOutRes).toEqual({ ok: true, signedOut: true });
-
-    const afterSignOut = await readShopperAccountProfile(reopenedRuntimeA, {
-      [CUSTOMER_SESSION_HEADER]: secondSession.capability.session,
-    });
-    expect(afterSignOut).toEqual({
-      ok: false,
-      error: expect.objectContaining({ code: "SESSION_DENIED" }),
-    });
-  });
-
   it("gives the playground's sample orders numbers no other order in the store has, and never counts them as the visitor's", async () => {
     const numbersIn = async (visitor: Kysely<never>) => {
       const orders = new PluginStorageRepository<OrderRecord>(visitor as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
@@ -315,11 +113,11 @@ describe("playground visitor database state", () => {
     const nextIn = async (visitor: Kysely<never>) =>
       (await new PluginStorageRepository<{ next: number }>(visitor as never, COMMERCE_PLUGIN_ID, "order_numbers", []).get("next"))?.next;
 
-    // An existing store that already holds the shopper demo's #1001 and #1002 and a placed order #1003.
-    await ensureDemoShopperOrder(db as never);
-    await ensurePreUpgradeShopperOrder(db as never);
+    // An existing store that already holds placed orders #1001 to #1003.
     const placed = new PluginStorageRepository<Record<string, unknown>>(db as never, COMMERCE_PLUGIN_ID, ORDERS_COLLECTION, []);
-    await placed.put("ord_visitor_1003", { number: 1003, revision: 1, paidOrder: { orderId: "ord_visitor_1003" } });
+    for (const number of [1001, 1002, 1003]) {
+      await placed.put(`ord_visitor_${number}`, { number, revision: 1, paidOrder: { orderId: `ord_visitor_${number}` } });
+    }
     await new PluginStorageRepository<{ next: number }>(db as never, COMMERCE_PLUGIN_ID, "order_numbers", []).put("next", { next: 1004 });
     await seed(db);
     await seed(db);
@@ -327,17 +125,20 @@ describe("playground visitor database state", () => {
     expect(existing.samples).toEqual([1004, 1005]);
     expect(new Set(existing.all).size).toBe(existing.all.length);
     expect(await nextIn(db)).toBe(1006);
-    expect(await visitorOrderCount(db as never)).toBe(1);
+    expect(await visitorOrderCount(db as never)).toBe(3);
+    // A store that used the old instant demo sign-in keeps its demo shopper orders; they are not the visitor's.
+    for (const id of ["ord_demo_shopper_1001", "ord_pre_upgrade_1000"]) {
+      await placed.put(id, { number: 1100, revision: 1, paidOrder: { orderId: id } });
+    }
+    expect(await visitorOrderCount(db as never)).toBe(3);
 
-    // A fresh store, where the shopper demo adds its orders after the samples.
+    // A fresh store, where the samples take the first numbers.
     const fresh = await visitorDb();
     await seed(fresh);
-    await ensureDemoShopperOrder(fresh as never);
-    await ensurePreUpgradeShopperOrder(fresh as never);
     const later = await numbersIn(fresh);
-    expect(later.samples).toEqual([1003, 1004]);
+    expect(later.samples).toEqual([1001, 1002]);
     expect(new Set(later.all).size).toBe(later.all.length);
-    expect(await nextIn(fresh)).toBe(1005);
+    expect(await nextIn(fresh)).toBe(1003);
     expect(await visitorOrderCount(fresh as never)).toBe(0);
     await fresh.destroy();
   });
