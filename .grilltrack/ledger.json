@@ -6794,9 +6794,93 @@
     {
       "baseline_ref": null,
       "candidate_refs": [],
+      "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
+      "context_ref": null,
+      "created_at": "2026-11-22T21:35:19+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-product-states-20261023"
+      ],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-22T21:35:19+00:00",
+          "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-scheduled-sale-in-commerce-20261122",
+      "implementation_ref": null,
+      "question": "Who puts a scheduled product page's product on sale once EmDash publishes it with nobody signed in?",
+      "rationale": "The owner approved on 22 Nov 2026. A sale no longer waits for a signed-in staff member's next visit, and an Author's schedule still leaves the product a Draft.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T21:35:19+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "From the Worker's scheduled() handler, which the Registry build's once-a-minute Cron Trigger already calls: after EmDash's own scheduled publishing, the handler runs courierScheduled() from @dinkuskit/courier/store, pinned to an exact commit. No request, visitor or Node path runs it.",
+      "context_ref": null,
+      "created_at": "2026-11-22T21:35:19+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-22T21:35:19+00:00",
+          "choice": "From the Worker's scheduled() handler, which the Registry build's once-a-minute Cron Trigger already calls: after EmDash's own scheduled publishing, the handler runs courierScheduled() from @dinkuskit/courier/store, pinned to an exact commit. No request, visitor or Node path runs it.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-courier-on-timer-20261122",
+      "implementation_ref": null,
+      "question": "How does a store built from the template run the plugin courier?",
+      "rationale": "The owner approved on 22 Nov 2026 (dinkuskit/courier courier-install-20261122: Cloudflare timer only). The template already had the timer, so the store adds one call and no new binding or setting.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T21:35:19+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
       "choice": "Yes. When a product has published reviews, its schema.org Product data on the product page gains aggregateRating (the average, 1 to 5, and the number of reviews) and the 5 newest reviews (shown name, date, stars, words), for every option a shopper can pick. They are the same rating and reviews the page shows. A product with no reviews, and a store without Reviews installed, gains nothing. A later page of reviews carries the rating only.",
       "context_ref": null,
-      "created_at": "2026-11-22T21:47:22+00:00",
+      "created_at": "2026-11-22T23:07:42+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -6816,7 +6900,7 @@
       "review_source_identity": null,
       "status": "proposed",
       "superseded_by": null,
-      "updated_at": "2026-11-22T21:47:22+00:00",
+      "updated_at": "2026-11-22T23:07:42+00:00",
       "verification_ref": null
     }
   ],
@@ -6840,5 +6924,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T21:47:22+00:00"
+  "updated_at": "2026-11-22T23:07:42+00:00"
 }

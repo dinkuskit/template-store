@@ -280,4 +280,8 @@
 {"action": "decision_locked", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "950de504-adac-4c24-9316-406e7678780d"}
 {"action": "decision_proposed", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "93be8361-1b4a-4092-b668-882bba3ed02e"}
 {"action": "decision_locked", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "e5f17cf4-994b-4ed2-b1fa-1ad7f6f58ba8"}
-{"action": "decision_proposed", "at": "2026-11-22T21:47:22+00:00", "data": {"decision_id": "template-product-rating-jsonld-20261122"}, "event_id": "7e2ecbef-c310-4000-8d84-cfa38ed85b54"}
+{"action": "decision_proposed", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "f216dd0d-a824-446c-acf8-5b1cfe0841e1"}
+{"action": "decision_locked", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "92e01969-ff9c-4520-815d-94b27a766261"}
+{"action": "decision_proposed", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "7ad25633-cde2-44aa-b38b-fd5ea868155f"}
+{"action": "decision_locked", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "8746e8d0-6566-4972-8ea6-974cddd0e9d4"}
+{"action": "decision_proposed", "at": "2026-11-22T23:07:42+00:00", "data": {"decision_id": "template-product-rating-jsonld-20261122"}, "event_id": "89408ca5-5f33-4f1f-8faf-9f520980527a"}
