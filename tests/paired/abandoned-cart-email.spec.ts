@@ -132,7 +132,9 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   await expect(guess).toHaveURL(/\/cart$/u);
   expect((await guessContext.cookies()).find((cookie) => cookie.name === "dk_cart")!.value).toBe(key);
   await guessContext.close();
-  const stopCount = () => sql((db) => db.prepare("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = ? AND collection = 'cart_email_stops'").get(commerce));
+  // This shopper's stop (other paired proofs keep their own shoppers' stops).
+  const stopId = createHash("sha256").update(email).digest("hex");
+  const stopCount = () => sql((db) => db.prepare("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = ? AND collection = 'cart_email_stops' AND id = ?").get(commerce, stopId));
 
   // The shopper tries the same cart again with another email, which also ends unpaid. The stop link still stops
   // the address the email went to, not the latest checkout's.
@@ -179,7 +181,6 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   await expect(stopper).toHaveURL(/\/cart\?stopped=1$/u);
   await expect(stopper.getByText("Done. You won't get cart reminder emails from this store again.")).toBeVisible();
   await stopper.screenshot({ path: `${out}/stop-link-done.png` });
-  const stopId = createHash("sha256").update(email).digest("hex");
   expect(row("cart_email_stops", stopId)).toMatchObject({ at: expect.stringMatching(/^\d+$/u) });
   expect(stopCount()).toEqual({ n: 1 });
   await stopperContext.close();
@@ -212,4 +213,7 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   await replay.screenshot({ path: `${out}/link-after-cart-made-again.png` });
   await replayContext.close();
   await shopperContext.close();
+  // Nothing stays on sale for the other paired proofs.
+  await post(`/_emdash/api/content/products/${entry}/unpublish`, {});
+  await expect.poll(async () => ((await (await page.request.get(base + "catalog/public")).json()).data.products as { name: string }[]).map((item) => item.name)).not.toContain("Trail mug");
 });
