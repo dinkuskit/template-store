@@ -1,0 +1,73 @@
+---
+import type { ReviewPageView } from "./index.js";
+
+interface Props {
+  view: ReviewPageView;
+}
+
+// A plain form drawn on the server, no script (dinkuskit/reviews, reviews-review-page-on-store-20261122).
+// The form posts to the address it was opened at, so the link's secret is never copied into the page.
+const { view } = Astro.props;
+const WORDS: Record<number, string> = { 5: "Excellent", 4: "Very good", 3: "Good", 2: "Fair", 1: "Poor" };
+const DONE = {
+  sent: ["Thank you for your review", "The store has your review."],
+  held: ["Thank you for your review", "The store publishes it after a look."],
+  already: ["You already reviewed this", "Thank you. Your review of this item is with the store."],
+} as const;
+---
+<section class="review-form" data-review-page={view.kind} aria-labelledby="review-form-title">
+  {view.kind === "form" && (
+    <>
+      <h1 id="review-form-title">How was {view.productName}?</h1>
+      {view.refusal && <p class="review-form__alert" data-review-error={view.refusal.code} role="alert">{view.refusal.message}</p>}
+      <form class="review-form__form" method="post" data-review-form>
+        <fieldset>
+          <legend>Your rating</legend>
+          {[5, 4, 3, 2, 1].map((count) => (
+            <label class="review-form__star">
+              <input type="radio" name="stars" value={count} required checked={view.typed.stars === String(count)} />
+              <span aria-hidden="true">{"★".repeat(count)}{"☆".repeat(5 - count)}</span> {count} of 5, {WORDS[count]}
+            </label>
+          ))}
+        </fieldset>
+        <label for="review-form-body">Your review (optional)</label>
+        <textarea id="review-form-body" name="body" rows="5" maxlength={view.bodyMax}>{view.typed.body}</textarea>
+        <label for="review-form-name">Name shown with your review</label>
+        <input id="review-form-name" name="name" autocomplete="off" maxlength={view.nameMax} value={view.typed.name ?? ""} />
+        <small>Leave it empty to show as "{view.anonymousName}". Your email is never shown.</small>
+        <button type="submit" data-review-submit>Send review</button>
+        <small>A review cannot be changed after it is sent.</small>
+      </form>
+    </>
+  )}
+  {view.kind === "done" && (
+    <>
+      <h1 id="review-form-title" data-review-result={view.result}>{DONE[view.result][0]}</h1>
+      <p>{DONE[view.result][1]}</p>
+      <p><a href="/">Back to the store</a></p>
+    </>
+  )}
+  {view.kind === "closed" && (
+    <>
+      <h1 id="review-form-title">This link does not work</h1>
+      <p>A review link works for 60 days and for one review of each item. If you already sent your review, thank you.</p>
+      <p><a href="/">Back to the store</a></p>
+    </>
+  )}
+</section>
+
+<style>
+  .review-form{width:min(40rem,calc(100% - 2rem));margin:3rem auto;min-height:55vh;padding:clamp(1.25rem,3vw,2rem);border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow);overflow-wrap:anywhere}
+  h1{font-size:clamp(2rem,6vw,3rem);letter-spacing:-.04em;margin:0 0 1rem}
+  p{line-height:1.6}
+  .review-form__alert{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
+  .review-form__form{display:grid;gap:.5rem;max-width:28rem}
+  fieldset{border:0;margin:0;padding:0}
+  legend,label{font-weight:700;margin-top:.5rem}
+  .review-form__star{display:flex;align-items:center;gap:.5rem;min-height:44px;font-weight:400;margin:0}
+  input:not([type=radio]),textarea{width:100%;box-sizing:border-box;padding:.65rem;border:1px solid var(--store-ink-border);border-radius:.35rem;background:var(--store-surface);font:inherit}
+  input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
+  small{color:var(--store-muted)}
+  button{justify-self:start;margin-top:1rem;min-height:44px;padding:.7rem 1.2rem;border:1.5px solid var(--store-ink);border-radius:.4rem;background:var(--store-ink);color:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
+  a{color:inherit;font-weight:800;display:inline-flex;align-items:center;min-height:44px}
+</style>
