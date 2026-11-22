@@ -1,7 +1,7 @@
 # Rating and reviews in a product's data for search engines
 
-Decision: `template-product-rating-jsonld-20261122` (proposed, waiting for the
-owner). Builds on `template-product-rating-20261122`.
+Decision: `template-product-rating-jsonld-20261122` (locked; the owner approved on
+2026-11-22). Builds on `template-product-rating-20261122`.
 
 ## What the page does
 
