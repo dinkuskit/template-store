@@ -47,3 +47,33 @@ test("a lookup posted from another site never shows an order", async ({ request 
   expect(response.status()).not.toBe(200);
   expect(await response.text()).not.toContain("data-order-lookup-order");
 });
+
+// The Find order button is the page's one action: its label must read at body size in every preset and theme.
+for (const preset of ["aizome", "forest", "cobalt"]) for (const theme of ["light", "dark"]) {
+  test(`the Find order button is readable (${preset}, ${theme})`, async ({ page, context, baseURL }, testInfo) => {
+    await context.addCookies([
+      { name: "dinkus_preset", value: preset, url: baseURL! },
+      { name: "dinkus_theme", value: theme, url: baseURL! },
+    ]);
+    expect((await page.goto("/track-order"))?.status()).toBe(200);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+    const button = page.getByRole("button", { name: "Find order" });
+    const colors = await button.evaluate((el) => {
+      const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext("2d")!;
+      const rgb = (color: string) => { ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = color; ctx.fillRect(0, 0, 1, 1); return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
+      const luminance = (value: number[]) => value.map((v) => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; })
+        .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i]!, 0);
+      const style = getComputedStyle(el);
+      const ink = luminance(rgb(style.color)), paper = luminance(rgb(style.backgroundColor));
+      return { color: style.color, background: style.backgroundColor, contrast: (Math.max(ink, paper) + 0.05) / (Math.min(ink, paper) + 0.05) };
+    });
+    console.log(JSON.stringify({ preset, theme, width: page.viewportSize()!.width, ...colors }));
+    expect(colors.contrast).toBeGreaterThanOrEqual(4.5);
+    if (preset === "aizome" && theme === "dark") {
+      const root = resolve(proofRoot, testInfo.project.name);
+      await mkdir(root, { recursive: true });
+      await page.screenshot({ path: resolve(root, "form-dark.png"), fullPage: true });
+    }
+  });
+}

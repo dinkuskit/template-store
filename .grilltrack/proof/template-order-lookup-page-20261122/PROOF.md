@@ -28,6 +28,18 @@ Decision: `template-order-lookup-page-20261122` (supersedes
 - Playwright, desktop and mobile Chromium, against the proof store running the
   pinned Commerce's Registry build: `order-lookup.spec.ts` (4 pass),
   `store-header-nav.spec.ts` (6 pass), `guest-cart.spec.ts` (6 pass).
+  - Find order button contrast, read from the painted colours in every preset
+    and theme (`order-lookup.spec.ts`, 16 pass on desktop and mobile). The
+    button now uses the store's ink colour with the surface colour as its text,
+    the pair the shell already reads well with:
+
+    | Preset | Light | Dark |
+    | --- | --- | --- |
+    | Aizome (default) | 17.2:1 | 14.8:1 |
+    | Forest | 16.5:1 | 14.4:1 |
+    | Cobalt | 18.6:1 | 16.0:1 |
+
+    Before the fix, Dark mode drew "Find order" in #141e30 on #334155.
   - The proof store pins Commerce `v0.9.0-beta.2`, which has no
     `orders/lookup` route yet, so a lookup there answers "Order lookup is
     unavailable right now. Try again in a moment." The found-order case runs in
