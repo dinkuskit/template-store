@@ -1,0 +1,145 @@
+import { expect, test } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+
+// Proof for the abandoned cart email (commerce-abandoned-cart-email-20261122) on this store with a Commerce
+// Registry build mounted from DINKUS_PAIRED_COMMERCE_DIR. The proof store has no Payments, so the shopper's
+// checkout is written as Commerce's start leaves it once the payment expired unpaid (the shape is the unit
+// tests' real record); everything after that is the real 5-minute check, EmDash's dev email, and the store.
+const commerce = process.env.DINKUS_PAIRED_RUNTIME_ID ?? "r_fjzjvld3ssb4j63o";
+const base = `/_emdash/api/plugins/${commerce}/`;
+const headers = { "X-EmDash-Request": "1" };
+const dbFile = process.env.DINKUS_PAIRED_DB ?? ".artifacts/paired/content.db";
+const out = process.env.DINKUS_PROOF_OUT ?? "test-results/abandoned-cart-email";
+const email = "shopper@example.test";
+// Until the Commerce pin reaches a beta with the email, this proof needs a Commerce checkout that has it.
+const descriptor = join(process.env.DINKUS_PAIRED_COMMERCE_DIR ?? "", "dist/sandbox/index.mjs");
+const hasCartEmail = existsSync(descriptor) && readFileSync(descriptor, "utf8").includes("cart_email_stops");
+
+function sql<T>(run: (db: DatabaseSync) => T): T {
+  const db = new DatabaseSync(dbFile);
+  try { return run(db); } finally { db.close(); }
+}
+const row = (collection: string, id: string) => sql((db) => {
+  const found = db.prepare("SELECT data FROM _plugin_storage WHERE plugin_id = ? AND collection = ? AND id = ?").get(commerce, collection, id) as { data: string } | undefined;
+  return found ? JSON.parse(found.data) : null;
+});
+
+test("one email 10 hours after an unpaid checkout, its link opens the cart, and its stop link stops them", async ({ page, browser }, info) => {
+  test.skip(info.project.name !== "desktop", "one run makes the proof; the phone views are taken inside it");
+  test.skip(!hasCartEmail, "the paired Commerce has no abandoned cart email yet");
+  test.setTimeout(420_000);
+  mkdirSync(out, { recursive: true });
+  const setup = await page.request.get("/_emdash/api/setup/dev-bypass");
+  expect(setup.ok()).toBe(true);
+  expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
+  await expect.poll(() => sql((db) => db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name=?").get(`uidx_plugin_${commerce}_catalog_items_commandId`)), { timeout: 90_000 }).toEqual({ n: 1 });
+  const post = async (path: string, data: unknown) => {
+    const response = await page.request.post(path, { headers, data });
+    expect(response.ok(), await response.text()).toBe(true);
+    return (await response.json()).data;
+  };
+  const entry = (await post("/_emdash/api/content/products", { slug: "trail-mug", data: { title: "Trail mug" } })).item.id;
+  const id = (await post(base + "catalog", { op: "create", entryId: entry, commandId: "trail-mug", name: "Trail mug", sku: "TRAIL-MUG", fulfillment: "digital" })).catalogItemId;
+  expect((await post(base + "catalog", { op: "prices", catalogItemId: id, regular: "12", sale: "", stockStatus: "in-stock" })).saved).toBe(true);
+  await post(`/_emdash/api/content/products/${entry}/publish`, {});
+
+  // The owner's choice, on Commerce settings.
+  await page.goto(`/_emdash/admin/plugins/${commerce}/settings`);
+  await expect(page.getByText("Abandoned cart email")).toBeVisible({ timeout: 60_000 });
+  const welcome = page.getByRole("button", { name: "Get Started" });
+  if (await welcome.isVisible().catch(() => false)) await welcome.click();
+  await expect(welcome).toBeHidden();
+  await page.waitForTimeout(500);
+  await expect(page.getByText("Shoppers who ticked the box")).toBeVisible();
+  await page.getByText("Abandoned cart email").scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${out}/settings-abandoned-cart-email.png` });
+
+  const origin = new URL(setup.url()).origin;
+  const fresh = (viewport = info.project.use.viewport, phone = false) => browser.newContext({ baseURL: origin, viewport, isMobile: phone, hasTouch: phone, storageState: { cookies: [], origins: [] } });
+  const shopperContext = await fresh();
+  const shopper = await shopperContext.newPage();
+  await shopper.goto("/products/trail-mug");
+  await shopper.locator("[data-add-to-cart]").click();
+  await expect(shopper.locator("[data-add-to-cart-status]")).toHaveText("Added to your cart.");
+  await shopper.goto("/checkout");
+  const box = shopper.locator("[data-guest-cart-news]");
+  await expect(box).not.toBeChecked();
+  await expect(shopper.getByText("Email me with news and offers")).toBeVisible();
+  await shopper.locator("[data-guest-cart-contact]").screenshot({ path: `${out}/checkout-news-box.png` });
+
+  // The checkout Commerce's start saves with the tick, once its payment expired unpaid.
+  const key = (await shopperContext.cookies()).find((cookie) => cookie.name === "dk_cart")!.value;
+  const cartId = row("checkout_guest_capabilities", key.split(".")[0]!).cartId as string;
+  const saved = row("checkout_carts", cartId);
+  expect(saved.cart.lines).toEqual([{ catalogItemId: id, quantity: 1 }]);
+  const attemptId = crypto.randomUUID();
+  const attempt = {
+    attemptId, cart: [{ catalogItemId: id, quantity: 1 }],
+    contactSnapshot: { schema: "dinkuskit.commerce.checkout-contact/v1", contact: { email, billing: { name: "Bill Payer", line1: "9 Billing Way", city: "Billtown", postalCode: "00009", country: "US" } }, requirePhoneNumber: false, revision: null },
+    payment: { attemptId, bindingRef: "stripe-test-binding", lines: [{ catalogItemId: id, quantity: 1, name: "Trail mug", unitPrice: { currency: "USD", minor: "1200" } }], total: { currency: "USD", minor: "1200" }, paymentWindow: { minSeconds: 1800, maxSeconds: 1860 }, paymentMethods: ["card"] },
+    phase: "released",
+    session: { sessionId: "session-" + attemptId, redirectUrl: "https://checkout.stripe.com/test", createdAt: 1, expiresAt: 1801 },
+    paymentReleaseReason: "expired-unpaid",
+  };
+  // 10 hours and a minute ago, as the start set remindAt.
+  const remindAt = String(Math.floor(Date.now() / 1000) - 60);
+  sql((db) => db.prepare("UPDATE _plugin_storage SET data = ? WHERE plugin_id = ? AND collection = ? AND id = ?")
+    .run(JSON.stringify({ ...saved, attempts: [attempt], news: true, remindAt }), commerce, "checkout_carts", cartId));
+
+  // The 5-minute check, run now instead of waiting for its turn.
+  expect((await page.request.delete("/_emdash/api/dev/emails", { headers })).ok()).toBe(true);
+  sql((db) => db.prepare("UPDATE _emdash_cron_tasks SET next_run_at = '2000-01-01T00:00:00.000Z' WHERE plugin_id = ?").run(commerce));
+  let mail: { message: { to: string; subject: string; text: string }; source: string } | undefined;
+  await expect.poll(async () => {
+    const items = (await (await page.request.get("/_emdash/api/dev/emails")).json()).data.items as (typeof mail)[];
+    mail = items.find((item) => item!.message.subject.startsWith("You left something"));
+    if (!mail) sql((db) => db.prepare("UPDATE _emdash_cron_tasks SET next_run_at = '2000-01-01T00:00:00.000Z' WHERE plugin_id = ? AND status = 'idle'").run(commerce));
+    return Boolean(mail);
+  }, { timeout: 300_000, intervals: [5_000] }).toBe(true);
+  expect(mail!.message.to).toBe(email);
+  // EmDash reads the site's name when it starts; this proof store started before it had one, so the email names its host.
+  expect(mail!.message.subject).toBe(`You left something in your cart at ${new URL(origin).host}`);
+  expect(mail!.message.text).toContain("1 x Trail mug");
+  const after = row("checkout_carts", cartId);
+  expect(after.emailed).toBe(true);
+  expect(after.remindAt).toBeUndefined();
+  const link = /Your cart is saved: (\S+)/u.exec(mail!.message.text)![1]!;
+  const stopLink = /To stop cart reminder emails: (\S+)/u.exec(mail!.message.text)![1]!;
+  expect(link.startsWith(origin + "/cart/c/")).toBe(true);
+  expect(stopLink).toBe(link + "&stop=1");
+  const mailPage = await (await fresh({ width: 760, height: 520 })).newPage();
+  const escape = (text: string) => text.replace(/[&<>]/gu, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
+  await mailPage.setContent(`<body style="font:16px/1.5 system-ui;margin:24px"><p><b>From</b> ${escape(mail!.source)} (EmDash dev email)<br><b>To</b> ${escape(mail!.message.to)}<br><b>Subject</b> ${escape(mail!.message.subject)}</p><pre style="white-space:pre-wrap;font:15px/1.5 ui-monospace,monospace;background:#f5f3ee;padding:16px;border-radius:8px">${escape(mail!.message.text)}</pre></body>`);
+  await mailPage.screenshot({ path: `${out}/abandoned-cart-email.png`, fullPage: true });
+
+  // The link, on another device: the same cart opens.
+  for (const [name, phone] of [["desktop", false], ["phone", true]] as const) {
+    const other = await fresh(phone ? { width: 412, height: 915 } : info.project.use.viewport, phone);
+    const tab = await other.newPage();
+    await tab.goto(link);
+    await expect(tab).toHaveURL(/\/cart$/u);
+    await expect(tab.locator(`[data-guest-cart-line="${id}"]`)).toBeVisible();
+    await expect(tab.locator(`[data-guest-cart-line="${id}"] h2`)).toHaveText("Trail mug");
+    await tab.screenshot({ path: `${out}/link-opens-cart-${name}.png`, fullPage: !phone });
+    expect((await other.cookies()).find((cookie) => cookie.name === "dk_cart")!.value).not.toBe(key);
+    await other.close();
+  }
+
+  // The stop link asks first, then stops.
+  const stopper = await (await fresh()).newPage();
+  await stopper.goto(stopLink);
+  await expect(stopper).toHaveURL(/\/cart\?stop=1$/u);
+  await expect(stopper.getByText("Stop cart reminder emails from this store?")).toBeVisible();
+  await stopper.screenshot({ path: `${out}/stop-link-asks.png` });
+  expect(sql((db) => db.prepare("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = ? AND collection = 'cart_email_stops'").get(commerce))).toEqual({ n: 0 });
+  await stopper.getByRole("button", { name: "Stop emails" }).click();
+  await expect(stopper).toHaveURL(/\/cart\?stopped=1$/u);
+  await expect(stopper.getByText("Done. You won't get cart reminder emails from this store again.")).toBeVisible();
+  await stopper.screenshot({ path: `${out}/stop-link-done.png` });
+  const stopId = createHash("sha256").update(email).digest("hex");
+  expect(row("cart_email_stops", stopId)).toMatchObject({ at: expect.stringMatching(/^\d+$/u) });
+  await shopperContext.close();
+});

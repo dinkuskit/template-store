@@ -4,6 +4,8 @@ import {
   addToServerCart,
   cartJson,
   changeServerCart,
+  pickUpServerCart,
+  stopCartEmails,
   readAddForm,
   readBoundedBody,
   readBoundedForm,
@@ -146,4 +148,22 @@ export const postUpdate: APIRoute = async (context) => {
   const result = await changeServerCart(contextOf(context), () => lines,
     { version, ...(typeof key === "string" ? { key } : {}) });
   return json(cartJson(result), statusFor(result));
+};
+
+/**
+ * GET /cart/c/<id>?key=<secret>: the abandoned cart email's link (commerce-abandoned-cart-email-20261122). The
+ * cart becomes this browser's cart and the shopper lands on /cart; `&stop=1` lands there asking to stop the emails.
+ * A link Commerce does not accept just opens the cart page.
+ */
+export const getPickUp: APIRoute = async (context) => {
+  const id = context.params.id ?? "", key = context.url.searchParams.get("key") ?? "";
+  const picked = await pickUpServerCart(contextOf(context), id, key);
+  return redirect(picked && context.url.searchParams.has("stop") ? "/cart?stop=1" : "/cart");
+};
+
+/** POST /cart/stop: the shopper confirmed stopping cart reminder emails. A plain form, so no script is needed. */
+export const postStop: APIRoute = async (context) => {
+  if (!sameStoreRequest(context)) return refused(context, "FORBIDDEN");
+  const stopped = await stopCartEmails(contextOf(context));
+  return redirect(stopped ? "/cart?stopped=1" : withQuery("/cart", "cart_error", "STOP_EXPIRED"));
 };

@@ -16,6 +16,8 @@ export type ServerCartPage = Readonly<{
   openPayment: string | null;
   notice: string | null;
   error: string | null;
+  /** Arrived from the abandoned cart email's stop link: the page asks the shopper to confirm. */
+  askStop: boolean;
 }>;
 
 /** The Stripe page an open payment waits on; only Stripe's own checkout host is ever linked. */
@@ -67,7 +69,9 @@ export async function loadServerCartPage(ctx: ServerCartContext, checkoutAdmitte
     view,
     snapshots,
     openPayment: openPaymentUrl(result),
-    notice: added && /^\d{1,2}$/u.test(added) ? "Added to your cart." : null,
+    notice: added && /^\d{1,2}$/u.test(added) ? "Added to your cart."
+      : ctx.url.searchParams.has("stopped") ? "Done. You won't get cart reminder emails from this store again." : null,
+    askStop: ctx.url.searchParams.has("stop"),
     error: errorCode && /^[A-Z_]{2,40}$/u.test(errorCode)
       ? cartErrorText(errorCode)
       : unreadable ? cartErrorText(result.ok ? "UNAVAILABLE" : result.error.code) : null,
