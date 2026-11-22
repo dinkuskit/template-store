@@ -72,6 +72,23 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await groups()).toMatchObject({ products: STORE_FOLDER_GROUP, categories: "Catalog" });
   });
 
+  it("keeps the Live or staging choice an older store's owner already saved", async () => {
+    const staging = async () => (await sql<{ value: string }>`select value from options where name = 'site:staging'`.execute(db)).rows[0]?.value;
+    const options = new OptionsRepository(db as never);
+    // The owner pressed Go live before this upgrade ran.
+    await options.set("site:staging", false);
+    await upgradeStorefront(db);
+    expect(await staging()).toBe("false");
+    // Switched back to staging, then every step run again (pnpm search:upgrade): still staging.
+    await options.set("site:staging", true);
+    await upgradeStorefront(db, { all: true });
+    expect(await staging()).toBe("true");
+    // And Live again stays Live through a full rerun.
+    await options.set("site:staging", false);
+    await upgradeStorefront(db, { all: true });
+    expect(await staging()).toBe("false");
+  });
+
   it("stops at a failed step without recording it, and the next run starts from that step", async () => {
     const order: string[] = [];
     let fail = true;

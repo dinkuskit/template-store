@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const readSetting = vi.hoisted(() => vi.fn());
-const writeSettings = vi.hoisted(() => vi.fn());
 const setIfAbsent = vi.hoisted(() => vi.fn());
 vi.mock("emdash", () => ({
   getSiteSetting: readSetting,
-  setSiteSettings: writeSettings,
   OptionsRepository: class { setIfAbsent = setIfAbsent; },
 }));
 
@@ -16,20 +14,20 @@ const { STAGING_OPTION, STAGING_ROBOTS, isStorefrontPath, siteIsStaging, startUn
 describe("site visibility", () => {
   beforeEach(() => {
     readSetting.mockReset();
-    writeSettings.mockReset();
     setIfAbsent.mockReset();
   });
 
-  it("reads EmDash's staging setting and treats anything else as live", async () => {
-    readSetting.mockResolvedValueOnce(true);
-    expect(await siteIsStaging()).toBe(true);
+  it("lets search engines in only once the owner pressed Go live", async () => {
+    readSetting.mockResolvedValueOnce(false);
+    expect(await siteIsStaging()).toBe(false);
     expect(readSetting).toHaveBeenCalledWith("staging");
-    for (const value of [false, undefined, null, "true", 1]) {
+    // Staging, a store that never chose, and anything unreadable all stay out of search.
+    for (const value of [true, undefined, null]) {
       readSetting.mockResolvedValueOnce(value);
-      expect(await siteIsStaging()).toBe(false);
+      expect(await siteIsStaging()).toBe(true);
     }
     readSetting.mockRejectedValueOnce(new Error("no database"));
-    expect(await siteIsStaging()).toBe(false);
+    expect(await siteIsStaging()).toBe(true);
   });
 
   it("covers every storefront path and leaves EmDash's own routes alone", () => {
@@ -54,18 +52,12 @@ describe("site visibility", () => {
     expect(redirect.headers.get("X-Robots-Tag")).toBe("noindex, nofollow");
   });
 
-  it("starts a store that never chose staging or Live in staging, and keeps any choice", async () => {
+  it("starts a store that never chose staging or Live in staging with one insert that keeps any choice", async () => {
     const db = {};
     setIfAbsent.mockResolvedValueOnce(true);
     await startUndecidedStoreInStaging(db);
     expect(setIfAbsent).toHaveBeenCalledWith(STAGING_OPTION, true);
     expect(STAGING_OPTION).toBe("site:staging");
-    expect(writeSettings).toHaveBeenCalledWith({ staging: true }, db);
-
-    // The owner already pressed Go live (or chose staging): nothing is written.
-    writeSettings.mockReset();
-    setIfAbsent.mockResolvedValueOnce(false);
-    await startUndecidedStoreInStaging(db);
-    expect(writeSettings).not.toHaveBeenCalled();
+    expect(setIfAbsent).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,4 +1,4 @@
-import { OptionsRepository, getSiteSetting, setSiteSettings } from "emdash";
+import { OptionsRepository, getSiteSetting } from "emdash";
 
 /**
  * Site visibility (GrillTrack template-site-visibility-20261122). EmDash 1.5
@@ -15,12 +15,19 @@ export const STAGING_ROBOTS = "noindex, nofollow";
 /** EmDash's option for Settings > General > Site Status (`true` = staging). */
 export const STAGING_OPTION = "site:staging";
 
-/** Whether the site is still in staging. An unreadable setting counts as live. */
+/**
+ * Whether the site is still in staging. Only Live (`false`, which EmDash's Go
+ * live writes) lets search engines in. A store that has never chosen counts as
+ * staging, the same as storefront upgrade 007 records for it, so even the
+ * request that runs that upgrade answers noindex. An unreadable setting counts
+ * as staging too: keeping a Live store out of search for one answer costs less
+ * than showing a staging store to them.
+ */
 export async function siteIsStaging(): Promise<boolean> {
   try {
-    return (await getSiteSetting("staging")) === true;
+    return (await getSiteSetting("staging")) !== false;
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -49,8 +56,8 @@ export function withStagingRobots(response: Response): Response {
  * keeps that choice.
  */
 export async function startUndecidedStoreInStaging(db: unknown): Promise<void> {
-  // Atomic, so an owner's choice saved meanwhile is never overwritten.
-  if (!(await new OptionsRepository(db as never).setIfAbsent(STAGING_OPTION, true))) return;
-  // Written the way EmDash writes it again, which refreshes its cached site settings.
-  await setSiteSettings({ staging: true }, db as never);
+  // One atomic insert and no second write, so a choice the owner saves meanwhile
+  // is never overwritten. EmDash's cached site settings may still say
+  // "never chosen" for a moment, which siteIsStaging already reads as staging.
+  await new OptionsRepository(db as never).setIfAbsent(STAGING_OPTION, true);
 }

@@ -24,14 +24,14 @@ The screenshots are hosted in dinkuskit/dinkus-pr-assets ([manifest](https://git
 
 ## Unit
 
-`vitest run`: 69 files, 580 tests passed.
+`vitest run`: 65 files, 548 tests passed (after main 555a73d merged in).
 
 - `site-visibility.test.ts`:
-  - Only `true` counts as staging, and an unreadable setting counts as live.
+  - Only `false` (Go live) lets search engines in; staging, a store that never chose, and an unreadable setting all answer noindex, so even the request that runs step 007 is covered.
   - `/_emdash` paths are EmDash's.
   - A read-only redirect gets a copy with the header.
-  - Step 007 writes `site:staging` only when it is unset.
-- `storefront-upgrades.test.ts`: an older store's upgrade runs `007_start_in_staging` and ends with `site:staging` = true.
+  - Step 007 makes one atomic insert of `site:staging` when it is unset, and no second write, so a Go live saved meanwhile stands.
+- `storefront-upgrades.test.ts`: an older store's upgrade runs `007_start_in_staging` and ends with `site:staging` = true; a store whose owner already saved Live (`false`) or staging (`true`) keeps it through the upgrade and through full reruns.
 - `public-boundary.test.ts`:
   - The shipping profile gets no env noindex, and `DINKUS_LAUNCH_INDEXABLE` changes nothing.
   - The proof profile stays noindex.
