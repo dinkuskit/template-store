@@ -1,12 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
 
-// Proof for the abandoned cart email (commerce-abandoned-cart-email-20261122) on this store with a Commerce
-// Registry build mounted from DINKUS_PAIRED_COMMERCE_DIR. The proof store has no Payments, so the shopper's
+// Proof for the abandoned cart email (commerce-abandoned-cart-email-20261122) on this store with the pinned
+// Commerce's Registry build (v0.9.0-beta.5 is the first beta with it). The proof store has no Payments, so the shopper's
 // checkout is written as Commerce's start leaves it once the payment expired unpaid (the shape is the unit
 // tests' real record); everything after that is the real 5-minute check, EmDash's dev email, and the store.
 const commerce = process.env.DINKUS_PAIRED_RUNTIME_ID ?? "r_fjzjvld3ssb4j63o";
@@ -15,9 +14,6 @@ const headers = { "X-EmDash-Request": "1" };
 const dbFile = process.env.DINKUS_PAIRED_DB ?? ".artifacts/paired/content.db";
 const out = process.env.DINKUS_PROOF_OUT ?? "test-results/abandoned-cart-email";
 const email = "shopper@example.test";
-// Until the Commerce pin reaches a beta with the email, this proof needs a Commerce checkout that has it.
-const descriptor = join(process.env.DINKUS_PAIRED_COMMERCE_DIR ?? "", "dist/sandbox/index.mjs");
-const hasCartEmail = existsSync(descriptor) && readFileSync(descriptor, "utf8").includes("cart_email_stops");
 
 function sql<T>(run: (db: DatabaseSync) => T): T {
   const db = new DatabaseSync(dbFile);
@@ -30,7 +26,6 @@ const row = (collection: string, id: string) => sql((db) => {
 
 test("one email 10 hours after an unpaid checkout, its link opens the cart, and its stop link stops them", async ({ page, browser }, info) => {
   test.skip(info.project.name !== "desktop", "one run makes the proof; the phone views are taken inside it");
-  test.skip(!hasCartEmail, "the paired Commerce has no abandoned cart email yet");
   test.setTimeout(420_000);
   mkdirSync(out, { recursive: true });
   const setup = await page.request.get("/_emdash/api/setup/dev-bypass");
