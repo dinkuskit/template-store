@@ -13,6 +13,7 @@ const EXACT_ALLOWED_PATHS = new Set([
   "/checkout",
   "/account",
   "/track-order",
+  "/review",
   "/checkout/success",
   "/favicon.ico",
   "/robots.txt",
@@ -60,6 +61,9 @@ const STORE_CART_POST_PATH = /^\/cart\/(?:(?:add|change)(?:\.js)?|update\.js|sto
 const STORE_CHECKOUT_FORM_PATH = /^\/checkout$/;
 // The order lookup form posts to its own page, which asks Commerce inside the server (commerce-order-lookup-20261122).
 const STORE_ORDER_LOOKUP_FORM_PATH = /^\/track-order$/;
+// The buyer's review form posts to its own page, which hands the review to Reviews inside the server
+// (dinkuskit/reviews, reviews-review-page-on-store-20261122).
+const STORE_REVIEW_FORM_PATH = /^\/review$/;
 const COMMERCE_IMAGE_HREF_PATH = /^\/_emdash\/api\/media\/file\/([A-Za-z0-9._-]+)$/;
 
 export const PUBLIC_STOREFRONT_SEARCH_COLLECTIONS = ["products", "categories", "pages"] as const;
@@ -108,6 +112,7 @@ function slashlessCollectionPath(pathname: string): string | undefined {
   if (
     pathname === "/account/" ||
     pathname === "/track-order/" ||
+    pathname === "/review/" ||
     pathname === "/shipping/" ||
     pathname === "/returns/" ||
     pathname === "/search/" ||
@@ -283,7 +288,7 @@ export function evaluatePublicBoundary(
 
   const isGuestCheckoutPost = pathForms.some((path) => GUEST_CHECKOUT_POST_PATH.test(path));
   const isStoreFormPost = normalizedMethod === "POST" &&
-    pathForms.some((path) => STORE_CART_POST_PATH.test(path) || STORE_CHECKOUT_FORM_PATH.test(path) || STORE_ORDER_LOOKUP_FORM_PATH.test(path));
+    pathForms.some((path) => STORE_CART_POST_PATH.test(path) || STORE_CHECKOUT_FORM_PATH.test(path) || STORE_ORDER_LOOKUP_FORM_PATH.test(path) || STORE_REVIEW_FORM_PATH.test(path));
   const isAllowedEmdashAdminRequest = allowEmdashAdmin;
 
   // 2. Reject mutations and non-read HTTP methods, except the exact
@@ -328,7 +333,7 @@ export function evaluatePublicBoundary(
     }
     return { allowed: true, status: 200 };
   }
-  if ((STORE_CHECKOUT_FORM_PATH.test(decodedPath) || STORE_ORDER_LOOKUP_FORM_PATH.test(decodedPath)) && normalizedMethod === "POST") {
+  if ((STORE_CHECKOUT_FORM_PATH.test(decodedPath) || STORE_ORDER_LOOKUP_FORM_PATH.test(decodedPath) || STORE_REVIEW_FORM_PATH.test(decodedPath)) && normalizedMethod === "POST") {
     return { allowed: true, status: 200 };
   }
   if (STORE_CART_POST_PATH.test(decodedPath)) {
@@ -398,6 +403,8 @@ export function applySecurityHeaders(
   if (demoNoIndexEnabled(env)) {
     securityHeaders["X-Robots-Tag"] = "noindex, nofollow";
   }
+  // A page whose address holds a secret (the buyer's review link) already said to pass on nothing; keep that.
+  if (headers.get("Referrer-Policy") === "no-referrer") delete securityHeaders["Referrer-Policy"];
   for (const [key, value] of Object.entries(securityHeaders)) {
     headers.set(key, value);
   }

@@ -75,6 +75,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     (slashlessPath === "/checkout" ||
       slashlessPath === "/account" ||
       slashlessPath === "/track-order" ||
+      slashlessPath === "/review" ||
       slashlessPath === "/shipping" ||
       slashlessPath === "/returns" ||
       slashlessPath === "/search" ||

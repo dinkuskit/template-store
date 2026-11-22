@@ -266,3 +266,5 @@
 {"action": "decision_proposed", "at": "2026-11-22T16:41:17+00:00", "data": {"decision_id": "template-order-lookup-page-20261122"}, "event_id": "b9a57946-869f-4a98-9a91-aa7134d41b6b"}
 {"action": "decision_locked", "at": "2026-11-22T16:41:17+00:00", "data": {"decision_id": "template-order-lookup-page-20261122"}, "event_id": "828898db-3b8d-431f-811b-0f99ff7dcce4"}
 {"action": "decision_superseded", "at": "2026-11-22T16:41:17+00:00", "data": {"affected": [], "decision_id": "shopper-accounts-playground-20261020", "replacement_id": "template-order-lookup-page-20261122"}, "event_id": "9719bd3d-40fa-41ce-a7a1-9c27d5d7ba21"}
+{"action": "decision_proposed", "at": "2026-11-22T19:19:27+00:00", "data": {"decision_id": "template-review-page-20261122"}, "event_id": "ba9403e9-f35c-4528-bb64-0a36ab573295"}
+{"action": "decision_locked", "at": "2026-11-22T19:19:27+00:00", "data": {"decision_id": "template-review-page-20261122"}, "event_id": "3a9af4ca-a3f4-4910-a6a0-e26cc7cb9be9"}
