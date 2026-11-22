@@ -23,7 +23,7 @@ import { hydrateProductCollectionMembership, productPageOffersCart, readProductE
 import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
 import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
-import { readProductReviews } from "../../features/product-reviews/index.js";
+import { readProductReviews, reviewsJsonLd } from "../../features/product-reviews/index.js";
 import { ProductRating, ProductReviews } from "../../features/product-reviews/ui.ts";
 import "../../features/store-shell/global.css";
 
@@ -157,15 +157,23 @@ const status = linkedStatus ? availabilityLabels[linkedStatus] ?? "Availability 
 const productCanonical = item
   ? canonicalUrl(`/products/${item.id}`, Astro.site, Astro.url)
   : "";
+// The product's rating and published reviews, kept by DinkusKit Reviews under the product's Commerce id
+// (template-product-rating-20261122). Nothing shows when Reviews is not installed or nobody has reviewed it.
+const productReviews = linkedProduct && !noLongerAvailable && !lookupUnavailable
+  ? await readProductReviews({ locals: Astro.locals, request: Astro.request, url: Astro.url }, linkedProduct.id)
+  : null;
+// The same rating and newest reviews go into the product's data for search engines
+// (template-product-rating-jsonld-20261122), whichever option is picked.
+const rated = <T extends object>(jsonLd: T | null) => (jsonLd && productReviews ? { ...jsonLd, ...reviewsJsonLd(productReviews) } : jsonLd);
 // Produce every selectable block on the server through the Commerce builder.
 // The browser only selects a prepared block; it never recalculates an Offer.
 const selectedProductJsonLd = (variant: (typeof variants)[number] | null) => {
   if (!linkedProduct || !item || !productName) return null;
-  return linkedProductJsonLd(linkedProduct, {
+  return rated(linkedProductJsonLd(linkedProduct, {
     url: productCanonical,
     name: productName,
     ...(item.description ? { description: item.description } : {}),
-  }, variant);
+  }, variant));
 };
 // Editorial pages use the preview builder. Unavailable routes emit no data.
 const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item && productName &&
@@ -184,17 +192,12 @@ const productJsonLd = allowsProductJsonLd(Astro.response.status ?? 200) && item 
 const variantJsonLd = productJsonLd && linkedProduct && item && productName && variants.length
   ? {
     ...Object.fromEntries(variants.map((variant) => [variant.id, selectedProductJsonLd(variant)])),
-    [NO_OFFER_JSON_LD_KEY]: buildProductPreviewJsonLd({
+    [NO_OFFER_JSON_LD_KEY]: rated(buildProductPreviewJsonLd({
       url: productCanonical,
       name: productName,
       ...(item.description ? { description: item.description } : {}),
-    }),
+    })),
   }
-  : null;
-// The product's rating and published reviews, kept by DinkusKit Reviews under the product's Commerce id
-// (template-product-rating-20261122). Nothing shows when Reviews is not installed or nobody has reviewed it.
-const productReviews = linkedProduct && !noLongerAvailable && !lookupUnavailable
-  ? await readProductReviews({ locals: Astro.locals, request: Astro.request, url: Astro.url }, linkedProduct.id)
   : null;
 ---
 <!doctype html>

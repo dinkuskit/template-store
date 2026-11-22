@@ -17,6 +17,11 @@ async function sendReview(page: Page, link: string, stars: number, body: string,
   await expect(page.locator("[data-review-result]")).toHaveAttribute("data-review-result", "sent");
 }
 
+type RatedJsonLd = { "@type"?: string; offers?: unknown; aggregateRating?: Record<string, unknown>; review?: { author: { name: string }; reviewRating: { ratingValue: number }; reviewBody?: string; datePublished: string }[] };
+/** The product's data for search engines, as the page carries it. */
+const jsonLd = async (page: import("@playwright/test").Page) =>
+  JSON.parse(await page.locator("script[data-product-jsonld]").textContent() ?? "{}") as RatedJsonLd;
+
 test("a product page shows its rating under the title and its reviews below, and nothing when it has none", async ({ page }, testInfo) => {
   test.setTimeout(300_000);
   requireReviews();
@@ -36,7 +41,11 @@ test("a product page shows its rating under the title and its reviews below, and
   await expect(page.locator("[data-product-page]")).toHaveAttribute("data-commerce-item", reviewed.itemId);
   await expect(page.locator("[data-product-rating]")).toHaveCount(0);
   await expect(page.locator("[data-product-reviews]")).toHaveCount(0);
-  trace.push({ step: "no reviews yet", rating: "none shown", reviews: "none shown" });
+  const bare = await jsonLd(page);
+  expect(bare["@type"]).toBe("Product");
+  expect(bare.aggregateRating).toBeUndefined();
+  expect(bare.review).toBeUndefined();
+  trace.push({ step: "no reviews yet", rating: "none shown", reviews: "none shown", jsonLd: "no aggregateRating, no review" });
 
   // Two buyers review it through the store's /review page: 5 stars with words, then 4 stars with no words or name.
   const line = [{ productId: reviewed.itemId, productName: `Reviewed Mug ${tag}` }];
@@ -79,7 +88,16 @@ test("a product page shows its rating under the title and its reviews below, and
   await expect(section).toBeInViewport();
   await page.goto(path);
   await page.screenshot({ path: resolve(root, "rating-and-reviews.png"), fullPage: true });
-  trace.push({ step: "two reviews (5 and 4 stars)", rating: "4.5 / 5", count: 2, heading: await section.getByRole("heading", { level: 2 }).innerText(), kept: keptRating(reviewed.itemId) });
+  // Search engines read the same rating and reviews from the product's data, beside its offer.
+  const two = await jsonLd(page);
+  expect(two.offers).toBeTruthy();
+  expect(two.aggregateRating).toEqual({ "@type": "AggregateRating", ratingValue: 4.5, bestRating: 5, worstRating: 1, reviewCount: 2 });
+  expect(two.review?.map((review) => [review.author.name, review.reviewRating.ratingValue, review.reviewBody])).toEqual([
+    ["Verified buyer", 4, undefined], ["Sam T.", 5, "Keeps coffee hot for hours.\nWould buy again."],
+  ]);
+  expect(two.review?.[0]?.datePublished).toMatch(/^\d{4}-\d{2}-\d{2}$/u);
+  expect(JSON.stringify(two)).not.toMatch(/Taylor|Shopper|@example\.test|ord-stars-/u);
+  trace.push({ step: "two reviews (5 and 4 stars)", rating: "4.5 / 5", count: 2, heading: await section.getByRole("heading", { level: 2 }).innerText(), kept: keptRating(reviewed.itemId), jsonLd: { aggregateRating: two.aggregateRating, reviews: two.review?.length } });
 
   // 21 more reviews: the page shows 20, and "More reviews" shows the rest on the same page's address.
   for (let index = 0; index < 21; index++) {
@@ -90,6 +108,10 @@ test("a product page shows its rating under the title and its reviews below, and
   await expect(section.getByRole("heading", { level: 2 })).toHaveText(`23 reviews for Reviewed Mug ${tag}`);
   await expect(items).toHaveCount(20);
   await expect(items.nth(0)).toContainText("Review number 21");
+  // The product's data carries the 5 newest reviews, as WooCommerce's does, and the full count.
+  const many = await jsonLd(page);
+  expect(many.aggregateRating).toMatchObject({ reviewCount: 23 });
+  expect(many.review?.map((review) => review.reviewBody)).toEqual([21, 20, 19, 18, 17].map((n) => `Review number ${n}`));
   const more = page.locator("[data-product-reviews-more]");
   await expect(more).toHaveText("More reviews");
   await more.click();
@@ -97,15 +119,20 @@ test("a product page shows its rating under the title and its reviews below, and
   await expect(items).toHaveCount(3);
   await expect(items.nth(2)).toContainText("Keeps coffee hot for hours.");
   await expect(page.locator("[data-product-reviews-more]")).toHaveCount(0);
+  // The later page keeps the rating and names no reviews: the newest are not on it.
+  const later = await jsonLd(page);
+  expect(later.aggregateRating).toMatchObject({ reviewCount: 23 });
+  expect(later.review).toBeUndefined();
   await expect(page.locator("link[rel=canonical]")).toHaveAttribute("href", new RegExp(`${path}$`, "u"));
-  trace.push({ step: "23 reviews", firstPage: 20, secondPage: 3, kept: keptRating(reviewed.itemId) });
+  trace.push({ step: "23 reviews", firstPage: 20, secondPage: 3, kept: keptRating(reviewed.itemId), jsonLd: { firstPageReviews: many.review?.length, reviewCount: many.aggregateRating?.reviewCount, laterPageReviews: 0 } });
 
   // The other product has no review: still no stars, no section.
   expect((await page.goto(`/products/rvw-quiet-${tag}`))?.status()).toBe(200);
   await expect(page.locator("[data-product-page]")).toHaveAttribute("data-commerce-item", quiet.itemId);
   await expect(page.locator("[data-product-rating]")).toHaveCount(0);
   await expect(page.locator("[data-product-reviews]")).toHaveCount(0);
-  trace.push({ step: "another product with no reviews", rating: "none shown" });
+  expect((await jsonLd(page)).aggregateRating).toBeUndefined();
+  trace.push({ step: "another product with no reviews", rating: "none shown", jsonLd: "no aggregateRating" });
   await writeFile(resolve(root, "trace.json"), JSON.stringify(trace, null, 2));
   console.log(JSON.stringify({ project: testInfo.project.name, trace }));
 });
