@@ -9,13 +9,14 @@ GrillTrack decision `template-emdash15-20261122`. Run in a cloud container, Node
 (`1c61faf8b79d…`) against the recorded digests, installed that bundle under its Registry runtime id on a
 fresh 1.5.0 store, and ran `tests/paired`: **12 passed** (desktop and phone).
 
-The screenshots here come from that run:
+The screenshots from that run are hosted in dinkuskit/dinkus-pr-assets (manifest with sizes and SHA-256 digests:
+[`template-store/pr-255-f4489a0/README.md`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/README.md)):
 
-- `desktop-2-published-on-sale.png`, `phone-2-published-on-sale.png`: a product page published from the
+- [`desktop-2-published-on-sale.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/desktop-2-published-on-sale.png), [`phone-2-published-on-sale.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/phone-2-published-on-sale.png): a product page published from the
   admin, on sale on the shop.
-- `desktop-cart-0-default-sold-out-other-size-buyable.png`: a product with Sizes, one sold out.
-- `desktop-cart-2-cart-small.png`: the cart Commerce holds, with the chosen Size and its price.
-- `desktop-cart-5-checkout-with-print.png`: checkout with a digital and a printed line.
+- [`desktop-cart-0-default-sold-out-other-size-buyable.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/desktop-cart-0-default-sold-out-other-size-buyable.png): a product with Sizes, one sold out.
+- [`desktop-cart-2-cart-small.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/desktop-cart-2-cart-small.png): the cart Commerce holds, with the chosen Size and its price.
+- [`desktop-cart-5-checkout-with-print.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/desktop-cart-5-checkout-with-print.png): checkout with a digital and a printed line.
 
 EmDash 1.5 names plugin unique indexes `uidx_plugin_` plus a SHA-256 prefix. On the 1.5 store's database
 the catalog's two indexes are `uidx_plugin_914b72f0…` (`commandId`) and `uidx_plugin_617097d8…` (`skuKey`),

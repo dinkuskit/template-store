@@ -55,9 +55,9 @@ did not recognize the renamed index on 1.5 and refused new products (dinkuskit/c
 
 Pictures of the upgraded store, taken after step 4:
 
-- `upgraded-admin-products.png`: Content > Products, all 14 pages (the 9 from 1.4, the 4 made on 1.5 and
+- [`upgraded-admin-products.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/upgraded-admin-products.png): Content > Products, all 14 pages (the 9 from 1.4, the 4 made on 1.5 and
   the duplicate-SKU page, which got no product). The footer reads EmDash v1.5.0.
-- `upgraded-product-page.png`: a seed product page from the 1.4 database, as a shopper sees it on 1.5.
+- [`upgraded-product-page.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/e26bb525a013f2447437478ae932da3a9cc3a8df/template-store/pr-255-f4489a0/upgraded-product-page.png): a seed product page from the 1.4 database, as a shopper sees it on 1.5.
 
 Run on its own, the Registry path is also covered by `pnpm verify:paired-product-on-sale` on a fresh
 1.5.0 store (12 passed, see `PROOF.md`).
