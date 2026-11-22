@@ -18,7 +18,7 @@ const env = {
 function checkout() {
   mkdirSync("runs", { recursive: true });
   const directory = mkdtempSync(resolve("runs/source-guard-"));
-  for (const file of ["scripts/build-registry.mjs", "scripts/registry-access.mjs", "src/features/commerce-profile/profiles.mjs"]) {
+  for (const file of ["scripts/build-registry.mjs", "scripts/registry-access.mjs", "src/features/commerce-profile/profiles.mjs", "src/features/store-email/sender.mjs"]) {
     mkdirSync(join(directory, file, ".."), { recursive: true });
     copyFileSync(resolve(file), join(directory, file));
   }
@@ -38,7 +38,8 @@ test("compiled Registry artifact requires LOADER, shipping catalog and proof mod
   // Issue203's artifact requirements are independent of the input generator.
   const artifact = {
     worker_loaders: [{ binding: "LOADER" }],
-    vars: { DINKUS_CATALOG_PROFILE: "shipping", DINKUS_PROOF_MODE: "0" },
+    vars: { DINKUS_CATALOG_PROFILE: "shipping", DINKUS_PROOF_MODE: "0", DINKUS_EMAIL_FROM: "orders@store.example.test" },
+    send_email: [{ name: "EMAIL" }],
   };
   assert.doesNotThrow(() => assertRegistryBuild(artifact));
   for (const worker_loaders of [undefined, [], [{ binding: "OTHER" }]]) {
@@ -50,6 +51,10 @@ test("compiled Registry artifact requires LOADER, shipping catalog and proof mod
   for (const DINKUS_PROOF_MODE of [undefined, "1"]) {
     assert.throws(() => assertRegistryBuild({ ...artifact, vars: { ...artifact.vars, DINKUS_PROOF_MODE } }), /disable proof mode/);
   }
+  for (const send_email of [undefined, [], [{ name: "OTHER" }]]) {
+    assert.throws(() => assertRegistryBuild({ ...artifact, send_email }), /must bind EMAIL/);
+  }
+  assert.throws(() => assertRegistryBuild({ ...artifact, vars: { ...artifact.vars, DINKUS_EMAIL_FROM: undefined } }), /sender address/);
 });
 
 test("non-CI builds need no Git checkout or source pins", () => {
@@ -195,5 +200,18 @@ test("only known Commerce profiles enter both build and runtime configuration", 
   assert.equal(registryBuildEnv({ ...env, DINKUS_COMMERCE_PROFILE: "stable" }, config).DINKUS_COMMERCE_PROFILE, "beta");
   for (const profile of ["", "other", "r_fjzjvld3ssb4j63o", "https://foreign.test"]) {
     assert.throws(() => registryConfig({ ...env, DINKUS_COMMERCE_PROFILE: profile }), /DINKUS_COMMERCE_PROFILE/);
+  }
+});
+
+
+test("the store sends from its own address through Cloudflare's send_email binding", () => {
+  // store-email-sender-20261122: orders@ the store's host unless DINKUS_EMAIL_FROM names another.
+  const config = registryConfig(env);
+  assert.equal(config.vars.DINKUS_EMAIL_FROM, "orders@store.example.test");
+  assert.deepEqual(config.send_email, [{ name: "EMAIL" }]);
+  assert.equal(registryConfig({ ...env, DINKUS_EMAIL_FROM: " shop@mail.example.test " }).vars.DINKUS_EMAIL_FROM, "shop@mail.example.test");
+  assert.equal(registryBuildEnv(env, config).DINKUS_EMAIL_FROM, "orders@store.example.test");
+  for (const from of ["shop", "Shop <shop@example.test>", "a@b", "one@example.test, two@example.test"]) {
+    assert.throws(() => registryConfig({ ...env, DINKUS_EMAIL_FROM: from }), /DINKUS_EMAIL_FROM/);
   }
 });

@@ -14,6 +14,7 @@ import { pairedCommerceDescriptor, pairedCommercePin, pairedCommerceProfile, res
 
 import { PAIRED_REVIEWS_DIR_ENV, pairedReviewsDescriptor, resolvePairedReviewsDir } from "./scripts/lib/paired-reviews.mjs";
 import { commerceProfile, commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
+import { storeCloudflareEmail, storeEmailFrom } from "./src/features/store-email/sender.mjs";
 
 const isCloudflare =
   process.env.DINKUS_HOSTING_PROFILE === "cloudflare" ||
@@ -37,6 +38,9 @@ const viteCacheDir = artifactSlotMatch
   : "node_modules/.vite";
 
 const siteUrl = process.env.EMDASH_SITE_URL?.trim() || undefined;
+// A Cloudflare store sends from its own address through Cloudflare (store-email-sender-20261122); EmDash picks it on
+// its own, and SMTP waits in Settings > Email. A Node store starts on SMTP.
+const emailPlugins = isCloudflare ? [storeCloudflareEmail(storeEmailFrom(process.env, siteUrl))] : [];
 
 // Commerce runs one build, the Registry (sandboxed) one, everywhere (template-one-build-registry-20261031).
 // The native copy's development profile is gone with it.
@@ -114,6 +118,7 @@ export default defineConfig({
             baseUrl: "/_emdash/api/media/file",
           }),
       ...(siteUrl ? { siteUrl } : {}),
+      ...(emailPlugins.length ? { plugins: emailPlugins } : {}),
       ...(accessOptions ? { auth: access(accessOptions) } : {}),
       // On Cloudflare the Worker Loader runs the installed plugins; on Node the workerd runner does, and
       // astro dev hands them to Miniflare (EmDash's documented loop: build the plugin, run the site).
