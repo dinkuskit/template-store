@@ -112,6 +112,12 @@ See [.grilltrack/proof/checkout-integration-20260930/PROOF.md](.grilltrack/proof
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `dinkus.test-checkout-host` | Byte-bounded Payments wake HTTP transport and trusted scheduler assembly for canonical Commerce reconciliation | `src/features/test-checkout-host/`; `src/worker.ts`; `scripts/verify-checkout-package.mjs`; `tests/unit/checkout-host-wake-client.test.ts`; `tests/unit/checkout-host-scheduler.test.ts`; `tests/unit/checkout-host-payment-cap.test.ts` | `src/features/test-checkout-host/index.ts` | Exact reviewed Commerce49 source/owner artifact; Payments12 transport | `pnpm test` | `pnpm verify`; `pnpm verify:checkout-package <owner-commerce.tgz>` | matched source consumer; installed runtime activation pending |
 
+## Plugin courier
+
+| Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dinkus.courier` | Carries news between this store's plugins once a minute (GrillTrack `template-courier-on-timer-20261122`; the rule is dinkuskit/dinkuskit `plugin-communication-rule-20261122`): the Worker's `scheduled()` handler, which the Registry build's `* * * * *` Cron Trigger calls, runs EmDash's own scheduled publishing and then `courierScheduled()` from `@dinkuskit/courier/store` (pinned to an exact commit), which reaches EmDash through `withEmDashRuntime` with nobody signed in and calls only plugins' private `courier/outbox` and `courier/inbox` doors; it keeps nothing, a run already going is shared, and a failed run is logged and never stops the timer; a Cron expression the store did not set runs neither | `src/worker.ts`; `tests/unit/worker-courier.test.ts` | `src/worker.ts` | `@dinkuskit/courier` 0.1.0 (dinkuskit/courier 3326182); EmDash `withEmDashRuntime` | `pnpm test -- tests/unit/worker-courier.test.ts` | a Registry build under `wrangler dev --test-scheduled` logs no `[courier] the run failed` | candidate; no store plugin has doors yet (Commerce's `order.shipped` outbox and Reviews' inbox come next) |
+
 ## Commerce49 Registry services / Payments12 checkout consumer
 
 | Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |

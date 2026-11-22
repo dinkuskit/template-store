@@ -268,3 +268,5 @@
 {"action": "decision_superseded", "at": "2026-11-22T16:41:17+00:00", "data": {"affected": [], "decision_id": "shopper-accounts-playground-20261020", "replacement_id": "template-order-lookup-page-20261122"}, "event_id": "9719bd3d-40fa-41ce-a7a1-9c27d5d7ba21"}
 {"action": "decision_proposed", "at": "2026-11-22T20:15:39+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "0f95e7cb-9489-436d-8e2a-9902f850cb26"}
 {"action": "decision_locked", "at": "2026-11-22T20:15:39+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "f4d11bd8-134f-4249-86f8-4072f163d5b2"}
+{"action": "decision_proposed", "at": "2026-11-22T20:23:16+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "095b50d4-91ec-4a04-81d3-2acbba0645f0"}
+{"action": "decision_locked", "at": "2026-11-22T20:23:16+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "0f931dab-dd27-44b3-94e3-a6cfc67d4581"}
