@@ -271,3 +271,4 @@
 {"action": "decision_proposed", "at": "2026-11-22T20:41:06+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "ac790c01-5adc-44c4-82aa-c370e1b5883a"}
 {"action": "decision_locked", "at": "2026-11-22T20:41:06+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "cee59855-9775-4b09-82b6-678e3ab0366d"}
 {"action": "decision_proposed", "at": "2026-11-22T20:44:20+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "65f6ebf3-9d47-44e8-aa79-01532ba2ecbc"}
+{"action": "decision_locked", "at": "2026-11-22T21:02:07+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "469e79fc-57b6-41f0-aba3-2f17f1f7e932"}

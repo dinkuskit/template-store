@@ -2,7 +2,7 @@
 
 Decisions: `template-product-rating-20261122` (locked; the owner approved on
 2026-11-22) for the rating under the title, and
-`template-product-reviews-list-20261122` (proposed, waiting for the owner) for
+`template-product-reviews-list-20261122` (locked; approved the same day) for
 the list below the product. Reviews side: dinkuskit/reviews main `d6d2133`,
 public raw route `list`.
 

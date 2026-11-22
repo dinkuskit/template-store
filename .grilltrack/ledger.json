@@ -6691,20 +6691,35 @@
       "delivery_ref": null,
       "dependencies": [],
       "domain": "agent catalog feed listing",
-      "history": [],
+      "history": [
+        {
+          "at": "2026-11-22T21:02:07+00:00",
+          "choice": "A Reviews section below the product, drawn on the server with no script, only when the product has reviews: the heading 'N reviews for Product' as WooCommerce words it, then each review newest first with its stars, the name the buyer chose, '(verified buyer)', the date, the words and the store's reply. 20 reviews a page (our own number, the Reviews plugin's page size) with a plain 'More reviews' link to the next 20. The count beside the stars under the title jumps to this section.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
       "id": "template-product-reviews-list-20261122",
       "implementation_ref": null,
       "question": "Where does a product page show its published reviews, and how many at a time?",
-      "rationale": "WooCommerce single-product-reviews.php and review-meta.php, read 22 Nov 2026: reviews sit below the product, headed 'N reviews for Product', each with author, '(verified owner)', a dash and the date. Shopify's Dawn leaves the list to a reviews app. Proposed; waits for the owner.",
+      "rationale": "The owner approved on 2026-11-22. WooCommerce single-product-reviews.php and review-meta.php, read 2026-11-22: reviews sit below the product, headed 'N reviews for Product', each with author, '(verified owner)', a dash and the date. 20 a page is our own number, the Reviews plugin's page size.",
       "repair_required": false,
       "review_classifications": [],
       "review_history": [],
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "proposed",
+      "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-22T20:44:20+00:00",
+      "updated_at": "2026-11-22T21:02:07+00:00",
       "verification_ref": null
     }
   ],
@@ -6728,5 +6743,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T20:44:20+00:00"
+  "updated_at": "2026-11-22T21:02:07+00:00"
 }
