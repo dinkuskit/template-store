@@ -23,6 +23,8 @@ export type ConfirmedOrderView = Readonly<{
   address: string | null;
   billingAddress: string | null;
   shippingMethod: string | null;
+  /** Commerce's current status for the order, or null when it gave none (commerce-guest-order-status-20261115). */
+  fulfillment: Readonly<{ status: "Processing" | "Completed"; carrier: string | null; tracking: string | null }> | null;
 }>;
 
 export function formatConfirmedDeliveryAddress(delivery: GuestCheckoutDelivery): string {
@@ -99,5 +101,12 @@ export function confirmedOrderView(checkout: GuestCheckoutProjection): Confirmed
     address: delivery ? formatConfirmedDeliveryAddress(delivery) : null,
     billingAddress: billing ? `${billing.name}, ${formatConfirmedDeliveryAddress(billing)}` : null,
     shippingMethod,
+    fulfillment: order.fulfillment
+      ? {
+          status: order.fulfillment.status === "completed" ? "Completed" : "Processing",
+          carrier: order.fulfillment.carrier ?? null,
+          tracking: order.fulfillment.tracking ?? null,
+        }
+      : null,
   };
 }

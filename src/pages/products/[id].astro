@@ -247,7 +247,8 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
             {variantMembers.length > 0 && <script type="application/json" data-variant-members set:html={jsonLdScript(variantMembers)} />}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
-            <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
+            <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}
+              role={variantOptions.length ? "status" : undefined} aria-atomic={variantOptions.length ? "true" : undefined}>{status}</p>
             {cartProduct && offersCart && <AddToCart product={cartProduct} variants={variants} productId={linkedProduct?.id} formId={addFormId} />}
             {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>{offersCart ? "Demo product. Checkout is unavailable." : "Demo product. Cart and checkout are unavailable."}</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
@@ -393,7 +394,7 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
   .product-options-fallback button:hover{background:var(--store-surface-subtle)}
   .product-options-fallback button:active{transform:translateY(1px)}
   .product-variants{display:flex;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}
-  .product-variant{display:inline-flex;min-height:44px;box-sizing:border-box;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
+  .product-variant{display:inline-flex;min-height:44px;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
   .product-variant__sold-out{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .product-variant:has(input[data-variant-sold-out="true"]){color:var(--store-muted);box-shadow:none}
   .product-variant:has(input[data-variant-sold-out="true"]) span:first-of-type{text-decoration:line-through}
