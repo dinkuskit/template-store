@@ -294,7 +294,8 @@ test("published Commerce products, policies, and feeds share one public revision
     expect(metaBody).not.toContain(shirtId);
     expect(metaBody).not.toContain(mugId);
     expect(metaBody).not.toContain(hoodieId);
-    // The JSON catalog feed lists every product the owner approved for a feed, with its page link.
+    // The JSON catalog feed lists every product on sale with a published page, feed box or not
+    // (GrillTrack template-agent-feed-lists-all-20261122).
     const agentCatalog = await request.get("/feeds/agent-catalog.json");
     expect(agentCatalog.status()).toBe(200);
     expect(agentCatalog.headers()["content-type"]).toContain("json");
@@ -307,8 +308,7 @@ test("published Commerce products, policies, and feeds share one public revision
     expect(listed.get(shirtId)?.canonicalUrl).toBe(shirtLink);
     expect(listed.get(shirtId)?.gtin).toBe(SHIRT_GTIN);
     expect(listed.get(capId)?.canonicalUrl).toBe(capLink);
-    expect(listed.has(mugId)).toBe(false);
-    expect(listed.has(hoodieId)).toBe(false);
+    expect(listed.has(mugId)).toBe(true);
     for (const feedPath of ["/feeds/google-merchant.xml/", "/feeds/meta-catalog.csv/", "/feeds/agent-catalog.json/", "/shipping/", "/returns/"]) {
       const slash = await request.get(feedPath, { maxRedirects: 0 });
       expect(slash.status(), feedPath).not.toBe(200);
