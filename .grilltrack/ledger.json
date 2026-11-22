@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-11-22T18:53:54+00:00",
-    "domain": "store site visibility",
-    "started_at": "2026-11-22T18:53:54+00:00",
+    "confirmed_at": "2026-11-22T18:57:27+00:00",
+    "domain": "agent catalog feed listing",
+    "started_at": "2026-11-22T18:57:27+00:00",
     "status": "confirmed",
-    "summary": "The owner approved on 22 Nov 2026: EmDash's Go live is the store's one search-engine switch. Staging means noindex, Live means indexable; DINKUS_LAUNCH_INDEXABLE is retired; stores upgrading to EmDash 1.5 start in staging; the proof storefront and the playground keep noindex."
+    "summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."
   },
   "decisions": [
     {
@@ -6580,10 +6580,24 @@
           "review_source_identity": null,
           "to": "locked",
           "verification_ref": null
+        },
+        {
+          "at": "2026-11-22T18:57:26+00:00",
+          "choice": "EmDash 1.5's Go live (Settings > General) is the store's one search-engine switch. While the store is in staging every storefront response asks search engines to stay away (X-Robots-Tag: noindex, nofollow); once Live, none does. DINKUS_LAUNCH_INDEXABLE is retired. A new store and a store upgraded to EmDash 1.5 start in staging (storefront upgrade 007_start_in_staging sets site:staging only when unset). The proof storefront and the playground are always noindex. Noindex controls search visibility, not access.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
         }
       ],
       "id": "template-site-visibility-20261122",
-      "implementation_ref": null,
+      "implementation_ref": "git:8d91ae1",
       "question": "What decides whether search engines may index a store?",
       "rationale": "The owner approved on 22 Nov 2026. EmDash 1.5 ships staging and Go live in its own settings, so the store follows them instead of a separate build variable that every Registry build pinned to noindex.",
       "repair_required": false,
@@ -6592,9 +6606,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "locked",
+      "status": "implemented",
       "superseded_by": null,
-      "updated_at": "2026-11-22T18:53:54+00:00",
+      "updated_at": "2026-11-22T18:57:26+00:00",
       "verification_ref": null
     }
   ],
@@ -6618,5 +6632,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T18:53:54+00:00"
+  "updated_at": "2026-11-22T18:57:27+00:00"
 }
