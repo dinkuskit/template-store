@@ -276,3 +276,7 @@
 {"action": "decision_implemented", "at": "2026-11-22T20:37:30+00:00", "data": {"decision_id": "template-site-visibility-20261122"}, "event_id": "3c7e6eeb-8e51-45cc-8e61-7cafba0b811f"}
 {"action": "focus_started", "at": "2026-11-22T20:37:30+00:00", "data": {"cadence": "sequential", "domain": "agent catalog feed listing"}, "event_id": "2afeedae-4a42-4dd2-a445-d0dabb7c0f62"}
 {"action": "shared_understanding_confirmed", "at": "2026-11-22T20:37:30+00:00", "data": {"summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."}, "event_id": "7da9c77c-81bc-49a8-b1a7-5ee3a9c69e48"}
+{"action": "decision_proposed", "at": "2026-11-22T21:16:42+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "35520242-d912-4d83-a3a4-a857812a82dc"}
+{"action": "decision_locked", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-rating-20261122"}, "event_id": "950de504-adac-4c24-9316-406e7678780d"}
+{"action": "decision_proposed", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "93be8361-1b4a-4092-b668-882bba3ed02e"}
+{"action": "decision_locked", "at": "2026-11-22T21:16:43+00:00", "data": {"decision_id": "template-product-reviews-list-20261122"}, "event_id": "e5f17cf4-994b-4ed2-b1fa-1ad7f6f58ba8"}

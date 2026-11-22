@@ -6708,6 +6708,88 @@
       "superseded_by": null,
       "updated_at": "2026-11-22T20:37:30+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Under the product's title: stars, the average as 4.5 / 5 and the count as (12), as Shopify's Dawn theme draws its rating block (a decimal part from 0.3 to 0.7 is a half star, above 0.7 the next whole star). The count links to the reviews on the same page, as WooCommerce's does. A product with no published review, and a store without Reviews installed, shows nothing there, as both do. The page's server reads Reviews' public list route inside the server under the product's Commerce id; no script draws it.",
+      "context_ref": null,
+      "created_at": "2026-11-22T21:16:42+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-22T21:16:43+00:00",
+          "choice": "Under the product's title: stars, the average as 4.5 / 5 and the count as (12), as Shopify's Dawn theme draws its rating block (a decimal part from 0.3 to 0.7 is a half star, above 0.7 the next whole star). The count links to the reviews on the same page, as WooCommerce's does. A product with no published review, and a store without Reviews installed, shows nothing there, as both do. The page's server reads Reviews' public list route inside the server under the product's Commerce id; no script draws it.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-product-rating-20261122",
+      "implementation_ref": null,
+      "question": "How does a product page show the product's rating from DinkusKit Reviews?",
+      "rationale": "The owner approved on 2026-11-22.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T21:16:43+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "A Reviews section below the product, drawn on the server with no script, only when the product has reviews: the heading 'N reviews for Product' as WooCommerce words it, then each review newest first with its stars, the name the buyer chose, '(verified buyer)', the date, the words and the store's reply. 20 reviews a page (our own number, the Reviews plugin's page size) with a plain 'More reviews' link to the next 20. The count beside the stars under the title jumps to this section.",
+      "context_ref": null,
+      "created_at": "2026-11-22T21:16:43+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-22T21:16:43+00:00",
+          "choice": "A Reviews section below the product, drawn on the server with no script, only when the product has reviews: the heading 'N reviews for Product' as WooCommerce words it, then each review newest first with its stars, the name the buyer chose, '(verified buyer)', the date, the words and the store's reply. 20 reviews a page (our own number, the Reviews plugin's page size) with a plain 'More reviews' link to the next 20. The count beside the stars under the title jumps to this section.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-product-reviews-list-20261122",
+      "implementation_ref": null,
+      "question": "Where does a product page show its published reviews, and how many at a time?",
+      "rationale": "The owner approved on 2026-11-22. WooCommerce single-product-reviews.php and review-meta.php, read 2026-11-22: reviews sit below the product, headed 'N reviews for Product', each with author, '(verified owner)', a dash and the date. 20 a page is our own number, the Reviews plugin's page size.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T21:16:43+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -6730,5 +6812,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T20:37:30+00:00"
+  "updated_at": "2026-11-22T21:16:43+00:00"
 }

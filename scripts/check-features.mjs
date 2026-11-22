@@ -18,6 +18,7 @@ for (const feature of [
   "dinkus.guest-cart",
   "dinkus.order-lookup",
   "dinkus.review-form",
+  "dinkus.product-reviews",
   "dinkus.test-checkout-host",
   "dinkus.paired-checkout-consumer",
 ]) {
@@ -104,6 +105,8 @@ for (const path of [
   "src/features/review-form/index.ts",
   "src/features/review-form/ui.ts",
   "src/pages/review.astro",
+  "src/features/product-reviews/index.ts",
+  "src/features/product-reviews/ui.ts",
   "src/pages/account.astro",
   "src/features/test-checkout-host/index.ts",
   "src/features/paired-checkout/index.ts",

@@ -121,6 +121,14 @@ test("shipping profile uses installed catalog and fail-closes without an install
   expect(previewJsonLd.name).toBe("Boxy Tee");
   expect(previewJsonLd.offers).toBeUndefined();
   await expect(page.locator("[data-product-page] a[href*='checkout'], [data-product-page] a[href*='cart']")).toHaveCount(0);
+  // A store whose owner has not installed DinkusKit Reviews shows no stars and no reviews, and every review
+  // link answers 404 (template-product-rating-20261122, template-review-page-20261122).
+  await expect(page.locator("[data-product-rating], [data-product-reviews]")).toHaveCount(0);
+  expect((await request.get(`/review?o=order-1&p=boxy-tee&k=${"ab".repeat(32)}`)).status()).toBe(404);
+  expect((await request.post(`/review?o=order-1&p=boxy-tee&k=${"ab".repeat(32)}`, {
+    headers: { origin: new URL(page.url()).origin, "sec-fetch-site": "same-origin" },
+    form: { stars: "5", body: "", name: "Sam" },
+  })).status()).toBe(404);
   expect((await page.goto("/products/everyday-tee"))?.status()).toBe(503);
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
   expect((await page.goto("/products/does-not-exist"))?.status()).toBe(404);

@@ -17,6 +17,10 @@
         "repository": "https://github.com/dinkuskit/commerce.git",
         "tag": "v0.9.0-beta.5",
         "commit": "6077448045244b877c8ecc75aed2b0cc9b4a509e"
+      },
+      "reviews": {
+        "repository": "https://github.com/dinkuskit/reviews.git",
+        "commit": "d6d2133bd4824e474e3002787c34f150ea662f24"
       }
     },
     "playgroundPlugins": {
@@ -35,6 +39,7 @@
   "scripts": {
     "prepare:sources": "node scripts/prepare-source-deps.mjs && node scripts/prepare-playground-plugins.mjs",
     "prepare:commerce": "node scripts/prepare-paired-commerce.mjs",
+    "prepare:reviews": "node scripts/prepare-paired-reviews.mjs",
     "predev": "pnpm prepare:sources",
     "dev": "astro dev",
     "dev:fresh": "bash scripts/dev-fresh.sh",
