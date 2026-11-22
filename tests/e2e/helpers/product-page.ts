@@ -2,6 +2,7 @@ import { expect, type APIRequestContext, type Locator, type Page } from "@playwr
 
 import { commerceProfile } from "../../../src/features/commerce-profile/profiles.mjs";
 import { pairedCommercePin, pairedCommerceProfile } from "../../../scripts/lib/paired-commerce.mjs";
+import { pluginUniqueIndexName } from "./plugin-index";
 
 // Commerce sells a product from its Content > Products page: the page's Dinkus Commerce panel adds price and
 // stock, and publishing the page puts the product on sale (the store's publish check). Commerce holds which
@@ -16,7 +17,7 @@ export const COMMERCE_ID: string = commerceProfile(process.env.DINKUS_COMMERCE_P
 export const COMMERCE_API = `/_emdash/api/plugins/${COMMERCE_ID}`;
 const CATALOG = `${COMMERCE_API}/catalog`;
 /** EmDash's SQLite name for Commerce's SKU unique index, which it builds on a fresh install's first requests. */
-export const COMMERCE_SKU_INDEX = `uidx_plugin_${COMMERCE_ID}_catalog_items_skuKey`;
+export const COMMERCE_SKU_INDEX = pluginUniqueIndexName(COMMERCE_ID, "catalog_items", "skuKey");
 
 /** One `op` of Commerce's private catalog route, as the signed-in person (catalog-api-20261027). */
 export async function catalogOp<T>(request: APIRequestContext, body: Record<string, unknown>): Promise<T> {
