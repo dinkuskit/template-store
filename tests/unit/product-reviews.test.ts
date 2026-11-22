@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { moreReviewsHref, ratingText, readProductReviews, reviewsHeading, starFill } from "../../src/features/product-reviews/index.js";
+import { moreReviewsHref, ratingText, readProductReviews, reviewsHeading, reviewsJsonLd, starFill } from "../../src/features/product-reviews/index.js";
 import { REVIEWS_REGISTRY_RUNTIME_ID } from "../../src/features/review-form/index.js";
 
 const PAGE = "https://store.example.test/products/camp-mug";
@@ -105,5 +105,23 @@ describe("a product page's rating and reviews", () => {
     expect(ratingText(4.5)).toBe("4.5");
     expect(reviewsHeading(1, "Camp Mug")).toBe("1 review for Camp Mug");
     expect(reviewsHeading(12, "Camp Mug")).toBe("12 reviews for Camp Mug");
+  });
+
+  it("writes the rating and the 5 newest reviews into the product's data for search engines", async () => {
+    const many = Array.from({ length: 7 }, (_, index) => ({ ...REVIEW, id: `review-${index}`, body: index === 1 ? "" : `Words ${index}` }));
+    const view = await readProductReviews(page(raw({ ...LIST, rating: { ...LIST.rating, count: 7 }, reviews: many })).ctx, "prod_1");
+    const data = reviewsJsonLd(view!);
+    expect(data.aggregateRating).toEqual({ "@type": "AggregateRating", ratingValue: 4.5, bestRating: 5, worstRating: 1, reviewCount: 7 });
+    expect(data.review).toHaveLength(5);
+    expect(data.review?.[0]).toEqual({
+      "@type": "Review", author: { "@type": "Person", name: "Sam T." }, datePublished: "2026-11-20",
+      reviewRating: { "@type": "Rating", ratingValue: 5, bestRating: 5, worstRating: 1 }, reviewBody: "Words 0",
+    });
+    // A review with no words has no reviewBody.
+    expect(data.review?.[1]).not.toHaveProperty("reviewBody");
+    // A later page of reviews, or a page of reviews that could not be shown, keeps the rating alone.
+    const later = await readProductReviews(page(raw(LIST), `${PAGE}?reviews=next-1`).ctx, "prod_1");
+    expect(reviewsJsonLd(later!)).toEqual({ aggregateRating: { "@type": "AggregateRating", ratingValue: 4.5, bestRating: 5, worstRating: 1, reviewCount: 2 } });
+    expect(reviewsJsonLd({ ...view!, reviews: [] })).not.toHaveProperty("review");
   });
 });

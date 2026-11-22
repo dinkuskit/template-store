@@ -63,11 +63,15 @@ async function submitAdd(form: HTMLFormElement, submitter: HTMLElement | null): 
   }
 }
 
-/** Send a cart-page form with fetch and swap in the cart the server drew after the change. */
+/** A failed enhancement still uses the captured plain form. */
+function submitPlainChange(form: HTMLFormElement): void {
+  form.hidden = true;
+  document.body.append(form);
+  HTMLFormElement.prototype.submit.call(form);
+}
+
+/** Send a captured cart-page form and replace the currently attached section. */
 async function submitChange(form: HTMLFormElement): Promise<void> {
-  const section = form.closest("[data-server-cart]");
-  if (!section) return form.submit();
-  section.setAttribute("aria-busy", "true");
   try {
     const response = await fetch(form.action, {
       method: "POST",
@@ -77,26 +81,12 @@ async function submitChange(form: HTMLFormElement): Promise<void> {
     });
     const html = await response.text();
     const next = new DOMParser().parseFromString(html, "text/html").querySelector("[data-server-cart]");
-    if (!response.ok || !next) return form.submit();
-    section.replaceWith(next);
+    if (!response.ok || !next) return submitPlainChange(form);
+    document.querySelector("[data-server-cart]")?.replaceWith(next);
     renderCartCount();
     next.querySelector<HTMLElement>("[role=alert], [data-guest-cart-empty]")?.focus?.();
   } catch {
-    form.submit();
-  }
-}
-
-/** An agent changed the cart: follow it in the badge and, on the cart page, redraw the cart. */
-async function cartChangedElsewhere(count: number): Promise<void> {
-  renderCartCount(count);
-  const section = document.querySelector("[data-server-cart]");
-  if (!section) return;
-  try {
-    const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
-    const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
-    if (response.ok && next) section.replaceWith(next);
-  } catch {
-    // The next visit draws the current cart.
+    submitPlainChange(form);
   }
 }
 
@@ -114,7 +104,31 @@ export function hydrateServerCartForms(): void {
   renderCartCount();
   if (scope[BOUND]) return;
   scope[BOUND] = true;
-  installStorefrontWebMcp({ onCartChanged: (count) => void cartChangedElsewhere(count) });
+  let savingChange = false;
+  let redrawAfterSave = false;
+
+  async function redrawCart(): Promise<void> {
+    const section = document.querySelector("[data-server-cart]");
+    if (!section) return;
+    if (savingChange) {
+      redrawAfterSave = true;
+      return;
+    }
+    try {
+      const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
+      const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
+      // A save may have started while the refresh was fetching. Don't replace its locked controls.
+      if (savingChange) redrawAfterSave = true;
+      else if (response.ok && next) section.replaceWith(next);
+    } catch {
+      // The next visit draws the current cart.
+    }
+  }
+
+  installStorefrontWebMcp({ onCartChanged: (count) => {
+    renderCartCount(count);
+    void redrawCart();
+  } });
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
@@ -122,8 +136,30 @@ export function hydrateServerCartForms(): void {
       event.preventDefault();
       void submitAdd(form, (event as SubmitEvent).submitter ?? null);
     } else if (form.matches("[data-cart-change-form]")) {
+      if (savingChange) {
+        event.preventDefault();
+        return;
+      }
+      const section = document.querySelector("[data-server-cart]");
+      if (!section) return; // Let the browser submit the plain form.
       event.preventDefault();
-      void submitChange(form);
+      savingChange = true;
+      // Capture before disabling: disabled inputs are not included in form data.
+      const captured = form.cloneNode(true) as HTMLFormElement;
+      const controls = section.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
+        "[data-cart-change-form] :is([data-guest-cart-qty], button[type=submit]):enabled",
+      );
+      section.setAttribute("aria-busy", "true");
+      for (const control of controls) control.disabled = true;
+      void submitChange(captured).finally(() => {
+        section.removeAttribute("aria-busy");
+        for (const control of controls) control.disabled = false;
+        savingChange = false;
+        if (redrawAfterSave) {
+          redrawAfterSave = false;
+          void redrawCart();
+        }
+      });
     }
   });
   document.addEventListener("click", (event) => {

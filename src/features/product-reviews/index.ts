@@ -134,3 +134,26 @@ export function moreReviewsHref(url: URL, next: string): string {
   address.searchParams.set(REVIEWS_CURSOR_PARAM, next);
   return `${address.pathname}${address.search}#${REVIEWS_ANCHOR}`;
 }
+
+/** Reviews written into a product's data for search engines, as WooCommerce marks its 5 most recent. */
+const JSON_LD_REVIEWS = 5;
+
+/**
+ * The product's rating and newest reviews for its schema.org data (template-product-rating-jsonld-20261122),
+ * the fields WooCommerce's structured data writes: `aggregateRating` with the average and the count, and
+ * the newest reviews, which are the ones the page shows. On a later page of reviews only the rating is written,
+ * because the newest reviews are not on that page.
+ */
+export function reviewsJsonLd(view: ProductReviewsView) {
+  const reviews = view.later ? [] : view.reviews.slice(0, JSON_LD_REVIEWS);
+  return {
+    aggregateRating: { "@type": "AggregateRating", ratingValue: view.rating.value, bestRating: 5, worstRating: 1, reviewCount: view.rating.count },
+    ...(reviews.length > 0 ? { review: reviews.map((review) => ({
+      "@type": "Review",
+      author: { "@type": "Person", name: review.name },
+      datePublished: review.date.slice(0, 10),
+      reviewRating: { "@type": "Rating", ratingValue: review.stars, bestRating: 5, worstRating: 1 },
+      ...(review.body ? { reviewBody: review.body } : {}),
+    })) } : {}),
+  };
+}
