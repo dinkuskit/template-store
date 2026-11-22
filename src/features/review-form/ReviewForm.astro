@@ -10,7 +10,7 @@ interface Props {
 const { view } = Astro.props;
 const WORDS: Record<number, string> = { 5: "Excellent", 4: "Very good", 3: "Good", 2: "Fair", 1: "Poor" };
 const DONE = {
-  sent: ["Thank you for your review", "It is now on the product's page."],
+  sent: ["Thank you for your review", "The store has your review."],
   held: ["Thank you for your review", "The store publishes it after a look."],
   already: ["You already reviewed this", "Thank you. Your review of this item is with the store."],
 } as const;
