@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const readSetting = vi.hoisted(() => vi.fn());
 const setIfAbsent = vi.hoisted(() => vi.fn());
 vi.mock("emdash", () => ({
-  getSiteSetting: readSetting,
+  getSiteSettings: readSetting,
   OptionsRepository: class { setIfAbsent = setIfAbsent; },
 }));
 
@@ -18,12 +18,11 @@ describe("site visibility", () => {
   });
 
   it("lets search engines in only once the owner pressed Go live", async () => {
-    readSetting.mockResolvedValueOnce(false);
+    readSetting.mockResolvedValueOnce({ title: "Shop", staging: false });
     expect(await siteIsStaging()).toBe(false);
-    expect(readSetting).toHaveBeenCalledWith("staging");
     // Staging, a store that never chose, and anything unreadable all stay out of search.
-    for (const value of [true, undefined, null]) {
-      readSetting.mockResolvedValueOnce(value);
+    for (const settings of [{ staging: true }, {}, { staging: null }]) {
+      readSetting.mockResolvedValueOnce(settings);
       expect(await siteIsStaging()).toBe(true);
     }
     readSetting.mockRejectedValueOnce(new Error("no database"));

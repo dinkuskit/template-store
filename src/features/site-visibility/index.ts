@@ -1,4 +1,4 @@
-import { OptionsRepository, getSiteSetting } from "emdash";
+import { OptionsRepository, getSiteSettings } from "emdash";
 
 /**
  * Site visibility (GrillTrack template-site-visibility-20261122). EmDash 1.5
@@ -25,7 +25,9 @@ export const STAGING_OPTION = "site:staging";
  */
 export async function siteIsStaging(): Promise<boolean> {
   try {
-    return (await getSiteSetting("staging")) !== false;
+    // EmDash's single-setting read turns a saved `false` into "not set", so
+    // the whole settings snapshot is read, which keeps Live's `false`.
+    return (await getSiteSettings()).staging !== false;
   } catch {
     return true;
   }

@@ -27,7 +27,7 @@ The screenshots are hosted in dinkuskit/dinkus-pr-assets ([manifest](https://git
 `vitest run`: 65 files, 548 tests passed (after main 555a73d merged in).
 
 - `site-visibility.test.ts`:
-  - Only `false` (Go live) lets search engines in; staging, a store that never chose, and an unreadable setting all answer noindex, so even the request that runs step 007 is covered.
+  - Only `false` (Go live) lets search engines in; staging, a store that never chose, and an unreadable setting all answer noindex, so even the request that runs step 007 is covered. It reads EmDash's settings snapshot, because the single-setting read turns a saved `false` into "not set".
   - `/_emdash` paths are EmDash's.
   - A read-only redirect gets a copy with the header.
   - Step 007 makes one atomic insert of `site:staging` when it is unset, and no second write, so a Go live saved meanwhile stands.
