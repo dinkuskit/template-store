@@ -2,16 +2,13 @@
  * The playground's two sample orders (GrillTrack playground-commerce-until-part-2-20261022):
  * one shipped, with its practice label, and one paid and waiting to ship. They sit
  * in Commerce's orders like every other TEST order, so Ship lists them beside the
- * prospect's own. Each takes the next number no order in the store has, skipping
- * the numbers the shopper account demo's own orders use (#1001 and #1002), which
- * it may add before or after. Made once per playground store; never touched after.
+ * prospect's own. Each takes the next number no order in the store has.
+ * Made once per playground store; never touched after.
  */
 import { PluginStorageRepository } from "emdash";
 import { ORDER_NUMBERS_COLLECTION, ORDERS_COLLECTION, PAID_ORDER_SCHEMA } from "@dinkuskit/commerce";
 import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "../playground-plugins/registry-plugins.mjs";
 import { BOXES, STAND_IN_STORAGE, type Label } from "../playground-plugins/dinkuskit-stand-in.js";
-import { DEMO_SHOPPER_ORDER_NUMBER } from "../shopper-account/index.js";
-import { PRE_UPGRADE_SHOPPER_ORDER_NUMBER } from "../shopper-account/playground-runtime.js";
 
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 type Line = { sku: string; name: string; quantity: number; unitMinor: string };
@@ -21,7 +18,6 @@ const COMMERCE = PLAYGROUND_INSTALLED_PLUGIN_IDS.commerce;
 const SHIPPING_MINOR = 500;
 const HOUR = 3_600_000;
 
-const RESERVED_NUMBERS = [DEMO_SHOPPER_ORDER_NUMBER, PRE_UPGRADE_SHOPPER_ORDER_NUMBER];
 const FIRST_NUMBER = 1001;
 
 const SAMPLES: { orderId: string; paidHoursAgo: number; shippedHoursAgo?: number; name: string; email: string; city: string; region: string; postalCode: string; line1: string; lines: Line[] }[] = [
@@ -56,7 +52,7 @@ export async function ensurePlaygroundSampleOrders(db: Db, items: ReadonlyMap<st
   const seedable = SAMPLES.filter((sample) => sample.lines.every((line) => items.has(line.sku)));
   const present = await orders.getMany(seedable.map((sample) => sample.orderId));
   if (seedable.every((sample) => present.has(sample.orderId))) return;
-  const taken = new Set<number>(RESERVED_NUMBERS);
+  const taken = new Set<number>();
   let cursor: string | undefined;
   do {
     const page = await orders.query({ limit: 100, ...(cursor ? { cursor } : {}) });

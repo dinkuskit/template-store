@@ -133,7 +133,7 @@ test("every browser spec file runs in exactly one shard, and CI runs every shard
     .filter((name) => name.endsWith(".spec.ts"))
     .map((name) => name.slice(0, -".spec.ts".length));
   assert.deepEqual([...seen].sort(), [...specs].sort());
-  // The filters are anchored, so shopper-account cannot also select shopper-account-contrast.
+  // The filters are anchored, so one spec name cannot also select a longer one that starts with it.
   for (let shard = 1; shard <= 4; shard += 1) {
     const filters = execFileSync(process.execPath, [script, String(shard)], { encoding: "utf8" }).trim().split("\n");
     for (const filter of filters) assert.match(filter, /^tests\/e2e\/[a-z0-9-]+\\\.spec\\\.ts\$$/u);

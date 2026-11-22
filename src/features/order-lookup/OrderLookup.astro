@@ -1,0 +1,84 @@
+---
+import type { OrderLookupOutcome } from "./index.js";
+
+interface Props {
+  /** The answer to a posted lookup; absent when the page is first opened. */
+  outcome?: OrderLookupOutcome | null | undefined;
+}
+
+// A plain form drawn on the server, like WooCommerce's Track your order: no script (commerce-order-lookup-20261122).
+const { outcome } = Astro.props;
+const order = outcome?.ok ? outcome.order : null;
+const refused = outcome && !outcome.ok ? outcome : null;
+const values = refused?.form ?? { orderNumber: "", email: "" };
+---
+<section class="order-lookup" data-order-lookup aria-labelledby="order-lookup-title">
+  <h1 id="order-lookup-title">{order ? `Order #${order.number}` : "Track your order"}</h1>
+  {order ? (
+    <div class="order-lookup__order" data-order-lookup-order={order.number}>
+      <p class="order-lookup__status" data-order-lookup-status={order.status.toLowerCase()}>
+        <strong>{order.status}</strong>{order.paidOn && <> · Placed {order.paidOn}</>}
+      </p>
+      {order.status === "Completed" && (order.carrier || order.tracking) && (
+        <p data-order-lookup-shipment>
+          {order.carrier && <span data-order-lookup-carrier>Carrier: {order.carrier}</span>}
+          {order.carrier && order.tracking && <br />}
+          {order.tracking && <span data-order-lookup-tracking>Tracking number: {order.tracking}</span>}
+        </p>
+      )}
+      <h2>Items</h2>
+      <ul class="order-lookup__lines" data-order-lookup-lines>
+        {order.lines.map((line) => (
+          <li data-order-lookup-line={line.id}>
+            <span>{line.text}{line.options && <small data-order-lookup-line-options>{line.options}</small>}</span>
+            <span>{line.amount}</span>
+          </li>
+        ))}
+      </ul>
+      <dl class="order-lookup__totals" data-order-lookup-totals>
+        {order.totals.map((row) => <div class={row.label === "Total" ? "total" : undefined}><dt>{row.label}</dt><dd>{row.amount}</dd></div>)}
+      </dl>
+      {order.address && (
+        <>
+          <h2>Shipping address</h2>
+          <p data-order-lookup-address>{order.recipient}<br />{order.address}</p>
+        </>
+      )}
+      <p><a href="/track-order">Look up another order</a></p>
+    </div>
+  ) : (
+    <>
+      <p>Enter your order number and the email you used at checkout. Your order number is in your confirmation email.</p>
+      {refused && <p class="order-lookup__alert" data-order-lookup-error={refused.code} role="alert">{refused.message}</p>}
+      <form class="order-lookup__form" method="post" action="/track-order" data-order-lookup-form>
+        <label for="order-lookup-number">Order number</label>
+        <input id="order-lookup-number" name="orderNumber" inputmode="numeric" autocomplete="off" required maxlength="20" value={values.orderNumber} />
+        <label for="order-lookup-email">Email</label>
+        <input id="order-lookup-email" name="email" type="email" autocomplete="email" required maxlength="254" value={values.email} />
+        <button type="submit" data-order-lookup-submit>Find order</button>
+      </form>
+    </>
+  )}
+</section>
+
+<style>
+  .order-lookup{width:min(40rem,calc(100% - 2rem));margin:3rem auto;min-height:55vh;padding:clamp(1.25rem,3vw,2rem);border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow);overflow-wrap:anywhere}
+  h1{font-size:clamp(2rem,6vw,3rem);letter-spacing:-.04em;margin:0 0 1rem}
+  h2{font-size:1.05rem;margin:1.75rem 0 .6rem}
+  p{line-height:1.6}
+  .order-lookup__alert{color:var(--store-alert-ink);background:var(--store-alert);padding:.8rem 1rem;border-radius:.6rem}
+  .order-lookup__form{display:grid;gap:.5rem;max-width:24rem}
+  label{font-weight:700;margin-top:.5rem}
+  input{width:100%;box-sizing:border-box;padding:.65rem;border:1px solid var(--store-ink-border);border-radius:.35rem;background:var(--store-surface);font:inherit}
+  input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
+  button{justify-self:start;margin-top:1rem;min-height:44px;padding:.7rem 1.2rem;border:1.5px solid var(--store-ink);border-radius:.4rem;background:var(--store-ink);color:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
+  .order-lookup__lines{list-style:none;margin:0;padding:0;border-top:1px solid var(--store-line)}
+  .order-lookup__lines li{display:flex;justify-content:space-between;gap:1rem;padding:.75rem 0;border-bottom:1px solid var(--store-line)}
+  .order-lookup__lines li>span:last-child{white-space:nowrap;font-family:var(--font-mono);font-weight:700}
+  small{display:block;margin-top:.2rem;color:var(--store-muted)}
+  .order-lookup__totals{max-width:20rem;margin:1rem 0 0 auto}
+  .order-lookup__totals div{display:flex;justify-content:space-between;gap:1rem;padding:.2rem 0}
+  .order-lookup__totals dd{margin:0;font-family:var(--font-mono)}
+  .order-lookup__totals .total{font-weight:800;border-top:1px solid var(--store-line);padding-top:.5rem;margin-top:.3rem}
+  a{color:inherit;font-weight:800;display:inline-flex;align-items:center;min-height:44px}
+</style>
