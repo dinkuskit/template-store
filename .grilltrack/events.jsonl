@@ -255,3 +255,6 @@
 {"action": "shared_understanding_confirmed", "at": "2026-11-22T15:15:04+00:00", "data": {"summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."}, "event_id": "56334d91-d293-413d-8079-71f4505a8c1d"}
 {"action": "decision_proposed", "at": "2026-11-22T15:15:04+00:00", "data": {"decision_id": "template-agent-feed-lists-all-20261122"}, "event_id": "c21ea8fd-e525-44db-ad46-05f97dc6dd11"}
 {"action": "decision_locked", "at": "2026-11-22T15:15:05+00:00", "data": {"decision_id": "template-agent-feed-lists-all-20261122"}, "event_id": "9789009d-4b18-441d-90eb-8cdfe1df486b"}
+{"action": "decision_proposed", "at": "2026-11-22T16:41:17+00:00", "data": {"decision_id": "template-order-lookup-page-20261122"}, "event_id": "b9a57946-869f-4a98-9a91-aa7134d41b6b"}
+{"action": "decision_locked", "at": "2026-11-22T16:41:17+00:00", "data": {"decision_id": "template-order-lookup-page-20261122"}, "event_id": "828898db-3b8d-431f-811b-0f99ff7dcce4"}
+{"action": "decision_superseded", "at": "2026-11-22T16:41:17+00:00", "data": {"affected": [], "decision_id": "shopper-accounts-playground-20261020", "replacement_id": "template-order-lookup-page-20261122"}, "event_id": "9719bd3d-40fa-41ce-a7a1-9c27d5d7ba21"}

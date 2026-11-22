@@ -154,12 +154,6 @@ export default defineConfig({
             import.meta.url,
           ),
         ),
-        "@dinkuskit/commerce/features/customers": fileURLToPath(
-          new URL(
-            "./.artifacts/source-deps/commerce/src/features/customers/index.ts",
-            import.meta.url,
-          ),
-        ),
         "@dinkuskit/commerce/features/orders": fileURLToPath(
           new URL(
             "./.artifacts/source-deps/commerce/src/features/orders/index.ts",
