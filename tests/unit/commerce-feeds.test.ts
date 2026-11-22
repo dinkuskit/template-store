@@ -283,6 +283,9 @@ describe("installed Commerce feed facts", () => {
     expect(agentFeed.products.map((item) => [item.id, item.availability.sellable])).toEqual([
       ["commerce-hat", true],
       ["commerce-cap", true],
+      // No Google or Meta box is ticked on the mug: the agent feed lists it anyway
+      // (GrillTrack template-agent-feed-lists-all-20261122).
+      ["commerce-mug", false],
     ]);
     expect(agentFeed.products[1]?.variants?.members.map((member) => [member.catalogItemId, member.price.minor])).toEqual([
       ["commerce-cap-sm", "1800"],
@@ -295,7 +298,7 @@ describe("installed Commerce feed facts", () => {
     expect(llmsTxt).toContain("https://shop.example.test/agents.md");
     expect(llmsTxt).toContain("[commerce-hat](https://shop.example.test/products/hat)");
     expect(llmsTxt).toContain("[commerce-cap](https://shop.example.test/products/cap): from $18.00 USD");
-    expect(llmsTxt).not.toContain("commerce-mug");
+    expect(llmsTxt).toContain("[commerce-mug](https://shop.example.test/products/mug)");
 
     const llmsFullTxt = buildStorefrontLlmsFullTxt(options);
     expect(llmsFullTxt).toContain("## Detailed Product Projections");

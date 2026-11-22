@@ -74,6 +74,11 @@ The exact Commerce `0.3.0` source pin is
 `catalog/public/item` projections carry `feedChannels`; the existing parser
 passes a non-empty projection to the feed builders and excludes missing or
 empty eligibility; no profile opens Commerce storage.
+That eligibility decides the Google Merchant and Meta feeds only. The agent
+catalog feed (`/feeds/agent-catalog.json`), `/llms.txt`, `/llms-full.txt` and
+`/agents.md` list every listable, priced product with a published page while
+the owner's catalog switch is on, with or without a feed channel
+(GrillTrack `template-agent-feed-lists-all-20261122`).
 Primary and gallery media ids resolve through the same approved media lookup
 as storefront images. Only resolved public image URLs enter the Commerce feed
 builders; payload-supplied URLs and unreadable or unsafe media are omitted.
