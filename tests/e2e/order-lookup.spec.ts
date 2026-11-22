@@ -1,8 +1,8 @@
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import Database from "better-sqlite3";
 
 import { COMMERCE_ID, openProductsList } from "./helpers/product-page";
 
@@ -85,6 +85,10 @@ for (const preset of ["aizome", "forest", "cobalt"]) for (const theme of ["light
 // Paid orders as Commerce's paid-order receiver stores them ({ paidOrder, emailKey, number, revision }), written into
 // the installed Commerce's own storage (its Registry runtime id), so the page reads them through the real route.
 const COMMERCE_RUNTIME_ID = COMMERCE_ID;
+const DATABASE = ".artifacts/e2e/content.db";
+const sql = (value: string) => `'${value.replaceAll("'", "''")}'`;
+const sqlite = (statement: string) => execFileSync("sqlite3", ["-json", DATABASE, statement], { encoding: "utf8" });
+const rows = <T>(statement: string): T[] => { const out = sqlite(statement).trim(); return out ? JSON.parse(out) as T[] : []; };
 const usd = (minor: string) => ({ currency: "USD", minor });
 function paidOrderRow(orderId: string, number: number, email: string, name: string) {
   return {
@@ -119,21 +123,20 @@ test("the installed Commerce finds one order for its number and email, and limit
   const admin = await browser.newPage();
   await openProductsList(admin);
   await admin.close();
-  expect(existsSync(".artifacts/e2e/content.db")).toBe(true);
+  expect(existsSync(DATABASE)).toBe(true);
   // One pair of orders per browser project, so desktop and mobile runs never share an order number or an email.
   const base = testInfo.project.name.includes("mobile") ? 7200 : 7100;
   const tag = testInfo.project.name.includes("mobile") ? "mobile" : "desktop";
   const pat = { id: `ord-lookup-${tag}-pat`, number: base + 1, email: `pat.${tag}@example.test`, name: "Pat Shopper" };
   const sam = { id: `ord-lookup-${tag}-sam`, number: base + 2, email: `sam.${tag}@example.test`, name: "Sam Shopper" };
-  const database = new Database(".artifacts/e2e/content.db");
-  const columns = (database.prepare("PRAGMA table_info(_plugin_storage)").all() as { name: string }[]).map((c) => c.name);
+  const columns = rows<{ name: string }>("PRAGMA table_info(_plugin_storage)").map((c) => c.name);
   const now = new Date().toISOString();
   for (const order of [pat, sam]) {
     const row: Record<string, string> = { plugin_id: COMMERCE_RUNTIME_ID, collection: "orders", id: order.id,
       data: JSON.stringify(paidOrderRow(order.id, order.number, order.email, order.name)), created_at: now, updated_at: now,
       ...(columns.includes("revision") ? { revision: crypto.randomUUID() } : {}) };
     const keys = Object.keys(row).filter((key) => columns.includes(key));
-    database.prepare(`INSERT INTO _plugin_storage (${keys.join(",")}) VALUES (${keys.map(() => "?").join(",")})`).run(...keys.map((key) => row[key]));
+    sqlite(`INSERT INTO _plugin_storage (${keys.join(",")}) VALUES (${keys.map((key) => sql(row[key]!)).join(",")})`);
   }
   const trace: unknown[] = [];
 
@@ -172,10 +175,9 @@ test("the installed Commerce finds one order for its number and email, and limit
   expect(await page.content()).not.toContain("Sam Shopper");
   await page.screenshot({ path: resolve(root, "limited.png"), fullPage: true });
   trace.push({ step: "right pair after 5 wrong tries", orderNumber: String(sam.number), email: sam.email, status: 429 });
-  const guesses = (database.prepare("SELECT data FROM _plugin_storage WHERE plugin_id = ? AND collection = 'order_lookup_guesses'").all(COMMERCE_RUNTIME_ID) as { data: string }[])
+  const guesses = rows<{ data: string }>(`SELECT data FROM _plugin_storage WHERE plugin_id = ${sql(COMMERCE_RUNTIME_ID)} AND collection = 'order_lookup_guesses'`)
     .map((row) => JSON.parse(row.data) as { tries?: number });
   expect(guesses.some((row) => row.tries === 5)).toBe(true);
-  database.close();
   await writeFile(resolve(root, "trace.json"), JSON.stringify({ commerce: "installed Registry build", trace }, null, 2));
   console.log(JSON.stringify({ project: testInfo.project.name, trace }));
 });
