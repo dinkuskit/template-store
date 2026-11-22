@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { DatabaseSync } from "node:sqlite";
 import { resolve } from "node:path";
+import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
 
 // Run by scripts/verify-paired-product-on-sale.mjs beside product-on-sale.spec.ts: a real Commerce Registry
 // build installed as a Registry store installs it. A shopper picks a Size on the product page and the cart
@@ -28,7 +29,7 @@ test("a shopper's chosen Size checks out at that Size's price, and a sold-out Si
     const database = db();
     try {
       return database.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'index' AND name IN (?, ?)")
-        .get(`uidx_plugin_${commerce}_catalog_items_commandId`, `uidx_plugin_${commerce}_catalog_items_skuKey`) as { n: number };
+        .get(pluginUniqueIndexName(commerce, "catalog_items", "commandId"), pluginUniqueIndexName(commerce, "catalog_items", "skuKey")) as { n: number };
     } finally {
       database.close();
     }
