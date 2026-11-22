@@ -6,7 +6,6 @@ import { resolve } from "node:path";
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 
 import { COMMERCE_SKU_INDEX, listCatalog, openProductsList, sellProduct } from "./helpers/product-page";
-import { exerciseOverlappingCartChanges } from "./helpers/cart-change-queue";
 
 // The cart lives in Commerce; the browser holds only its key in an HttpOnly cookie
 // (template-cart-real-form-20261113, template-cart-count-cookie-20261113).
@@ -207,80 +206,71 @@ test("with script the same forms change the cart in place, and agents read it as
   await context.close();
 });
 
-test("overlapping quantity changes retain each submitted value and the final Commerce cart", async ({ browser }, testInfo) => {
-  test.setTimeout(240_000);
-  const first = await storeWithProduct(browser, testInfo, "queue-first", false);
-  const second = await storeWithProduct(browser, testInfo, "queue-second", false);
+test("a second cart change is ignored until the saved cart is drawn", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const first = await storeWithProduct(browser, testInfo, "lock-first", false);
+  const second = await storeWithProduct(browser, testInfo, "lock-second", false);
   const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let changesSent = 0;
   try {
     const shopper = await context.newPage();
-    // Seed through the real form endpoint; adding products has its own browser coverage above.
-    for (const product of [first, second]) {
+    for (const { itemId } of [first, second]) {
       const added = await context.request.post("/cart/add", {
-        form: { id: product.itemId, quantity: "1" },
+        form: { id: itemId, quantity: "1" },
         headers: { origin: new URL(testInfo.project.use.baseURL!).origin, accept: "text/html" },
       });
       expect(added.ok()).toBe(true);
     }
     await shopper.goto("/cart");
-    await exerciseOverlappingCartChanges(shopper, "$120.00");
-    const quantityTarget = await shopper.locator("[data-guest-cart-qty]").first().boundingBox();
-    expect(quantityTarget?.height).toBeGreaterThanOrEqual(44);
-    expect(quantityTarget?.width).toBeGreaterThanOrEqual(44);
-    await shopper.reload();
-    await expect(shopper.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$120.00");
-    // The queue stays usable for ordinary changes and removals after the overlapping pair.
-    await shopper.locator("[data-guest-cart-qty]").first().fill("4");
-    await shopper.locator("[data-guest-cart-update]").first().click();
-    await expect(shopper.locator("[data-guest-cart-count]").first()).toHaveText("7");
-    await expect(shopper.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$168.00");
-    await shopper.locator("[data-guest-cart-remove]").nth(1).click();
-    await expect(shopper.locator("[data-guest-cart-line]")).toHaveCount(1);
-    await expect(shopper.locator("[data-guest-cart-count]").first()).toHaveText("4");
-  } finally {
-    await context.close();
-  }
-});
-
-test("a lost change answer uses its captured plain form without sending queued changes during navigation", async ({ browser }, testInfo) => {
-  test.setTimeout(180_000);
-  const product = await storeWithProduct(browser, testInfo, "queue-fallback", false);
-  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
-  let release = () => {};
-  const held = new Promise<void>((resolve) => { release = resolve; });
-  const requests: { native: boolean; quantity: string | null }[] = [];
-  try {
-    const shopper = await context.newPage();
-    const added = await context.request.post("/cart/add", {
-      form: { id: product.itemId, quantity: "1" },
-      headers: { origin: new URL(testInfo.project.use.baseURL!).origin, accept: "text/html" },
-    });
-    expect(added.ok()).toBe(true);
-    await shopper.goto("/cart");
-    await shopper.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")], undefined, { timeout: 30_000 });
+    await shopper.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")]);
     await context.route("**/cart/change", async (route) => {
-      const native = route.request().isNavigationRequest();
-      // This intercepted transport fails before a write; the fallback uses the real plain-form route.
-      const body = route.request().postData() ?? "";
-      requests.push({ native, quantity: native ? new URLSearchParams(body).get("quantity") : body.match(/name="quantity"\r\n\r\n([^\r]+)/u)?.[1] ?? null });
-      if (native) return route.continue();
+      changesSent += 1;
+      if (changesSent > 1) return route.continue();
       await held;
-      return route.abort();
+      return route.continue();
     });
-    const quantity = shopper.locator("[data-guest-cart-qty]");
-    const update = shopper.locator("[data-guest-cart-update]");
-    await quantity.fill("2");
-    await update.click();
-    await expect.poll(() => requests.length).toBe(1);
+    const section = shopper.locator("[data-server-cart]");
+    const rowFor = (id: string) => section.locator(`[data-guest-cart-line="${id}"]`);
+    const quantity = rowFor(first.itemId).locator("[data-guest-cart-qty]");
+    const update = rowFor(first.itemId).getByRole("button", { name: "Update" });
+    const remove = rowFor(second.itemId).getByRole("button", { name: `Remove ${second.name}` });
+    const target = await quantity.boundingBox();
+    expect(target?.height).toBeGreaterThanOrEqual(44);
+    expect(target?.width).toBeGreaterThanOrEqual(44);
+
     await quantity.fill("3");
     await update.click();
-    await quantity.fill("9");
-    expect(requests).toEqual([{ native: false, quantity: "2" }]);
+    await expect.poll(() => changesSent).toBe(1);
+    await expect(section).toHaveAttribute("aria-busy", "true");
+    for (const control of await section.locator("[data-guest-cart-qty], [data-guest-cart-update], [data-guest-cart-remove]").all()) {
+      await expect(control).toBeDisabled();
+    }
+    // Native controls prevent activation. An explicit submit also must not slip through the lock.
+    const ignored = await remove.evaluate((button: HTMLButtonElement) =>
+      !button.form!.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(ignored).toBe(true);
     release();
-    await expect.poll(() => requests.length).toBe(2);
-    await expect(quantity).toHaveValue("2");
-    expect(requests).toEqual([{ native: false, quantity: "2" }, { native: true, quantity: "2" }]);
-    await expect(shopper.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$48.00");
+
+    await expect(section).not.toHaveAttribute("aria-busy", "true");
+    await expect(update).toBeEnabled();
+    await expect(remove).toBeEnabled();
+    await expect(section.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$96.00");
+    const saved = await (await shopper.request.get("/cart.js")).json();
+    expect(saved).toMatchObject({ ok: true, cart: { itemCount: 4 } });
+    expect(saved.cart.lines).toHaveLength(2);
+    expect(saved.cart.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ catalogItemId: first.itemId, quantity: 3 }),
+      expect.objectContaining({ catalogItemId: second.itemId, quantity: 1 }),
+    ]));
+    await expect(section.locator("[data-guest-cart-line]")).toHaveCount(saved.cart.lines.length);
+    await expect(shopper.locator("[data-guest-cart-count]").first()).toHaveText(String(saved.cart.itemCount));
+    for (const line of saved.cart.lines) {
+      await expect(rowFor(line.catalogItemId).locator("[data-guest-cart-qty]")).toHaveValue(String(line.quantity));
+    }
+    expect(changesSent).toBe(1);
   } finally {
     release();
     await context.close();

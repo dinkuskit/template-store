@@ -2,7 +2,7 @@
 
 ## Enhanced server-cart changes
 
-Quantity and Remove forms are captured at submission and sent in order. Each response replaces the currently attached cart section, so overlapping changes cannot leave the first response's lines and subtotal onscreen after both save; later edits cannot change an already queued quantity. A failed enhancement uses that captured plain form and stops unsent queued work while the browser navigates. This does not serialize Add or WebMCP operations, change Commerce's cart authority, or alter script-off forms.
+While a quantity update or removal is saving, the cart section is marked busy, its quantity, Update, and Remove controls are disabled, and later change submissions are ignored rather than queued. The response replaces the currently attached cart section before controls are usable again. If the enhancement fails, the captured form submits through the plain route instead. This lock does not serialize Add or WebMCP operations, change Commerce's cart authority, or alter script-off forms.
 
 The authorized issue #20 extension preserves the existing template visual
 language and EmDash composition. The cart belongs to the shopper presentation

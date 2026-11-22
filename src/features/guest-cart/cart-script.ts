@@ -63,19 +63,15 @@ async function submitAdd(form: HTMLFormElement, submitter: HTMLElement | null): 
   }
 }
 
-/** A failed enhancement still uses the captured plain form; queued, unsent changes stop on navigation. */
-function submitPlainChange(form: HTMLFormElement): false {
+/** A failed enhancement still uses the captured plain form. */
+function submitPlainChange(form: HTMLFormElement): void {
   form.hidden = true;
   document.body.append(form);
   HTMLFormElement.prototype.submit.call(form);
-  return false;
 }
 
-/** Send a captured cart-page form and replace the currently attached section, not an earlier response's node. */
-async function submitChange(form: HTMLFormElement): Promise<boolean> {
-  const section = document.querySelector("[data-server-cart]");
-  if (!section) return submitPlainChange(form);
-  section.setAttribute("aria-busy", "true");
+/** Send a captured cart-page form and replace the currently attached section. */
+async function submitChange(form: HTMLFormElement): Promise<void> {
   try {
     const response = await fetch(form.action, {
       method: "POST",
@@ -89,9 +85,8 @@ async function submitChange(form: HTMLFormElement): Promise<boolean> {
     document.querySelector("[data-server-cart]")?.replaceWith(next);
     renderCartCount();
     next.querySelector<HTMLElement>("[role=alert], [data-guest-cart-empty]")?.focus?.();
-    return true;
   } catch {
-    return submitPlainChange(form);
+    submitPlainChange(form);
   }
 }
 
@@ -103,7 +98,8 @@ async function cartChangedElsewhere(count: number): Promise<void> {
   try {
     const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
     const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
-    if (response.ok && next) section.replaceWith(next);
+    // Do not swap out the disabled controls while a shopper change is saving.
+    if (response.ok && next && !section.hasAttribute("aria-busy")) section.replaceWith(next);
   } catch {
     // The next visit draws the current cart.
   }
@@ -124,10 +120,7 @@ export function hydrateServerCartForms(): void {
   if (scope[BOUND]) return;
   scope[BOUND] = true;
   installStorefrontWebMcp({ onCartChanged: (count) => void cartChangedElsewhere(count) });
-  // Each accepted form keeps its values even when a preceding response replaces its row.
-  // Send changes in submission order: overlapping HTML responses must not redraw an older cart.
-  let changes = Promise.resolve(true);
-  let pendingChanges = 0;
+  let savingChange = false;
   document.addEventListener("submit", (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
@@ -135,19 +128,25 @@ export function hydrateServerCartForms(): void {
       event.preventDefault();
       void submitAdd(form, (event as SubmitEvent).submitter ?? null);
     } else if (form.matches("[data-cart-change-form]")) {
+      if (savingChange) {
+        event.preventDefault();
+        return;
+      }
+      const section = document.querySelector("[data-server-cart]");
+      if (!section) return; // Let the browser submit the plain form.
       event.preventDefault();
+      savingChange = true;
+      // Capture before disabling: disabled inputs are not included in form data.
       const captured = form.cloneNode(true) as HTMLFormElement;
-      captured.action = form.action;
-      pendingChanges += 1;
-      document.querySelector("[data-server-cart]")?.setAttribute("aria-busy", "true");
-      changes = changes.then(async (continueEnhancing) => {
-        if (!continueEnhancing) return false;
-        const updated = await submitChange(captured);
-        pendingChanges -= 1;
-        const section = document.querySelector("[data-server-cart]");
-        if (pendingChanges > 0) section?.setAttribute("aria-busy", "true");
-        else section?.removeAttribute("aria-busy");
-        return updated;
+      const controls = section.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
+        "[data-cart-change-form] :is([data-guest-cart-qty], button[type=submit]):enabled",
+      );
+      section.setAttribute("aria-busy", "true");
+      for (const control of controls) control.disabled = true;
+      void submitChange(captured).finally(() => {
+        section.removeAttribute("aria-busy");
+        for (const control of controls) control.disabled = false;
+        savingChange = false;
       });
     }
   });
