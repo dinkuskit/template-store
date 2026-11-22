@@ -60,3 +60,21 @@ receiver keeps, then uses the page in desktop and mobile Chromium
 
 The trace is kept with the screenshots (`found.png`, `limited.png`,
 `trace.json`) under the ignored `runs/order-lookup-20261122/browser/`.
+
+## Playground preview: two visitor stores (2026-11-22 18:45 UTC)
+
+The PR's playground preview (`pr-253.playground.dinkuskit.com`, built from
+`8cc31a9`) runs the same pinned Commerce `v0.9.0-beta.4` Registry build in
+each visitor's own store. A headless Chromium opened two visitor stores and
+used `/track-order` in each:
+
+| Store | Lookup | Answer |
+| --- | --- | --- |
+| A | `1001` + `jordan.rivers@example.com` (a sample order) | 200, "Order #1001", "Completed · Placed November 20, 2026", "Carrier: USPS", "Tracking number: TEST10010000000", two lines, Total $55.00, Jordan Rivers' address |
+| A | `1001` + five wrong emails | 422 each, the one not-found message |
+| A | `1001` + `jordan.rivers@example.com` again | 429, "Too many tries. Try again in an hour.", no order |
+| B | `1001` + `jordan.rivers@example.com` | 200, its own copy of the sample order: store A's tries never reached store B's Commerce |
+
+Each visitor store's lookup reads and counts tries only in that store's own
+Commerce storage. The preview also shows a completed order's carrier and
+tracking number.
