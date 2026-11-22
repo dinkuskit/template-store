@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { DatabaseSync } from "node:sqlite";
+import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
 
 const commerce = process.env.DINKUS_PAIRED_RUNTIME_ID ?? "r_fjzjvld3ssb4j63o";
 const base = `/_emdash/api/plugins/${commerce}/`;
@@ -12,7 +13,7 @@ test("a simple digital product keeps its fulfillment through both cart lookups a
   expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
   await expect.poll(() => {
     const db = new DatabaseSync(process.env.DINKUS_PAIRED_DB ?? ".artifacts/paired/content.db");
-    try { return db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name=?").get(`uidx_plugin_${commerce}_catalog_items_commandId`); }
+    try { return db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type='index' AND name=?").get(pluginUniqueIndexName(commerce, "catalog_items", "commandId")); }
     finally { db.close(); }
   }, { timeout: 90_000 }).toEqual({ n: 1 });
   const post = async (path: string, data: unknown) => {
