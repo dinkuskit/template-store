@@ -6472,6 +6472,49 @@
       "superseded_by": null,
       "updated_at": "2026-11-22T15:15:05+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
+      "context_ref": null,
+      "created_at": "2026-11-22T17:02:27+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-product-states-20261023"
+      ],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-22T17:02:27+00:00",
+          "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-scheduled-sale-in-commerce-20261122",
+      "implementation_ref": null,
+      "question": "Who puts a scheduled product page's product on sale once EmDash publishes it with nobody signed in?",
+      "rationale": "The owner approved on 22 Nov 2026. A sale no longer waits for a signed-in staff member's next visit, and an Author's schedule still leaves the product a Draft.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T17:02:27+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -6494,5 +6537,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T15:15:05+00:00"
+  "updated_at": "2026-11-22T17:02:27+00:00"
 }

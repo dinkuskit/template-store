@@ -1,5 +1,4 @@
 import { defineMiddleware } from "astro:middleware";
-import { PluginStorageRepository } from "emdash";
 import {
   PUBLIC_STOREFRONT_SEARCH_COLLECTIONS,
   applySecurityHeaders,
@@ -34,8 +33,7 @@ import {
 } from "./features/playground-checkout/payments-port.js";
 import { playgroundAttemptBelongsToVisitor } from "./features/playground-checkout/binding-auth.js";
 import { playgroundCheckoutBindingsFor } from "./features/playground-checkout/binding-store.js";
-import { scheduledSaleSweeper, storedUser, withProductOnSale, type OnSaleRuntime, type PendingSales } from "./features/product-on-sale/index.js";
-import { PENDING_SALES, PRODUCT_URL_PLUGIN_ID } from "./features/product-url-plugin/index.js";
+import { storedUser, withProductOnSale, type OnSaleRuntime } from "./features/product-on-sale/index.js";
 import {
   checkoutJsonError,
   checkoutLimited,
@@ -51,7 +49,6 @@ import {
 /** Playground sessions whose Commerce demo catalog was ensured in this isolate. */
 const seededPlaygroundSessions = new Set<string>();
 // Puts pages EmDash published on a schedule on sale, at most once a minute per isolate.
-const sweepScheduledSales = scheduledSaleSweeper();
 // Runs the template's storefront upgrades a store set up from an older seed hasn't run, once per isolate.
 const upgradeStorefrontSchema = storefrontUpgrader();
 let demoProfileSeeded = false;
@@ -154,9 +151,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       user,
       commercePluginId: COMMERCE_REGISTRY_RUNTIME_ID,
       currentUser: () => (runtime ? storedUser(runtime, user) : Promise.resolve(user)),
-      pendingSales: runtime?.db
-        ? (new PluginStorageRepository(runtime.db as never, PRODUCT_URL_PLUGIN_ID, PENDING_SALES, []) as unknown as PendingSales)
-        : undefined,
     };
   };
 
@@ -327,7 +321,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
       }
     }
 
-    await sweepScheduledSales(productOnSale());
     const rawResponse = await withProductOnSale(productOnSale(), () => next());
     const response = isPublicSearchApi
       ? await filterPublicSearchApiResponse(rawResponse, {
@@ -366,7 +359,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return response;
   }
 
-  await sweepScheduledSales(productOnSale());
   const rawResponse = await withProductOnSale(productOnSale(), () => next());
   const response = isPublicSearchApi
     ? await filterPublicSearchApiResponse(rawResponse, {

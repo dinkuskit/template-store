@@ -255,3 +255,5 @@
 {"action": "shared_understanding_confirmed", "at": "2026-11-22T15:15:04+00:00", "data": {"summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."}, "event_id": "56334d91-d293-413d-8079-71f4505a8c1d"}
 {"action": "decision_proposed", "at": "2026-11-22T15:15:04+00:00", "data": {"decision_id": "template-agent-feed-lists-all-20261122"}, "event_id": "c21ea8fd-e525-44db-ad46-05f97dc6dd11"}
 {"action": "decision_locked", "at": "2026-11-22T15:15:05+00:00", "data": {"decision_id": "template-agent-feed-lists-all-20261122"}, "event_id": "9789009d-4b18-441d-90eb-8cdfe1df486b"}
+{"action": "decision_proposed", "at": "2026-11-22T17:02:27+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "e33a9d25-0610-402e-8f5b-e94e324ddb3e"}
+{"action": "decision_locked", "at": "2026-11-22T17:02:27+00:00", "data": {"decision_id": "template-scheduled-sale-in-commerce-20261122"}, "event_id": "1e2d516a-46f6-4d92-baf9-7be49b87657b"}
