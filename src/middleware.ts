@@ -36,6 +36,7 @@ import { playgroundAttemptBelongsToVisitor } from "./features/playground-checkou
 import { playgroundCheckoutBindingsFor } from "./features/playground-checkout/binding-store.js";
 import { scheduledSaleSweeper, storedUser, withProductOnSale, type OnSaleRuntime, type PendingSales } from "./features/product-on-sale/index.js";
 import { PENDING_SALES, PRODUCT_URL_PLUGIN_ID } from "./features/product-url-plugin/index.js";
+import { isStorefrontPath, siteIsStaging, withStagingRobots } from "./features/site-visibility/index.js";
 import {
   checkoutJsonError,
   checkoutLimited,
@@ -86,7 +87,16 @@ function shopperAccountRouteKind(pathname: string): ShopperAccountRouteKind | nu
   }
 }
 
+// While the site is in staging, every storefront response asks search engines to stay away.
 export const onRequest = defineMiddleware(async (context, next) => {
+  const staging = isStorefrontPath(context.url.pathname) && await siteIsStaging();
+  // storeRequest answers every request with a Response; anything else passes through as it came.
+  const response = await storeRequest(context, next);
+  if (!staging || !(response instanceof Response)) return response as Response;
+  return withStagingRobots(response);
+});
+
+const storeRequest = defineMiddleware(async (context, next) => {
   let pathForms: string[];
   try {
     pathForms = decodedForms(context.url.pathname);

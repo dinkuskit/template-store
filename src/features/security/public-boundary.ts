@@ -394,9 +394,12 @@ export function evaluatePublicBoundary(
 export function demoNoIndexEnabled(
   env: Record<string, unknown> = process.env,
 ): boolean {
-  // Search visibility is not access protection. A real merchant launch must
-  // explicitly opt in; demos, previews, and staging are private to crawlers.
-  return env.DINKUS_LAUNCH_INDEXABLE !== "1";
+  // Search visibility is not access protection. A store's own switch is EmDash's
+  // Go live (src/features/site-visibility, template-site-visibility-20261122);
+  // only the proof storefront is always private to crawlers. The playground
+  // sends its own noindex (src/features/playground/contract.ts).
+  const profile = typeof env.DINKUS_STOREFRONT_PROFILE === "string" ? env.DINKUS_STOREFRONT_PROFILE.trim().toLowerCase() : "";
+  return profile === "proof" || profile === "development" || env.DINKUS_PROOF_MODE === "1";
 }
 
 export function applySecurityHeaders(
