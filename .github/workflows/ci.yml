@@ -314,12 +314,35 @@ jobs:
           retention-days: 3
       # Draft/verification-only PRs cannot deploy. Exercise the actual artifact
       # service and Wrangler closure here instead; report this proof cost separately.
+      # The artifact service can take a moment to list an upload from this same job,
+      # so a first "Artifact not found" waits and tries once more before failing.
       - name: Download playground build for non-deploying proof
+        id: proof_download
+        continue-on-error: true
         if: >-
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           (github.event.pull_request.draft ||
           contains(github.event.pull_request.labels.*.name, 'verification-only'))
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ steps.pack.outputs.artifact_name }}
+          path: .artifacts/playground-ci-downloaded
+      - name: Wait for the artifact service to list the upload
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (github.event.pull_request.draft ||
+          contains(github.event.pull_request.labels.*.name, 'verification-only')) &&
+          steps.proof_download.outcome == 'failure'
+        run: sleep 20
+      - name: Download playground build for non-deploying proof, second try
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (github.event.pull_request.draft ||
+          contains(github.event.pull_request.labels.*.name, 'verification-only')) &&
+          steps.proof_download.outcome == 'failure'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ steps.pack.outputs.artifact_name }}
