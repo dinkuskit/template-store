@@ -126,6 +126,11 @@ describe("playground visitor database state", () => {
     expect(new Set(existing.all).size).toBe(existing.all.length);
     expect(await nextIn(db)).toBe(1006);
     expect(await visitorOrderCount(db as never)).toBe(3);
+    // A store that used the old instant demo sign-in keeps its demo shopper orders; they are not the visitor's.
+    for (const id of ["ord_demo_shopper_1001", "ord_pre_upgrade_1000"]) {
+      await placed.put(id, { number: 1100, revision: 1, paidOrder: { orderId: id } });
+    }
+    expect(await visitorOrderCount(db as never)).toBe(3);
 
     // A fresh store, where the samples take the first numbers.
     const fresh = await visitorDb();
