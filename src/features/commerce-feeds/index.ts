@@ -109,10 +109,18 @@ export async function buildInstalledCommerceFeedFacts(
     // Commerce's public catalog carries each product's approved channels; none means no feed.
     const eligibility = product.feedChannels ?? [];
     const imageUrls = await publicImageUrls(product, context);
+    const productUrl = canonicalUrl(canonicalProductPath(entry.slug), context.site, context.request.url);
     facts.push({
       product: catalogProduct(product),
       content: {
-        canonicalUrl: canonicalUrl(canonicalProductPath(entry.slug), context.site, context.request.url),
+        canonicalUrl: productUrl,
+        // The template owns its selection query; Commerce may consume these optional
+        // member landings without inventing host routes or changing family canonicals.
+        ...(product.variants?.length ? { variantUrls: Object.fromEntries(product.variants.map(member => {
+          const url = new URL(productUrl);
+          url.searchParams.set("variant", member.id);
+          return [member.id, url.href];
+        })) } : {}),
         title: product.name,
         ...(entry.description ? { description: entry.description } : {}),
         ...(imageUrls.length ? { imageUrls } : {}),
