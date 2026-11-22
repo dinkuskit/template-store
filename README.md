@@ -196,12 +196,10 @@ The `main` deploy passes `--keep-vars`, so these values, once set on the
 `dinkuskit-template-playground` Worker, survive every deploy. `PAYMENTS_URL`
 must be `https://payments.dinkuskit.com`, the Payments host Commerce may call.
 
-Two real-HTTP proofs run the built playground Worker under `wrangler dev`:
+A real-HTTP proof runs the built playground Worker under `wrangler dev`:
 `pnpm verify:playground-http` (a paid TEST order against a local Payments
-stand-in, visitor binding, restart, expiry, missing origin) and
-`pnpm verify:playground-account-http` (shopper sign-in, orders, profile, leads
-and refusals). Each builds the playground first; pass `--no-build` to the
-script to reuse a build. `pnpm verify:playground-cutover` builds the playground
+stand-in, visitor binding, restart, expiry, missing origin). It builds the
+playground first; pass `--no-build` to the script to reuse a build. `pnpm verify:playground-cutover` builds the playground
 from before Commerce's Registry build in a worktree, makes a visitor store on
 it, and shows that store starting over on a fresh store under this build.
 

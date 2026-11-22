@@ -11,8 +11,6 @@ import { START_REAL_STORE_URL } from "../playground/contract.js";
 import { PLAYGROUND_SAMPLE_ORDER_IDS } from "../playground/demo-orders.js";
 import { PLAYGROUND_INSTALLED_PLUGIN_IDS } from "../playground-plugins/registry-plugins.mjs";
 import { STAND_IN_STORAGE, standInConnectedOption } from "../playground-plugins/dinkuskit-stand-in.js";
-import { DEMO_SHOPPER_ORDER_ID } from "../shopper-account/index.js";
-import { PRE_UPGRADE_SHOPPER_ORDER_ID } from "../shopper-account/playground-runtime.js";
 import type { TourCopyKey } from "./copy.js";
 
 export const TOUR_PLUGIN_ID = "dinkus-playground-tour";
@@ -43,8 +41,10 @@ const SAMPLE_LABEL_ID = `practice_${PLAYGROUND_SAMPLE_ORDER_IDS[0]}`;
 type Db = ConstructorParameters<typeof PluginStorageRepository>[0];
 const options = (db: Db) => new OptionsRepository(db as ConstructorParameters<typeof OptionsRepository>[0]);
 
-// Orders the playground adds itself, as examples; placing a test order means one of the visitor's own.
-const EXAMPLE_ORDER_IDS = [...PLAYGROUND_SAMPLE_ORDER_IDS, DEMO_SHOPPER_ORDER_ID, PRE_UPGRADE_SHOPPER_ORDER_ID];
+// Orders the playground adds itself, as examples; placing a test order means one of the visitor's own. A store
+// that used the old instant demo sign-in still holds its two demo shopper orders, which are examples too.
+const LEGACY_DEMO_SHOPPER_ORDER_IDS = ["ord_demo_shopper_1001", "ord_pre_upgrade_1000"];
+const EXAMPLE_ORDER_IDS = [...PLAYGROUND_SAMPLE_ORDER_IDS, ...LEGACY_DEMO_SHOPPER_ORDER_IDS];
 
 /** Orders the visitor placed in their store, read from Commerce's own storage. */
 export async function visitorOrderCount(db: Db): Promise<number> {
