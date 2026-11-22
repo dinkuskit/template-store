@@ -13,6 +13,8 @@ function childEnv(overrides: Record<string, string>): Record<string, string> {
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // Every run, and every CI shard, starts once the proof store's demo catalog is seeded.
+  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,
