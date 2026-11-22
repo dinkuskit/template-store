@@ -36,8 +36,8 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
         type="submit"
         data-add-to-cart={product.id}
         data-add-to-cart-sellable={String(singleSellable)}
-        disabled={!singleSellable && !byOptions}
-      >{singleSellable || byOptions ? "Add to cart" : "Sold out"}</button>
+        disabled={!singleSellable}
+      >{singleSellable ? "Add to cart" : "Sold out"}</button>
     </form>
     <p data-add-to-cart-status hidden role="status"></p>
   </div>
