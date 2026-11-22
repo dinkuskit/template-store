@@ -50,6 +50,7 @@
       "slug": "products",
       "label": "Products",
       "labelSingular": "Product",
+      "group": "Store",
       "urlPattern": "/products/{slug}",
       "seo": true,
       "supports": [
@@ -110,6 +111,7 @@
       "slug": "categories",
       "label": "Product categories",
       "labelSingular": "Product category",
+      "group": "Store",
       "urlPattern": "/categories/{slug}",
       "seo": true,
       "supports": [

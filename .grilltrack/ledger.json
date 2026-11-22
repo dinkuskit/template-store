@@ -2,13 +2,13 @@
   "closeout": null,
   "created_at": "2026-10-08T19:35:31+00:00",
   "current_focus": {
-    "cadence": "frontier-batch",
+    "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-11-13T16:12:37+00:00",
-    "domain": "Server-side cart (store site)",
-    "started_at": "2026-11-13T16:12:36+00:00",
+    "confirmed_at": "2026-11-22T17:41:39+00:00",
+    "domain": "agent catalog feed listing",
+    "started_at": "2026-11-22T17:41:39+00:00",
     "status": "confirmed",
-    "summary": "Ronald answered each cart question in the cart thread on 13 Nov 2026 (14:04-16:10 UTC) and on #226 in the sweep thread (15:43). Commerce-side locks: commerce-server-cart-20261113, commerce-cart-agent-writes-20261113, commerce-cart-expiry-20261113 in dinkuskit/commerce."
+    "summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."
   },
   "decisions": [
     {
@@ -6431,6 +6431,116 @@
       "superseded_by": null,
       "updated_at": "2026-11-15T16:28:24+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "Every product that is listable, priced, and has a published product page. A product needs no Google or Meta feed box ticked; those boxes decide only the Google Merchant and Meta feeds. The switch in Commerce > Settings > Catalog stays the one control: off lists nothing. llms.txt, llms-full.txt and agents.md list the same products as the feed.",
+      "context_ref": null,
+      "created_at": "2026-11-22T15:15:04+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-22T15:15:05+00:00",
+          "choice": "Every product that is listable, priced, and has a published product page. A product needs no Google or Meta feed box ticked; those boxes decide only the Google Merchant and Meta feeds. The switch in Commerce > Settings > Catalog stays the one control: off lists nothing. llms.txt, llms-full.txt and agents.md list the same products as the feed.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-agent-feed-lists-all-20261122",
+      "implementation_ref": null,
+      "question": "Which products does the agent catalog feed list when the catalog switch is on?",
+      "rationale": "The one-switch decision says the switch starts on, but a store with no feed box ticked listed nothing and nothing told the owner. Shopify includes eligible products in Shopify Catalog automatically with no per-product action (help.shopify.com/en/manual/shopify-catalog, read 22 Nov 2026). Only shopper-visible facts leave the store, as before.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T15:15:05+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:9f7a8f6",
+      "candidate_refs": [],
+      "choice": "EmDash 1.5.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.5.0; plugin-cli 0.13.6; sandbox-workerd 0.9.7) with Commerce v0.9.0-beta.3 (c9b24fc79c2a227593062c5c4d45b34ab1bea2e5), whose catalog accepts both the old and the 1.5 unique-index names. The paired proof records that build's digests. Payments and Ship playground pins stay at their releases.",
+      "context_ref": null,
+      "created_at": "2026-11-22T17:06:36+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Template EmDash 1.5 source upgrade",
+      "history": [
+        {
+          "at": "2026-11-22T17:06:36+00:00",
+          "choice": "EmDash 1.5.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.5.0; plugin-cli 0.13.6; sandbox-workerd 0.9.7) with Commerce v0.9.0-beta.3 (c9b24fc79c2a227593062c5c4d45b34ab1bea2e5), whose catalog accepts both the old and the 1.5 unique-index names. The paired proof records that build's digests. Payments and Ship playground pins stay at their releases.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-22T17:41:39+00:00",
+          "choice": "EmDash 1.5.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.5.0; plugin-cli 0.13.6; sandbox-workerd 0.9.7) with Commerce v0.9.0-beta.3 (c9b24fc79c2a227593062c5c4d45b34ab1bea2e5), whose catalog accepts both the old and the 1.5 unique-index names. The paired proof records that build's digests. Payments and Ship playground pins stay at their releases.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-22T17:41:39+00:00",
+          "choice": "EmDash 1.5.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.5.0; plugin-cli 0.13.6; sandbox-workerd 0.9.7) with Commerce v0.9.0-beta.3 (c9b24fc79c2a227593062c5c4d45b34ab1bea2e5), whose catalog accepts both the old and the 1.5 unique-index names. The paired proof records that build's digests. Payments and Ship playground pins stay at their releases.",
+          "from": "implemented",
+          "implementation_ref": "git:8ce1c48",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-emdash15-20261122",
+      "implementation_ref": "git:8ce1c48",
+      "question": "Which EmDash and Commerce does the store template run before v1?",
+      "rationale": "The owner asked to move to 1.5 before the v1 launch (22 Nov 2026). Commerce must reach a store before that store's 1.5 move, so the template ships the Commerce beta that reads both index names.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T17:41:39+00:00",
+      "verification_ref": ".grilltrack/proof/emdash-1-5-20261122/PROOF.md"
     }
   ],
   "last_activation": {
@@ -6453,5 +6563,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-15T16:28:24+00:00"
+  "updated_at": "2026-11-22T17:41:39+00:00"
 }
