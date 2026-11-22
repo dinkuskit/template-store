@@ -15,7 +15,7 @@ test("merchant product prices drive public listing and survive an admin reload",
   const admin = await context.newPage();
   await openProductsList(admin);
   // The installed Commerce (the Registry build) builds its unique indexes on a fresh store's first requests.
-  await expect.poll(() => execFileSync("sqlite3", [".artifacts/e2e/content.db", "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%_catalog_items_%'"], { encoding: "utf8" }), { timeout: 90_000 }).toContain(COMMERCE_SKU_INDEX);
+  await expect.poll(() => execFileSync("sqlite3", [".artifacts/e2e/content.db", "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%'"], { encoding: "utf8" }), { timeout: 90_000 }).toContain(COMMERCE_SKU_INDEX);
   // Commerce 0.6.0: the owner adds price and stock on the product's Content > Products page; it is a Draft.
   const name = `Merchant hat ${testInfo.project.name}`;
   const { pageId, itemId: id } = await draftProductPage(admin, { title: name, sku: `MERCHANT-${testInfo.project.name}` });
