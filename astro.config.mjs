@@ -12,6 +12,7 @@ import { selectedRegistryAccessOptions } from "./scripts/registry-access.mjs";
 import { registrySandboxRunner, selectedRegistrySandboxRunner } from "./scripts/registry-sandbox.mjs";
 import { pairedCommerceDescriptor, pairedCommercePin, pairedCommerceProfile, resolvePairedCommerceDir } from "./scripts/lib/paired-commerce.mjs";
 
+import { PAIRED_REVIEWS_DIR_ENV, pairedReviewsDescriptor, resolvePairedReviewsDir } from "./scripts/lib/paired-reviews.mjs";
 import { commerceProfile, commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
 
 const isCloudflare =
@@ -20,9 +21,6 @@ const isCloudflare =
 
 const commerceEntry = fileURLToPath(
   new URL("./.artifacts/source-deps/commerce/src/index.ts", import.meta.url),
-);
-const productUrlEntry = fileURLToPath(
-  new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
 );
 const inventoryEntry = fileURLToPath(
   new URL("./node_modules/@dinkuskit/inventory/src/index.ts", import.meta.url),
@@ -59,6 +57,13 @@ if (pairedCommerceDir && !process.env.DINKUS_COMMERCE_PROFILE) {
 const pairedCommerce = pairedCommerceDir
   ? await pairedCommerceDescriptor(pairedCommerceDir, commerceProfile(process.env.DINKUS_COMMERCE_PROFILE).runtimeId)
   : undefined;
+// DinkusKit Reviews runs only where DINKUS_PAIRED_REVIEWS_DIR names its build, which the browser tests' proof
+// store sets (scripts/lib/offline-e2e-environment.mjs). Local dev and every store build mount none: a store's
+// owner installs Reviews from the Registry.
+const pairedReviewsDir = pairedCommerce && !isCloudflare && process.env[PAIRED_REVIEWS_DIR_ENV]?.trim()
+  ? resolvePairedReviewsDir(process.env)
+  : null;
+const pairedReviews = pairedReviewsDir ? await pairedReviewsDescriptor(pairedReviewsDir) : undefined;
 const accessOptions = selectedRegistryAccessOptions(process.env);
 
 // The store has no default Wrangler file: the demo Worker's wrangler.jsonc was retired with the hosted demo
@@ -72,7 +77,7 @@ if (isCloudflare && !wranglerConfig) {
   );
 }
 
-// EmDash 1.4.0's sandbox() only reads the default Wrangler file. Keep a
+// EmDash 1.5.0's sandbox() still only reads the default Wrangler file. Keep a
 // dedicated deployment's runner aligned with the adapter's selected config, and
 // refuse to build a Worker that mounts Commerce without the Worker Loader it needs.
 function cloudflareSandbox() {
@@ -113,14 +118,7 @@ export default defineConfig({
       // On Cloudflare the Worker Loader runs the installed plugins; on Node the workerd runner does, and
       // astro dev hands them to Miniflare (EmDash's documented loop: build the plugin, run the site).
       ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : pairedCommerce ? { sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox" } : {}),
-      ...(pairedCommerce ? { sandboxed: [pairedCommerce] } : {}),
-      plugins: [
-        {
-          id: "dinkus-template-product-urls",
-          version: "1.0.0",
-          entrypoint: productUrlEntry,
-        },
-      ],
+      ...(pairedCommerce ? { sandboxed: [pairedCommerce, ...(pairedReviews ? [pairedReviews] : [])] } : {}),
     }),
   ],
   vite: {
@@ -151,12 +149,6 @@ export default defineConfig({
         "@dinkuskit/commerce/features/checkout": fileURLToPath(
           new URL(
             "./.artifacts/source-deps/commerce/src/features/checkout/index.ts",
-            import.meta.url,
-          ),
-        ),
-        "@dinkuskit/commerce/features/customers": fileURLToPath(
-          new URL(
-            "./.artifacts/source-deps/commerce/src/features/customers/index.ts",
             import.meta.url,
           ),
         ),

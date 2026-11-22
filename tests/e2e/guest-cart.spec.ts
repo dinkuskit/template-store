@@ -5,8 +5,8 @@ import { resolve } from "node:path";
 
 import { expect, test, type Browser, type Page, type TestInfo } from "@playwright/test";
 
+import type { DinkusStorefrontActions } from "../../src/features/guest-cart/webmcp";
 import { COMMERCE_SKU_INDEX, listCatalog, openProductsList, sellProduct } from "./helpers/product-page";
-import { exerciseCartRedrawFocus } from "./helpers/cart-redraw-focus";
 
 // The cart lives in Commerce; the browser holds only its key in an HttpOnly cookie
 // (template-cart-real-form-20261113, template-cart-count-cookie-20261113).
@@ -16,6 +16,7 @@ async function storeWithProduct(browser: Browser, testInfo: TestInfo, suffix: st
   const admin = await adminContext.newPage();
   if (openAdmin) await openProductsList(admin);
   else {
+    // These shopper regressions need native content/catalog writes, not the admin React welcome screen.
     const signedIn = await adminContext.request.get("/_emdash/api/auth/dev-bypass?redirect=/_emdash/admin/content/products");
     expect(signedIn.ok()).toBe(true);
   }
@@ -24,7 +25,7 @@ async function storeWithProduct(browser: Browser, testInfo: TestInfo, suffix: st
   await expect.poll(
     () => execFileSync("sqlite3", [
       ".artifacts/e2e/content.db",
-      "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%_catalog_items_%'",
+      "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'uidx_plugin_%'",
     ], { encoding: "utf8" }),
     { timeout: 90_000 },
   ).toContain(COMMERCE_SKU_INDEX);
@@ -39,28 +40,65 @@ async function storeWithProduct(browser: Browser, testInfo: TestInfo, suffix: st
   return { name, sku, itemId, productPath: `/products/${sku.toLowerCase()}` };
 }
 
-test("enhanced cart redraws retain current keyboard focus without stealing it back", async ({ browser }, testInfo) => {
-  test.setTimeout(240_000);
-  const first = await storeWithProduct(browser, testInfo, "focus-first", false);
-  const second = await storeWithProduct(browser, testInfo, "focus-second", false);
-  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
-  try {
-    for (const product of [first, second]) {
-      const response = await context.request.post("/cart/add", {
-        form: { id: product.itemId, quantity: "1" },
-        headers: { origin: new URL(testInfo.project.use.baseURL!).origin },
-      });
-      expect(response.ok()).toBe(true);
-    }
-    const shopper = await context.newPage();
-    await shopper.goto("/cart");
-    await exerciseCartRedrawFocus(shopper);
-  } finally { await context.close(); }
-});
-
 async function cookieNamed(page: Page, name: string) {
   return (await page.context().cookies()).find((cookie) => cookie.name === name);
 }
+
+async function openFocusCart(shopper: Page, testInfo: TestInfo, ids: string[]) {
+  for (const id of ids) {
+    const added = await shopper.request.post("/cart/add", {
+      form: { id, quantity: "1" },
+      headers: { origin: new URL(testInfo.project.use.baseURL!).origin },
+    });
+    expect(added.ok()).toBe(true);
+  }
+  await shopper.goto("/cart");
+  await shopper.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")]);
+}
+
+test("keyboard Update keeps focus on its line without reclaiming focus from navigation", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const { itemId } = await storeWithProduct(browser, testInfo, "focus-update", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  try {
+    const shopper = await context.newPage();
+    await openFocusCart(shopper, testInfo, [itemId]);
+    const line = shopper.locator(`[data-guest-cart-line="${itemId}"]`);
+    const update = line.getByRole("button", { name: "Update" });
+    const quantity = line.locator("[data-guest-cart-qty]");
+    await quantity.fill("2");
+    await update.press("Enter");
+    await expect(line.locator("[data-guest-cart-line-total]")).toHaveText("Line total $48.00");
+    await expect(update).toBeFocused();
+
+    await context.route("**/cart/change", async (route) => { await held; await route.continue(); }, { times: 1 });
+    await quantity.fill("3");
+    await update.press("Enter");
+    await expect(update).toBeDisabled();
+    const nav = shopper.locator("[data-store-header] [data-guest-cart-nav]");
+    await nav.focus();
+    release();
+    await expect(line.locator("[data-guest-cart-line-total]")).toHaveText("Line total $72.00");
+    await expect(nav).toBeFocused();
+  } finally { release(); await context.close(); }
+});
+
+test("keyboard Remove puts focus on the first remaining line", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const first = await storeWithProduct(browser, testInfo, "focus-remove-first", false);
+  const second = await storeWithProduct(browser, testInfo, "focus-remove-second", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  try {
+    const shopper = await context.newPage();
+    await openFocusCart(shopper, testInfo, [first.itemId, second.itemId]);
+    const line = shopper.locator(`[data-guest-cart-line="${first.itemId}"]`);
+    await line.getByRole("button", { name: `Remove ${first.name}` }).press("Enter");
+    await expect(line).toHaveCount(0);
+    await expect(shopper.locator(`[data-guest-cart-line="${second.itemId}"] [data-guest-cart-qty]`)).toBeFocused();
+  } finally { await context.close(); }
+});
 
 test("the cart works with script off: add, change, remove, and an honest checkout button", async ({ browser }, testInfo) => {
   test.setTimeout(180_000);
@@ -223,6 +261,130 @@ test("with script the same forms change the cart in place, and agents read it as
   await shopper.screenshot({ path: resolve(root, "cart-updated-script-on.png"), fullPage: true, animations: "disabled" });
   expect(errors).toEqual([]);
   await context.close();
+});
+
+test("a second cart change is ignored until the saved cart is drawn", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const first = await storeWithProduct(browser, testInfo, "lock-first", false);
+  const second = await storeWithProduct(browser, testInfo, "lock-second", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  let changesSent = 0;
+  try {
+    const shopper = await context.newPage();
+    for (const { itemId } of [first, second]) {
+      const added = await context.request.post("/cart/add", {
+        form: { id: itemId, quantity: "1" },
+        headers: { origin: new URL(testInfo.project.use.baseURL!).origin, accept: "text/html" },
+      });
+      expect(added.ok()).toBe(true);
+    }
+    await shopper.goto("/cart");
+    await shopper.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")]);
+    await context.route("**/cart/change", async (route) => {
+      changesSent += 1;
+      if (changesSent > 1) return route.continue();
+      await held;
+      return route.continue();
+    });
+    const section = shopper.locator("[data-server-cart]");
+    const rowFor = (id: string) => section.locator(`[data-guest-cart-line="${id}"]`);
+    const quantity = rowFor(first.itemId).locator("[data-guest-cart-qty]");
+    const update = rowFor(first.itemId).getByRole("button", { name: "Update" });
+    const remove = rowFor(second.itemId).getByRole("button", { name: `Remove ${second.name}` });
+    const target = await quantity.boundingBox();
+    expect(target?.height).toBeGreaterThanOrEqual(44);
+    expect(target?.width).toBeGreaterThanOrEqual(44);
+
+    await quantity.fill("3");
+    await update.click();
+    await expect.poll(() => changesSent).toBe(1);
+    await expect(section).toHaveAttribute("aria-busy", "true");
+    for (const control of await section.locator("[data-guest-cart-qty], [data-guest-cart-update], [data-guest-cart-remove]").all()) {
+      await expect(control).toBeDisabled();
+    }
+    // Native controls prevent activation. An explicit submit also must not slip through the lock.
+    const ignored = await remove.evaluate((button: HTMLButtonElement) =>
+      !button.form!.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true })),
+    );
+    expect(ignored).toBe(true);
+    release();
+
+    await expect(section).not.toHaveAttribute("aria-busy", "true");
+    await expect(update).toBeEnabled();
+    await expect(remove).toBeEnabled();
+    await expect(section.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$96.00");
+    const saved = await (await shopper.request.get("/cart.js")).json();
+    expect(saved).toMatchObject({ ok: true, cart: { itemCount: 4 } });
+    expect(saved.cart.lines).toHaveLength(2);
+    expect(saved.cart.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ catalogItemId: first.itemId, quantity: 3 }),
+      expect.objectContaining({ catalogItemId: second.itemId, quantity: 1 }),
+    ]));
+    await expect(section.locator("[data-guest-cart-line]")).toHaveCount(saved.cart.lines.length);
+    await expect(shopper.locator("[data-guest-cart-count]").first()).toHaveText(String(saved.cart.itemCount));
+    for (const line of saved.cart.lines) {
+      await expect(rowFor(line.catalogItemId).locator("[data-guest-cart-qty]")).toHaveValue(String(line.quantity));
+    }
+    expect(changesSent).toBe(1);
+  } finally {
+    release();
+    await context.close();
+  }
+});
+
+test("a WebMCP change redraws the cart after a held shopper save", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const { itemId } = await storeWithProduct(browser, testInfo, "lock-webmcp", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  const held = Promise.withResolvers<void>();
+  const saved = Promise.withResolvers<void>();
+  try {
+    const added = await context.request.post("/cart/add", {
+      form: { id: itemId, quantity: "1" },
+      headers: { origin: new URL(testInfo.project.use.baseURL!).origin, accept: "text/html" },
+    });
+    expect(added.ok()).toBe(true);
+    const shopper = await context.newPage();
+    await shopper.goto("/cart");
+    await shopper.waitForFunction(() => "Dinkus" in window);
+    const section = shopper.locator("[data-server-cart]");
+    const quantity = section.locator("[data-guest-cart-qty]");
+    const subtotal = section.locator("[data-guest-cart-subtotal-amount]");
+    await shopper.route("**/cart/change", async (route) => {
+      // Commerce has saved 3 and the server has drawn that cart, but the browser has neither result yet.
+      const response = await route.fetch();
+      expect(response.ok()).toBe(true);
+      saved.resolve();
+      await held.promise;
+      await route.fulfill({ response });
+    });
+    await quantity.fill("3");
+    await section.getByRole("button", { name: "Update" }).click();
+    await saved.promise;
+    await expect(section).toHaveAttribute("aria-busy", "true");
+
+    const agent = await shopper.evaluate(async (id) => {
+      const { Dinkus } = window as unknown as { Dinkus: { actions: DinkusStorefrontActions } };
+      const before = await Dinkus.actions.getCart();
+      if (!before.ok || before.itemCount !== 3) throw new Error("The agent must see the saved shopper update first");
+      return Dinkus.actions.updateCart({ version: before.version, lines: [{ id, quantity: 5 }] });
+    }, itemId);
+    expect(agent).toMatchObject({ ok: true, cart: { itemCount: 5, subtotalMinor: 12000 } });
+    await expect(quantity).toBeDisabled();
+    held.resolve();
+
+    const wire = await (await context.request.get("/cart.js")).json();
+    expect(wire).toMatchObject({ ok: true, cart: { itemCount: 5, lines: [{ catalogItemId: itemId, quantity: 5 }] } });
+    await expect(quantity).toBeEnabled();
+    await expect(quantity).toHaveValue(String(wire.cart.lines[0].quantity));
+    await expect(subtotal).toHaveText("$120.00");
+    await expect(shopper.locator("[data-guest-cart-count]").first()).toHaveText(String(wire.cart.itemCount));
+  } finally {
+    held.resolve();
+    await context.close();
+  }
 });
 
 test("the thank-you page trusts only the order behind the cart cookie", async ({ browser }, testInfo) => {

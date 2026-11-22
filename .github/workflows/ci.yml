@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   # Pull requests that only touch records and docs (.github/scripts/browser-plan.mjs)
-  # skip the browser tests: desktop runs the quick checks, phone reports success.
+  # skip the browser tests: Store checks runs the quick checks, each browser shard reports success.
   # Pushes to main always run everything.
   plan:
     name: Test plan
@@ -70,12 +70,11 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color -shellcheck='' -pyflakes=''
 
-  # Desktop and phone browser tests run side by side on separate runners. Each
-  # runner starts its own disposable test stores (scripts/start-e2e-server.mjs
-  # wipes .artifacts on start), so the two jobs never share a store. Inside a
-  # job tests stay serial (playwright.config.ts workers: 1).
-  verify-desktop:
-    name: Store verification (desktop)
+  # Every check except the browser tests: type checks, unit and workflow tests,
+  # the feature audit, the built Node site and its crawl (bin/verify-web checks).
+  # Records and docs only: the same checks without the build and crawl.
+  checks:
+    name: Store checks
     needs: plan
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
@@ -94,41 +93,38 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - if: needs.plan.outputs.browser == 'true'
-        uses: ./.github/actions/setup-chromium
-      # The browser tests' proof store runs the pinned Commerce's Registry build; its fetch and build are
+      # The built site mounts the pinned Commerce's Registry build; its fetch and build are
       # kept per Commerce commit, so only a pin change rebuilds it.
       - if: needs.plan.outputs.browser == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          path: .artifacts/paired-commerce
-          key: paired-commerce-${{ hashFiles('package.json') }}-${{ runner.os }}
-      # Every non-browser check, desktop browser tests and the built-site crawl.
+          path: |
+            .artifacts/paired-commerce
+            .artifacts/paired-reviews
+          key: paired-plugins-${{ hashFiles('package.json') }}-${{ runner.os }}
       - if: needs.plan.outputs.browser == 'true'
-        run: pnpm verify
-        env:
-          VERIFY_E2E_PROJECTS: chromium-desktop,shipping-chromium-desktop
-      # Records and docs only: every non-browser check, no browser.
+        run: bin/verify-web checks
       - if: needs.plan.outputs.browser != 'true'
         run: bin/verify-web quick
-      - name: Capture browser failure context
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: store-browser-error-context-desktop-${{ github.run_id }}
-          path: |
-            test-results/playwright/**/error-context.md
-            test-results/playwright/**/home-editor-fixture-state.json
-          if-no-files-found: ignore
-          retention-days: 3
 
-  verify-phone:
-    name: Store verification (phone)
+  # The browser tests, desktop and phone, in four shards on separate runners.
+  # scripts/e2e-shards.mjs gives each shard its spec files, balanced by time;
+  # any spec file it does not name runs in the last shard. Each shard runs its
+  # files at every size (desktop, phone and the shipping store) and starts its
+  # own disposable test stores (scripts/start-e2e-server.mjs wipes .artifacts
+  # on start), so shards never share a store. Inside a shard tests stay serial
+  # (playwright.config.ts workers: 1).
+  browser:
+    name: Store browser tests (${{ matrix.shard }}/4)
     needs: plan
     # Closed PR events only run preview cleanup (cleanup-playground-preview).
     if: github.event.action != 'closed'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1', '2', '3', '4']
     steps:
       - if: needs.plan.outputs.browser != 'true'
         run: echo "Only records and docs changed; the browser tests are skipped."
@@ -150,20 +146,24 @@ jobs:
         run: pnpm install --frozen-lockfile
       - if: needs.plan.outputs.browser == 'true'
         uses: ./.github/actions/setup-chromium
+      # The browser tests' proof store runs the pinned Commerce's Registry build; its fetch and build are
+      # kept per Commerce commit, so only a pin change rebuilds it.
       - if: needs.plan.outputs.browser == 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          path: .artifacts/paired-commerce
-          key: paired-commerce-${{ hashFiles('package.json') }}-${{ runner.os }}
+          path: |
+            .artifacts/paired-commerce
+            .artifacts/paired-reviews
+          key: paired-plugins-${{ hashFiles('package.json') }}-${{ runner.os }}
       - if: needs.plan.outputs.browser == 'true'
         run: bin/verify-web browser
         env:
-          VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile
+          VERIFY_E2E_SHARD: ${{ matrix.shard }}
       - name: Capture browser failure context
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: store-browser-error-context-phone-${{ github.run_id }}
+          name: store-browser-error-context-shard-${{ matrix.shard }}-${{ github.run_id }}
           path: |
             test-results/playwright/**/error-context.md
             test-results/playwright/**/home-editor-fixture-state.json
@@ -205,24 +205,24 @@ jobs:
           node .github/scripts/assert-registry-build.mjs
 
   # Keeps the single "Store verification" check that reviewers, ClawSweeper
-  # and playground deployment wait on. It runs even when a side fails, so a
-  # failed half shows as a failed check instead of a skipped (passing) one.
+  # and playground deployment wait on. It runs even when a job fails, so a
+  # failed shard shows as a failed check instead of a skipped (passing) one.
   verify:
     name: Store verification
-    needs: [verify-desktop, verify-phone, build-registry]
+    needs: [checks, browser, build-registry]
     if: ${{ !cancelled() && github.event.action != 'closed' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require desktop, phone and Registry build verification
+      - name: Require the checks, every browser shard and the Registry build
         env:
-          DESKTOP: ${{ needs.verify-desktop.result }}
-          PHONE: ${{ needs.verify-phone.result }}
+          CHECKS: ${{ needs.checks.result }}
+          BROWSER: ${{ needs.browser.result }}
           REGISTRY: ${{ needs.build-registry.result }}
         run: |
-          echo "desktop=${DESKTOP} phone=${PHONE} registry=${REGISTRY}"
-          test "$DESKTOP" = success
-          test "$PHONE" = success
+          echo "checks=${CHECKS} browser=${BROWSER} registry=${REGISTRY}"
+          test "$CHECKS" = success
+          test "$BROWSER" = success
           test "$REGISTRY" = success
 
   # A build check that starts beside verification. Playground deployment below
@@ -318,12 +318,35 @@ jobs:
           retention-days: 3
       # Draft/verification-only PRs cannot deploy. Exercise the actual artifact
       # service and Wrangler closure here instead; report this proof cost separately.
+      # The artifact service can take a moment to list an upload from this same job,
+      # so a first "Artifact not found" waits and tries once more before failing.
       - name: Download playground build for non-deploying proof
+        id: proof_download
+        continue-on-error: true
         if: >-
           github.event_name == 'pull_request' &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           (github.event.pull_request.draft ||
           contains(github.event.pull_request.labels.*.name, 'verification-only'))
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ steps.pack.outputs.artifact_name }}
+          path: .artifacts/playground-ci-downloaded
+      - name: Wait for the artifact service to list the upload
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (github.event.pull_request.draft ||
+          contains(github.event.pull_request.labels.*.name, 'verification-only')) &&
+          steps.proof_download.outcome == 'failure'
+        run: sleep 20
+      - name: Download playground build for non-deploying proof, second try
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (github.event.pull_request.draft ||
+          contains(github.event.pull_request.labels.*.name, 'verification-only')) &&
+          steps.proof_download.outcome == 'failure'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ steps.pack.outputs.artifact_name }}

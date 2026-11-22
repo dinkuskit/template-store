@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const workflow = readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
@@ -71,22 +72,36 @@ function jobBody(job) {
 }
 
 test("verification and build jobs remain available to labeled PRs", () => {
-  for (const job of ["workflows", "verify-desktop", "verify-phone", "build-registry", "build-playground"]) {
+  for (const job of ["workflows", "checks", "browser", "build-registry", "build-playground"]) {
     assert.match(jobBody(job), /^    if: github.event.action != 'closed'$/mu);
   }
   assert.match(jobBody("verify"), /^    if: \$\{\{ !cancelled\(\) && github.event.action != 'closed' \}\}$/mu);
 });
 
-test("Store verification requires desktop, phone and the Registry build", () => {
+test("Store verification requires the checks, every browser shard and the Registry build", () => {
   const body = jobBody("verify");
   assert.match(body, /^    name: Store verification$/mu);
-  assert.match(body, /^    needs: \[verify-desktop, verify-phone, build-registry\]$/mu);
-  assert.match(body, /test "\$DESKTOP" = success/u);
-  assert.match(body, /test "\$PHONE" = success/u);
+  assert.match(body, /^    needs: \[checks, browser, build-registry\]$/mu);
+  assert.match(body, /CHECKS: \$\{\{ needs\.checks\.result \}\}/u);
+  assert.match(body, /test "\$CHECKS" = success/u);
+  // A matrix job's result is success only when every shard succeeded.
+  assert.match(body, /BROWSER: \$\{\{ needs\.browser\.result \}\}/u);
+  assert.match(body, /test "\$BROWSER" = success/u);
   assert.match(body, /REGISTRY: \$\{\{ needs\.build-registry\.result \}\}/u);
   assert.match(body, /test "\$REGISTRY" = success/u);
-  assert.match(jobBody("verify-desktop"), /VERIFY_E2E_PROJECTS: chromium-desktop,shipping-chromium-desktop$/mu);
-  assert.match(jobBody("verify-phone"), /VERIFY_E2E_PROJECTS: chromium-mobile,shipping-chromium-mobile$/mu);
+});
+
+test("the browser shards together run every browser test, desktop and phone", () => {
+  const body = jobBody("browser");
+  assert.match(body, /^        shard: \['1', '2', '3', '4'\]$/mu);
+  assert.match(body, /^      fail-fast: false$/mu);
+  assert.match(body, /run: bin\/verify-web browser\n {8}env:\n {10}VERIFY_E2E_SHARD: \$\{\{ matrix\.shard \}\}$/mu);
+  // No project filter: each shard runs desktop, phone and the shipping store projects.
+  assert.doesNotMatch(workflow, /VERIFY_E2E_PROJECTS/u);
+  const checks = jobBody("checks");
+  assert.match(checks, /run: bin\/verify-web checks$/mu);
+  assert.match(checks, /run: bin\/verify-web quick$/mu);
+  assert.doesNotMatch(checks, /playwright test|setup-chromium|VERIFY_E2E/u);
 });
 
 test("Registry CI compiles the actual store without deployment credentials", () => {
@@ -102,4 +117,26 @@ test("playground builds beside verification but deploys only after it", () => {
   assert.doesNotMatch(jobBody("build-playground"), /^    needs:/mu);
   assert.match(jobBody("deploy-playground"), /^    needs: \[verify, build-playground\]$/mu);
   assert.doesNotMatch(jobBody("deploy-playground"), /always\(\)|!cancelled\(\)|failure\(\)/u);
+});
+
+test("every browser spec file runs in exactly one shard, and CI runs every shard", () => {
+  const script = new URL("../../scripts/e2e-shards.mjs", import.meta.url).pathname;
+  const plan = execFileSync(process.execPath, [script, "--check"], { encoding: "utf8" }).trim().split("\n");
+  assert.equal(plan.length, 4);
+  const seen = [];
+  plan.forEach((line, index) => {
+    const [label, files] = line.split(": ");
+    assert.equal(label, `${index + 1}/4`);
+    seen.push(...files.split(", "));
+  });
+  const specs = readdirSync(new URL("../e2e/", import.meta.url))
+    .filter((name) => name.endsWith(".spec.ts"))
+    .map((name) => name.slice(0, -".spec.ts".length));
+  assert.deepEqual([...seen].sort(), [...specs].sort());
+  // The filters are anchored, so one spec name cannot also select a longer one that starts with it.
+  for (let shard = 1; shard <= 4; shard += 1) {
+    const filters = execFileSync(process.execPath, [script, String(shard)], { encoding: "utf8" }).trim().split("\n");
+    for (const filter of filters) assert.match(filter, /^tests\/e2e\/[a-z0-9-]+\\\.spec\\\.ts\$$/u);
+  }
+  assert.match(jobBody("browser"), /^    name: Store browser tests \(\$\{\{ matrix\.shard \}\}\/4\)$/mu);
 });

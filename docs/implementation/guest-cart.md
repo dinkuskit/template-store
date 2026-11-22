@@ -1,5 +1,9 @@
 # Guest cart and Commerce handoff
 
+## Enhanced server-cart changes
+
+While a quantity update or removal is saving, the cart section is marked busy, its quantity, Update, and Remove controls are disabled, and later change submissions are ignored rather than queued. The response replaces the currently attached cart section before controls are usable again. If the enhancement fails, the captured form submits through the plain route instead. This lock does not serialize Add or WebMCP operations, change Commerce's cart authority, or alter script-off forms. An agent change still updates the badge during the lock. Any cart redraw deferred by the lock is made once the shopper save settles, fetching fresh cart HTML from the server.
+
 The authorized issue #20 extension preserves the existing template visual
 language and EmDash composition. The cart belongs to the shopper presentation
 layer. Its browser cache contains only validated product identities and positive

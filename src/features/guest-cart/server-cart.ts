@@ -66,6 +66,8 @@ export const CART_ERROR_TEXT: Readonly<Record<string, string>> = Object.freeze({
   CART_FULL: `A cart holds up to ${GUEST_CART_MAX_LINES} items and ${GUEST_CART_MAX_QUANTITY} of each.`,
   NO_CART: "Your cart is empty.",
   NOT_PAID: "Your payment was not completed. Your items are still in your cart.",
+  STOP_EXPIRED: "That link has expired, so cart reminder emails could not be stopped here. Contact the store to stop them.",
+  STOP_LINK: "Nothing was stopped: this browser now holds a different cart. Open the stop link in the email again.",
   RATE_LIMITED: "Too many test checkouts from here. Try again in about 10 minutes.",
   PAYMENTS_UNAVAILABLE: "Checkout is not available yet.",
   INVENTORY_UNAVAILABLE: "An item in your cart just sold out. Check your cart and try again.",
@@ -417,7 +419,7 @@ export function setServerCartQuantity(ctx: ServerCartContext, catalogItemId: str
  * Start checkout from the saved cart with the shopper's contact. The playground's limiter and visitor-IP rule
  * apply here as they do on the plugin route.
  */
-export async function startServerCheckout(ctx: ServerCartContext, contact: GuestCheckoutContact): Promise<ServerCartResult> {
+export async function startServerCheckout(ctx: ServerCartContext, contact: GuestCheckoutContact, news = false): Promise<ServerCartResult> {
   const key = readCartKey(ctx.cookies);
   if (!key) return failure("NO_CART");
   if (isPlayground(ctx.locals) && playgroundCheckoutConfigured(envOf(ctx.locals))) {
@@ -425,7 +427,8 @@ export async function startServerCheckout(ctx: ServerCartContext, contact: Guest
     const limiter = (ctx.locals as { __playgroundCheckoutLimiter?: unknown }).__playgroundCheckoutLimiter;
     if (await checkoutLimited(ctx.request, limiter)) return failure("RATE_LIMITED");
   }
-  const answer = await callCommerce(ctx, "start", { contact }, key);
+  // news: the shopper ticked "Email me with news and offers" (commerce-abandoned-cart-email-20261122).
+  const answer = await callCommerce(ctx, "start", news ? { contact, news: true } : { contact }, key);
   if (!answer.ok) {
     const latest = await readServerCart(ctx);
     const extra = latest.ok ? { cart: latest.cart, checkout: latest.checkout } : {};
@@ -437,6 +440,36 @@ export async function startServerCheckout(ctx: ServerCartContext, contact: Guest
   }
   const read = await readServerCart(ctx);
   return { ok: true, cart: read.cart ?? emptyCart(), checkout: answer.checkout };
+}
+
+/**
+ * The abandoned cart email's link, /cart/c/<id>?key=<secret>: a fresh key Commerce made for the shopper's cart. It
+ * becomes this browser's cart key when Commerce accepts it (commerce-abandoned-cart-email-20261122).
+ */
+export async function pickUpServerCart(ctx: ServerCartContext, id: string, secret: string): Promise<boolean> {
+  const key = `${id}.${secret}`;
+  if (!CAPABILITY.test(key)) return false;
+  const answer = await callCommerce(ctx, "cart", {}, key);
+  if (!answer.ok) return false;
+  writeCartCookies(ctx, key, answer.cart?.itemCount ?? 0);
+  return true;
+}
+
+/** A cart key's public half, as the stop link names its cart; never the secret. */
+export function cartKeyId(value: string | null | undefined): string | null {
+  const id = value?.split(".")[0] ?? "";
+  return /^[A-Za-z0-9_~-]{1,256}$/u.test(id) ? id : null;
+}
+
+/**
+ * The email's stop link, once the shopper confirms: no more cart reminder emails to that checkout's email. The
+ * confirmation names the cart its link opened; when another link has since replaced this browser's cart, nothing
+ * is stopped ("STOP_LINK"). Commerce refusing the key is "STOP_EXPIRED".
+ */
+export async function stopCartEmails(ctx: ServerCartContext, cartId: string | null): Promise<"STOPPED" | "STOP_LINK" | "STOP_EXPIRED"> {
+  const key = readCartKey(ctx.cookies);
+  if (!key || !cartId || cartKeyId(key) !== cartId) return "STOP_LINK";
+  return (await callCommerce(ctx, "cart", { stop: true }, key)).ok ? "STOPPED" : "STOP_EXPIRED";
 }
 
 const ADDRESS_FIELDS = ["name", "line1", "line2", "city", "region", "postalCode", "country"] as const;
@@ -475,7 +508,7 @@ function missingField(fields: Record<AddressField, string>): AddressField | null
  * address that defaults to "same as delivery" (billing-address-v1). Commerce checks it all again.
  */
 export function readContactForm(form: FormData, needsDelivery: boolean):
-  | Readonly<{ contact: GuestCheckoutContact; error: null; values: ContactFormValues }>
+  | Readonly<{ contact: GuestCheckoutContact; error: null; values: ContactFormValues; news: boolean }>
   | Readonly<{ contact: null; error: ContactFieldError; values: ContactFormValues }> {
   const email = formText(form, "email", 254);
   const delivery = formAddress(form, "delivery");
@@ -486,7 +519,9 @@ export function readContactForm(form: FormData, needsDelivery: boolean):
     ...Object.fromEntries(ADDRESS_FIELDS.map((field) => [`delivery[${field}]`, delivery[field]])),
     ...Object.fromEntries(ADDRESS_FIELDS.map((field) => [`billing[${field}]`, billing[field]])),
     billingSame: same ? "on" : "",
+    news: form.get("news") !== null ? "on" : "",
   };
+  const news = values.news === "on";
   const fail = (field: string, message: string) => ({ contact: null, error: { field, message }, values });
   if (!email) return fail("email", "Enter your email address to continue.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email)) return fail("email", "Enter a valid email address to continue.");
@@ -500,12 +535,12 @@ export function readContactForm(form: FormData, needsDelivery: boolean):
     }
     shipTo = completeAddress(delivery);
   }
-  if (same && shipTo) return { contact: { email, delivery: shipTo, billing: { ...shipTo } }, error: null, values };
+  if (same && shipTo) return { contact: { email, delivery: shipTo, billing: { ...shipTo } }, error: null, values, news };
   const missing = missingField(billing);
   if (missing || !/^[A-Za-z]{2}$/u.test(billing.country)) {
     return fail(`billing[${missing ?? "country"}]`, "Complete the billing name, address, city, postal code, and country fields.");
   }
-  return { contact: { email, ...(shipTo ? { delivery: shipTo } : {}), billing: completeAddress(billing) }, error: null, values };
+  return { contact: { email, ...(shipTo ? { delivery: shipTo } : {}), billing: completeAddress(billing) }, error: null, values, news };
 }
 
 /** The add-to-cart form: a Commerce item id, or a product id with its chosen options (`options[Size]=Large`). */

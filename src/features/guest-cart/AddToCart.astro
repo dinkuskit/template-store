@@ -36,8 +36,8 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
         type="submit"
         data-add-to-cart={product.id}
         data-add-to-cart-sellable={String(singleSellable)}
-        disabled={!singleSellable && !byOptions}
-      >{singleSellable || byOptions ? "Add to cart" : "Sold out"}</button>
+        disabled={!singleSellable}
+      >{singleSellable ? "Add to cart" : "Sold out"}</button>
     </form>
     <p data-add-to-cart-status hidden role="status"></p>
   </div>
@@ -55,6 +55,10 @@ const qtyInputId = `guest-cart-add-qty-${product.id}`;
   .guest-cart-add button.guest-cart-add__step{padding:.45rem .65rem;border-radius:0;background:transparent;color:inherit;font-weight:800;line-height:1}
   .guest-cart-add button:disabled,.guest-cart-add input:disabled{opacity:.5;cursor:not-allowed}
   .guest-cart-add p{margin:.2rem 0 0;color:var(--store-muted)}
+  @media(max-width:48rem){
+    .guest-cart-add__stepper input{min-height:44px}
+    .guest-cart-add button.guest-cart-add__step{min-width:44px;min-height:44px}
+  }
 </style>
 <script>
   import { hydrateServerCartForms } from "./cart-script.ts";

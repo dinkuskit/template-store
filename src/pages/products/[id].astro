@@ -23,6 +23,8 @@ import { hydrateProductCollectionMembership, productPageOffersCart, readProductE
 import { leftCommerceCatalog } from "../../features/store-shell/merch-catalog.js";
 import { playgroundCheckoutAdmission, playgroundCheckoutConfigured, playgroundEnvOf, showsSandboxCheckoutNotice } from "../../features/playground-checkout/index.js";
 import { isDemoCatalogProfile } from "../../features/playground/demo-products.js";
+import { readProductReviews } from "../../features/product-reviews/index.js";
+import { ProductRating, ProductReviews } from "../../features/product-reviews/ui.ts";
 import "../../features/store-shell/global.css";
 
 const productCollection = await getEmDashCollection<"products", Record<string, unknown>>("products", { status: "published" });
@@ -189,6 +191,11 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
     }),
   }
   : null;
+// The product's rating and published reviews, kept by DinkusKit Reviews under the product's Commerce id
+// (template-product-rating-20261122). Nothing shows when Reviews is not installed or nobody has reviewed it.
+const productReviews = linkedProduct && !noLongerAvailable && !lookupUnavailable
+  ? await readProductReviews({ locals: Astro.locals, request: Astro.request, url: Astro.url }, linkedProduct.id)
+  : null;
 ---
 <!doctype html>
 <html lang="en">
@@ -216,6 +223,7 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
           <div class="product-detail__body">
             {category && <p class="product-detail__eyebrow">{category.name}</p>}
             <h1>{productName}</h1>
+            {productReviews && <ProductRating rating={productReviews.rating} />}
             {summary ? <div class="product-detail__summary" data-product-summary><PortableText value={summary} components={legacyPortableTextComponents} /></div> : <p class="product-detail__description">{item.description}</p>}
             {linkedProduct && <p class="product-detail__identifier" data-product-sku={linkedProduct.sku}>SKU {linkedProduct.sku}</p>}
             {linkedProduct?.gtin && <p class="product-detail__identifier" data-product-gtin={linkedProduct.gtin}>GTIN {linkedProduct.gtin}</p>}
@@ -231,16 +239,31 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
                 <span>{value}</span><span class="product-variant__sold-out"> (sold out)</span>
               </label>)}
             </fieldset>)}
+            {variants.length > 0 && <noscript>
+              <style is:inline>[data-product-variants]{display:none!important}</style>
+              <form method="get" action={Astro.url.pathname} class="product-options-fallback" data-product-options-fallback>
+                <label for="product-option">Product option</label>
+                <p id="product-option-help">View an option to check its price and availability before adding it.</p>
+                <select id="product-option" name="variant" aria-describedby="product-option-help">
+                  {variants.map(member => <option value={member.id} selected={member.id === selectedVariant?.id}>
+                    {member.selections.map(([, value]) => value).join(" / ")} — {member.priceText} · {availabilityLabels[member.availability.status]}
+                  </option>)}
+                </select>
+                <button type="submit">View option</button>
+              </form>
+            </noscript>}
             {variantMembers.length > 0 && <script type="application/json" data-variant-members set:html={jsonLdScript(variantMembers)} />}
             {managed && <p class="product-detail__price" data-product-price><strong data-regular-price>{managed.price.regularText}</strong></p>}
             {unmanaged && <p class="product-detail__price" data-product-price>{unmanaged.price.saleText ? <><s data-regular-price>{unmanaged.price.regularText}</s> <strong data-sale-price>{unmanaged.price.saleText}</strong></> : <strong data-regular-price>{unmanaged.price.regularText}</strong>}</p>}
-            <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}>{status}</p>
+            <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}
+              role={variantOptions.length ? "status" : undefined} aria-atomic={variantOptions.length ? "true" : undefined}>{status}</p>
             {cartProduct && offersCart && <AddToCart product={cartProduct} variants={variants} productId={linkedProduct?.id} formId={addFormId} />}
             {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>{offersCart ? "Demo product. Checkout is unavailable." : "Demo product. Cart and checkout are unavailable."}</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>
         {details && <section class="product-details" data-product-details aria-label="Product details"><Blocks value={details} components={productDetailComponents} fallback={UnknownBlock} /></section>}
+        {productReviews && productName && <ProductReviews view={productReviews} productName={productName} />}
       </>) : <><h1>Product not found</h1><p>This product is not published or does not exist.</p><a href="/">Return to catalog</a></>}
     </main>
     <StoreFooter profile={profile} />
@@ -372,8 +395,15 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
   .product-detail__status{font-size:1.25rem;font-weight:800;margin:2rem 0 .5rem}
   .product-detail__notice{line-height:1.5;color:var(--store-muted)}
   .product-detail__back{display:inline-block;margin-top:2rem;color:inherit;font-weight:800;text-underline-offset:.25em}
+  .product-options-fallback{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;margin:1rem 0}
+  .product-options-fallback label{flex-basis:100%;font-weight:800}
+  .product-options-fallback p{flex-basis:100%;margin:0;color:var(--store-muted);line-height:1.5}
+  .product-options-fallback select{width:14rem;max-width:100%;min-height:44px;padding:.5rem;background:var(--store-surface);color:var(--store-ink);border:1.5px solid currentColor;border-radius:.4rem;font:inherit}
+  .product-options-fallback button{min-height:44px;padding:.7rem 1rem;border:1.5px solid currentColor;border-radius:.4rem;background:var(--store-surface);color:var(--store-ink);font:inherit;font-weight:800;cursor:pointer}
+  .product-options-fallback button:hover{background:var(--store-surface-subtle)}
+  .product-options-fallback button:active{transform:translateY(1px)}
   .product-variants{display:flex;flex-wrap:wrap;gap:.5rem;border:0;padding:0;margin:1rem 0}.product-variants legend{font-weight:800;margin-bottom:.5rem}
-  .product-variant{display:inline-flex;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
+  .product-variant{display:inline-flex;min-height:44px;gap:.35rem;align-items:center;padding:.45rem .8rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);box-shadow:2px 2px 0 var(--store-shadow);cursor:pointer}
   .product-variant__sold-out{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .product-variant:has(input[data-variant-sold-out="true"]){color:var(--store-muted);box-shadow:none}
   .product-variant:has(input[data-variant-sold-out="true"]) span:first-of-type{text-decoration:line-through}

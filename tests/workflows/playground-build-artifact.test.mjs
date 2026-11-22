@@ -156,7 +156,7 @@ test("a failed-job rerun accepts its earlier trusted producer but refuses a futu
 
 const workflow = readFileSync(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
 function jobBody(job) { return workflow.split(`\n  ${job}:\n`)[1]?.split(/\n  [a-z][a-z-]+:\n/u)[0]; }
-function stepAllowed(name, { event = "pull_request", draft = false, sameRepo = true, labels = [], enabled = true } = {}) {
+function stepAllowed(name, { event = "pull_request", draft = false, sameRepo = true, labels = [], enabled = true, firstDownload = "success" } = {}) {
   const step = jobBody("build-playground").split(`      - name: ${name}\n`)[1]?.split(/\n      - /u)[0];
   const condition = step?.match(/^        if: >-\n((?:          .+\n)+)/mu)?.[1]?.trim()
     .replaceAll("github.event.pull_request.labels.*.name", "labels");
@@ -164,9 +164,10 @@ function stepAllowed(name, { event = "pull_request", draft = false, sameRepo = t
   const github = { event_name: event, repository: "dinkuskit/template-store", event: { pull_request: {
     draft, head: { repo: { full_name: sameRepo ? "dinkuskit/template-store" : "fork/template-store" } },
   } } };
-  return Function("github", "vars", "labels", "contains", `return (${condition});`)(github,
+  return Function("github", "vars", "labels", "contains", "steps", `return (${condition});`)(github,
     { PLAYGROUND_DEPLOY_ENABLED: enabled ? "true" : "false" }, labels,
-    (values, value) => values.some((item) => item.toLowerCase() === value.toLowerCase()));
+    (values, value) => values.some((item) => item.toLowerCase() === value.toLowerCase()),
+    { proof_download: { outcome: firstDownload } });
 }
 test("artifact work is admitted only for a consumer or explicit same-repository proof", () => {
   const cases = [
@@ -179,6 +180,20 @@ test("artifact work is admitted only for a consumer or explicit same-repository 
     for (const step of ["Package playground build", "Upload playground build"]) assert.equal(stepAllowed(step, context), upload);
     for (const step of ["Download playground build for non-deploying proof", "Verify restored playground without deployment"]) assert.equal(stepAllowed(step, context), proof);
   }
+});
+test("the same-job proof download waits and tries once more only after a first miss", () => {
+  const retry = ["Wait for the artifact service to list the upload", "Download playground build for non-deploying proof, second try"];
+  for (const step of retry) {
+    assert.equal(stepAllowed(step, { draft: true, enabled: false }), false, `${step} skips after a first download that worked`);
+    assert.equal(stepAllowed(step, { draft: true, enabled: false, firstDownload: "failure" }), true, `${step} runs after a first miss`);
+    assert.equal(stepAllowed(step, { firstDownload: "failure" }), false, `${step} never runs for a deploying PR`);
+    assert.equal(stepAllowed(step, { sameRepo: false, draft: true, firstDownload: "failure" }), false, `${step} never runs for a fork`);
+  }
+  const first = jobBody("build-playground").split("      - name: Download playground build for non-deploying proof\n")[1].split(/\n      - /u)[0];
+  assert.match(first, /id: proof_download\n        continue-on-error: true/u);
+  const second = jobBody("build-playground").split(`      - name: ${retry[1]}\n`)[1].split(/\n      - /u)[0];
+  assert.doesNotMatch(second, /continue-on-error/u, "a second miss fails the job");
+  assert.match(second, /name: \$\{\{ steps\.pack\.outputs\.artifact_name \}\}/u);
 });
 test("consumer uses trusted producer outputs and keeps config verification, source stamps and keep-vars", () => {
   const producer = jobBody("build-playground"); const consumer = jobBody("deploy-playground");

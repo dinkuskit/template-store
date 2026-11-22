@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { PAIRED_COMMERCE_DIR_ENV, resolvePairedCommerceDir } from "./paired-commerce.mjs";
+import { PAIRED_REVIEWS_DIR_ENV, resolvePairedReviewsDir } from "./paired-reviews.mjs";
 
 const ROOTS = Object.freeze({
   proof: ".artifacts/e2e",
@@ -57,7 +58,7 @@ export function validateOfflineE2EOptions({ root, profile, port }) {
  * DINKUS_PAIRED_COMMERCE_DIR (a checkout being developed), else the pin's prepared build, else none, which
  * the proof store refuses to start on.
  */
-export function buildOfflineE2EEnvironment(inherited, options, resolve = resolvePairedCommerceDir) {
+export function buildOfflineE2EEnvironment(inherited, options, resolve = resolvePairedCommerceDir, resolveReviews = resolvePairedReviewsDir) {
   const validated = validateOfflineE2EOptions(options);
   const env = {};
   for (const [key, value] of Object.entries(inherited ?? {})) {
@@ -72,12 +73,18 @@ export function buildOfflineE2EEnvironment(inherited, options, resolve = resolve
       throw new Error("offline e2e proof store needs the paired Commerce Registry build; run pnpm prepare:commerce (or set DINKUS_PAIRED_COMMERCE_DIR)");
     }
   }
+  // The proof store also mounts the pinned DinkusKit Reviews when it is built (pnpm prepare:reviews), for the
+  // product page's stars and reviews; without it the store runs as one that has not installed Reviews.
+  const pairedReviews = validated.profile === "proof"
+    ? resolveReviews({ [PAIRED_REVIEWS_DIR_ENV]: inherited?.[PAIRED_REVIEWS_DIR_ENV] }, validated.root) ?? ""
+    : "";
   return {
     ...env,
     ASTRO_DEV_BACKGROUND: "0",
     DINKUS_PROOF_MODE: validated.profile === "proof" ? "1" : "0",
     DINKUS_STOREFRONT_PROFILE: validated.profile,
     [PAIRED_COMMERCE_DIR_ENV]: pairedCommerce,
+    [PAIRED_REVIEWS_DIR_ENV]: pairedReviews,
     DINKUS_TEMPLATE_DB_URL: `file:./${validated.relativeDir}/content.db`,
     DINKUS_TEMPLATE_UPLOADS_DIR: `./${validated.relativeDir}/uploads`,
     EMDASH_SITE_URL: validated.siteOrigin,

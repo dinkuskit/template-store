@@ -155,3 +155,21 @@ export async function removeStorefrontCommerceBox(db: unknown): Promise<void> {
   if (!(await registry.getCollection("products")) || !(await registry.getField("products", COMMERCE_PRODUCT_FIELD))) return;
   await registry.deleteField("products", COMMERCE_PRODUCT_FIELD);
 }
+
+/** The admin sidebar folder the store's catalog shares with DinkusKit's plugin pages (admin-one-store-folder-128 in dinkuskit/dinkuskit). */
+export const STORE_FOLDER_GROUP = "Store";
+/** The collections the template puts in that folder, matching seed/seed.json. */
+export const STORE_FOLDER_COLLECTIONS = ["products", "categories"] as const;
+
+/**
+ * Puts an older store's Products and Product categories in the Store sidebar
+ * folder, where Commerce, Payments and Ship put their pages. A collection the
+ * owner already placed in a folder keeps it; re-running changes nothing.
+ */
+export async function ensureStorefrontStoreFolder(db: unknown): Promise<void> {
+  const registry = new SchemaRegistry(db as never);
+  for (const slug of STORE_FOLDER_COLLECTIONS) {
+    const collection = await registry.getCollection(slug);
+    if (collection && !collection.group?.trim()) await registry.updateCollection(slug, { group: STORE_FOLDER_GROUP });
+  }
+}

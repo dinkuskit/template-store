@@ -1,10 +1,12 @@
 import astroHandler from "@astrojs/cloudflare/entrypoints/server";
+import { courierScheduled } from "@dinkuskit/courier/store";
 import {
   createScheduledHandler as createEmDashScheduledHandler,
   PluginBridge,
 } from "@emdash-cms/cloudflare/worker";
 import {
   applySecurityHeaders,
+  applyWorkerAnswerHeaders,
   evaluatePublicBoundary,
   slashlessRedirectPath,
 } from "./features/security/public-boundary.js";
@@ -43,6 +45,7 @@ export function createScheduledHandler(
   },
 ) {
   const emdashScheduled = createEmDashScheduledHandler(options);
+  const courier = courierScheduled();
   const generalCron = options?.generalCron?.trim();
   return (
     controller: ScheduledController,
@@ -51,6 +54,8 @@ export function createScheduledHandler(
   ) => {
     emdashScheduled(controller, env, ctx);
     if (generalCron !== undefined && controller.cron !== generalCron) return;
+    // The courier carries news between this store's plugins once a minute.
+    void courier(controller, env, ctx);
     if (options?.wakeReconciliation?.execution && options?.wakeReconciliation?.associations) {
       ctx.waitUntil(
         runScheduledWakeReconciliation(options.wakeReconciliation).catch(() => {
@@ -72,7 +77,7 @@ function createErrorResponse(
     ...(status === 405 ? { "Cache-Control": "no-store" } : {}),
     ...extraHeaders,
   });
-  applySecurityHeaders(headers, env);
+  applyWorkerAnswerHeaders(headers, env);
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers,
@@ -127,7 +132,7 @@ export default {
           "Cache-Control": "no-store",
         },
       });
-      applySecurityHeaders(response.headers, env);
+      applyWorkerAnswerHeaders(response.headers, env);
       return response;
     }
     const slashlessPath = slashlessRedirectPath(url.pathname);
@@ -141,7 +146,7 @@ export default {
           "Cache-Control": "no-store",
         },
       });
-      applySecurityHeaders(response.headers, env);
+      applyWorkerAnswerHeaders(response.headers, env);
       return response;
     }
     const check = evaluatePublicBoundary(

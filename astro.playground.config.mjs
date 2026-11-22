@@ -27,9 +27,6 @@ const tourEntry = fileURLToPath(
 const mailEntry = fileURLToPath(
   new URL("./src/features/playground-plugins/mail-plugin.ts", import.meta.url),
 );
-const productUrlEntry = fileURLToPath(
-  new URL("./src/features/product-url-plugin/index.ts", import.meta.url),
-);
 
 export default defineConfig({
   output: "server",
@@ -50,11 +47,6 @@ export default defineConfig({
         middlewareEntrypoint: "./src/playground-middleware.ts",
       },
       plugins: [
-        {
-          id: "dinkus-template-product-urls",
-          version: "1.0.0",
-          entrypoint: productUrlEntry,
-        },
         // Playground-only tour: a card on the admin dashboard and its own admin page.
         {
           id: "dinkus-playground-tour",
@@ -82,9 +74,6 @@ export default defineConfig({
       alias: {
         "@dinkuskit/commerce/features/checkout": fileURLToPath(
           new URL("./.artifacts/source-deps/commerce/src/features/checkout/index.ts", import.meta.url),
-        ),
-        "@dinkuskit/commerce/features/customers": fileURLToPath(
-          new URL("./.artifacts/source-deps/commerce/src/features/customers/index.ts", import.meta.url),
         ),
         "@dinkuskit/commerce/features/orders": fileURLToPath(
           new URL("./.artifacts/source-deps/commerce/src/features/orders/index.ts", import.meta.url),

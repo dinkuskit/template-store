@@ -12,17 +12,17 @@ import { ensurePairedCommerceBuild, pairedCommerceHead, pairedCommercePin, paire
 import { commerceProfile } from "../src/features/commerce-profile/profiles.mjs";
 
 // The Commerce that holds each page's product (dinkuskit/commerce#208, template-no-commerce-box-20261029):
-// the first beta carrying it, 0.7.0-beta.3, here the 0.9.0-beta.1 beta on EmDash 1.4.0, where every product is made
+// the first beta carrying it, 0.7.0-beta.3, here the 0.9.0-beta.5 beta on EmDash 1.5.0, where every product is made
 // for its page (dinkuskit/commerce#241), variant options use the `option` op (#244) and the cart is held by
-// Commerce (#272). The pin itself lives in
+// Commerce (#272), which also tells the cart's holder the order status (#278). The pin itself lives in
 // package.json; this records the exact bytes its build must reproduce.
 const COMMERCE = Object.freeze({
-  tag: "v0.9.0-beta.1",
+  tag: "v0.9.0-beta.5",
   // Whether this Commerce saves the page title sent as `name` (dinkuskit/commerce#188); 0.6.0 ignores it.
   names: true,
   files: {
-    "dist/sandbox/plugin.mjs": "01742a27ee8513a0c2cfba142a88fb58cdd7661d3d6cc3d5e6299f1c6f855861",
-    "dist/sandbox/index.mjs": "2dd3254e6b944853c42963f23f81c0f98c96142b57a9012a1b436429d018d30a",
+    "dist/sandbox/plugin.mjs": "6da07ddec4ae98770144fdf19801f7c29b0e6110344f02b232aeb85b7a3ebf8d",
+    "dist/sandbox/index.mjs": "3c2bb1ad993e8103e5d05d5709fa4d8df98be39bef2a79a38159108dc74329ee",
   },
 });
 

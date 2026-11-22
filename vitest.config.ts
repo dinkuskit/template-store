@@ -20,9 +20,6 @@ export default defineConfig({
       "@dinkuskit/commerce/features/store-policies": fileURLToPath(
         new URL("./.artifacts/source-deps/commerce/src/features/store-policies/index.ts", import.meta.url),
       ),
-      "@dinkuskit/commerce/features/customers": fileURLToPath(
-        new URL("./.artifacts/source-deps/commerce/src/features/customers/index.ts", import.meta.url),
-      ),
       "@dinkuskit/commerce/features/orders": fileURLToPath(
         new URL("./.artifacts/source-deps/commerce/src/features/orders/index.ts", import.meta.url),
       ),
@@ -38,7 +35,7 @@ export default defineConfig({
     include: ["tests/unit/**/*.test.ts"],
     server: {
       deps: {
-        inline: ["@astrojs/cloudflare", "@emdash-cms/cloudflare"],
+        inline: ["@astrojs/cloudflare", "@emdash-cms/cloudflare", "@dinkuskit/courier"],
       },
     },
   },

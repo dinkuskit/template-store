@@ -18,7 +18,7 @@ import {
   startedPlaygroundSession,
   withoutPlaygroundSession,
 } from "./features/playground/contract.js";
-import { withShopperAccountRequest } from "./features/shopper-account/playground-runtime.js";
+import { withPlaygroundRequest } from "./features/playground-plugins/mail-delivery.js";
 import { playgroundDinkusKitFetch, playgroundPluginSettingsKey } from "./features/playground-plugins/dinkuskit-stand-in.js";
 import { retargetPlaygroundPluginLinks } from "./features/playground-plugins/registry-plugins.mjs";
 
@@ -57,7 +57,7 @@ export default {
     (globalThis as { __dinkusPlaygroundEnv?: Record<string, unknown> }).__dinkusPlaygroundEnv = env;
     (globalThis as { __dinkusPlaygroundRequestOrigin?: string }).__dinkusPlaygroundRequestOrigin =
       requestOrigin;
-    let response = await withShopperAccountRequest(requestOrigin, env, () =>
+    let response = await withPlaygroundRequest(requestOrigin, env, () =>
       (
         astroHandler as {
           fetch(

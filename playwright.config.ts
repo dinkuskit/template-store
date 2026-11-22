@@ -13,6 +13,8 @@ function childEnv(overrides: Record<string, string>): Record<string, string> {
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // Every run, and every CI shard, starts once the proof store's demo catalog is seeded.
+  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -39,7 +41,7 @@ export default defineConfig({
     },
     {
       name: "shipping-chromium-desktop",
-      testMatch: /(?:shipping-storefront-profile)\.spec\.ts$/,
+      testMatch: /(?:shipping-storefront-profile|site-visibility)\.spec\.ts$/,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: `http://127.0.0.1:${shippingPort}`,
@@ -47,7 +49,7 @@ export default defineConfig({
     },
     {
       name: "shipping-chromium-mobile",
-      testMatch: /(?:shipping-storefront-profile)\.spec\.ts$/,
+      testMatch: /(?:shipping-storefront-profile|site-visibility)\.spec\.ts$/,
       use: {
         ...devices["Pixel 7"],
         baseURL: `http://127.0.0.1:${shippingPort}`,

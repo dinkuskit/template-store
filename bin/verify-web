@@ -5,20 +5,27 @@ MODE="${1:-quick}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ "$MODE" != "quick" && "$MODE" != "full" && "$MODE" != "browser" ]]; then
-  echo "usage: bin/verify-web [quick|full|browser]" >&2
+if [[ "$MODE" != "quick" && "$MODE" != "full" && "$MODE" != "checks" && "$MODE" != "browser" ]]; then
+  echo "usage: bin/verify-web [quick|full|checks|browser]" >&2
   exit 2
 fi
 
 # VERIFY_E2E_PROJECTS (comma-separated Playwright project names) narrows the
-# browser tests; unset runs every project. CI splits desktop and phone into
-# parallel jobs this way, each on its own runner with its own disposable store.
+# browser tests; unset runs every project. VERIFY_E2E_SHARD (a number) runs
+# only that shard's spec files (scripts/e2e-shards.mjs). CI runs the shards
+# side by side, each on its own runner with its own disposable stores.
 PLAYWRIGHT_PROJECT_ARGS=()
 if [[ -n "${VERIFY_E2E_PROJECTS:-}" ]]; then
   IFS=',' read -r -a verify_e2e_projects <<<"$VERIFY_E2E_PROJECTS"
   for project in "${verify_e2e_projects[@]}"; do
     PLAYWRIGHT_PROJECT_ARGS+=("--project=$project")
   done
+fi
+if [[ -n "${VERIFY_E2E_SHARD:-}" ]]; then
+  shard_files="$(node scripts/e2e-shards.mjs "$VERIFY_E2E_SHARD")"
+  while IFS= read -r spec_filter; do
+    PLAYWRIGHT_PROJECT_ARGS+=("$spec_filter")
+  done <<<"$shard_files"
 fi
 
 pnpm prepare:sources
@@ -27,10 +34,13 @@ pnpm prepare:sources
 # the pinned Commerce is fetched and built once per commit before Playwright starts the stores.
 if [[ "$MODE" != "quick" ]]; then
   node scripts/prepare-paired-commerce.mjs
+  # The proof store also runs the pinned DinkusKit Reviews, for the product page's stars and reviews.
+  node scripts/prepare-paired-reviews.mjs
 fi
 
-# browser runs only the build and the browser tests; the phone CI job uses it
-# beside a full run that owns every other check.
+# browser runs only the build and the browser tests; checks runs everything
+# else. CI runs the browser shards beside one checks job, so together they run
+# all of full.
 if [[ "$MODE" == "browser" ]]; then
   pnpm exec astro build
   pnpm exec playwright test ${PLAYWRIGHT_PROJECT_ARGS[@]+"${PLAYWRIGHT_PROJECT_ARGS[@]}"}
@@ -45,9 +55,11 @@ node scripts/check-features.mjs
 node scripts/check-worktree-text.mjs
 git diff --check
 
-if [[ "$MODE" == "full" ]]; then
+if [[ "$MODE" == "full" || "$MODE" == "checks" ]]; then
   pnpm exec astro build
-  pnpm exec playwright test ${PLAYWRIGHT_PROJECT_ARGS[@]+"${PLAYWRIGHT_PROJECT_ARGS[@]}"}
+  if [[ "$MODE" == "full" ]]; then
+    pnpm exec playwright test ${PLAYWRIGHT_PROJECT_ARGS[@]+"${PLAYWRIGHT_PROJECT_ARGS[@]}"}
+  fi
   export NO_PROXY="${NO_PROXY:+$NO_PROXY,}127.0.0.1,localhost,::1"
   export no_proxy="${no_proxy:+$no_proxy,}127.0.0.1,localhost,::1"
   VERIFY_SITE_PORT="${VERIFY_SITE_PORT:-4640}"

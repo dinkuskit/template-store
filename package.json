@@ -15,8 +15,12 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "tag": "v0.9.0-beta.1",
-        "commit": "eccac2668077d951ab36dc1f6ca43c1fe2a27e50"
+        "tag": "v0.9.0-beta.5",
+        "commit": "6077448045244b877c8ecc75aed2b0cc9b4a509e"
+      },
+      "reviews": {
+        "repository": "https://github.com/dinkuskit/reviews.git",
+        "commit": "d6d2133bd4824e474e3002787c34f150ea662f24"
       }
     },
     "playgroundPlugins": {
@@ -35,6 +39,7 @@
   "scripts": {
     "prepare:sources": "node scripts/prepare-source-deps.mjs && node scripts/prepare-playground-plugins.mjs",
     "prepare:commerce": "node scripts/prepare-paired-commerce.mjs",
+    "prepare:reviews": "node scripts/prepare-paired-reviews.mjs",
     "predev": "pnpm prepare:sources",
     "dev": "astro dev",
     "dev:fresh": "bash scripts/dev-fresh.sh",
@@ -48,7 +53,6 @@
     "audit:features": "node scripts/check-features.mjs",
     "verify:playground-config": "node scripts/verify-playground-config.mjs",
     "verify:playground-http": "pnpm prepare:sources && node scripts/verify-playground-checkout-http.mjs",
-    "verify:playground-account-http": "pnpm prepare:sources && node scripts/verify-playground-account-http.mjs",
     "verify:playground-cutover": "pnpm prepare:sources && node scripts/verify-playground-store-cutover.mjs",
     "search:upgrade": "node scripts/upgrade-storefront-search.ts",
     "verify:quick": "bin/verify-web quick",
@@ -65,19 +69,20 @@
     "@astrojs/cloudflare": "14.1.7",
     "@astrojs/node": "11.0.2",
     "@astrojs/react": "6.0.1",
+    "@dinkuskit/courier": "github:dinkuskit/courier#33261822c6990a0fead7316235108793732605b9",
     "@dinkuskit/inventory": "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
-    "@emdash-cms/cloudflare": "1.4.0",
+    "@emdash-cms/cloudflare": "1.5.0",
     "astro": "7.1.3",
-    "emdash": "1.4.0",
+    "emdash": "1.5.0",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
   "devDependencies": {
     "@astrojs/check": "0.9.9",
-    "@emdash-cms/auth": "1.4.0",
-    "@emdash-cms/blocks": "1.4.0",
-    "@emdash-cms/plugin-cli": "0.13.5",
-    "@emdash-cms/sandbox-workerd": "0.9.6",
+    "@emdash-cms/auth": "1.5.0",
+    "@emdash-cms/blocks": "1.5.0",
+    "@emdash-cms/plugin-cli": "0.13.6",
+    "@emdash-cms/sandbox-workerd": "0.9.7",
     "@playwright/test": "1.61.1",
     "@types/node": "26.1.1",
     "better-sqlite3": "12.11.1",

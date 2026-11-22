@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { resolve } from "node:path";
+import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
 
 // Run by scripts/verify-paired-product-on-sale.mjs: this store's own middleware in front of a real
 // Commerce Registry build, installed under the beta profile's runtime id as a Registry store installs it.
@@ -106,7 +106,7 @@ test("publishing a product page sells its Commerce product, only for someone who
     const database = db();
     try {
       return database.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'index' AND name IN (?, ?)")
-        .get(`uidx_plugin_${commerce}_catalog_items_commandId`, `uidx_plugin_${commerce}_catalog_items_skuKey`) as { n: number };
+        .get(pluginUniqueIndexName(commerce, "catalog_items", "commandId"), pluginUniqueIndexName(commerce, "catalog_items", "skuKey")) as { n: number };
     } finally {
       database.close();
     }
@@ -211,12 +211,11 @@ test("publishing a product page sells its Commerce product, only for someone who
   expect(product(itemId)).toMatchObject({ offSale: true, pageId });
   expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
   await expect.poll(() => onShop(request)).toEqual([shopName]);
-  // Only irreversible deletion releases it. Commerce 0.8.0 makes every product for its page (dinkuskit/commerce#241),
-  // so the released product stays off the shop with no page, and no other page can take it over.
+  // Only irreversible deletion releases it. Commerce makes every product for its page (dinkuskit/commerce#241), and
+  // deleting the page for good deletes its product too and frees its SKU (dinkuskit/commerce#288).
   expect((await request.delete(`/_emdash/api/content/products/${pageId}`, { headers })).ok()).toBe(true);
   expect((await request.delete(`/_emdash/api/content/products/${pageId}/permanent`, { headers })).ok()).toBe(true);
-  expect(product(itemId).offSale).toBe(true);
-  expect(product(itemId)).not.toHaveProperty("pageId");
+  await expect.poll(() => product(itemId)).toEqual({});
   expect(await onShop(request)).toEqual([]);
 
   // 9-12. Authority and links changed inside one request, through the same real routes. SQLite triggers land each
@@ -300,240 +299,83 @@ test("publishing a product page sells its Commerce product, only for someone who
   }
 });
 
-test("a page EmDash publishes on schedule sells its product on the next admin visit, only on an admin's confirmed schedule", async ({ page }, testInfo) => {
-  test.setTimeout(900_000);
+test("a page EmDash publishes on schedule sells its product with nobody signed in, only on an Editor or Admin's schedule", async ({ page }, testInfo) => {
+  test.setTimeout(600_000);
   expect((await page.request.get("/_emdash/api/auth/dev-bypass?redirect=/")).ok()).toBe(true);
   const { request } = page;
   const phone = testInfo.project.name === "phone";
-  const read = <T>(sql: string, ...params: string[]) => {
+  const stored = (id: string) => {
     const database = db();
     try {
-      return database.prepare(sql).get(...params) as T | undefined;
+      return database.prepare("SELECT status, scheduled_at FROM ec_products WHERE id = ?").get(id) as { status: string; scheduled_at: string | null } | undefined;
     } finally {
       database.close();
     }
-  };
-  const onDb = (sql: string) => {
-    const database = db();
-    try {
-      database.exec(sql);
-    } finally {
-      database.close();
-    }
-  };
-  const stored = (id: string) => read<{ status: string; scheduled_at: string | null }>("SELECT status, scheduled_at FROM ec_products WHERE id = ?", id);
-  const pending = (id: string) => {
-    const row = read<{ data: string }>("SELECT data FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id = ?", id);
-    return row ? (JSON.parse(row.data) as Record<string, unknown>) : undefined;
   };
   const scheduleAt = (id: string, scheduledAt: string) =>
     request.post(`/_emdash/api/content/products/${id}/schedule`, { headers, data: { scheduledAt } });
   const schedule = (id: string, inMs = 3_000) => scheduleAt(id, new Date(Date.now() + inMs).toISOString());
   // EmDash's own scheduler publishes the page (every minute at most on Node, as the Cron Trigger on Cloudflare).
-  // Nobody makes a request meanwhile, so the page goes live with nobody signed in.
+  // Nobody makes a request meanwhile, so the page goes live with nobody signed in, and Commerce sells it then
+  // (dinkuskit/commerce scheduled-sale-in-commerce-20261122): no admin visit is needed.
   const scheduledPublish = async (id: string) => {
     await page.goto("about:blank");
     await expect.poll(() => stored(id), { timeout: 120_000, intervals: [1_000] }).toEqual({ status: "published", scheduled_at: null });
   };
-  // The admin's next visits; the store checks schedules at most once a minute, so this can take up to a minute.
-  const adminVisits = async (id: string, until: () => unknown, expected: unknown) => {
-    await page.goto("/_emdash/admin/content/products/" + id);
-    await expect.poll(async () => {
-      await request.get("/_emdash/api/content/products/" + id, { headers });
-      return until();
-    }, { timeout: 100_000, intervals: [5_000] }).toEqual(expected);
-  };
 
   const { pageId, itemId } = await draftProduct(page, phone ? "PAIRED-SCHEDULED-PHONE" : "PAIRED-SCHEDULED", "Scheduled hat");
-  // A second page an Author published, so its product is a Draft behind a live page.
   const cap = await draftProduct(page, phone ? "PAIRED-RESCHEDULED-PHONE" : "PAIRED-RESCHEDULED", "Rescheduled cap");
-  setRole(ROLE.AUTHOR);
-  try {
-    expect((await request.post(`/_emdash/api/content/products/${cap.pageId}/publish`, { headers })).ok()).toBe(true);
-  } finally {
-    setRole(ROLE.ADMIN);
-  }
-  expect(product(cap.itemId).offSale).toBe(true);
 
-  // 13. The admin tries to schedule the live cap page in the past: EmDash refuses after the plugin saw the proposal, so
-  // nothing is granted. The admin schedules the hat page; EmDash stores it, which grants the sale.
-  expect((await schedule(cap.pageId, -60_000)).ok()).toBe(false);
-  expect(pending(cap.pageId)).toMatchObject({ confirmed: null });
+  // 13. The admin schedules the hat page. EmDash publishes it with nobody signed in, and Commerce puts its product
+  // on sale at once, under the page's title.
   const scheduled = await schedule(pageId);
   expect(scheduled.ok(), await scheduled.text()).toBe(true);
   expect(stored(pageId)?.status).toBe("scheduled");
-  await expect.poll(() => pending(pageId)).toMatchObject({ proposals: [{ role: ROLE.ADMIN }], confirmed: { role: ROLE.ADMIN }, state: "scheduled" });
-  // Commerce holds the page's product, so the grant names none.
-  expect(pending(pageId)?.confirmed).not.toHaveProperty("itemId");
-  // EmDash publishes it with nobody signed in: the product is still a Draft, the grant now published.
   await scheduledPublish(pageId);
-  expect(product(itemId).offSale).toBe(true);
-  await expect.poll(() => pending(pageId)?.state).toBe("published");
-  // The admin's next visit puts it on sale; the cap page's failed schedule sold nothing.
-  await adminVisits(pageId, () => onShop(request), ["Scheduled hat"]);
+  await expect.poll(() => product(itemId).offSale ?? false, { timeout: 30_000 }).toBe(false);
   expect(product(itemId)).toMatchObject({ pageId });
-  expect(product(itemId)).not.toHaveProperty("offSale", true);
-  expect(pending(pageId)).toBeUndefined();
-  expect(product(cap.itemId).offSale).toBe(true);
+  expect(await onShop(request)).toEqual(["Scheduled hat"]);
   await page.goto("/_emdash/admin/content/products/" + pageId);
   await expect((await openPanel(page)).getByText("On sale", { exact: true }).first()).toBeVisible();
   await capture(page, "13-scheduled-on-sale");
 
-  // 14. After an admin unpublish, the same person as an Author schedules their own page. EmDash publishes it, and the
-  // admin's visits drop the Author's grant without selling: the product stays a Draft, as after an Author's own publish.
-  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
-  expect(product(itemId).offSale).toBe(true);
+  // 14. The same person as an Author schedules the cap page. EmDash publishes it, and the product stays a Draft, as
+  // after an Author's own publish.
   setRole(ROLE.AUTHOR);
   try {
-    expect((await schedule(pageId)).ok()).toBe(true);
+    expect((await schedule(cap.pageId)).ok()).toBe(true);
   } finally {
     setRole(ROLE.ADMIN);
   }
-  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.AUTHOR } });
-  await scheduledPublish(pageId);
-  await adminVisits(pageId, () => pending(pageId), undefined);
-  expect(stored(pageId)?.status).toBe("published");
-  expect(product(itemId).offSale).toBe(true);
-  expect(await onShop(request)).toEqual([]);
+  await scheduledPublish(cap.pageId);
+  expect(product(cap.itemId).offSale).toBe(true);
+  expect(await onShop(request)).toEqual(["Scheduled hat"]);
+  await page.goto("/_emdash/admin/content/products/" + cap.pageId);
   await expect((await openPanel(page)).getByText(/^Draft: publish to sell it/)).toBeVisible();
   await capture(page, "14-author-scheduled-still-draft");
 
-  // 15. One request never lends its authority to another's stored schedule. After an admin unpublish, the admin
-  // schedules the page; then the same person, lowered to Author, schedules it again for the same moment, so the
-  // schedule EmDash holds is the Author's request. The admin's earlier proposal is withdrawn at once: the grant is the
-  // Author's. EmDash publishes it, and the admin's visits drop the grant without selling.
-  expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
+  // 15. One request never lends its authority to another's schedule. After an admin unpublish, the admin schedules the
+  // cap page; then the same person, lowered to Author, schedules it again for the same moment, so the schedule EmDash
+  // holds may be the Author's. EmDash publishes it, and the product stays a Draft.
+  expect((await request.post(`/_emdash/api/content/products/${cap.pageId}/unpublish`, { headers })).ok()).toBe(true);
   const moment = new Date(Date.now() + 15_000).toISOString();
-  expect((await scheduleAt(pageId, moment)).ok()).toBe(true);
-  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
+  expect((await scheduleAt(cap.pageId, moment)).ok()).toBe(true);
   setRole(ROLE.AUTHOR);
   try {
-    const again = await scheduleAt(pageId, moment);
+    const again = await scheduleAt(cap.pageId, moment);
     expect(again.ok(), await again.text()).toBe(true);
   } finally {
     setRole(ROLE.ADMIN);
   }
-  await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.AUTHOR } });
-  await scheduledPublish(pageId);
-  await adminVisits(pageId, () => pending(pageId), undefined);
-  expect(stored(pageId)?.status).toBe("published");
-  expect(product(itemId).offSale).toBe(true);
-  expect(await onShop(request)).toEqual([]);
+  await scheduledPublish(cap.pageId);
+  expect(product(cap.itemId).offSale).toBe(true);
+  expect(await onShop(request)).toEqual(["Scheduled hat"]);
 
-  // 16. Grants withdrawn mid-sweep, and an off-sale write Commerce refuses. The admin schedules both pages and EmDash
-  // publishes them, so one sweep reads both grants before writing. SQLite triggers then remove both grants at the
-  // moment Commerce writes either product on sale (as a person's own publish removes a grant), and refuse Commerce's
-  // off-sale writes. The first product goes on sale, its grant is gone, so the store must take it back: the refused
-  // write is kept on a list. The second grant was read before that write and removed after, so its product is never
-  // written on sale. Once Commerce accepts writes again, another sweep lists the same product again while the store's
-  // off-sale write is in flight; that write answers only the listing it read, so the newer one stays until a later
-  // visit's own off-sale write clears it.
-  for (const id of [pageId, cap.pageId]) expect((await request.post(`/_emdash/api/content/products/${id}/unpublish`, { headers })).ok()).toBe(true);
-  for (const id of [pageId, cap.pageId]) expect((await schedule(id, 5_000)).ok()).toBe(true);
-  for (const id of [pageId, cap.pageId]) await expect.poll(() => pending(id)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
-  await page.goto("about:blank");
-  for (const id of [pageId, cap.pageId]) await expect.poll(() => stored(id), { timeout: 120_000, intervals: [1_000] }).toEqual({ status: "published", scheduled_at: null });
-  for (const id of [pageId, cap.pageId]) await expect.poll(() => pending(id)?.state).toBe("published");
-  const items = `'${itemId}', '${cap.itemId}'`;
-  const onSale = "COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1";
-  const triggers: string[] = [];
-  const trigger = (name: string, body: string) => {
-    triggers.push(name);
-    onDb(`CREATE TRIGGER ${name} ${body}`);
-  };
-  const takebacks = () => read<{ n: number }>("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id LIKE 'takeback:%'")?.n ?? 0;
-  onDb("CREATE TABLE IF NOT EXISTS proof_sale_writes (item TEXT, on_sale INTEGER)");
-  try {
-    for (const event of ["INSERT", "UPDATE"]) {
-      trigger(`proof_withdraw_on_sale_${event}`, `AFTER ${event} ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id IN (${items}) BEGIN
-        INSERT INTO proof_sale_writes VALUES (NEW.id, ${onSale});
-        DELETE FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id IN ('${pageId}', '${cap.pageId}') AND ${onSale};
-      END`);
-    }
-    trigger("proof_refuse_off_sale", `BEFORE UPDATE ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id IN (${items}) AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) = 1 BEGIN SELECT RAISE(ABORT, 'proof off-sale refused'); END`);
-    await adminVisits(pageId, takebacks, 1);
-    const writes = () => {
-      const database = db();
-      try {
-        return database.prepare("SELECT item, on_sale FROM proof_sale_writes").all() as Array<{ item: string; on_sale: number }>;
-      } finally {
-        database.close();
-      }
-    };
-    expect(writes()).toHaveLength(1);
-    const [{ item: sold, on_sale: wasOnSale }] = writes();
-    expect(wasOnSale).toBe(1);
-    const other = sold === itemId ? cap.itemId : itemId;
-    expect(product(other).offSale).toBe(true);
-    for (const id of [pageId, cap.pageId]) expect(pending(id)).toBeUndefined();
-    // Commerce accepts writes again. The first off-sale write that lands lists the product again (a new revision, as
-    // another sweep's listing would), once.
-    const listing = () => read<{ revision: string }>("SELECT revision FROM _plugin_storage WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id LIKE 'takeback:%'")?.revision;
-    const firstListing = listing();
-    onDb("DROP TRIGGER IF EXISTS proof_refuse_off_sale");
-    onDb("CREATE TABLE IF NOT EXISTS proof_relisted (at TEXT)");
-    trigger("proof_relist_takeback", `AFTER UPDATE ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id IN (${items}) AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) = 1 AND NOT EXISTS (SELECT 1 FROM proof_relisted) BEGIN
-      INSERT INTO proof_relisted VALUES (datetime('now'));
-      UPDATE _plugin_storage SET revision = 'proof-relisted' WHERE plugin_id = 'dinkus-template-product-urls' AND collection = 'pending_sales' AND id LIKE 'takeback:%';
-    END`);
-    await adminVisits(pageId, listing, "proof-relisted");
-    expect(firstListing).not.toBe("proof-relisted");
-    expect(product(sold).offSale).toBe(true);
-    // The newer listing stays after that write; a later visit's own off-sale write clears it, selling nothing.
-    await adminVisits(pageId, takebacks, 0);
-    const sequence = writes().map((write) => write.on_sale);
-    expect(sequence.slice(0, 2)).toEqual([1, 0]);
-    expect(sequence.slice(1).every((onSaleWrite) => onSaleWrite === 0)).toBe(true);
-    expect(product(sold).offSale).toBe(true);
-    expect(product(other).offSale).toBe(true);
-    expect(await onShop(request)).toEqual([]);
-  } finally {
-    for (const name of triggers) onDb(`DROP TRIGGER IF EXISTS ${name}`);
-    onDb("DROP TABLE IF EXISTS proof_sale_writes");
-    onDb("DROP TABLE IF EXISTS proof_relisted");
+  // Desktop and phone share one store: delete both pages for good, which deletes their products, so the next run
+  // starts from an empty shop.
+  for (const id of [pageId, cap.pageId]) {
+    expect((await request.delete(`/_emdash/api/content/products/${id}`, { headers })).ok()).toBe(true);
+    expect((await request.delete(`/_emdash/api/content/products/${id}/permanent`, { headers })).ok()).toBe(true);
   }
-
-  // 17. A publish renames the scheduled page while the sweep sells it (template-page-title-is-name-20261026): an SQLite
-  // trigger changes the live title at the moment Commerce writes the product on sale. The sweep's read afterwards sees
-  // the newer title and renames the product with a title-only write, which never changes sale state, and only for a
-  // visitor who, read again, still holds the permission: when the same trigger also lowers the person to Author, the
-  // newer title is listed instead and nothing is written, and the admin's next sweep finishes it. A Commerce that
-  // ignores `name` keeps "Scheduled hat" throughout.
-  const names = process.env.DINKUS_PAIRED_COMMERCE_NAMES === "1";
-  const retitleKey = `retitle:${pageId}:${createHash("sha256").update(itemId).digest("hex")}`;
-  let expectedName = "Scheduled hat";
-  for (const [variant, demote] of [["kept", false], ["revoked", true]] as const) {
-    const retitled = `Scheduled hat ${variant} ${testInfo.project.name}`;
-    expect((await request.post(`/_emdash/api/content/products/${pageId}/unpublish`, { headers })).ok()).toBe(true);
-    expect((await schedule(pageId, 5_000)).ok()).toBe(true);
-    await expect.poll(() => pending(pageId)).toMatchObject({ confirmed: { role: ROLE.ADMIN } });
-    await scheduledPublish(pageId);
-    await expect.poll(() => pending(pageId)?.state).toBe("published");
-    const sentName = read<{ title: string }>("SELECT title FROM ec_products WHERE id = ?", pageId)?.title;
-    onDb(`CREATE TRIGGER proof_retitle_mid_sweep AFTER UPDATE ON _plugin_storage WHEN NEW.plugin_id = '${commerce}' AND NEW.collection = 'catalog_items' AND NEW.id = '${itemId}' AND COALESCE(json_extract(NEW.data, '$.offSale'), 0) != 1 BEGIN
-      UPDATE ec_products SET title = '${retitled}' WHERE id = '${pageId}';${demote ? ` UPDATE users SET role = ${ROLE.AUTHOR};` : ""}
-    END`);
-    try {
-      await adminVisits(pageId, () => pending(pageId), undefined);
-    } finally {
-      onDb("DROP TRIGGER IF EXISTS proof_retitle_mid_sweep");
-      setRole(ROLE.ADMIN);
-    }
-    expect(product(itemId)).not.toHaveProperty("offSale", true);
-    if (names) expectedName = demote ? sentName ?? expectedName : retitled;
-    expect(product(itemId).name).toBe(expectedName);
-    await expect.poll(() => onShop(request)).toEqual([expectedName]);
-    expect(pending(retitleKey)).toEqual(demote ? { retitle: true, entryId: pageId, catalogItemId: itemId } : undefined);
-    if (demote) {
-      // The admin, an allowed person again, visits: a later sweep gives the product the page's newest title.
-      await adminVisits(pageId, () => pending(retitleKey), undefined);
-      if (names) expectedName = retitled;
-      expect(product(itemId).name).toBe(expectedName);
-      expect(product(itemId)).not.toHaveProperty("offSale", true);
-      await expect.poll(() => onShop(request)).toEqual([expectedName]);
-    }
-  }
-
-  // Leave the shop empty for the next run.
-  for (const id of [pageId, cap.pageId]) expect((await request.post(`/_emdash/api/content/products/${id}/unpublish`, { headers })).ok()).toBe(true);
+  await expect.poll(() => onShop(request)).toEqual([]);
 });

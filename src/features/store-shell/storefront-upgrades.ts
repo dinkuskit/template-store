@@ -1,6 +1,7 @@
 import { OptionsRepository, invalidateSchemaObjectCache } from "emdash";
-import { ensureStorefrontCategoryProducts, ensureStorefrontPageAddresses, ensureStorefrontProductFields, removeStorefrontCommerceBox } from "./product-schema-upgrade.ts";
+import { ensureStorefrontCategoryProducts, ensureStorefrontPageAddresses, ensureStorefrontProductFields, ensureStorefrontStoreFolder, removeStorefrontCommerceBox } from "./product-schema-upgrade.ts";
 import { ensureStorefrontSearchSupport } from "./search-upgrade.ts";
+import { startUndecidedStoreInStaging } from "../site-visibility/index.ts";
 
 /** The EmDash option that lists the storefront upgrades a store has run (template-store-self-upgrade-20261028). */
 export const STOREFRONT_UPGRADES_OPTION = "dinkus:storefront-upgrades";
@@ -15,7 +16,9 @@ export interface StorefrontUpgrade {
  * oldest first, the way EmDash lists its own migrations. Each step only adds or
  * relaxes, keeps owner edits and is safe to run twice. The one exception is
  * 005, which removes the Commerce product field the store no longer reads
- * (template-drop-older-store-box-20261101). A template change to the schema in
+ * (template-drop-older-store-box-20261101). 007 sets no schema: it starts a store
+ * that never chose staging or Live in staging (template-site-visibility-20261122).
+ * A template change to the schema in
  * seed/seed.json adds its step here in the same change; a step's name never
  * changes once shipped.
  */
@@ -25,6 +28,8 @@ export const STOREFRONT_UPGRADES: readonly StorefrontUpgrade[] = [
   { name: "003_page_addresses", run: ensureStorefrontPageAddresses },
   { name: "004_category_products", run: ensureStorefrontCategoryProducts },
   { name: "005_commerce_box_off", run: removeStorefrontCommerceBox },
+  { name: "006_store_folder", run: ensureStorefrontStoreFolder },
+  { name: "007_start_in_staging", run: startUndecidedStoreInStaging },
 ];
 
 function recordedNames(value: unknown): string[] {

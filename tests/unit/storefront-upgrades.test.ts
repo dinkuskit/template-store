@@ -5,7 +5,7 @@ import { OptionsRepository } from "emdash";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
 import { applySeed } from "emdash/seed";
-import { PAGE_URL_PATTERN, VISUAL_LABEL_FIELD_LABEL } from "../../src/features/store-shell/product-schema-upgrade.js";
+import { PAGE_URL_PATTERN, STORE_FOLDER_GROUP, VISUAL_LABEL_FIELD_LABEL } from "../../src/features/store-shell/product-schema-upgrade.js";
 import {
   STOREFRONT_UPGRADES,
   STOREFRONT_UPGRADES_OPTION,
@@ -24,6 +24,8 @@ describe("storefront upgrades a store runs on its own", () => {
   const products = async () => Object.fromEntries((await sql<{ slug: string; required: number; label: string }>`
     select f.slug, f.required, f.label from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
     where c.slug = 'products'`.execute(db)).rows.map((row) => [row.slug, row]));
+  const groups = async () => Object.fromEntries((await sql<{ slug: string; nav_group: string | null }>`
+    select slug, nav_group from _emdash_collections`.execute(db)).rows.map((row) => [row.slug, row.nav_group]));
   const pageAddress = async () => (await sql<{ url_pattern: string | null }>`
     select url_pattern from _emdash_collections where slug = 'pages'`.execute(db)).rows[0]?.url_pattern;
 
@@ -42,19 +44,49 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await recorded()).toBeNull();
     expect((await products()).visual_label?.required).toBe(1);
 
-    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products", "005_commerce_box_off"]);
+    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products", "005_commerce_box_off", "006_store_folder", "007_start_in_staging"]);
     expect(await recorded()).toEqual(ALL);
+    // template-site-visibility-20261122: an upgraded store that never chose starts in staging.
+    expect((await sql<{ value: string }>`select value from options where name = 'site:staging'`.execute(db)).rows[0]?.value).toBe("true");
     const after = await products();
     expect(after.visual_label).toMatchObject({ required: 0, label: VISUAL_LABEL_FIELD_LABEL });
     expect(after.summary && after.details).toBeTruthy();
     // The seed's demonstrations name no Commerce product, so the box comes off.
     expect(after.commerce_item_id).toBeUndefined();
     expect(await pageAddress()).toBe(PAGE_URL_PATTERN);
+    // admin-one-store-folder-128: the catalog joins the Store folder; Pages stays inline.
+    expect(await groups()).toMatchObject({ products: STORE_FOLDER_GROUP, categories: STORE_FOLDER_GROUP, pages: null });
 
     // Recorded steps never run again, so an owner's later change stays.
     await sql`update _emdash_collections set url_pattern = null where slug = 'pages'`.execute(db);
     expect(await upgradeStorefront(db)).toEqual([]);
     expect(await pageAddress()).toBeNull();
+  });
+
+  it("keeps a folder the owner already gave a collection", async () => {
+    await sql`update _emdash_collections set nav_group = 'Catalog' where slug = 'categories'`.execute(db);
+    await upgradeStorefront(db);
+    expect(await groups()).toMatchObject({ products: STORE_FOLDER_GROUP, categories: "Catalog" });
+    // Running it again, as pnpm search:upgrade does, changes nothing.
+    await upgradeStorefront(db, { all: true });
+    expect(await groups()).toMatchObject({ products: STORE_FOLDER_GROUP, categories: "Catalog" });
+  });
+
+  it("keeps the Live or staging choice an older store's owner already saved", async () => {
+    const staging = async () => (await sql<{ value: string }>`select value from options where name = 'site:staging'`.execute(db)).rows[0]?.value;
+    const options = new OptionsRepository(db as never);
+    // The owner pressed Go live before this upgrade ran.
+    await options.set("site:staging", false);
+    await upgradeStorefront(db);
+    expect(await staging()).toBe("false");
+    // Switched back to staging, then every step run again (pnpm search:upgrade): still staging.
+    await options.set("site:staging", true);
+    await upgradeStorefront(db, { all: true });
+    expect(await staging()).toBe("true");
+    // And Live again stays Live through a full rerun.
+    await options.set("site:staging", false);
+    await upgradeStorefront(db, { all: true });
+    expect(await staging()).toBe("false");
   });
 
   it("stops at a failed step without recording it, and the next run starts from that step", async () => {
@@ -123,5 +155,24 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await storeIsSetUp(db)).toBe(true);
     await upgrade(open, { now: 60_000 });
     expect(await recorded()).toEqual(ALL);
+  });
+});
+
+describe("a fresh store from the current seed", () => {
+  it("starts with Products and Product categories in the Store folder, so 006 has nothing to do", async () => {
+    const db = new Kysely<never>({ dialect: createDialect({ url: ":memory:" }) });
+    try {
+      await runMigrations(db as never);
+      await applySeed(db as never, JSON.parse(readFileSync("seed/seed.json", "utf8")), options);
+      const rows = (await sql<{ slug: string; nav_group: string | null }>`
+        select slug, nav_group from _emdash_collections order by slug`.execute(db)).rows;
+      expect(Object.fromEntries(rows.map((row) => [row.slug, row.nav_group]))).toMatchObject({
+        products: STORE_FOLDER_GROUP,
+        categories: STORE_FOLDER_GROUP,
+        pages: null,
+      });
+    } finally {
+      await db.destroy();
+    }
   });
 });
