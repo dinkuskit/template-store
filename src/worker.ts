@@ -6,6 +6,7 @@ import {
 } from "@emdash-cms/cloudflare/worker";
 import {
   applySecurityHeaders,
+  applyWorkerAnswerHeaders,
   evaluatePublicBoundary,
   slashlessRedirectPath,
 } from "./features/security/public-boundary.js";
@@ -76,7 +77,7 @@ function createErrorResponse(
     ...(status === 405 ? { "Cache-Control": "no-store" } : {}),
     ...extraHeaders,
   });
-  applySecurityHeaders(headers, env);
+  applyWorkerAnswerHeaders(headers, env);
   return new Response(JSON.stringify({ error: message }), {
     status,
     headers,
@@ -131,7 +132,7 @@ export default {
           "Cache-Control": "no-store",
         },
       });
-      applySecurityHeaders(response.headers, env);
+      applyWorkerAnswerHeaders(response.headers, env);
       return response;
     }
     const slashlessPath = slashlessRedirectPath(url.pathname);
@@ -145,7 +146,7 @@ export default {
           "Cache-Control": "no-store",
         },
       });
-      applySecurityHeaders(response.headers, env);
+      applyWorkerAnswerHeaders(response.headers, env);
       return response;
     }
     const check = evaluatePublicBoundary(

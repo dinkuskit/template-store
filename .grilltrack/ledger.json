@@ -4,9 +4,9 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-11-22T17:41:39+00:00",
+    "confirmed_at": "2026-11-22T20:37:30+00:00",
     "domain": "agent catalog feed listing",
-    "started_at": "2026-11-22T17:41:39+00:00",
+    "started_at": "2026-11-22T20:37:30+00:00",
     "status": "confirmed",
     "summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."
   },
@@ -1358,6 +1358,20 @@
           "note": "fork composition invalidates prior current proof",
           "source_snapshot_ref": ".grilltrack/lineage/2082043c036aa939e706c9c093908348a7ec9b4922fda1a1dda1f7495c8c6ef4",
           "to": "needs_reverification"
+        },
+        {
+          "at": "2026-11-22T20:37:30+00:00",
+          "choice": "Locked: noindex by default with explicit launch opt-in and verifier enforcement.",
+          "from": "needs_reverification",
+          "implementation_ref": null,
+          "note": "The owner approved on 22 Nov 2026: EmDash 1.5's Go live replaces the explicit launch setting as the one search-engine switch.",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "superseded",
+          "verification_ref": null
         }
       ],
       "id": "template-product-url-indexing-028",
@@ -1377,9 +1391,9 @@
       "review_ref": null,
       "review_result": null,
       "review_source_identity": null,
-      "status": "needs_reverification",
-      "superseded_by": null,
-      "updated_at": "2026-10-08T19:35:31+00:00",
+      "status": "superseded",
+      "superseded_by": "template-site-visibility-20261122",
+      "updated_at": "2026-11-22T20:37:30+00:00",
       "verification_ref": null
     },
     {
@@ -6641,11 +6655,66 @@
       "verification_ref": null
     },
     {
+      "baseline_ref": "git:24636d4d37df731c1bb3e327911ed9debd67b602",
+      "candidate_refs": [],
+      "choice": "EmDash 1.5's Go live (Settings > General) is the store's one search-engine switch. While the store is in staging every storefront response asks search engines to stay away (X-Robots-Tag: noindex, nofollow); once Live, none does. DINKUS_LAUNCH_INDEXABLE is retired. A new store and a store upgraded to EmDash 1.5 start in staging (storefront upgrade 007_start_in_staging sets site:staging only when unset). The proof storefront and the playground are always noindex. Noindex controls search visibility, not access.",
+      "context_ref": "https://github.com/dinkuskit/template-store/pull/257",
+      "created_at": "2026-11-22T20:37:30+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "store site visibility",
+      "history": [
+        {
+          "at": "2026-11-22T20:37:30+00:00",
+          "choice": "EmDash 1.5's Go live (Settings > General) is the store's one search-engine switch. While the store is in staging every storefront response asks search engines to stay away (X-Robots-Tag: noindex, nofollow); once Live, none does. DINKUS_LAUNCH_INDEXABLE is retired. A new store and a store upgraded to EmDash 1.5 start in staging (storefront upgrade 007_start_in_staging sets site:staging only when unset). The proof storefront and the playground are always noindex. Noindex controls search visibility, not access.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-22T20:37:30+00:00",
+          "choice": "EmDash 1.5's Go live (Settings > General) is the store's one search-engine switch. While the store is in staging every storefront response asks search engines to stay away (X-Robots-Tag: noindex, nofollow); once Live, none does. DINKUS_LAUNCH_INDEXABLE is retired. A new store and a store upgraded to EmDash 1.5 start in staging (storefront upgrade 007_start_in_staging sets site:staging only when unset). The proof storefront and the playground are always noindex. Noindex controls search visibility, not access.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-site-visibility-20261122",
+      "implementation_ref": "git:8d91ae1",
+      "question": "What decides whether search engines may index a store?",
+      "rationale": "The owner approved on 22 Nov 2026. EmDash 1.5 ships staging and Go live in its own settings, so the store follows them instead of a separate build variable that every Registry build pinned to noindex.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "implemented",
+      "superseded_by": null,
+      "updated_at": "2026-11-22T20:37:30+00:00",
+      "verification_ref": null
+    },
+    {
       "baseline_ref": null,
       "candidate_refs": [],
       "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
       "context_ref": null,
-      "created_at": "2026-11-22T20:34:54+00:00",
+      "created_at": "2026-11-22T21:19:34+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -6654,7 +6723,7 @@
       "domain": "agent catalog feed listing",
       "history": [
         {
-          "at": "2026-11-22T20:34:54+00:00",
+          "at": "2026-11-22T21:19:35+00:00",
           "choice": "Commerce, through its own content hooks (dinkuskit/commerce scheduled-sale-in-commerce-20261122). The store drops its visitor sweep and the dinkus-template-product-urls plugin that recorded schedule grants; the store's publish check still decides a signed-in person's publish, unpublish and trash. Ships to beta together with the Commerce release that carries it.",
           "from": "proposed",
           "implementation_ref": null,
@@ -6680,7 +6749,7 @@
       "review_source_identity": null,
       "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-22T20:34:54+00:00",
+      "updated_at": "2026-11-22T21:19:35+00:00",
       "verification_ref": null
     },
     {
@@ -6688,14 +6757,14 @@
       "candidate_refs": [],
       "choice": "From the Worker's scheduled() handler, which the Registry build's once-a-minute Cron Trigger already calls: after EmDash's own scheduled publishing, the handler runs courierScheduled() from @dinkuskit/courier/store, pinned to an exact commit. No request, visitor or Node path runs it.",
       "context_ref": null,
-      "created_at": "2026-11-22T20:34:54+00:00",
+      "created_at": "2026-11-22T21:19:35+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [],
       "domain": "agent catalog feed listing",
       "history": [
         {
-          "at": "2026-11-22T20:34:54+00:00",
+          "at": "2026-11-22T21:19:35+00:00",
           "choice": "From the Worker's scheduled() handler, which the Registry build's once-a-minute Cron Trigger already calls: after EmDash's own scheduled publishing, the handler runs courierScheduled() from @dinkuskit/courier/store, pinned to an exact commit. No request, visitor or Node path runs it.",
           "from": "proposed",
           "implementation_ref": null,
@@ -6721,7 +6790,7 @@
       "review_source_identity": null,
       "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-22T20:34:54+00:00",
+      "updated_at": "2026-11-22T21:19:35+00:00",
       "verification_ref": null
     }
   ],
@@ -6745,5 +6814,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T20:34:54+00:00"
+  "updated_at": "2026-11-22T21:19:35+00:00"
 }

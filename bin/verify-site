@@ -478,7 +478,7 @@ if (sitemapPaths.size) {
       requiredOrSkip("Sitemap canonical", `${path} has no exactly-one canonical tag`);
     }
     if (page.noindex && !demoHost) {
-      result("Sitemap indexability", "FAIL", `${path} is noindex`);
+      result("Sitemap indexability", "FAIL", `${path} is noindex (is the store still in staging? EmDash's Settings > General > Go live)`);
     } else if (page.noindex && demoHost) {
       result("Sitemap indexability", "PASS", `${path} is noindex under explicit demo-host policy`);
     }

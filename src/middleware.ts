@@ -27,6 +27,7 @@ import {
 import { playgroundAttemptBelongsToVisitor } from "./features/playground-checkout/binding-auth.js";
 import { playgroundCheckoutBindingsFor } from "./features/playground-checkout/binding-store.js";
 import { storedUser, withProductOnSale, type OnSaleRuntime } from "./features/product-on-sale/index.js";
+import { isStorefrontPath, siteIsStaging, withStagingRobots } from "./features/site-visibility/index.js";
 import {
   checkoutJsonError,
   checkoutLimited,
@@ -49,7 +50,17 @@ let demoProfileSeeded = false;
 
 const NATIVE_GUEST_CHECKOUT_POST_PATH =
   /^\/_emdash\/api\/plugins\/dinkus-commerce\/checkout\/guest\/(prepare|cart|start)$/;
+
+// While the site is in staging, every storefront response asks search engines to stay away.
 export const onRequest = defineMiddleware(async (context, next) => {
+  const staging = isStorefrontPath(context.url.pathname) && await siteIsStaging();
+  // storeRequest answers every request with a Response; anything else passes through as it came.
+  const response = await storeRequest(context, next);
+  if (!staging || !(response instanceof Response)) return response as Response;
+  return withStagingRobots(response);
+});
+
+const storeRequest = defineMiddleware(async (context, next) => {
   let pathForms: string[];
   try {
     pathForms = decodedForms(context.url.pathname);
