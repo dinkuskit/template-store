@@ -15,8 +15,8 @@
     "sourcePins": {
       "commerce": {
         "repository": "https://github.com/dinkuskit/commerce.git",
-        "tag": "v0.9.0-beta.4",
-        "commit": "d8d654cc17c07ce507d3dd52b79b0f22e205e78e"
+        "tag": "v0.9.0-beta.5",
+        "commit": "6077448045244b877c8ecc75aed2b0cc9b4a509e"
       }
     },
     "playgroundPlugins": {

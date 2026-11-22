@@ -211,12 +211,11 @@ test("publishing a product page sells its Commerce product, only for someone who
   expect(product(itemId)).toMatchObject({ offSale: true, pageId });
   expect((await request.post(`/_emdash/api/content/products/${pageId}/publish`, { headers })).ok()).toBe(true);
   await expect.poll(() => onShop(request)).toEqual([shopName]);
-  // Only irreversible deletion releases it. Commerce 0.8.0 makes every product for its page (dinkuskit/commerce#241),
-  // so the released product stays off the shop with no page, and no other page can take it over.
+  // Only irreversible deletion releases it. Commerce makes every product for its page (dinkuskit/commerce#241), and
+  // deleting the page for good deletes its product too and frees its SKU (dinkuskit/commerce#288).
   expect((await request.delete(`/_emdash/api/content/products/${pageId}`, { headers })).ok()).toBe(true);
   expect((await request.delete(`/_emdash/api/content/products/${pageId}/permanent`, { headers })).ok()).toBe(true);
-  expect(product(itemId).offSale).toBe(true);
-  expect(product(itemId)).not.toHaveProperty("pageId");
+  await expect.poll(() => product(itemId)).toEqual({});
   expect(await onShop(request)).toEqual([]);
 
   // 9-12. Authority and links changed inside one request, through the same real routes. SQLite triggers land each
@@ -371,4 +370,12 @@ test("a page EmDash publishes on schedule sells its product with nobody signed i
   await scheduledPublish(cap.pageId);
   expect(product(cap.itemId).offSale).toBe(true);
   expect(await onShop(request)).toEqual(["Scheduled hat"]);
+
+  // Desktop and phone share one store: delete both pages for good, which deletes their products, so the next run
+  // starts from an empty shop.
+  for (const id of [pageId, cap.pageId]) {
+    expect((await request.delete(`/_emdash/api/content/products/${id}`, { headers })).ok()).toBe(true);
+    expect((await request.delete(`/_emdash/api/content/products/${id}/permanent`, { headers })).ok()).toBe(true);
+  }
+  await expect.poll(() => onShop(request)).toEqual([]);
 });
