@@ -40,7 +40,23 @@ Decision: `template-order-lookup-page-20261122` (supersedes
     | Cobalt | 18.6:1 | 16.0:1 |
 
     Before the fix, Dark mode drew "Find order" in #141e30 on #334155.
-  - The proof store pins Commerce `v0.9.0-beta.2`, which has no
-    `orders/lookup` route yet, so a lookup there answers "Order lookup is
-    unavailable right now. Try again in a moment." The found-order case runs in
-    the browser once the pin moves to the Commerce beta that carries the route.
+
+## Found order on the installed Commerce (EmDash 1.5.0, Commerce v0.9.0-beta.4)
+
+The store pins Commerce `v0.9.0-beta.4` (`d8d654cc17c0`), the first beta with
+`orders/lookup`. `pnpm prepare:commerce` built its Registry bundle
+(`backend.js` 124,997 B, `2377557a1315…`), and the proof store runs that
+bundle under its Registry id. `order-lookup.spec.ts` writes two paid orders
+into that Commerce's own `orders` storage, in the shape Commerce's paid-order
+receiver keeps, then uses the page in desktop and mobile Chromium
+(18 pass, 1.3 minutes). The page asks the real route; nothing is mocked.
+
+| Case | Expected (source) | Observed |
+| --- | --- | --- |
+| `#7101` and `PAT.DESKTOP@EXAMPLE.TEST` | 200, that one order: "Order #7101", "Processing · Placed November 1, 2026", "Red hat × 2 $24.00", Total $24.00, "Pat Shopper, 1 Lookup Way, Springfield IL 62701, US"; no payment id (WooCommerce form-tracking: number plus billing email, case-insensitive; Commerce `projectShopperOrder`) | 200, exactly those lines; the page has no `pi_` |
+| `7101` and Sam's email | 422, "No order matches that order number and email. Check both and try again.", no order (Commerce `ORDER_NOT_FOUND`) | 422, that message; the page never shows "Pat Shopper" |
+| 5 wrong emails for `7102`, then Sam's own email | 5 × 422, then 429 "Too many tries. Try again in an hour." before anything is shown (commerce-order-lookup-20261122) | 422 × 5, then 429 with that message; no order, no "Sam Shopper"; Commerce's `order_lookup_guesses` holds a count of 5 |
+| Mobile, `#7201` / `7202` | the same | the same |
+
+The trace is kept with the screenshots (`found.png`, `limited.png`,
+`trace.json`) under the ignored `runs/order-lookup-20261122/browser/`.
