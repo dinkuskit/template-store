@@ -139,6 +139,15 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   await guessContext.close();
   const stopCount = () => sql((db) => db.prepare("SELECT count(*) AS n FROM _plugin_storage WHERE plugin_id = ? AND collection = 'cart_email_stops'").get(commerce));
 
+  // The shopper tries the same cart again with another email, which also ends unpaid. The stop link still stops
+  // the address the email went to, not the latest checkout's.
+  const retryId = crypto.randomUUID();
+  const retry = { ...attempt, attemptId: retryId, payment: { ...attempt.payment, attemptId: retryId },
+    contactSnapshot: { ...attempt.contactSnapshot, contact: { ...attempt.contactSnapshot.contact, email: "other-shopper@example.test" } } };
+  const emailedRecord = row("checkout_carts", cartId);
+  sql((db) => db.prepare("UPDATE _plugin_storage SET data = ? WHERE plugin_id = ? AND collection = ? AND id = ?")
+    .run(JSON.stringify({ ...emailedRecord, attempts: [attempt, retry] }), commerce, "checkout_carts", cartId));
+
   // The stop link asks first, naming the cart its link opened.
   const stopperContext = await fresh();
   const stopper = await stopperContext.newPage();
@@ -163,6 +172,19 @@ test("one email 10 hours after an unpaid checkout, its link opens the cart, and 
   await stopper.screenshot({ path: `${out}/stop-link-done.png` });
   const stopId = createHash("sha256").update(email).digest("hex");
   expect(row("cart_email_stops", stopId)).toMatchObject({ at: expect.stringMatching(/^\d+$/u) });
+  expect(stopCount()).toEqual({ n: 1 });
   await stopperContext.close();
+
+  // Past the cart's 30 days the email's link opens nothing: this browser gets no cart key and an empty cart.
+  sql((db) => db.prepare("UPDATE _plugin_storage SET data = ? WHERE plugin_id = ? AND collection = ? AND id = ?")
+    .run(JSON.stringify({ ...row("checkout_carts", cartId), cartExpires: String(Math.floor(Date.now() / 1000) - 1) }), commerce, "checkout_carts", cartId));
+  const lateContext = await fresh();
+  const late = await lateContext.newPage();
+  await late.goto(link);
+  await expect(late).toHaveURL(/\/cart$/u);
+  await expect(late.locator(`[data-guest-cart-line="${id}"]`)).toHaveCount(0);
+  expect((await lateContext.cookies()).find((cookie) => cookie.name === "dk_cart")).toBeUndefined();
+  await late.screenshot({ path: `${out}/link-after-cart-expired.png` });
+  await lateContext.close();
   await shopperContext.close();
 });
