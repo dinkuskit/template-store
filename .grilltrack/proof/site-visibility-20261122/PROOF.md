@@ -24,7 +24,7 @@ The screenshots are hosted in dinkuskit/dinkus-pr-assets ([manifest](https://git
 
 ## Unit
 
-`vitest run`: 69 files, 581 tests passed.
+`vitest run`: 69 files, 580 tests passed.
 
 - `site-visibility.test.ts`:
   - Only `true` counts as staging, and an unreadable setting counts as live.
