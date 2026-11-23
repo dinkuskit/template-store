@@ -6917,6 +6917,49 @@
       "superseded_by": null,
       "updated_at": "2026-11-22T23:46:04+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "The store's /review page. A link with stop=1 shows 'Stop review emails from <store>?', one line saying the buyer won't be asked to review this order or future orders and that order and shipping emails still come, and one 'Stop review emails' button. Opening the page only asks Reviews and stops nothing. The button is a plain form post to the same address, with no script; the store's server hands it to Reviews, and the page then says 'Done. You won't get review emails from <store> again.' A link that opens nothing, or a store without Reviews, answers 404 like any review link that does not work. The page keeps no-store and no-referrer, and shows nothing of the order or the buyer's address.",
+      "context_ref": "https://judge.me/help/en/articles/8288864-how-to-manage-judge-me-email-subscriptions",
+      "created_at": "2026-11-23T00:06:08+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-review-page-20261122"
+      ],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-23T00:06:08+00:00",
+          "choice": "The store's /review page. A link with stop=1 shows 'Stop review emails from <store>?', one line saying the buyer won't be asked to review this order or future orders and that order and shipping emails still come, and one 'Stop review emails' button. Opening the page only asks Reviews and stops nothing. The button is a plain form post to the same address, with no script; the store's server hands it to Reviews, and the page then says 'Done. You won't get review emails from <store> again.' A link that opens nothing, or a store without Reviews, answers 404 like any review link that does not work. The page keeps no-store and no-referrer, and shows nothing of the order or the buyer's address.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-review-stop-page-20261122",
+      "implementation_ref": null,
+      "question": "What does the store show when a buyer opens the stop link from a review email?",
+      "rationale": "Reviews puts a stop link at the end of every review request and reminder (dinkuskit ledger review-email-stop-link-20261122, Reviews ledger reviews-email-stop-link-20261122). EmDash does not let a plugin serve a web page, so the store draws the page the link opens, as it draws the review form. A button instead of a bare link keeps mail filters that open every link from stopping emails nobody asked to stop; Commerce's cart email stop link uses the same pattern. The most used review app on Shopify puts an unsubscribe link in every review request (https://judge.me/help/en/articles/8288864-how-to-manage-judge-me-email-subscriptions, read 2026-11-22). The owner approved on 2026-11-22.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-23T00:06:08+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -6939,5 +6982,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-22T23:46:04+00:00"
+  "updated_at": "2026-11-23T00:06:08+00:00"
 }
