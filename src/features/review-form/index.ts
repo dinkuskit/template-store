@@ -6,6 +6,10 @@ import { readBoundedForm, sameStoreRequest, trustedStoreOrigin, type ServerCartC
  * plugin serve a web page, so the store draws it: a plain form that posts to its own page, which asks Reviews'
  * `write` and `send` routes inside the server, so the page needs no script. The link's secret proves the
  * purchase. A store without Reviews installed answers every link as one that does not work.
+ *
+ * The same page stops review emails (review-email-stop-link-20261122): every request and reminder ends with a
+ * link here that carries `stop=1`. Opening it shows one button and stops nothing, so a mail filter that opens
+ * every link in an email stops nothing; the button's plain form post is what stops them.
  */
 export const REVIEW_PAGE_PATH = "/review";
 /** DinkusKit Reviews' Registry identity, derived by EmDash from its publisher and the slug `dinkus-reviews`. */
@@ -27,13 +31,21 @@ export const REVIEW_FORM_TEXT = Object.freeze({
 });
 type RefusalCode = keyof typeof REVIEW_FORM_TEXT;
 
+export const REVIEW_STOP_UNAVAILABLE = "Review emails could not be stopped right now. Try again in a moment.";
+
 export type ReviewLink = Readonly<{ o: string; p: string; k: string }>;
+/** The stop link: the order and the email's secret with `stop=1`, and no product. */
+export type ReviewStopLink = Readonly<{ o: string; k: string; stop: "1" }>;
 export type ReviewTyped = Readonly<{ stars: string; body: string; name: string | null }>;
 
 export type ReviewPageView =
   /** The link opens nothing: wrong, used up for good, older than its 60 days, or Reviews is not installed. */
   | Readonly<{ kind: "closed" }>
   | Readonly<{ kind: "done"; result: "sent" | "held" | "already" }>
+  /** The stop link, opened: one button. `failed` when a press could not be handed to Reviews. */
+  | Readonly<{ kind: "stop"; store: string; failed: boolean }>
+  /** Review emails from this store to the buyer's address are stopped. */
+  | Readonly<{ kind: "stopped"; store: string }>
   | Readonly<{
       kind: "form";
       link: ReviewLink;
@@ -58,6 +70,12 @@ function unwrap(body: unknown): Record<string, unknown> | null {
 export function reviewLink(url: URL): ReviewLink | null {
   const o = url.searchParams.get("o") ?? "", p = url.searchParams.get("p") ?? "", k = url.searchParams.get("k") ?? "";
   return o && p && o.length <= 200 && p.length <= 200 && /^[0-9a-f]{64}$/u.test(k) ? { o, p, k } : null;
+}
+
+/** The stop link in the page's address; null when it is not one. */
+export function reviewStopLink(url: URL): ReviewStopLink | null {
+  const o = url.searchParams.get("o") ?? "", k = url.searchParams.get("k") ?? "";
+  return url.searchParams.get("stop") === "1" && o && o.length <= 200 && /^[0-9a-f]{64}$/u.test(k) ? { o, k, stop: "1" } : null;
 }
 
 type PublicDispatcher = (pluginId: string, method: string, path: string, request: Request) => Promise<unknown>;
@@ -106,14 +124,38 @@ async function opened(ctx: PageContext, link: ReviewLink, typed: ReviewTyped | n
   };
 }
 
+/** The store's name as Reviews gives it, for the stop page's words. */
+const storeOf = (answer: Record<string, unknown>) => shortText(answer.store, 200).trim() || "this store";
+
+/** What the stop link opens, as Reviews says it: the button, "already stopped", or closed. Asking stops nothing. */
+async function stopOpened(ctx: PageContext, link: ReviewStopLink, failed: boolean): Promise<ReviewPageView> {
+  const answer = await ask(ctx, "write", link);
+  if (answer?.ok !== true) return { kind: "closed" };
+  if (answer.state === "stopped") return { kind: "stopped", store: storeOf(answer) };
+  return answer.state === "stop" ? { kind: "stop", store: storeOf(answer), failed } : { kind: "closed" };
+}
+
+/** The page after the buyer pressed "Stop review emails". */
+async function sendStop(ctx: PageContext, link: ReviewStopLink): Promise<ReviewPageView> {
+  const posted = sameStoreRequest(ctx) ? await readBoundedForm(ctx.request, MAX_FORM_BYTES) : null;
+  if (!posted) return stopOpened(ctx, link, true);
+  const answer = await ask(ctx, "send", link);
+  if (answer?.ok === true && answer.result === "stopped") return { kind: "stopped", store: storeOf(answer) };
+  return record(answer?.error)?.code === "CLOSED" ? { kind: "closed" } : stopOpened(ctx, link, true);
+}
+
 /** The page for a link someone opened. */
 export async function openReviewPage(ctx: PageContext): Promise<ReviewPageView> {
+  const stop = reviewStopLink(ctx.url);
+  if (stop) return stopOpened(ctx, stop, false);
   const link = reviewLink(ctx.url);
   return link ? opened(ctx, link, null, null) : { kind: "closed" };
 }
 
 /** The page after the buyer sent the form: thanks, or the form again with what they typed and why it was not kept. */
 export async function sendReviewForm(ctx: PageContext): Promise<ReviewPageView> {
+  const stop = reviewStopLink(ctx.url);
+  if (stop) return sendStop(ctx, stop);
   const link = reviewLink(ctx.url);
   if (!link) return { kind: "closed" };
   const posted = sameStoreRequest(ctx) ? await readBoundedForm(ctx.request, MAX_FORM_BYTES) : null;
@@ -136,5 +178,6 @@ export async function sendReviewForm(ctx: PageContext): Promise<ReviewPageView> 
 export function reviewPageStatus(view: ReviewPageView): number {
   if (view.kind === "closed") return 404;
   if (view.kind === "form" && view.refusal) return view.refusal.code === "UNAVAILABLE" ? 503 : 422;
+  if (view.kind === "stop" && view.failed) return 503;
   return 200;
 }

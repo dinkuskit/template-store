@@ -1,5 +1,5 @@
 ---
-import type { ReviewPageView } from "./index.js";
+import { REVIEW_STOP_UNAVAILABLE, type ReviewPageView } from "./index.js";
 
 interface Props {
   view: ReviewPageView;
@@ -44,6 +44,23 @@ const DONE = {
     <>
       <h1 id="review-form-title" data-review-result={view.result}>{DONE[view.result][0]}</h1>
       <p>{DONE[view.result][1]}</p>
+      <p><a href="/">Back to the store</a></p>
+    </>
+  )}
+  {view.kind === "stop" && (
+    <>
+      <h1 id="review-form-title">Stop review emails from {view.store}?</h1>
+      {view.failed && <p class="review-form__alert" data-review-error="UNAVAILABLE" role="alert">{REVIEW_STOP_UNAVAILABLE}</p>}
+      <p>You won't be asked to review this order or future orders. Order and shipping emails still come.</p>
+      <form class="review-form__form" method="post" data-review-stop-form>
+        <button type="submit" data-review-stop>Stop review emails</button>
+      </form>
+    </>
+  )}
+  {view.kind === "stopped" && (
+    <>
+      <h1 id="review-form-title" data-review-stopped>Done</h1>
+      <p>You won't get review emails from {view.store} again.</p>
       <p><a href="/">Back to the store</a></p>
     </>
   )}

@@ -25,7 +25,7 @@ export function requireReviews() {
   }
 }
 
-export interface AskedOrder { id: string; orderId: string; secret: string; link(productId: string, secret?: string): string }
+export interface AskedOrder { id: string; orderId: string; email: string; secret: string; link(productId: string, secret?: string): string; stopLink(secret?: string): string }
 
 /**
  * A shipped order whose review request went out `askedDaysAgo` days ago: state `asked` with the SHA-256 of
@@ -43,7 +43,9 @@ export function seedAskedOrder(key: string, lines: { productId: string; productN
     ...(columns.includes("revision") ? { revision: crypto.randomUUID() } : {}) };
   const keys = Object.keys(row).filter((column) => columns.includes(column));
   sqlite(`INSERT INTO _plugin_storage (${keys.join(",")}) VALUES (${keys.map((column) => sql(row[column]!)).join(",")})`);
-  return { id, orderId, secret, link: (productId, k = secret) => `/review?o=${encodeURIComponent(id)}&p=${encodeURIComponent(productId)}&k=${k}` };
+  return { id, orderId, email: order.email, secret, link: (productId, k = secret) => `/review?o=${encodeURIComponent(id)}&p=${encodeURIComponent(productId)}&k=${k}`,
+    // The link at the end of the request email (review-email-stop-link-20261122).
+    stopLink: (k = secret) => `/review?o=${encodeURIComponent(id)}&k=${k}&stop=1` };
 }
 
 /** Every review and rating row Reviews keeps, as one string, to compare before and after a refused request. */
@@ -59,4 +61,15 @@ export function keptReviews(orderId: string): Record<string, unknown>[] {
 export function keptRating(productId: string): { value: number; count: number } | null {
   const found = rows<{ data: string }>(`SELECT data FROM _plugin_storage WHERE plugin_id = ${sql(REVIEWS_ID)} AND collection = 'ratings' AND id = ${sql(productId)}`)[0];
   return found ? JSON.parse(found.data) as { value: number; count: number } : null;
+}
+
+/** Whether Reviews keeps a stop for this address: one record whose id is the SHA-256 of the address in lower case. */
+export function keptStop(email: string): boolean {
+  const id = createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
+  return rows(`SELECT id FROM _plugin_storage WHERE plugin_id = ${sql(REVIEWS_ID)} AND collection = 'stops' AND id = ${sql(id)}`).length === 1;
+}
+
+/** Every stop record Reviews keeps, as one string: ids and data, which must never hold an address. */
+export function stopsStorage(): string {
+  return JSON.stringify(rows(`SELECT id, data FROM _plugin_storage WHERE plugin_id = ${sql(REVIEWS_ID)} AND collection = 'stops' ORDER BY id`));
 }
