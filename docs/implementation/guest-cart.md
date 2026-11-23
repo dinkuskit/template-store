@@ -74,3 +74,5 @@ This uses the in-memory cart when a previous save failed, not an older persisted
 quantity. If browser persistence fails, the existing saved cache stays intact
 and visible notices explain that unsaved intent is lost when leaving or
 reloading the page.
+
+The cart page has one cart form, as Shopify's Dawn and Horizon themes do (GrillTrack `template-cart-checkout-saves-quantities-20261123`). Every line's quantity and Update button and the enabled Check out button belong to it and post to `/cart/update` as `updates[<line id>]=<quantity>`. The store saves every changed quantity in one cart write (0 removes a line, a blank or broken quantity refuses the whole form), then Update returns to `/cart` and Check out opens `/checkout`; a refused change stays on `/cart` with its message. Remove stays its own small `/cart/change` form. With script, Update is sent with fetch under the save lock above, and Check out pressed during a save waits for it, then goes as the plain form post. Agents keep `/cart/update.js`, which replaces the whole cart at a version.

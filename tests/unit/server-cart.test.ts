@@ -18,12 +18,13 @@ import {
   readAddForm,
   readContactForm,
   readServerCart,
+  readUpdatesForm,
   sameStoreRequest,
   setServerCartQuantity,
   startServerCheckout,
   type ServerCartContext,
 } from "../../src/features/guest-cart/server-cart.js";
-import { getPickUp, postAdd, postChange, postStop, postUpdate } from "../../src/features/guest-cart/cart-routes.js";
+import { getPickUp, postAdd, postChange, postStop, postUpdate, postUpdateForm } from "../../src/features/guest-cart/cart-routes.js";
 import { loadCheckoutReturn } from "../../src/features/guest-cart/server-return.js";
 
 type Line = { catalogItemId: string; quantity: number };
@@ -424,6 +425,58 @@ describe("cart routes", () => {
     remove.set("quantity", "0");
     expect((await postChange(apiContext(commerce, jar, "/cart/change", remove))).headers.get("location")).toBe("/cart");
     expect(commerce.carts.get("cap1")!.lines).toEqual([]);
+  });
+
+  it("saves every typed quantity from the cart form in one write, then Check out opens checkout (template-cart-checkout-saves-quantities-20261123)", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 1 });
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_cap", quantity: 2 });
+    const writes = () => commerce.calls.filter((call) => call.route === "cart" && "lines" in call.body).length;
+    const before = writes();
+    const form = new FormData();
+    form.set("updates[item_hat]", "3");
+    form.set("updates[item_cap]", "0");
+    form.set("checkout", "1");
+    const sent = await postUpdateForm(apiContext(commerce, jar, "/cart/update", form));
+    expect(sent.status).toBe(303);
+    expect(sent.headers.get("location")).toBe("/checkout");
+    expect(writes()).toBe(before + 1);
+    expect(commerce.carts.get("cap1")!.lines).toEqual([{ catalogItemId: "item_hat", quantity: 3 }]);
+    expect(jar.jar.get(CART_COUNT_COOKIE)).toBe("3");
+
+    // Unchanged quantities write nothing; Update (no checkout) stays on the cart.
+    const same = new FormData();
+    same.set("updates[item_hat]", "3");
+    expect((await postUpdateForm(apiContext(commerce, jar, "/cart/update", same))).headers.get("location")).toBe("/cart");
+    expect(writes()).toBe(before + 1);
+
+    // A refused change stays on the cart with its reason, never opens checkout.
+    commerce.carts.get("cap1")!.attempt = { attemptId: "att_open", state: "pending", redirectUrl: "https://checkout.stripe.com/c/pay/cs_test_2" };
+    const frozen = new FormData();
+    frozen.set("updates[item_hat]", "4");
+    frozen.set("checkout", "1");
+    expect((await postUpdateForm(apiContext(commerce, jar, "/cart/update", frozen))).headers.get("location")).toBe("/cart?cart_error=CHECKOUT_FROZEN");
+
+    // Another store's post, and a cart with no key, change nothing.
+    const crossSite = await postUpdateForm(apiContext(commerce, jar, "/cart/update", same, { "sec-fetch-site": "cross-site" }));
+    expect(crossSite.headers.get("location")).toBe("/cart?cart_error=INVALID_CART");
+    expect((await postUpdateForm(apiContext(commerce, fakeCookies(), "/cart/update", same))).headers.get("location")).toBe("/cart");
+  });
+
+  it("refuses the whole cart form when any quantity is blank, not a number or too large", () => {
+    for (const bad of ["", " ", "abc", "-1", "2.5", "1e1", String(GUEST_CART_MAX_QUANTITY + 1)]) {
+      const form = new FormData();
+      form.set("updates[item_hat]", "2");
+      form.set("updates[item_cap]", bad);
+      expect(readUpdatesForm(form)).toBeNull();
+    }
+    const none = new FormData();
+    none.set("checkout", "1");
+    expect(readUpdatesForm(none)).toBeNull();
+    const form = new FormData();
+    form.set("updates[item_hat]", " 2 ");
+    expect(readUpdatesForm(form)).toEqual({ updates: new Map([["item_hat", 2]]), checkout: false });
   });
 });
 

@@ -6960,6 +6960,47 @@
       "superseded_by": null,
       "updated_at": "2026-11-23T00:06:08+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:8a5341c",
+      "candidate_refs": [],
+      "choice": "Check out saves it first, as Shopify does. The cart page has one cart form: every line's quantity field and Update button belong to it, and Check out is its submit button (name checkout). It posts to /cart/update as updates[<line id>]=<quantity>; the store saves every changed quantity in one cart write (0 removes the line) and then sends the shopper to /checkout, or back to /cart with the message when the change is refused. Update saves every typed quantity the same way and stays on /cart. Remove stays its own small form. It works without script; with script, Update is sent with fetch and the cart redrawn as now, and Check out pressed during a save waits for that save, then goes. Agents keep /cart/update.js (whole cart, quoting the version) unchanged.",
+      "context_ref": null,
+      "created_at": "2026-11-23T03:55:50+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-23T03:55:50+00:00",
+          "choice": "Check out saves it first, as Shopify does. The cart page has one cart form: every line's quantity field and Update button belong to it, and Check out is its submit button (name checkout). It posts to /cart/update as updates[<line id>]=<quantity>; the store saves every changed quantity in one cart write (0 removes the line) and then sends the shopper to /checkout, or back to /cart with the message when the change is refused. Update saves every typed quantity the same way and stays on /cart. Remove stays its own small form. It works without script; with script, Update is sent with fetch and the cart redrawn as now, and Check out pressed during a save waits for that save, then goes. Agents keep /cart/update.js (whole cart, quoting the version) unchanged.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-cart-checkout-saves-quantities-20261123",
+      "implementation_ref": null,
+      "question": "What happens to a quantity the shopper typed on the cart page but did not press Update for, when they press Check out?",
+      "rationale": "The owner chose 'Copy Shopify' on the decision card, 23 Nov 2026 03:54 UTC.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-23T03:55:50+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -6982,5 +7023,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-23T00:06:08+00:00"
+  "updated_at": "2026-11-23T03:55:50+00:00"
 }

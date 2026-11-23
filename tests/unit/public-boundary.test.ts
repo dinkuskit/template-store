@@ -98,7 +98,7 @@ describe("public boundary access evaluation", () => {
     expect(evaluatePublicBoundary("HEAD", "/checkout").allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", "/cart/").status).toBe(405);
     // The store's own forms post to Shopify's paths (template-cart-real-form-20261113).
-    for (const path of ["/checkout", "/cart/add", "/cart/add.js", "/cart/change", "/cart/change.js", "/cart/update.js", "/cart/stop"]) {
+    for (const path of ["/checkout", "/cart/add", "/cart/add.js", "/cart/change", "/cart/change.js", "/cart/update", "/cart/update.js", "/cart/stop"]) {
       expect(evaluatePublicBoundary("POST", path).allowed).toBe(true);
     }
     expect(evaluatePublicBoundary("GET", "/cart/add").status).toBe(405);
@@ -106,7 +106,7 @@ describe("public boundary access evaluation", () => {
     // The abandoned cart email's link is a plain storefront GET (commerce-abandoned-cart-email-20261122).
     expect(evaluatePublicBoundary("GET", "/cart/c/86cb100a-a24d-40b8-980c-4d2907cde3a3", "?key=d0a86ad0472078253d24c08a370541f8920df8f0b66b1ce8e6287a7cfc78d2de&stop=1").allowed).toBe(true);
     expect(evaluatePublicBoundary("POST", "/cart/c/86cb100a-a24d-40b8-980c-4d2907cde3a3").allowed).toBe(false);
-    expect(evaluatePublicBoundary("POST", "/cart/update").status).toBe(405);
+    expect(evaluatePublicBoundary("POST", "/cart/update/").status).toBe(405);
     expect(evaluatePublicBoundary("POST", "/cart.js").status).toBe(405);
     expect(evaluatePublicBoundary("PUT", "/checkout/success/").status).toBe(405);
     expect(evaluatePublicBoundary("DELETE", "/checkout/").status).toBe(405);

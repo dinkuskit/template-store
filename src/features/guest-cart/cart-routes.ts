@@ -12,7 +12,9 @@ import {
   readBoundedForm,
   readChangeForm,
   readServerCart,
+  readUpdatesForm,
   sameStoreRequest,
+  setServerCartQuantities,
   setServerCartQuantity,
   wantsJson,
   type ServerCartContext,
@@ -113,6 +115,27 @@ export const postChange: APIRoute = async (context) => {
   const result = await setServerCartQuantity(contextOf(context), change.id, change.quantity);
   if (wantsJson(context.request, context.url)) return json(cartJson(result), statusFor(result));
   return result.ok ? redirect("/cart") : redirect(withQuery("/cart", "cart_error", result.error.code));
+};
+
+/**
+ * POST /cart/update (a plain form): the cart page's Update and Check out buttons, Shopify-style
+ * (template-cart-checkout-saves-quantities-20261123). Every typed quantity is saved in one cart write, then Check out
+ * goes on to /checkout; a refused change stays on /cart with its message. Unchanged quantities write nothing.
+ */
+export const postUpdateForm: APIRoute = async (context) => {
+  if (!sameStoreRequest(context)) return refused(context, "FORBIDDEN");
+  const form = await readBoundedForm(context.request, MAX_BODY_BYTES);
+  const read = form ? readUpdatesForm(form) : null;
+  if (!read) return refused(context, "INVALID_CART");
+  const current = await readServerCart(contextOf(context));
+  if (!current.ok) return redirect(current.error.code === "NO_CART" ? "/cart" : withQuery("/cart", "cart_error", current.error.code));
+  const changed = (current.cart?.lines ?? []).some((line) => {
+    const quantity = read.updates.get(line.catalogItemId);
+    return quantity !== undefined && quantity !== line.quantity;
+  });
+  const result = changed ? await setServerCartQuantities(contextOf(context), read.updates) : current;
+  if (!result.ok) return redirect(withQuery("/cart", "cart_error", result.error.code));
+  return redirect(read.checkout ? "/checkout" : "/cart");
 };
 
 function agentLines(value: unknown): ServerCartLineInput[] | null {

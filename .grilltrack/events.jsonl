@@ -288,3 +288,5 @@
 {"action": "decision_locked", "at": "2026-11-22T23:46:04+00:00", "data": {"decision_id": "template-product-rating-jsonld-20261122"}, "event_id": "d4ed21bb-f199-4bd5-bf07-dc61e075d8c0"}
 {"action": "decision_proposed", "at": "2026-11-23T00:06:08+00:00", "data": {"decision_id": "template-review-stop-page-20261122"}, "event_id": "2669f089-24c2-4b5a-8c23-ce3d097f467b"}
 {"action": "decision_locked", "at": "2026-11-23T00:06:08+00:00", "data": {"decision_id": "template-review-stop-page-20261122"}, "event_id": "0809cd3e-b5e5-4874-8745-ed4e7fe53dd3"}
+{"action": "decision_proposed", "at": "2026-11-23T03:55:50+00:00", "data": {"decision_id": "template-cart-checkout-saves-quantities-20261123"}, "event_id": "b471a6b3-d2a6-47c2-99e2-cd3a2baea1e7"}
+{"action": "decision_locked", "at": "2026-11-23T03:55:50+00:00", "data": {"decision_id": "template-cart-checkout-saves-quantities-20261123"}, "event_id": "fa59feef-0893-4446-b92d-176dc40aca21"}
