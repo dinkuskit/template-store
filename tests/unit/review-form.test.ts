@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { openReviewPage, reviewLink, reviewPageStatus, sendReviewForm, REVIEWS_REGISTRY_RUNTIME_ID, REVIEW_FORM_TEXT } from "../../src/features/review-form/index.js";
+import { openReviewPage, reviewLink, reviewPageStatus, reviewStopLink, sendReviewForm, REVIEWS_REGISTRY_RUNTIME_ID, REVIEW_FORM_TEXT } from "../../src/features/review-form/index.js";
 import { applySecurityHeaders, evaluatePublicBoundary } from "../../src/features/security/public-boundary.js";
 
 const STORE = "https://store.example.test";
@@ -109,6 +109,59 @@ describe("the buyer's review page", () => {
     const { ctx, calls } = page({ write: OPEN, send: { ok: true, result: "sent" } }, { form: "stars=1", headers: { origin: "https://evil.example", "sec-fetch-site": "cross-site" } });
     expect(await sendReviewForm(ctx)).toMatchObject({ kind: "form", refusal: { code: "UNAVAILABLE" } });
     expect(calls.map((call) => call.path)).toEqual(["write"]);
+  });
+});
+
+describe("the stop link on the buyer's review page", () => {
+  const STOP = `${STORE}/review?o=order-1%3Ashipment-1&k=${K}&stop=1`;
+  const FIELDS = { o: "order-1:shipment-1", k: K, stop: "1" };
+
+  it("opens one button and stops nothing: opening the link only asks Reviews", async () => {
+    const { ctx, calls } = page({ write: { success: true, data: { ok: true, state: "stop", store: "Camp Store" } }, send: { ok: true, result: "stopped", store: "Camp Store" } }, { url: STOP });
+    const view = await openReviewPage(ctx);
+    expect(view).toEqual({ kind: "stop", store: "Camp Store", failed: false });
+    expect(reviewPageStatus(view)).toBe(200);
+    expect(calls).toEqual([expect.objectContaining({ method: "POST", path: "write", body: FIELDS })]);
+  });
+
+  it("stops review emails when the button's form is posted, and says so", async () => {
+    const { ctx, calls } = page({ send: { success: true, data: { ok: true, result: "stopped", store: "Camp Store" } } }, { url: STOP, form: "o=other&k=other&stars=5" });
+    const view = await sendReviewForm(ctx);
+    expect(view).toEqual({ kind: "stopped", store: "Camp Store" });
+    expect(reviewPageStatus(view)).toBe(200);
+    // Only the link from the address is handed over; nothing typed into a form field goes with it.
+    expect(calls).toEqual([expect.objectContaining({ path: "send", body: FIELDS })]);
+  });
+
+  it("says done when the emails were already stopped, and names the store plainly when Reviews gives no name", async () => {
+    expect(await openReviewPage(page({ write: { ok: true, state: "stopped", store: "Camp Store" } }, { url: STOP }).ctx)).toEqual({ kind: "stopped", store: "Camp Store" });
+    expect(await openReviewPage(page({ write: { ok: true, state: "stop", store: "" } }, { url: STOP }).ctx)).toEqual({ kind: "stop", store: "this store", failed: false });
+  });
+
+  it("answers a stop link that opens nothing as not found, and a Reviews without the stop link too", async () => {
+    for (const answers of [{ write: { ok: false, error: { code: "CLOSED" } } }, { write: OPEN }, { write: new Error("down") }, null] as (Answers | null)[]) {
+      const view = await openReviewPage(page(answers, { url: STOP }).ctx);
+      expect(view).toEqual({ kind: "closed" });
+      expect(reviewPageStatus(view)).toBe(404);
+    }
+    expect(await sendReviewForm(page({ send: { ok: false, error: { code: "CLOSED" } } }, { url: STOP, form: "" }).ctx)).toEqual({ kind: "closed" });
+  });
+
+  it("does not stop anything for a form another site sent, or when Reviews cannot be reached, and says to try again", async () => {
+    const other = page({ write: { ok: true, state: "stop", store: "Camp Store" }, send: { ok: true, result: "stopped" } }, { url: STOP, form: "", headers: { origin: "https://evil.example", "sec-fetch-site": "cross-site" } });
+    const refused = await sendReviewForm(other.ctx);
+    expect(refused).toEqual({ kind: "stop", store: "Camp Store", failed: true });
+    expect(reviewPageStatus(refused)).toBe(503);
+    expect(other.calls.map((call) => call.path)).toEqual(["write"]);
+    const down = await sendReviewForm(page({ write: { ok: true, state: "stop", store: "Camp Store" }, send: new Error("down") }, { url: STOP, form: "" }).ctx);
+    expect(down).toEqual({ kind: "stop", store: "Camp Store", failed: true });
+  });
+
+  it("is a stop link only with stop=1, an order and a whole secret", () => {
+    expect(reviewStopLink(new URL(STOP))).toEqual(FIELDS);
+    for (const url of [`${STORE}/review?o=a&k=${K}`, `${STORE}/review?o=a&k=${K}&stop=0`, `${STORE}/review?o=a&k=${K}&stop=true`, `${STORE}/review?k=${K}&stop=1`, `${STORE}/review?o=a&k=short&stop=1`, `${STORE}/review?o=${"a".repeat(201)}&k=${K}&stop=1`]) {
+      expect(reviewStopLink(new URL(url))).toBeNull();
+    }
   });
 });
 

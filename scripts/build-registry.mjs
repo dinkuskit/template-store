@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { registryAccessOptions, registryConfigPath } from "./registry-access.mjs";
 
 import { commerceProfile } from "../src/features/commerce-profile/profiles.mjs";
+import { storeEmailFrom } from "../src/features/store-email/sender.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const configRelativePath = registryConfigPath;
@@ -76,6 +77,7 @@ export function registryConfig(env) {
   const adminEnabled = env.DINKUS_EMDASH_ADMIN_ENABLED ?? "0";
   if (adminEnabled !== "0" && adminEnabled !== "1") throw new Error("Invalid DINKUS_EMDASH_ADMIN_ENABLED");
   const accessOptions = registryAccessOptions(env);
+  const emailFrom = storeEmailFrom(env, siteUrl.origin);
   return {
     $schema: "../../node_modules/wrangler/config-schema.json",
     name: workerName,
@@ -92,6 +94,7 @@ export function registryConfig(env) {
       DINKUS_PROOF_MODE: "0",
       DINKUS_EMDASH_ADMIN_ENABLED: adminEnabled,
       EMDASH_SITE_URL: siteUrl.origin,
+      DINKUS_EMAIL_FROM: emailFrom,
       DINKUS_REGISTRY_ACCESS_ENABLED: accessOptions ? "1" : "0",
       ...(accessOptions ? { DINKUS_REGISTRY_ACCESS_TEAM_DOMAIN: accessOptions.teamDomain } : {}),
     },
@@ -102,6 +105,8 @@ export function registryConfig(env) {
     worker_loaders: [{ binding: "LOADER" }],
     triggers: { crons: ["* * * * *"] },
     ratelimits: [{ name: "RATE_LIMITER", namespace_id: rateNamespace, simple: { limit: 120, period: 60 } }],
+    // The store's Cloudflare sender (store-email-sender-20261122), sending from DINKUS_EMAIL_FROM.
+    send_email: [{ name: "EMAIL" }],
   };
 }
 
