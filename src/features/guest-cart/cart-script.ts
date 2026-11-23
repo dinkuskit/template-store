@@ -142,20 +142,27 @@ export function hydrateServerCartForms(): void {
   let redrawAfterSave = false;
   let checkoutAfterSave = false;
 
-  /** Draw the server's current cart; true when it was drawn. */
-  async function redrawCart(): Promise<boolean> {
+  function hasQuantityDraft(section: Element): boolean {
+    return Array.from(section.querySelectorAll<HTMLInputElement>("[data-guest-cart-qty]"))
+      .some((input) => input.value !== input.defaultValue);
+  }
+
+  /** Draw the server's current cart; true when it was drawn. Passive refreshes leave local edits alone. */
+  async function redrawCart({ passive = false } = {}): Promise<boolean> {
     const section = document.querySelector("[data-server-cart]");
-    if (!section) return false;
+    if (!section || (passive && hasQuantityDraft(section))) return false;
     if (savingChange) {
-      redrawAfterSave = true;
+      if (!passive) redrawAfterSave = true;
       return false;
     }
     try {
       const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
       const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
-      // A save may have started while the refresh was fetching. Don't replace its locked controls.
-      if (savingChange) redrawAfterSave = true;
-      else if (response.ok && next) {
+      // The shopper may start typing or saving while the refresh is fetching.
+      if (passive && (!section.isConnected || hasQuantityDraft(section))) return false;
+      if (savingChange) {
+        if (!passive) redrawAfterSave = true;
+      } else if (response.ok && next) {
         replaceCartSection(section, next);
         return true;
       }
@@ -231,8 +238,17 @@ export function hydrateServerCartForms(): void {
       stepQuantity(step);
     }
   });
-  // Another tab's change shows here once this tab is looked at again.
+  // Keep the header in sync everywhere; only /cart has a section to fetch and redraw.
+  const cartPage = document.querySelector("[data-server-cart]") !== null;
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") renderCartCount();
+    if (document.visibilityState !== "visible") return;
+    renderCartCount();
+    if (cartPage) void redrawCart({ passive: true });
+  });
+  window.addEventListener("pageshow", (event) => {
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    if (!event.persisted && navigation?.type !== "back_forward") return;
+    renderCartCount();
+    if (cartPage) void redrawCart({ passive: true });
   });
 }

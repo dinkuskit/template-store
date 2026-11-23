@@ -329,6 +329,36 @@ test("with script the same forms change the cart in place, and agents read it as
   await context.close();
 });
 
+test("returning to the cart draws changes saved in another tab", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const { itemId } = await storeWithProduct(browser, testInfo, "tab-return", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  try {
+    const first = await context.newPage();
+    await openFocusCart(first, testInfo, [itemId]);
+    const quantity = first.locator(`[data-guest-cart-line="${itemId}"] [data-guest-cart-qty]`);
+    const subtotal = first.locator("[data-guest-cart-subtotal-amount]");
+    await expect(quantity).toHaveValue("1");
+    await expect(subtotal).toHaveText("$24.00");
+
+    const second = await context.newPage();
+    await openFocusCart(second, testInfo, []);
+    await second.locator("[data-guest-cart-qty]").fill("3");
+    await second.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(second.locator("[data-guest-cart-subtotal-amount]")).toHaveText("$72.00");
+    const { cart } = await (await second.request.get("/cart.js")).json();
+    expect(cart).toMatchObject({ itemCount: 3, lines: [{ catalogItemId: itemId, quantity: 3 }] });
+
+    await first.bringToFront();
+    // Playwright emulates focus on every page, so a tab switch need not emit visibilitychange.
+    await first.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await expect(first.locator("[data-guest-cart-line]")).toHaveCount(cart.lines.length);
+    await expect(quantity).toHaveValue(String(cart.lines[0].quantity));
+    // /cart.js returns quantities, not money. The fixture's Commerce price is $24 per unit.
+    await expect(subtotal).toHaveText(`$${(24 * cart.lines[0].quantity).toFixed(2)}`);
+  } finally { await context.close(); }
+});
+
 test("a second cart change is ignored until the saved cart is drawn", async ({ browser }, testInfo) => {
   test.setTimeout(180_000);
   const first = await storeWithProduct(browser, testInfo, "lock-first", false);
