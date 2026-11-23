@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 import { openProductsList } from "./helpers/product-page";
-import { keptRating, keptReviews, requireReviews, reviewsStorage, seedAskedOrder } from "./helpers/reviews";
+import { keptRating, keptReviews, keptStop, requireReviews, reviewsStorage, seedAskedOrder, stopsStorage } from "./helpers/reviews";
 
 const proofRoot = resolve("runs/review-page-20261122/browser");
 const SECRET = "ab".repeat(32);
@@ -158,5 +158,81 @@ test("refused posts keep nothing, and the longest allowed review is kept whole",
   expect(keptRating(mug)).toMatchObject({ value: 5, count: 1 });
   trace.push({ step: "POST the same link again with 1 star", status: 200, result: "already", storageUnchanged: true, rating: keptRating(mug) });
   await writeFile(resolve(root, "refusals.json"), JSON.stringify(trace, null, 2));
+  console.log(JSON.stringify({ project: testInfo.project.name, trace }));
+});
+
+test("the stop link shows one button, and only pressing it stops review emails", async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  await warm(page);
+  const tag = tagOf(testInfo.project.name);
+  const root = resolve("runs/review-stop-link-20261122/browser", testInfo.project.name);
+  await mkdir(root, { recursive: true });
+  const mug = `stop-mug-${tag}`;
+  const lines = [{ productId: mug, productName: "Camp mug" }];
+  // Asked 61 days ago: the review link is closed, and the stop link works as long as the request is kept.
+  const order = seedAskedOrder(`stop-${tag}`, lines, { askedDaysAgo: 61 });
+  const other = seedAskedOrder(`stop-other-${tag}`, lines);
+  const trace: unknown[] = [];
+
+  // 1. Opening the link, as a mail filter does, shows the button and stops nothing, however often.
+  for (let visit = 0; visit < 2; visit++) {
+    const opened = await page.goto(order.stopLink());
+    expect(opened?.status()).toBe(200);
+    expect(opened!.headers()["referrer-policy"]).toBe("no-referrer");
+    expect(opened!.headers()["cache-control"]).toBe("no-store");
+  }
+  await expect(page.locator("[data-review-page]")).toHaveAttribute("data-review-page", "stop");
+  const heading = await page.getByRole("heading", { level: 1 }).innerText();
+  expect(heading).toMatch(/^Stop review emails from .+\?$/u);
+  const store = heading.replace(/^Stop review emails from /u, "").replace(/\?$/u, "");
+  await expect(page.locator("[data-review-page]")).toContainText("You won't be asked to review this order or future orders. Order and shipping emails still come.");
+  await expect(page.locator("[data-review-stop-form]")).toHaveAttribute("method", "post");
+  await expect(page.locator("[data-review-stop]")).toHaveText("Stop review emails");
+  expect(await page.locator("[data-review-page] script").count()).toBe(0);
+  let html = await page.content();
+  for (const secret of [order.secret, order.orderId, order.email, "Taylor"]) expect(html).not.toContain(secret);
+  expect(keptStop(order.email)).toBe(false);
+  expect((await page.goto(order.link(mug)))?.status()).toBe(404);
+  await page.goto(order.stopLink());
+  await page.screenshot({ path: resolve(root, "1-stop-button.png"), fullPage: true });
+  trace.push({ step: "open the stop link twice", status: 200, heading, stopKept: false, reviewLinkAfter61Days: 404 });
+
+  // 2. A wrong secret, another order's secret, or a post from another site: nothing opens and nothing stops.
+  const origin = new URL(page.url()).origin;
+  const press = (address: string, headers: Record<string, string> = { origin, "sec-fetch-site": "same-origin" }) => page.request.post(address, {
+    headers: { ...headers, "content-type": "application/x-www-form-urlencoded" }, data: "", maxRedirects: 0 });
+  expect((await page.goto(order.stopLink("cd".repeat(32))))?.status()).toBe(404);
+  expect((await press(order.stopLink("cd".repeat(32)))).status()).toBe(404);
+  expect((await press(order.stopLink(other.secret))).status()).toBe(404);
+  expect((await press(order.stopLink(), { origin: "https://evil.example.test", "sec-fetch-site": "cross-site" })).status()).toBe(403);
+  expect(keptStop(order.email)).toBe(false);
+  expect(keptStop(other.email)).toBe(false);
+  trace.push({ step: "wrong secret, another order's secret, a post from another site", statuses: [404, 404, 404, 403], stopKept: false });
+
+  // 3. The press stops them, and the page says so.
+  await page.goto(order.stopLink());
+  const [response] = await Promise.all([page.waitForResponse((r) => r.request().method() === "POST"), page.locator("[data-review-stop]").click()]);
+  expect(response.status()).toBe(200);
+  await expect(page.locator("[data-review-page]")).toHaveAttribute("data-review-page", "stopped");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Done");
+  await expect(page.locator("[data-review-page]")).toContainText(`You won't get review emails from ${store} again.`);
+  await expect(page.locator("[data-review-stop]")).toHaveCount(0);
+  expect(keptStop(order.email)).toBe(true);
+  expect(keptStop(other.email)).toBe(false);
+  // What is kept is a fingerprint of the address, never the address.
+  expect(stopsStorage()).not.toContain("@example.test");
+  html = await page.content();
+  for (const secret of [order.secret, order.orderId, order.email]) expect(html).not.toContain(secret);
+  await page.screenshot({ path: resolve(root, "2-stopped.png"), fullPage: true });
+  trace.push({ step: "press Stop review emails", status: 200, heading: "Done", stopKept: true, addressKept: false });
+
+  // 4. The link opened again says done, and a second press keeps the one record.
+  const before = stopsStorage();
+  expect((await page.goto(order.stopLink()))?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Done");
+  expect((await press(order.stopLink())).status()).toBe(200);
+  expect(stopsStorage()).toBe(before);
+  trace.push({ step: "open and press again", status: 200, heading: "Done", storageUnchanged: true });
+  await writeFile(resolve(root, "journey.json"), JSON.stringify(trace, null, 2));
   console.log(JSON.stringify({ project: testInfo.project.name, trace }));
 });

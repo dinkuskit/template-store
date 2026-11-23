@@ -286,3 +286,5 @@
 {"action": "decision_locked", "at": "2026-11-22T21:35:19+00:00", "data": {"decision_id": "template-courier-on-timer-20261122"}, "event_id": "8746e8d0-6566-4972-8ea6-974cddd0e9d4"}
 {"action": "decision_proposed", "at": "2026-11-22T23:07:42+00:00", "data": {"decision_id": "template-product-rating-jsonld-20261122"}, "event_id": "89408ca5-5f33-4f1f-8faf-9f520980527a"}
 {"action": "decision_locked", "at": "2026-11-22T23:46:04+00:00", "data": {"decision_id": "template-product-rating-jsonld-20261122"}, "event_id": "d4ed21bb-f199-4bd5-bf07-dc61e075d8c0"}
+{"action": "decision_proposed", "at": "2026-11-23T00:06:08+00:00", "data": {"decision_id": "template-review-stop-page-20261122"}, "event_id": "2669f089-24c2-4b5a-8c23-ce3d097f467b"}
+{"action": "decision_locked", "at": "2026-11-23T00:06:08+00:00", "data": {"decision_id": "template-review-stop-page-20261122"}, "event_id": "0809cd3e-b5e5-4874-8745-ed4e7fe53dd3"}
