@@ -70,8 +70,23 @@ function submitPlainChange(form: HTMLFormElement): void {
   HTMLFormElement.prototype.submit.call(form);
 }
 
+/** Keep focus on the same line control; if the line is gone, give the keyboard a useful next stop. */
+function replaceCartSection(section: Element, next: Element, beforeLock: Element | null = null): void {
+  const active = document.activeElement === document.body ? beforeLock : document.activeElement;
+  const line = active?.closest("[data-guest-cart-line]");
+  const control = ["data-guest-cart-qty", "data-guest-cart-update", "data-guest-cart-remove"]
+    .find((attribute) => active?.hasAttribute(attribute));
+  section.replaceWith(next);
+  if (!line || !section.contains(line) || !control) return;
+  const sameLine = Array.from(next.querySelectorAll("[data-guest-cart-line]"))
+    .find((row) => row.getAttribute("data-guest-cart-line") === line.getAttribute("data-guest-cart-line"));
+  (sameLine?.querySelector<HTMLElement>(`[${control}]`)
+    ?? next.querySelector<HTMLElement>("[data-guest-cart-empty]")
+    ?? next.querySelector<HTMLElement>("[data-guest-cart-qty]"))?.focus();
+}
+
 /** Send a captured cart-page form and replace the currently attached section. */
-async function submitChange(form: HTMLFormElement): Promise<void> {
+async function submitChange(form: HTMLFormElement, focusBeforeLock: () => Element | null): Promise<void> {
   try {
     const response = await fetch(form.action, {
       method: "POST",
@@ -82,9 +97,9 @@ async function submitChange(form: HTMLFormElement): Promise<void> {
     const html = await response.text();
     const next = new DOMParser().parseFromString(html, "text/html").querySelector("[data-server-cart]");
     if (!response.ok || !next) return submitPlainChange(form);
-    document.querySelector("[data-server-cart]")?.replaceWith(next);
+    const section = document.querySelector("[data-server-cart]");
+    if (section) replaceCartSection(section, next, focusBeforeLock());
     renderCartCount();
-    next.querySelector<HTMLElement>("[role=alert], [data-guest-cart-empty]")?.focus?.();
   } catch {
     submitPlainChange(form);
   }
@@ -119,7 +134,7 @@ export function hydrateServerCartForms(): void {
       const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
       // A save may have started while the refresh was fetching. Don't replace its locked controls.
       if (savingChange) redrawAfterSave = true;
-      else if (response.ok && next) section.replaceWith(next);
+      else if (response.ok && next) replaceCartSection(section, next);
     } catch {
       // The next visit draws the current cart.
     }
@@ -149,9 +164,14 @@ export function hydrateServerCartForms(): void {
       const controls = section.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
         "[data-cart-change-form] :is([data-guest-cart-qty], button[type=submit]):enabled",
       );
+      // Disabling the focused control can move focus to BODY. Keep its place only until another control takes focus.
+      let beforeLock = document.activeElement;
+      const forgetBeforeLock = () => { beforeLock = null; };
+      document.addEventListener("focusin", forgetBeforeLock, { once: true });
       section.setAttribute("aria-busy", "true");
       for (const control of controls) control.disabled = true;
-      void submitChange(captured).finally(() => {
+      void submitChange(captured, () => beforeLock).finally(() => {
+        document.removeEventListener("focusin", forgetBeforeLock);
         section.removeAttribute("aria-busy");
         for (const control of controls) control.disabled = false;
         savingChange = false;

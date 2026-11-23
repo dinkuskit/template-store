@@ -44,6 +44,62 @@ async function cookieNamed(page: Page, name: string) {
   return (await page.context().cookies()).find((cookie) => cookie.name === name);
 }
 
+async function openFocusCart(shopper: Page, testInfo: TestInfo, ids: string[]) {
+  for (const id of ids) {
+    const added = await shopper.request.post("/cart/add", {
+      form: { id, quantity: "1" },
+      headers: { origin: new URL(testInfo.project.use.baseURL!).origin },
+    });
+    expect(added.ok()).toBe(true);
+  }
+  await shopper.goto("/cart");
+  await shopper.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")]);
+}
+
+test("keyboard Update keeps focus on its line without reclaiming focus from navigation", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const { itemId } = await storeWithProduct(browser, testInfo, "focus-update", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  try {
+    const shopper = await context.newPage();
+    await openFocusCart(shopper, testInfo, [itemId]);
+    const line = shopper.locator(`[data-guest-cart-line="${itemId}"]`);
+    const update = line.getByRole("button", { name: "Update", exact: true });
+    const quantity = line.locator("[data-guest-cart-qty]");
+    await quantity.fill("2");
+    await update.press("Enter");
+    await expect(line.locator("[data-guest-cart-line-total]")).toHaveText("Line total $48.00");
+    await expect(update).toBeFocused();
+
+    await context.route("**/cart/change", async (route) => { await held; await route.continue(); }, { times: 1 });
+    await quantity.fill("3");
+    await update.press("Enter");
+    await expect(update).toBeDisabled();
+    const nav = shopper.locator("[data-store-header] [data-guest-cart-nav]");
+    await nav.focus();
+    release();
+    await expect(line.locator("[data-guest-cart-line-total]")).toHaveText("Line total $72.00");
+    await expect(nav).toBeFocused();
+  } finally { release(); await context.close(); }
+});
+
+test("keyboard Remove puts focus on the first remaining line", async ({ browser }, testInfo) => {
+  test.setTimeout(180_000);
+  const first = await storeWithProduct(browser, testInfo, "focus-remove-first", false);
+  const second = await storeWithProduct(browser, testInfo, "focus-remove-second", false);
+  const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+  try {
+    const shopper = await context.newPage();
+    await openFocusCart(shopper, testInfo, [first.itemId, second.itemId]);
+    const line = shopper.locator(`[data-guest-cart-line="${first.itemId}"]`);
+    await line.getByRole("button", { name: `Remove ${first.name}`, exact: true }).press("Enter");
+    await expect(line).toHaveCount(0);
+    await expect(shopper.locator(`[data-guest-cart-line="${second.itemId}"] [data-guest-cart-qty]`)).toBeFocused();
+  } finally { await context.close(); }
+});
+
 test("the cart works with script off: add, change, remove, and an honest checkout button", async ({ browser }, testInfo) => {
   test.setTimeout(180_000);
   const root = resolve("runs/guest-cart/browser", testInfo.project.name);
