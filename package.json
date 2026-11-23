@@ -20,7 +20,7 @@
       },
       "reviews": {
         "repository": "https://github.com/dinkuskit/reviews.git",
-        "commit": "db700cc0fd6bd5a433de278a288cb1742bbda95f"
+        "commit": "d17945911a0058e4061ee078eb78ab3147d5805d"
       }
     },
     "playgroundPlugins": {
