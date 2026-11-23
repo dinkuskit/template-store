@@ -60,6 +60,7 @@ non-secret inputs are serialized into the generated deployment config:
 | `DINKUS_RATE_LIMIT_NAMESPACE_ID` | Dedicated numeric rate-limit namespace ID |
 | `EMDASH_SITE_URL` | Exact HTTPS origin, without path, query, fragment or credentials |
 | `DINKUS_EMDASH_ADMIN_ENABLED` | Optional: defaults to `0`; only set `1` after the outer admin/setup guard is verified |
+| `DINKUS_EMAIL_FROM` | Optional: the store's sender address, default `orders@<EMDASH_SITE_URL host>`; its domain must be onboarded for Cloudflare Email Sending |
 | `DINKUS_EXPECTED_BRANCH` | Required on Workers Builds: exact intended branch |
 | `DINKUS_EXPECTED_COMMIT` | Required on Workers Builds: reviewed full 40-character source SHA |
 | `DINKUS_EXPECTED_ACCOUNT_ID` | Required on Workers Builds: exact intended account ID, matching `CLOUDFLARE_ACCOUNT_ID` |
@@ -67,8 +68,36 @@ non-secret inputs are serialized into the generated deployment config:
 Keep real account/resource identifiers in private build settings. Do not add
 secret values to these inputs. In particular, `EMDASH_ENCRYPTION_KEY` belongs in
 the Worker's runtime secret settings through the approved secret process; it
-is required for Commerce/Payments secret settings but is never emitted by this
-generator.
+is required for Commerce/Payments secret settings and for saving an SMTP login
+in Settings > Email, but is never emitted by this generator. Generate it once
+per store with `npx emdash secrets generate`, keep a backup, and never replace
+it on a store that has saved settings.
+
+## Store email
+
+A Registry store sends its own email (GrillTrack `store-email-sender-20261122`).
+The generated config binds `send_email` as `EMAIL`, and the build adds EmDash's
+Cloudflare Email Sending provider, `cloudflare-email`, sending from
+`DINKUS_EMAIL_FROM`. EmDash picks it on its own as the only automatic sender, so
+order emails, shipping emails, review emails and sign-in links work from the
+first deploy once the sender's domain is onboarded in the Cloudflare dashboard
+(Email Sending > Onboard, which adds the DNS records). Sending to customers
+needs the Workers Paid plan.
+
+Cloudflare allows transactional email only. While `cloudflare-email` is the
+picked sender, the template refuses the abandoned cart email, which is
+marketing: any email whose text or HTML carries the cart link's stop link
+(`/cart/c/…stop=1`) fails with an error starting `MARKETING_BLOCKED: `, which
+the sending plugin records. The owner switches to EmDash's built-in SMTP sender
+in Settings > Email, on EmDash's own unchanged screen; the SMTP login is
+encrypted with `EMDASH_ENCRYPTION_KEY`, and with SMTP picked cart emails go
+out. The guard moves to EmDash's own transactional or marketing label once
+EmDash has one.
+
+A store that already picked SMTP before this sender arrived keeps it: EmDash
+only picks `cloudflare-email` on its own when no sender is saved. The saved
+host, user and encrypted password carry over, and cart emails keep going out
+through SMTP (`tests/workflows/store-email-upgrade.test.mjs`).
 
 ## Resource and activation order
 
@@ -77,7 +106,7 @@ generator.
    Supply actual IDs so deployment cannot silently provision or reuse storage.
 3. Configure the build settings above with admin disabled and no hostname route.
 4. Inspect the selected build and run its dry-run before activating it. The
-   generated Worker includes DB, MEDIA, SESSION, LOADER, RATE_LIMITER, ASSETS,
+   generated Worker includes DB, MEDIA, SESSION, LOADER, RATE_LIMITER, EMAIL, ASSETS,
    the adapter's IMAGES binding, PluginBridge and the minutely scheduler.
 5. Protect admin/setup on the intended hostname before routing traffic and
    enabling admin. Workers.dev and preview URLs remain disabled.
@@ -106,7 +135,8 @@ does not establish deployment, Registry installation, or a successful payment.
 
 The `Registry build` CI job runs the actual `pnpm run build:registry` command
 with synthetic non-secret resource identities, then inspects the adapter's
-emitted `dist/server/wrangler.json` for `LOADER`, the shipping catalog and proof
+emitted `dist/server/wrangler.json` for `LOADER`, the `EMAIL` binding and sender
+address, the bundled guarded sender, the shipping catalog and proof
 mode off. The aggregate `Store verification` check requires this job as well as
 the desktop and phone checks. This covers the Cloudflare compilation path that
 the Node-adapter browser jobs do not exercise.
