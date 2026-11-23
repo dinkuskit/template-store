@@ -548,6 +548,23 @@ describe("thank-you page", () => {
     expect(await loadCheckoutReturn(context(commerce, jar, { url: "https://shop.test/checkout/success?check=abc" }))).toEqual({ kind: "slow" });
   });
 
+  it("keeps a recoverable payment on a manual status check until Commerce releases it", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 1 });
+    const cart = commerce.carts.get("cap1")!;
+    const url = "https://shop.test/checkout/success?session_id=cs_ignored";
+    cart.attempt = { attemptId: "att_1", state: "recoverable-failure", redirectUrl: null };
+    expect(await loadCheckoutReturn(context(commerce, jar, { url }))).toEqual({ kind: "held" });
+    expect(jar.jar.get(CART_COUNT_COOKIE)).toBe("1");
+    cart.attempt.state = "released-retry";
+    expect(await loadCheckoutReturn(context(commerce, jar, { url })))
+      .toEqual({ kind: "not-paid", redirect: "/cart?cart_error=NOT_PAID" });
+    expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
+    expect(cart.lines).toHaveLength(1);
+    expect(commerce.calls.some(({ route }) => route === "start")).toBe(false);
+  });
+
   it("sends an unpaid return back to the cart with the items kept, and has no order without the cookie", async () => {
     const commerce = fakeCommerce();
     const jar = fakeCookies();

@@ -73,7 +73,7 @@ const canCheckout = view.checkoutEnabled && !page.paymentHeld;
       </>
     ) : page.paymentHeld ? (
       <>
-        <a data-guest-cart-payment-status href="/cart">Check payment status</a>
+        <a data-guest-cart-payment-status href="/checkout/success">Check payment status</a>
         <p data-guest-cart-checkout-reason>The payment link is no longer available. We'll hold your cart until we know whether the payment went through.</p>
       </>
     ) : canCheckout ? (
