@@ -94,6 +94,11 @@ encrypted with `EMDASH_ENCRYPTION_KEY`, and with SMTP picked cart emails go
 out. The guard moves to EmDash's own transactional or marketing label once
 EmDash has one.
 
+A store that already picked SMTP before this sender arrived keeps it: EmDash
+only picks `cloudflare-email` on its own when no sender is saved. The saved
+host, user and encrypted password carry over, and cart emails keep going out
+through SMTP (`tests/workflows/store-email-upgrade.test.mjs`).
+
 ## Resource and activation order
 
 1. Verify the exact account, paid Worker Loader entitlement and collisions.
