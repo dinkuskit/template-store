@@ -12,7 +12,9 @@ export type ServerCartPage = Readonly<{
   result: ServerCartResult;
   view: GuestCartView;
   snapshots: readonly GuestCartCatalogSnapshot[] | null;
-  /** A payment the shopper opened and has not finished: the Stripe page to go back to. */
+  /** The checkout attempt can still hold the cart after its payment link stops working. */
+  paymentHeld: boolean;
+  /** A usable Stripe page to go back to, when Commerce still supplies one. */
   openPayment: string | null;
   notice: string | null;
   error: string | null;
@@ -20,12 +22,16 @@ export type ServerCartPage = Readonly<{
   askStop: string | null;
 }>;
 
+function paymentHoldsCart(result: ServerCartResult): boolean {
+  const checkout = result.checkout;
+  return Boolean(checkout?.attemptId && checkout.state !== "paid" && checkout.state !== "released-retry");
+}
+
 /** The Stripe page an open payment waits on; only Stripe's own checkout host is ever linked. */
 export function openPaymentUrl(result: ServerCartResult): string | null {
-  const checkout = result.checkout;
-  if (!checkout || !checkout.attemptId || checkout.state === "paid" || checkout.state === "released-retry") return null;
+  if (!paymentHoldsCart(result)) return null;
   try {
-    const url = new URL(checkout.redirectUrl ?? "");
+    const url = new URL(result.checkout?.redirectUrl ?? "");
     return url.protocol === "https:" && url.hostname === "checkout.stripe.com" && !url.port && !url.username
       ? url.href
       : null;
@@ -69,6 +75,7 @@ export async function loadServerCartPage(ctx: ServerCartContext, checkoutAdmitte
     result,
     view,
     snapshots,
+    paymentHeld: paymentHoldsCart(result),
     openPayment: openPaymentUrl(result),
     notice: added && /^\d{1,2}$/u.test(added) ? "Added to your cart."
       : ctx.url.searchParams.has("stopped") ? "Done. You won't get cart reminder emails from this store again." : null,

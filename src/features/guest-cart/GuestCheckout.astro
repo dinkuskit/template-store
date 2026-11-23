@@ -46,7 +46,7 @@ const errorId = (name: string) => `guest-cart-${name.replace(/\[|\]/gu, (bracket
 const invalidAttrs = (name: string) => error && error.field === name
   ? { "aria-invalid": "true" as const, "aria-describedby": errorId(name), autofocus: true }
   : {};
-const canStart = Boolean(checkoutAdmission) && view.checkoutEnabled && !page.openPayment;
+const canStart = Boolean(checkoutAdmission) && view.checkoutEnabled && !page.paymentHeld;
 const shippingText = shippingMode === "free" ? "Free"
   : shippingMode === "flat" && shippingMinor ? formatUsdMinor(shippingMinor) : "Calculated at checkout";
 const address = (kind: "delivery" | "billing") => [
@@ -77,6 +77,13 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
   {page.error && <p data-guest-cart-status role="alert">{page.error}</p>}
   {view.empty ? <p data-guest-cart-empty tabindex="-1">Your cart is empty. <a href="/cart">Return to cart</a> or <a href="/">continue shopping</a>.</p> : (
   <div class="guest-checkout-grid">
+    {page.paymentHeld && !page.openPayment ? (
+      <div class="guest-checkout-vault guest-checkout-actions">
+        <div class="guest-checkout-vault__header"><h2>Payment status</h2></div>
+        <p data-guest-cart-checkout-reason>The payment link is no longer available. We'll hold your cart until we know whether the payment went through.</p>
+        <a data-guest-cart-payment-status href="/checkout">Check payment status</a>
+      </div>
+    ) : (
     <form class="guest-checkout-vault" method="post" action="/checkout" data-checkout-vault data-checkout-form novalidate>
       <div class="guest-checkout-vault__header">
         <p class="guest-checkout-vault__eyebrow">Secure Checkout Vault</p>
@@ -157,10 +164,11 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
         )}
       </div>
     </form>
+    )}
     <aside class="guest-checkout-manifest" aria-labelledby="guest-checkout-manifest-title" data-checkout-manifest>
       <div class="guest-checkout-manifest__header">
         <h2 id="guest-checkout-manifest-title">Order Manifest</h2>
-        <a href="/cart" data-checkout-edit-cart>Edit cart</a>
+        <a href="/cart" data-checkout-edit-cart>{page.paymentHeld ? "View cart" : "Edit cart"}</a>
       </div>
       <div class="guest-checkout-manifest__lines" data-guest-cart-lines>
         {view.lines.map((line) => (
@@ -243,7 +251,7 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
   .guest-checkout-actions [data-guest-cart-checkout]:not(:disabled){background:#c83e2b;border-color:#c83e2b;color:#fffefb}
   .guest-checkout-actions [data-guest-cart-checkout]:disabled{background:#1e293b;border-color:#2d3a54;color:#94a3b8;cursor:not-allowed}
   .guest-checkout-actions [data-guest-cart-checkout-reason]{margin:.5rem 0 0;color:#c2cad8;line-height:1.5}
-  .guest-checkout-actions [data-guest-cart-resume]{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid #3c4c6b;border-radius:.4rem;background:#11192a;color:#fffefb;font-weight:800;text-decoration:underline;text-underline-offset:.2em}
+  .guest-checkout-actions a{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.7rem 1rem;border:1px solid #3c4c6b;border-radius:.4rem;background:#11192a;color:#fffefb;font-weight:800;text-decoration:underline;text-underline-offset:.2em}
   .guest-checkout-actions [data-guest-cart-resume][hidden]{display:none}
   .guest-checkout-manifest{padding:1.25rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow);min-width:0}
   .guest-checkout-manifest[hidden]{display:none}

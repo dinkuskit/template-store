@@ -14,7 +14,7 @@ const { checkoutAdmission = null, page } = Astro.props;
 // Drawn on the server from Commerce's cart (template-cart-real-form-20261113): it works with script off, and the
 // page script only swaps in a fresh copy of this section after a change.
 const { view } = page;
-const canCheckout = view.checkoutEnabled && !page.openPayment;
+const canCheckout = view.checkoutEnabled && !page.paymentHeld;
 ---
 <section class="guest-cart" aria-labelledby="guest-cart-title" data-guest-cart data-guest-cart-page="cart" data-server-cart data-guest-checkout-admitted={checkoutAdmission ? "true" : "false"} data-cart-count={String(page.result.cart?.itemCount ?? 0)}>
   <h1 id="guest-cart-title">Cart</h1>
@@ -53,13 +53,13 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
         <div class="guest-cart-qty">
           <label for={`guest-cart-qty-${line.id}`}>Quantity</label>
           <input form="guest-cart-form" id={`guest-cart-qty-${line.id}`} name={`updates[${line.id}]`} data-guest-cart-qty={line.id} type="number" inputmode="numeric"
-            required min="1" max={String(GUEST_CART_MAX_QUANTITY)} aria-label={`Quantity for ${line.name}`} value={String(line.quantity)} disabled={Boolean(page.openPayment)} />
-          <button type="submit" form="guest-cart-form" data-guest-cart-update={line.id} disabled={Boolean(page.openPayment)}>Update</button>
+            required min="1" max={String(GUEST_CART_MAX_QUANTITY)} aria-label={`Quantity for ${line.name}`} value={String(line.quantity)} disabled={page.paymentHeld} />
+          <button type="submit" form="guest-cart-form" data-guest-cart-update={line.id} disabled={page.paymentHeld}>Update</button>
         </div>
         <form method="post" action="/cart/change" data-cart-change-form>
           <input type="hidden" name="id" value={line.id} />
           <input type="hidden" name="quantity" value="0" />
-          <button type="submit" data-guest-cart-remove={line.id} aria-label={`Remove ${line.name}`} disabled={Boolean(page.openPayment)}>Remove</button>
+          <button type="submit" data-guest-cart-remove={line.id} aria-label={`Remove ${line.name}`} disabled={page.paymentHeld}>Remove</button>
         </form>
       </article>
     ))}
@@ -69,7 +69,12 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
     {page.openPayment ? (
       <>
         <a data-guest-cart-resume href={page.openPayment} rel="noopener noreferrer">Return to secure checkout</a>
-        <p data-guest-cart-checkout-reason>Your payment is open, so this cart is held. Finish paying, or it opens again when the payment expires.</p>
+        <p data-guest-cart-checkout-reason>Your payment is open, so this cart is held. Finish paying, or wait for the store to confirm it ended unpaid.</p>
+      </>
+    ) : page.paymentHeld ? (
+      <>
+        <a data-guest-cart-payment-status href="/cart">Check payment status</a>
+        <p data-guest-cart-checkout-reason>The payment link is no longer available. We'll hold your cart until we know whether the payment went through.</p>
       </>
     ) : canCheckout ? (
       <button type="submit" form="guest-cart-form" name="checkout" value="1" class="guest-cart-checkout__go" data-guest-cart-checkout data-guest-cart-proceed>{view.checkoutLabel}</button>
@@ -95,7 +100,7 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
   .guest-cart-stop button{padding:.6rem .9rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
   .guest-cart-checkout button,.guest-cart-checkout a{display:inline-block;margin:.4rem .6rem .4rem 0;padding:.75rem 1.1rem;border:1.5px solid var(--store-ink-border);border-radius:.4rem;background:var(--store-surface);color:inherit;font:inherit;font-weight:800;box-shadow:3px 3px 0 var(--store-shadow);cursor:pointer;text-decoration:none}
   .guest-cart-checkout .guest-cart-checkout__go{background:var(--dinkus-action-background);color:var(--dinkus-action-color);border-color:var(--dinkus-action-background)}
-  .guest-cart-checkout [data-guest-cart-resume]{text-decoration:underline;text-underline-offset:.2em}
+  .guest-cart-checkout a{text-decoration:underline;text-underline-offset:.2em}
   [data-guest-cart-checkout]:disabled{color:var(--store-muted);box-shadow:none;cursor:not-allowed}
   [data-guest-cart-line]{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1rem 1.25rem;align-items:start;padding:1.5rem;border:1.5px solid var(--store-ink-border);border-radius:var(--store-radius-card);background:var(--store-surface);box-shadow:4px 4px 0 var(--store-shadow);min-width:0;overflow-wrap:anywhere}
   .guest-cart-line-media{width:clamp(5.5rem,18vw,8.5rem);aspect-ratio:4/3;box-sizing:border-box;padding:.35rem;border:1.5px solid var(--store-ink-border);border-radius:.65rem;background:#f7f4ec;box-shadow:inset 0 0 0 1px rgba(25,25,22,.06);overflow:hidden}
@@ -111,7 +116,7 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
   [data-guest-cart-line] button{min-height:44px;padding:.6rem .9rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
   [data-guest-cart-line] form:last-child{grid-column:1/-1;justify-self:start}
   [data-guest-cart-line] button:disabled,[data-guest-cart-qty]:disabled{opacity:.5;cursor:not-allowed}
-  [data-guest-cart-qty]:focus-visible,[data-guest-cart-line] button:focus-visible,[data-guest-cart-resume]:focus-visible,[data-guest-cart-empty]:focus-visible{outline:3px solid #215cc8;outline-offset:3px}
+  [data-guest-cart-qty]:focus-visible,[data-guest-cart-line] button:focus-visible,.guest-cart-checkout a:focus-visible,[data-guest-cart-empty]:focus-visible{outline:3px solid #215cc8;outline-offset:3px}
 </style>
 <script>
   import { hydrateServerCartForms } from "./cart-script.ts";
