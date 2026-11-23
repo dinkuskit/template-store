@@ -45,4 +45,3 @@ export function createPlugin(config: CloudflareEmailConfig) {
 }
 
 export default createPlugin;
-
