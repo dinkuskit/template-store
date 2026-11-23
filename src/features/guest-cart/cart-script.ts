@@ -63,9 +63,20 @@ async function submitAdd(form: HTMLFormElement, submitter: HTMLElement | null): 
   }
 }
 
-/** A failed enhancement still uses the captured plain form. */
-function submitPlainChange(form: HTMLFormElement): void {
+/** A failed enhancement still sends what the shopper submitted, as the plain form would. */
+function submitPlainChange(action: string, body: FormData): void {
+  const form = document.createElement("form");
+  form.method = "post";
+  form.action = action;
   form.hidden = true;
+  for (const [name, value] of body) {
+    if (typeof value !== "string") continue;
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value;
+    form.append(input);
+  }
   document.body.append(form);
   HTMLFormElement.prototype.submit.call(form);
 }
@@ -85,23 +96,28 @@ function replaceCartSection(section: Element, next: Element, beforeLock: Element
     ?? next.querySelector<HTMLElement>("[data-guest-cart-qty]"))?.focus();
 }
 
-/** Send a captured cart-page form and replace the currently attached section. */
-async function submitChange(form: HTMLFormElement, focusBeforeLock: () => Element | null): Promise<void> {
+/** Send a cart-page form's captured data and replace the currently attached section; true when it was replaced. */
+async function submitChange(action: string, body: FormData, focusBeforeLock: () => Element | null): Promise<boolean> {
   try {
-    const response = await fetch(form.action, {
+    const response = await fetch(action, {
       method: "POST",
-      body: new FormData(form),
+      body,
       headers: { accept: "text/html" },
       credentials: "same-origin",
     });
     const html = await response.text();
     const next = new DOMParser().parseFromString(html, "text/html").querySelector("[data-server-cart]");
-    if (!response.ok || !next) return submitPlainChange(form);
+    if (!response.ok || !next) {
+      submitPlainChange(action, body);
+      return false;
+    }
     const section = document.querySelector("[data-server-cart]");
     if (section) replaceCartSection(section, next, focusBeforeLock());
     renderCartCount();
+    return true;
   } catch {
-    submitPlainChange(form);
+    submitPlainChange(action, body);
+    return false;
   }
 }
 
@@ -121,6 +137,7 @@ export function hydrateServerCartForms(): void {
   scope[BOUND] = true;
   let savingChange = false;
   let redrawAfterSave = false;
+  let checkoutAfterSave = false;
 
   async function redrawCart(): Promise<void> {
     const section = document.querySelector("[data-server-cart]");
@@ -151,18 +168,25 @@ export function hydrateServerCartForms(): void {
       event.preventDefault();
       void submitAdd(form, (event as SubmitEvent).submitter ?? null);
     } else if (form.matches("[data-cart-change-form]")) {
+      const submitter = (event as SubmitEvent).submitter;
+      const checkout = submitter instanceof HTMLElement && submitter.matches("[data-guest-cart-checkout]");
       if (savingChange) {
         event.preventDefault();
+        // Check out pressed during a save waits for it, then goes, as Shopify's Horizon theme does.
+        if (checkout) checkoutAfterSave = true;
         return;
       }
       const section = document.querySelector("[data-server-cart]");
-      if (!section) return; // Let the browser submit the plain form.
+      // Check out is the plain form post: the store saves every typed quantity, then opens checkout
+      // (template-cart-checkout-saves-quantities-20261123).
+      if (!section || checkout) return;
       event.preventDefault();
       savingChange = true;
       // Capture before disabling: disabled inputs are not included in form data.
-      const captured = form.cloneNode(true) as HTMLFormElement;
+      const action = form.action;
+      const body = new FormData(form);
       const controls = section.querySelectorAll<HTMLInputElement | HTMLButtonElement>(
-        "[data-cart-change-form] :is([data-guest-cart-qty], button[type=submit]):enabled",
+        ":is([data-guest-cart-qty], [data-guest-cart-update], [data-guest-cart-remove]):enabled",
       );
       // Disabling the focused control can move focus to BODY. Keep its place only until another control takes focus.
       let beforeLock = document.activeElement;
@@ -170,11 +194,18 @@ export function hydrateServerCartForms(): void {
       document.addEventListener("focusin", forgetBeforeLock, { once: true });
       section.setAttribute("aria-busy", "true");
       for (const control of controls) control.disabled = true;
-      void submitChange(captured, () => beforeLock).finally(() => {
+      void submitChange(action, body, () => beforeLock).catch(() => false).then((replaced) => {
         document.removeEventListener("focusin", forgetBeforeLock);
         section.removeAttribute("aria-busy");
         for (const control of controls) control.disabled = false;
         savingChange = false;
+        const goToCheckout = checkoutAfterSave;
+        checkoutAfterSave = false;
+        // The save drew a fresh cart: its Check out sends the saved quantities. A failed save is already leaving the page.
+        if (goToCheckout) {
+          if (replaced) document.querySelector<HTMLButtonElement>("[data-server-cart] [data-guest-cart-checkout]:enabled")?.click();
+          return;
+        }
         if (redrawAfterSave) {
           redrawAfterSave = false;
           void redrawCart();

@@ -73,7 +73,7 @@ test("keyboard Update keeps focus on its line without reclaiming focus from navi
     await expect(line.locator("[data-guest-cart-line-total]")).toHaveText("Line total $48.00");
     await expect(update).toBeFocused();
 
-    await context.route("**/cart/change", async (route) => { await held; await route.continue(); }, { times: 1 });
+    await context.route("**/cart/update", async (route) => { await held; await route.continue(); }, { times: 1 });
     await quantity.fill("3");
     await update.press("Enter");
     await expect(update).toBeDisabled();
@@ -173,6 +173,72 @@ test("the cart works with script off: add, change, remove, and an honest checkou
   await expect(shopper.locator("[data-guest-cart-status][role=alert]")).toBeVisible();
   await shopper.screenshot({ path: resolve(root, "cart-refused-add-script-off.png"), fullPage: true, animations: "disabled" });
   await context.close();
+});
+
+// Shopify's Dawn and Horizon themes make Check out a submit button of the one cart form, so a quantity the shopper
+// typed but did not press Update for is saved before checkout opens (template-cart-checkout-saves-quantities-20261123).
+test("one cart form saves every typed quantity: Update saves them all, and Check out saves them before checkout", async ({ browser }, testInfo) => {
+  test.setTimeout(240_000);
+  const root = resolve("runs/guest-cart/browser", testInfo.project.name);
+  await mkdir(root, { recursive: true });
+  const first = await storeWithProduct(browser, testInfo, "form-first", false);
+  const second = await storeWithProduct(browser, testInfo, "form-second", false);
+  const origin = new URL(testInfo.project.use.baseURL!).origin;
+  for (const javaScriptEnabled of [false, true]) {
+    const context = await browser.newContext({ viewport: testInfo.project.use.viewport, javaScriptEnabled });
+    try {
+      const shopper = await context.newPage();
+      for (const id of [first.itemId, second.itemId]) {
+        expect((await shopper.request.post("/cart/add", { form: { id, quantity: "1" }, headers: { origin } })).ok()).toBe(true);
+      }
+      await shopper.goto("/cart");
+      if (javaScriptEnabled) await shopper.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")]);
+      const rowFor = (id: string) => shopper.locator(`[data-guest-cart-line="${id}"]`);
+      // Every quantity and Update belongs to the one cart form, as Shopify's do (an open checkout's button too;
+      // this store's is the disabled "Checkout unavailable").
+      for (const control of [rowFor(first.itemId).locator("[data-guest-cart-qty]"), rowFor(second.itemId).locator("[data-guest-cart-qty]"), rowFor(second.itemId).getByRole("button", { name: "Update" })]) {
+        expect(await control.evaluate((element: HTMLInputElement | HTMLButtonElement) => element.form?.id)).toBe("guest-cart-form");
+      }
+
+      expect((await rowFor(first.itemId).getByRole("button", { name: "Update" }).boundingBox())?.height).toBeGreaterThanOrEqual(44);
+
+      // The shopper types 2 on the second line and 4 on the first, then presses only the first line's Update.
+      await rowFor(second.itemId).locator("[data-guest-cart-qty]").fill("2");
+      await rowFor(first.itemId).locator("[data-guest-cart-qty]").fill("4");
+      // With script off, Enter sends the form (a click right after typing races the store's smooth scroll there).
+      if (javaScriptEnabled) await rowFor(first.itemId).getByRole("button", { name: "Update" }).click();
+      else await rowFor(first.itemId).locator("[data-guest-cart-qty]").press("Enter");
+      await expect(shopper.locator("[data-guest-cart-subtotal]")).toHaveText("Subtotal $144.00");
+      await expect(rowFor(first.itemId).locator("[data-guest-cart-qty]")).toHaveValue("4");
+      await expect(rowFor(second.itemId).locator("[data-guest-cart-qty]")).toHaveValue("2");
+      expect((await cookieNamed(shopper, "dk_cart_count"))?.value).toBe("6");
+      if (javaScriptEnabled) await expect(rowFor(first.itemId).getByRole("button", { name: "Update" })).toBeFocused();
+      else await expect(shopper).toHaveURL(/\/cart$/u);
+
+      // The proof store takes no payments, so its Check out is the disabled one. The cart form's Check out post
+      // itself saves a typed 3 and opens checkout; 0 removes a line, as Shopify's updates[] does.
+      const checkout = await shopper.request.post("/cart/update", {
+        form: { [`updates[${first.itemId}]`]: "3", [`updates[${second.itemId}]`]: "0", checkout: "1" },
+        headers: { origin },
+        maxRedirects: 0,
+      });
+      expect(checkout.status()).toBe(303);
+      expect(checkout.headers().location).toBe("/checkout");
+      const saved = await (await shopper.request.get("/cart.js")).json();
+      expect(saved).toMatchObject({ ok: true, cart: { itemCount: 3, lines: [{ catalogItemId: first.itemId, quantity: 3 }] } });
+
+      // A blank or broken quantity refuses the whole form and opens nothing.
+      const refused = await shopper.request.post("/cart/update", {
+        form: { [`updates[${first.itemId}]`]: "", checkout: "1" },
+        headers: { origin },
+        maxRedirects: 0,
+      });
+      expect(refused.headers().location).toBe("/cart?cart_error=INVALID_CART");
+      expect((await (await shopper.request.get("/cart.js")).json()).cart.itemCount).toBe(3);
+      await shopper.goto("/cart");
+      await shopper.screenshot({ path: resolve(root, `cart-one-form-${javaScriptEnabled ? "script" : "script-off"}.png`), fullPage: true, animations: "disabled" });
+    } finally { await context.close(); }
+  }
 });
 
 test("with script the same forms change the cart in place, and agents read it as JSON", async ({ browser }, testInfo) => {
@@ -282,7 +348,7 @@ test("a second cart change is ignored until the saved cart is drawn", async ({ b
     }
     await shopper.goto("/cart");
     await shopper.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")]);
-    await context.route("**/cart/change", async (route) => {
+    await context.route("**/cart/update", async (route) => {
       changesSent += 1;
       if (changesSent > 1) return route.continue();
       await held;
@@ -352,7 +418,7 @@ test("a WebMCP change redraws the cart after a held shopper save", async ({ brow
     const section = shopper.locator("[data-server-cart]");
     const quantity = section.locator("[data-guest-cart-qty]");
     const subtotal = section.locator("[data-guest-cart-subtotal-amount]");
-    await shopper.route("**/cart/change", async (route) => {
+    await shopper.route("**/cart/update", async (route) => {
       // Commerce has saved 3 and the server has drawn that cart, but the browser has neither result yet.
       const response = await route.fetch();
       expect(response.ok()).toBe(true);

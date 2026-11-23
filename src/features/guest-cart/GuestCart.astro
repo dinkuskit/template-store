@@ -29,6 +29,9 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
   )}
   {view.snapshotError && <p data-guest-cart-status role="alert">{view.snapshotError}</p>}
   {view.empty && <p data-guest-cart-empty tabindex="-1">Your cart is empty. <a href="/">Continue shopping</a>.</p>}
+  {/* One cart form, Shopify-style (template-cart-checkout-saves-quantities-20261123): every quantity, Update and
+      Check out belong to it, so Check out saves what the shopper typed before it opens checkout. */}
+  <form id="guest-cart-form" method="post" action="/cart/update" data-cart-change-form data-guest-cart-form></form>
   <div data-guest-cart-lines>
     {view.lines.map((line) => (
       <article data-guest-cart-line={line.id}>
@@ -47,13 +50,12 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
           {line.availabilityLabel && <p data-commerce-availability>{line.availabilityLabel}</p>}
           {line.reason && <p data-guest-cart-line-reason={line.reasonCode ?? ""}>{line.reason}</p>}
         </div>
-        <form class="guest-cart-qty" method="post" action="/cart/change" data-cart-change-form>
-          <input type="hidden" name="id" value={line.id} />
+        <div class="guest-cart-qty">
           <label for={`guest-cart-qty-${line.id}`}>Quantity</label>
-          <input id={`guest-cart-qty-${line.id}`} name="quantity" data-guest-cart-qty={line.id} type="number" inputmode="numeric"
+          <input form="guest-cart-form" id={`guest-cart-qty-${line.id}`} name={`updates[${line.id}]`} data-guest-cart-qty={line.id} type="number" inputmode="numeric"
             required min="1" max={String(GUEST_CART_MAX_QUANTITY)} aria-label={`Quantity for ${line.name}`} value={String(line.quantity)} disabled={Boolean(page.openPayment)} />
-          <button type="submit" data-guest-cart-update={line.id} disabled={Boolean(page.openPayment)}>Update</button>
-        </form>
+          <button type="submit" form="guest-cart-form" data-guest-cart-update={line.id} disabled={Boolean(page.openPayment)}>Update</button>
+        </div>
         <form method="post" action="/cart/change" data-cart-change-form>
           <input type="hidden" name="id" value={line.id} />
           <input type="hidden" name="quantity" value="0" />
@@ -70,7 +72,7 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
         <p data-guest-cart-checkout-reason>Your payment is open, so this cart is held. Finish paying, or it opens again when the payment expires.</p>
       </>
     ) : canCheckout ? (
-      <a class="guest-cart-checkout__go" data-guest-cart-checkout data-guest-cart-proceed href="/checkout">{view.checkoutLabel}</a>
+      <button type="submit" form="guest-cart-form" name="checkout" value="1" class="guest-cart-checkout__go" data-guest-cart-checkout data-guest-cart-proceed>{view.checkoutLabel}</button>
     ) : (
       <>
         <button type="button" data-guest-cart-checkout data-guest-cart-proceed disabled>{checkoutAdmission ? view.checkoutLabel : GUEST_CHECKOUT_LABEL}</button>
@@ -106,7 +108,7 @@ const canCheckout = view.checkoutEnabled && !page.openPayment;
   [data-guest-cart-line-reason]{color:var(--store-muted);line-height:1.5}
   .guest-cart-qty{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin:.25rem 0 0;min-width:0}
   [data-guest-cart-qty]{width:4.5rem;max-width:100%;min-height:44px;padding:.45rem .55rem;border:1px solid var(--store-line);border-radius:.4rem;font:inherit;background:var(--store-surface)}
-  [data-guest-cart-line] form button{min-height:44px;padding:.6rem .9rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
+  [data-guest-cart-line] button{min-height:44px;padding:.6rem .9rem;border:1px solid var(--store-line);border-radius:.4rem;background:var(--store-surface);font:inherit;font-weight:800;cursor:pointer}
   [data-guest-cart-line] form:last-child{grid-column:1/-1;justify-self:start}
   [data-guest-cart-line] button:disabled,[data-guest-cart-qty]:disabled{opacity:.5;cursor:not-allowed}
   [data-guest-cart-qty]:focus-visible,[data-guest-cart-line] button:focus-visible,[data-guest-cart-resume]:focus-visible,[data-guest-cart-empty]:focus-visible{outline:3px solid #215cc8;outline-offset:3px}

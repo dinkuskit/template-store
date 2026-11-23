@@ -570,6 +570,31 @@ export function readChangeForm(form: FormData): Readonly<{ id: string; quantity:
     : null;
 }
 
+/**
+ * The cart page's form, Shopify-style: updates[<line id>]=<quantity> for every line (0 removes it), and `checkout`
+ * when the shopper pressed Check out (template-cart-checkout-saves-quantities-20261123). Any blank, non-digit or
+ * too-large quantity refuses the whole form, never read as 0.
+ */
+export function readUpdatesForm(form: FormData): Readonly<{ updates: ReadonlyMap<string, number>; checkout: boolean }> | null {
+  const updates = new Map<string, number>();
+  for (const [name, value] of form.entries()) {
+    const match = /^updates\[(.{1,128})\]$/u.exec(name);
+    if (!match) continue;
+    const digits = typeof value === "string" ? value.trim() : "";
+    if (!/^\d{1,3}$/u.test(digits) || Number(digits) > GUEST_CART_MAX_QUANTITY || updates.has(match[1]!)) return null;
+    updates.set(match[1]!, Number(digits));
+  }
+  return updates.size > 0 && updates.size <= GUEST_CART_MAX_LINES ? { updates, checkout: form.has("checkout") } : null;
+}
+
+/** Set several lines' quantities in one cart write; 0 removes a line, and an id no longer in the cart is ignored. */
+export function setServerCartQuantities(ctx: ServerCartContext, updates: ReadonlyMap<string, number>): Promise<ServerCartResult> {
+  return changeServerCart(ctx, (lines) => lines.flatMap((line) => {
+    const quantity = updates.get(line.catalogItemId);
+    return quantity === undefined ? [line] : quantity > 0 ? [{ catalogItemId: line.catalogItemId, quantity }] : [];
+  }));
+}
+
 /** A script (the page's own or an agent's) asks for JSON; a plain form gets a redirect. */
 export function wantsJson(request: Request, url: URL): boolean {
   return url.pathname.endsWith(".js") || (request.headers.get("accept") ?? "").includes("application/json");
