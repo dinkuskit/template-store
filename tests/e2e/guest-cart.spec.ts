@@ -66,7 +66,7 @@ test("keyboard Update keeps focus on its line without reclaiming focus from navi
     const shopper = await context.newPage();
     await openFocusCart(shopper, testInfo, [itemId]);
     const line = shopper.locator(`[data-guest-cart-line="${itemId}"]`);
-    const update = line.getByRole("button", { name: "Update" });
+    const update = line.getByRole("button", { name: "Update", exact: true });
     const quantity = line.locator("[data-guest-cart-qty]");
     await quantity.fill("2");
     await update.press("Enter");
@@ -94,7 +94,7 @@ test("keyboard Remove puts focus on the first remaining line", async ({ browser 
     const shopper = await context.newPage();
     await openFocusCart(shopper, testInfo, [first.itemId, second.itemId]);
     const line = shopper.locator(`[data-guest-cart-line="${first.itemId}"]`);
-    await line.getByRole("button", { name: `Remove ${first.name}` }).press("Enter");
+    await line.getByRole("button", { name: `Remove ${first.name}`, exact: true }).press("Enter");
     await expect(line).toHaveCount(0);
     await expect(shopper.locator(`[data-guest-cart-line="${second.itemId}"] [data-guest-cart-qty]`)).toBeFocused();
   } finally { await context.close(); }
