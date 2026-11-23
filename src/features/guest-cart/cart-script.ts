@@ -96,7 +96,10 @@ function replaceCartSection(section: Element, next: Element, beforeLock: Element
     ?? next.querySelector<HTMLElement>("[data-guest-cart-qty]"))?.focus();
 }
 
-/** Send a cart-page form's captured data and replace the currently attached section; true when it was replaced. */
+/**
+ * Send a cart-page form's captured data and replace the currently attached section. True only when the store saved
+ * the change: a refused change lands on /cart?cart_error=…, which is drawn here with its message but was not saved.
+ */
 async function submitChange(action: string, body: FormData, focusBeforeLock: () => Element | null): Promise<boolean> {
   try {
     const response = await fetch(action, {
@@ -114,7 +117,7 @@ async function submitChange(action: string, body: FormData, focusBeforeLock: () 
     const section = document.querySelector("[data-server-cart]");
     if (section) replaceCartSection(section, next, focusBeforeLock());
     renderCartCount();
-    return true;
+    return !new URL(response.url || action, location.href).searchParams.has("cart_error");
   } catch {
     submitPlainChange(action, body);
     return false;
@@ -139,22 +142,27 @@ export function hydrateServerCartForms(): void {
   let redrawAfterSave = false;
   let checkoutAfterSave = false;
 
-  async function redrawCart(): Promise<void> {
+  /** Draw the server's current cart; true when it was drawn. */
+  async function redrawCart(): Promise<boolean> {
     const section = document.querySelector("[data-server-cart]");
-    if (!section) return;
+    if (!section) return false;
     if (savingChange) {
       redrawAfterSave = true;
-      return;
+      return false;
     }
     try {
       const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
       const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
       // A save may have started while the refresh was fetching. Don't replace its locked controls.
       if (savingChange) redrawAfterSave = true;
-      else if (response.ok && next) replaceCartSection(section, next);
+      else if (response.ok && next) {
+        replaceCartSection(section, next);
+        return true;
+      }
     } catch {
       // The next visit draws the current cart.
     }
+    return false;
   }
 
   installStorefrontWebMcp({ onCartChanged: (count) => {
@@ -194,21 +202,24 @@ export function hydrateServerCartForms(): void {
       document.addEventListener("focusin", forgetBeforeLock, { once: true });
       section.setAttribute("aria-busy", "true");
       for (const control of controls) control.disabled = true;
-      void submitChange(action, body, () => beforeLock).catch(() => false).then((replaced) => {
+      void submitChange(action, body, () => beforeLock).catch(() => false).then((saved) => {
         document.removeEventListener("focusin", forgetBeforeLock);
         section.removeAttribute("aria-busy");
         for (const control of controls) control.disabled = false;
         savingChange = false;
         const goToCheckout = checkoutAfterSave;
         checkoutAfterSave = false;
-        // The save drew a fresh cart: its Check out sends the saved quantities. A failed save is already leaving the page.
+        const redraw = redrawAfterSave;
+        redrawAfterSave = false;
+        // A refused save keeps the shopper on the cart with its message; a failed one is already leaving the page.
+        if (goToCheckout && !saved) return;
+        // A change made meanwhile (an agent's, through WebMCP) is drawn first, so Check out never writes it back.
+        const drawn = redraw ? redrawCart() : Promise.resolve(true);
         if (goToCheckout) {
-          if (replaced) document.querySelector<HTMLButtonElement>("[data-server-cart] [data-guest-cart-checkout]:enabled")?.click();
-          return;
-        }
-        if (redrawAfterSave) {
-          redrawAfterSave = false;
-          void redrawCart();
+          // The fresh cart's Check out sends the saved quantities. A cart that could not be drawn stays for the shopper.
+          void drawn.then((ok) => {
+            if (ok) document.querySelector<HTMLButtonElement>("[data-server-cart] [data-guest-cart-checkout]:enabled")?.click();
+          });
         }
       });
     }

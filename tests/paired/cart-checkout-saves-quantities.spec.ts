@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { encryptPluginSetting } from "emdash";
 import { pluginUniqueIndexName } from "../e2e/helpers/plugin-index";
+import type { DinkusStorefrontActions } from "../../src/features/guest-cart/webmcp";
 
 // Check out saves what the shopper typed (template-cart-checkout-saves-quantities-20261123), with the real,
 // enabled Check out button of a connected store: the cart page's one form posts every typed quantity to
@@ -99,6 +100,54 @@ test("Check out saves a typed quantity first: with script, with a save still run
   await expect(scripted).toHaveURL(/\/cart$/u);
   held.resolve();
   await onCheckout(scripted, 2);
+
+  // 2b. A save the store refuses while Check out waits keeps the shopper on the cart with its message: checkout
+  // never opens with the old quantity.
+  const bound = () => scripted.waitForFunction(() => (window as unknown as Record<symbol, boolean>)[Symbol.for("dinkuskit.server-cart.bound")]);
+  await scripted.goto("/cart");
+  await bound();
+  const refusedHeld = Promise.withResolvers<void>();
+  await scripted.route("**/cart/update", async (route) => {
+    await refusedHeld.promise;
+    await route.fulfill({ status: 303, headers: { location: "/cart?cart_error=UNAVAILABLE" } });
+  }, { times: 1 });
+  await scripted.locator("[data-guest-cart-qty]").fill("6");
+  await scripted.getByRole("button", { name: "Update" }).click();
+  await expect(scripted.locator("[data-server-cart]")).toHaveAttribute("aria-busy", "true");
+  await scripted.locator("[data-guest-cart-checkout]").click();
+  refusedHeld.resolve();
+  await expect(scripted.locator("[data-guest-cart-status][role=alert]")).toBeVisible();
+  await scripted.waitForTimeout(1_000);
+  await expect(scripted).toHaveURL(/\/cart$/u);
+  expect(await savedQuantity(scripted)).toBe(2);
+  await scripted.screenshot({ path: `${out}/${info.project.name}-2b-refused-save-stays-on-cart.png`, fullPage: true });
+
+  // 2c. An agent's change made while the save is held (WebMCP) is drawn before Check out goes, so Check out never
+  // writes the shopper's older quantity back over it.
+  await scripted.goto("/cart");
+  await bound();
+  const agentHeld = Promise.withResolvers<void>();
+  const agentSaved = Promise.withResolvers<void>();
+  await scripted.route("**/cart/update", async (route) => {
+    const response = await route.fetch();
+    agentSaved.resolve();
+    await agentHeld.promise;
+    await route.fulfill({ response });
+  }, { times: 1 });
+  await scripted.locator("[data-guest-cart-qty]").fill("3");
+  await scripted.getByRole("button", { name: "Update" }).click();
+  await agentSaved.promise;
+  const agent = await scripted.evaluate(async (itemId) => {
+    const { Dinkus } = window as unknown as { Dinkus: { actions: DinkusStorefrontActions } };
+    const before = await Dinkus.actions.getCart();
+    if (!before.ok || before.itemCount !== 3) throw new Error("The agent must see the shopper's saved 3 first");
+    return Dinkus.actions.updateCart({ version: before.version, lines: [{ id: itemId, quantity: 5 }] });
+  }, id);
+  expect(agent).toMatchObject({ ok: true, cart: { itemCount: 5 } });
+  await scripted.locator("[data-guest-cart-checkout]").click();
+  agentHeld.resolve();
+  await onCheckout(scripted, 5);
+  await scripted.screenshot({ path: `${out}/${info.project.name}-2c-agent-change-kept-at-checkout.png`, fullPage: true });
   await scripted.context().close();
 
   // 3. Script off: one plain form post saves the typed 4 and opens checkout.
