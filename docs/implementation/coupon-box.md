@@ -24,6 +24,8 @@ EmDash plugins cannot call each other, so the store's own server code does the a
 
 Only a cart key that Commerce has just accepted names a cart to Coupons. A refused or revoked key never asks, holds or releases anything. When Pay goes ahead with no code, the store calls Coupons' `checkout/release` so the cart's held uses go back. Holds also lapse on their own after an hour.
 
+Coupons counts a use when the store's courier brings Commerce's `order.paid` news, about once a minute. The courier asks for Commerce as `dinkus-commerce`, and finds it under its Registry id through EmDash's `registry_slug`, so the store pins `@dinkuskit/courier` at a commit with that lookup (dinkuskit/courier#4).
+
 The store refuses Coupons' answer unless it comes `from: "dinkus-coupons"`, names every line in the order sent with the price sent, and every amount is whole cents. A refused or missing answer shows "Discount codes can't be checked right now" and keeps checkout waiting.
 
 ## Running it locally
