@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   catalogGuidanceCopy,
   catalogNoticeText,
-  linkedProductPurchasable,
+  linkedProductPurchaseNotice,
   storeBannerText,
 } from "../../src/features/store-shell/checkout-copy.js";
 
@@ -61,18 +61,27 @@ describe("storefront checkout wording", () => {
     expect(readFileSync("src/pages/index.astro", "utf8")).toContain("checkoutAvailable={checkoutAvailable} />");
   });
 
-  it("a linked product is purchasable only with a cart, admitted checkout and a sellable item", () => {
-    expect(linkedProductPurchasable({ offersCart: true, checkoutAvailable: true, sellable: true })).toBe(true);
-    expect(linkedProductPurchasable({ offersCart: false, checkoutAvailable: true, sellable: true })).toBe(false);
-    expect(linkedProductPurchasable({ offersCart: true, checkoutAvailable: false, sellable: true })).toBe(false);
-    expect(linkedProductPurchasable({ offersCart: true, checkoutAvailable: true, sellable: false })).toBe(false);
+  it.each([false, true])("leaves variant sellability (%s) to the picker when checkout is open", (sellable) => {
+    expect(linkedProductPurchaseNotice({ offersCart: true, checkoutAvailable: true, hasVariants: true, sellable })).toBeNull();
+  });
+
+  it.each([false, true])("keeps the checkout notice for products with hasVariants=%s when checkout is closed", (hasVariants) => {
+    expect(linkedProductPurchaseNotice({ offersCart: true, checkoutAvailable: false, hasVariants, sellable: true }))
+      .toMatch(/^Checkout is unavailable/);
+  });
+
+  it("keeps the notice for a sold-out single product or missing cart", () => {
+    const base = { offersCart: true, checkoutAvailable: true, hasVariants: false, sellable: true };
+    expect(linkedProductPurchaseNotice(base)).toBeNull();
+    expect(linkedProductPurchaseNotice({ ...base, sellable: false })).toBe("This product can't be bought right now.");
+    expect(linkedProductPurchaseNotice({ ...base, offersCart: false })).toBe("This product can't be bought right now.");
   });
 
   it("product page drops the editorial-preview notice for buyable Commerce products", () => {
     const page = readFileSync("src/pages/products/[id].astro", "utf8");
     // Linked products are handled before the editorial-preview branch, which is
     // left only for entries with no Commerce product behind them.
-    const linkedBranch = page.indexOf(": linkedProduct ? (purchasable ? null :");
+    const linkedBranch = page.indexOf(": linkedProduct ? (purchaseNotice &&");
     const previewBranch = page.indexOf("This is an editorial preview. It is not purchasable.");
     expect(linkedBranch).toBeGreaterThan(0);
     expect(previewBranch).toBeGreaterThan(linkedBranch);

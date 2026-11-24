@@ -5,7 +5,7 @@ import { getEmDashCollection, type PortableTextBlock } from "emdash";
 import { Blocks, PortableText, type BlockValue } from "emdash/ui";
 import { acquireGuestCheckoutAdmission } from "../../features/guest-cart/checkout-admission.js";
 import { canAddCommerceProductToCart } from "../../features/guest-cart/index.js";
-import { linkedProductPurchasable, storeBannerText } from "../../features/store-shell/checkout-copy.js";
+import { linkedProductPurchaseNotice, storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { AddToCart } from "../../features/guest-cart/ui.ts";
 import ProductGallery from "../../features/commerce-catalog/ProductGallery.astro";
 import { productDetailComponents } from "../../features/store-shell/blocks/index.js";
@@ -137,11 +137,10 @@ const checkoutAvailable = Boolean(playgroundCheckoutAdmission(isPlayground, play
     runtime: Astro.locals.emdash,
     request: Astro.request,
   }).catch(() => null));
-// A Commerce-linked product on a shipping store says nothing extra when it can
-// be bought; the notice appears only when it really cannot.
-const purchasable = Boolean(cartProduct) && linkedProductPurchasable({
+const purchaseNotice = linkedProductPurchaseNotice({
   offersCart,
   checkoutAvailable,
+  hasVariants: variants.length > 0,
   sellable: cartProduct ? canAddCommerceProductToCart(cartProduct) : false,
 });
 // Shoppers see the linked Commerce product's name, which publishing the page
@@ -261,7 +260,7 @@ const variantJsonLd = productJsonLd && linkedProduct && item && productName && v
             <p class="product-detail__status" data-product-status data-availability-status={linkedStatus ?? unmanaged?.storefront.status}
               role={variantOptions.length ? "status" : undefined} aria-atomic={variantOptions.length ? "true" : undefined}>{status}</p>
             {cartProduct && offersCart && <AddToCart product={cartProduct} variants={variants} productId={linkedProduct?.id} formId={addFormId} />}
-            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>{offersCart ? "Demo product. Checkout is unavailable." : "Demo product. Cart and checkout are unavailable."}</p> : linkedProduct ? (purchasable ? null : <p class="product-detail__notice" data-not-purchasable>{checkoutAvailable ? "This product can't be bought right now." : "Checkout is unavailable right now, so this product can't be bought."}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
+            {lookupUnavailable ? <p class="product-detail__notice" role="status">Product availability is temporarily unavailable. Please try again.</p> : sandboxCheckout ? <p class="product-detail__notice" data-sandbox-checkout-available>Test-mode checkout. No real charges.</p> : linkedProduct && profile !== "shipping" ? <p class="product-detail__notice" data-checkout-unavailable>{offersCart ? "Demo product. Checkout is unavailable." : "Demo product. Cart and checkout are unavailable."}</p> : linkedProduct ? (purchaseNotice && <p class="product-detail__notice" data-not-purchasable>{purchaseNotice}</p>) : item.availabilitySource === "preview" || !demonstrations ? <p class="product-detail__notice">This is an editorial preview. It is not purchasable.</p> : <p class="product-detail__notice">Availability is shown for this local integration proof. Purchasing is not available here.</p>}
             {category && <a class="product-detail__back" href={categoryPath(category.slug)}>← Back to {category.name}</a>}
           </div>
         </article>
