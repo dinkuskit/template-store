@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 import { openProductsList, sellProduct } from "./helpers/product-page";
-import { keptRating, requireReviews, seedAskedOrder } from "./helpers/reviews";
+import { keptRating, requireReviews, REVIEWS_ID, seedAskedOrder } from "./helpers/reviews";
 
 const proofRoot = resolve("runs/product-reviews-20261122/browser");
 
@@ -135,4 +135,53 @@ test("a product page shows its rating under the title and its reviews below, and
   trace.push({ step: "another product with no reviews", rating: "none shown", jsonLd: "no aggregateRating" });
   await writeFile(resolve(root, "trace.json"), JSON.stringify(trace, null, 2));
   console.log(JSON.stringify({ project: testInfo.project.name, trace }));
+});
+
+test("the agent catalog carries only the published product rating", async ({ page, request }, testInfo) => {
+  test.setTimeout(180_000);
+  requireReviews();
+  const tag = testInfo.project.name.includes("mobile") ? "mobile" : "desktop";
+  const admin = await page.context().browser()!.newContext({ baseURL: testInfo.project.use.baseURL });
+  expect((await admin.request.get("/_emdash/api/setup/dev-bypass")).ok()).toBe(true);
+  const productName = `Catalog Rating Mug ${tag}`;
+  const slug = `catalog-rating-mug-${tag}`;
+  const reviewed = await sellProduct(admin.request, { title: productName, sku: slug.toUpperCase(), slug, regular: "18.00" });
+
+  async function feedRow() {
+    const response = await request.get("/feeds/agent-catalog.json");
+    expect(response.status()).toBe(200);
+    expect(response.headers()["cache-control"]).toBe("no-store");
+    const { products } = await response.json() as { products: { id: string; rating?: unknown }[] };
+    const row = products.find(product => product.id === reviewed.itemId);
+    expect(row).toBeDefined();
+    return row!;
+  }
+
+  const before = await feedRow();
+  expect(before).not.toHaveProperty("rating");
+  const asked = seedAskedOrder(`catalog-rating-${tag}`, [{ productId: reviewed.itemId, productName }]);
+  await sendReview(page, asked.link(reviewed.itemId), 4, "The review text stays on the product page.");
+  await page.goto(`/products/${slug}`);
+  const pdp = page.locator("[data-product-rating]");
+  await expect(pdp).toHaveAttribute("data-product-rating", "4.0");
+  const published = await feedRow();
+  console.log(JSON.stringify({ project: testInfo.project.name, feed: 200, pdp: "4.0", before: before.rating ?? null, published: published.rating ?? null }));
+  expect(published).toEqual({ ...before, rating: { value: 4, scale_min: 1, scale_max: 5, count: 1 } });
+
+  const interact = async (data: Record<string, unknown>) => {
+    const response = await admin.request.post(`/_emdash/api/plugins/${REVIEWS_ID}/admin`, {
+      headers: { "X-EmDash-Request": "1" }, data: { page: "/reviews", ...data },
+    });
+    expect(response.status()).toBe(200);
+    return (await response.json()).data;
+  };
+  const queue = await interact({ type: "page_load" });
+  const row = queue.blocks.find((block: { type: string }) => block.type === "table").rows
+    .find((item: { review: { label: string } }) => item.review.label.includes(productName));
+  expect(row).toBeDefined();
+  expect((await interact({ type: "block_action", action_id: `hide:${row.review.value}` })).toast?.type).toBe("success");
+  const hidden = await feedRow();
+  expect(hidden).toEqual(before);
+  console.log(JSON.stringify({ project: testInfo.project.name, afterHide: hidden.rating ?? null }));
+  await admin.close();
 });

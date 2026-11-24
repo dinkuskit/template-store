@@ -1,6 +1,8 @@
 import { formatMinorUnitsAsDecimal } from "@dinkuskit/commerce/features/structured-data";
 import type { ProductFeedFacts } from "@dinkuskit/commerce/features/feeds";
+import { readInstalledCatalogListing } from "../commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
+import { readPublishedProductRatings, type PublishedProductRating } from "../product-reviews/index.js";
 import { STORE_TITLE } from "../store-shell/index.js";
 import { canonicalUrl } from "../store-shell/structured-data.js";
 import { buildInstalledCommerceFeedFacts, type CommerceFeedContext } from "./index.js";
@@ -85,6 +87,7 @@ export interface AgentCatalogProductEntry {
   readonly gtin?: string;
   readonly mpn?: string;
   readonly aiProjection?: ProductAiProjection;
+  readonly rating?: PublishedProductRating;
 }
 
 export interface AgentCatalogFeed {
@@ -239,6 +242,23 @@ export function buildAgentCatalogFeed(options: StorefrontAgentFeedOptions): Agen
     },
     products,
     policies: [...(options.policies ?? [])],
+  };
+}
+
+/** Only the JSON catalog joins ratings; other feeds keep their existing projections. */
+export async function buildInstalledAgentCatalogFeed(context: CommerceFeedContext): Promise<AgentCatalogFeed> {
+  const options = await buildInstalledStorefrontAgentFeedOptions(context);
+  const listed = await readInstalledCatalogListing(context);
+  const feed = buildAgentCatalogFeed(listed ? options : { ...options, products: [] });
+  if (!feed.products.length) return feed;
+  const ratings = await readPublishedProductRatings(context.runtime, new URL(context.request.url), feed.products.map(row => row.id));
+  if (!ratings.size) return feed;
+  return {
+    ...feed,
+    products: feed.products.map(row => {
+      const rating = ratings.get(row.id);
+      return rating ? { ...row, rating } : row;
+    }),
   };
 }
 

@@ -1,9 +1,5 @@
 import type { APIRoute } from "astro";
-import {
-  buildAgentCatalogFeed,
-  buildInstalledStorefrontAgentFeedOptions,
-} from "../../features/commerce-feeds/index.js";
-import { readInstalledCatalogListing } from "../../features/commerce-catalog/installed.js";
+import { buildInstalledAgentCatalogFeed } from "../../features/commerce-feeds/index.js";
 
 /**
  * The store's product catalog as JSON, for programs: the DinkusKit cross-store
@@ -16,13 +12,8 @@ import { readInstalledCatalogListing } from "../../features/commerce-catalog/ins
  */
 export const GET: APIRoute = async ({ locals, request, site }) => {
   try {
-    const options = await buildInstalledStorefrontAgentFeedOptions({
-      runtime: locals.emdash,
-      request,
-      site,
-    });
-    const listed = await readInstalledCatalogListing({ runtime: locals.emdash, request });
-    return new Response(JSON.stringify(buildAgentCatalogFeed(listed ? options : { ...options, products: [] })), {
+    const feed = await buildInstalledAgentCatalogFeed({ runtime: locals.emdash, request, site });
+    return new Response(JSON.stringify(feed), {
       headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
     });
   } catch {
