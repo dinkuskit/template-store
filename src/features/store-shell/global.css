@@ -909,6 +909,9 @@
   line-height: 1.6;
   color: var(--store-muted);
 }
+.guest-checkout-return[data-guest-checkout-return-state="held"] > [data-guest-checkout-return-status] {
+  max-width: 62ch;
+}
 .guest-checkout-return [data-guest-checkout-return-status][role="alert"] {
   color: var(--store-alert-ink);
   background: var(--store-alert);
@@ -1141,9 +1144,9 @@
   display: inline-flex;
   align-items: center;
   padding: 0.32rem 0.72rem;
-  border: 2.5px solid var(--store-accent);
+  border: 2.5px solid currentColor;
   border-radius: 0.28rem;
-  color: var(--store-accent);
+  color: color-mix(in oklch, var(--store-accent) 65%, var(--store-ink));
   font-family: var(--font-mono);
   font-size: 0.74rem;
   font-weight: 900;

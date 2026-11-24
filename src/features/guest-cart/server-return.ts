@@ -12,6 +12,7 @@ export type CheckoutReturn =
   | Readonly<{ kind: "paid"; order: ConfirmedOrderView }>
   | Readonly<{ kind: "confirming"; refreshUrl: string; refreshSeconds: number }>
   | Readonly<{ kind: "slow" }>
+  | Readonly<{ kind: "held" }>
   | Readonly<{ kind: "not-paid"; redirect: string }>
   | Readonly<{ kind: "no-cart" }>
   | Readonly<{ kind: "unavailable" }>;
@@ -46,6 +47,8 @@ export async function loadCheckoutReturn(ctx: ServerCartContext): Promise<Checko
       refreshSeconds: CONFIRMING_REFRESH_SECONDS,
     };
   }
+  // A recoverable attempt has neither a confirmed order nor permission to retry checkout.
+  if (checkout.state === "recoverable-failure" && checkout.attemptId) return { kind: "held" };
   return { kind: "not-paid", redirect: "/cart?cart_error=NOT_PAID" };
 }
 
