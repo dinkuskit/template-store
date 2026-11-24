@@ -69,7 +69,7 @@
     "@astrojs/cloudflare": "14.1.7",
     "@astrojs/node": "11.0.2",
     "@astrojs/react": "6.0.1",
-    "@dinkuskit/courier": "github:dinkuskit/courier#33261822c6990a0fead7316235108793732605b9",
+    "@dinkuskit/courier": "github:dinkuskit/courier#9016d1e880315303708a0f113fe67d3e36942591",
     "@dinkuskit/inventory": "github:dinkuskit/inventory#5889c7d59398376da51ac400d5c1f1214aba2c6b",
     "@emdash-cms/cloudflare": "1.5.0",
     "astro": "7.1.3",

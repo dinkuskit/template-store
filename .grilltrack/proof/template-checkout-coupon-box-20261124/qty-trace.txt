@@ -1,0 +1,15 @@
+# 1. The owner makes SPRING25 (25% off), FREE100 (100% off, combines with shipping) and FREESHIP (free shipping, combines with order codes)
+create: 200 200 200
+
+# 2. The shopper applies SPRING25 for one $18 mug
+applied: ["SPRING25 −$4.50\nRemove"] discount: ["Discount\nSPRING25\n−$4.50"]
+
+# 3. In another tab the shopper changes the mug to 2 on the cart page
+cart tab quantity now: 2
+Commerce cart lines: []
+
+# 4. Back in the first tab (still showing -$4.50 for one mug) the shopper presses Pay
+Pay answered: https://checkout.stripe.com/c/pay/cs_test_a3d637e983b44c19926a74f53779750b | alerts: []
+Commerce attempt: {"phase":"paying","pricing":{"attemptId":"a3d637e9-83b4-4c19-926a-74f53779750b","bindingRef":"paired-proof-binding","lines":[{"catalogItemId":"0bbbf270-4bc3-4a31-b4da-33c276e7958c","quantity":2,"name":"Dinkus Demo Ceramic Mug","unitPrice":{"currency":"USD","minor":"1800"}}],"total":{"currency":"USD","minor":"3200"},"pricing":{"schema":"dinkuskit.commerce.checkout-pricing/v1","merchandiseSubtotal":{"currency":"USD","minor":"3600"},"couponDiscount":{"currency":"USD","minor":"900"},"netMerchandise":{"currency":"USD","minor":"2700"},"shipping":{"configurationId":"paired-proof-flat","revision":1,"mode":"flat","charge":{"currency":"USD","minor":"500"}},"finalTotal":{"currency":"USD","minor":"3200"},"lines":[{"catalogItemId":"0bbbf270-4bc3-4a31-b4da-33c276e7958c","quantity":2,"unitPrice":{"currency":"USD","minor":"1800"},"lineSubtotal":{"currency":"USD","minor":"3600"},"discount":{"currency":"USD","minor":"900"},"netAmount":{"currency":"USD","minor":"2700"}}]},"paymentWindow":{"minSeconds":1800,"maxSeconds":1860},"paymentMethods":["card"]}}
+holds before/after: 0 1 | Payments POSTs before/after: 0 2
+Payments last POST body: {"at":"2026-11-24T17:04:25.448Z","host":"payments.dinkuskit.com","method":"POST","path":"/v1/checkout/lookup","attemptId":"a3d637e9-83b4-4c19-926a-74f53779750b","outcome":"open"}

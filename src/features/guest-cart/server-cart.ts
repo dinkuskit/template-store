@@ -9,6 +9,7 @@ import {
   type GuestCheckoutProjection,
 } from "./checkout-protocol.js";
 import { canDispatchInstalledGuestCheckout } from "./checkout-admission.js";
+import { withStoreRuntime, type AddonAnswer } from "../coupons/index.js";
 import { GUEST_CART_MAX_LINES, GUEST_CART_MAX_QUANTITY } from "./intent.js";
 import { checkoutLimited, playgroundCheckoutConfigured, visitorIp } from "../playground-checkout/index.js";
 import { withCheckoutVisitor } from "../playground-checkout/payments-port.js";
@@ -167,7 +168,7 @@ type CommerceAnswer =
 /** One in-process call to a Commerce guest route; the answer is size-bounded and validated like the old relay. */
 async function callCommerce(
   ctx: ServerCartContext,
-  route: "prepare" | "cart" | "start",
+  route: "prepare" | "cart" | "start" | "addons",
   body: unknown,
   key: string | null,
 ): Promise<CommerceAnswer> {
@@ -177,8 +178,14 @@ async function callCommerce(
     return { ok: false, code: "UNAVAILABLE" };
   }
   const origin = trustedStoreOrigin(ctx);
-  const path = `checkout/guest/${route}`;
-  const dispatch = () => runtime.handlePublicPluginApiRoute!(
+  // The add-ons door is private: only the store's own code, with nobody signed in, may use it
+  // (commerce-addons-door-20261124). It runs exactly what the public start runs.
+  const path = route === "addons" ? "checkout/addons/start" : `checkout/guest/${route}`;
+  const send = route === "addons"
+    ? (id: string, method: string, at: string, request: Request) =>
+      withStoreRuntime((store) => store.handlePluginApiRoute(id, method, at, request)).then((answer) => answer ?? { success: false, error: { code: "UNAVAILABLE" } })
+    : runtime.handlePublicPluginApiRoute.bind(runtime);
+  const dispatch = () => send(
     COMMERCE_REGISTRY_RUNTIME_ID,
     "POST",
     path,
@@ -419,7 +426,12 @@ export function setServerCartQuantity(ctx: ServerCartContext, catalogItemId: str
  * Start checkout from the saved cart with the shopper's contact. The playground's limiter and visitor-IP rule
  * apply here as they do on the plugin route.
  */
-export async function startServerCheckout(ctx: ServerCartContext, contact: GuestCheckoutContact, news = false): Promise<ServerCartResult> {
+export async function startServerCheckout(
+  ctx: ServerCartContext,
+  contact: GuestCheckoutContact,
+  news = false,
+  addons: readonly AddonAnswer[] = [],
+): Promise<ServerCartResult> {
   const key = readCartKey(ctx.cookies);
   if (!key) return failure("NO_CART");
   if (isPlayground(ctx.locals) && playgroundCheckoutConfigured(envOf(ctx.locals))) {
@@ -428,7 +440,9 @@ export async function startServerCheckout(ctx: ServerCartContext, contact: Guest
     if (await checkoutLimited(ctx.request, limiter)) return failure("RATE_LIMITED");
   }
   // news: the shopper ticked "Email me with news and offers" (commerce-abandoned-cart-email-20261122).
-  const answer = await callCommerce(ctx, "start", news ? { contact, news: true } : { contact }, key);
+  const body = { contact, ...(news ? { news: true } : {}), ...(addons.length ? { addons } : {}) };
+  // With a coupon's answer, checkout starts through Commerce's add-ons door, which checks every line's price again.
+  const answer = await callCommerce(ctx, addons.length ? "addons" : "start", body, key);
   if (!answer.ok) {
     const latest = await readServerCart(ctx);
     const extra = latest.ok ? { cart: latest.cart, checkout: latest.checkout } : {};

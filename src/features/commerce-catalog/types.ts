@@ -39,6 +39,8 @@ export interface PublicCommerceVariant {
   selections: readonly (readonly [string, string])[];
   unitMinor: string;
   priceText: string;
+  /** Commerce says this member's price is its Sale price (commerce-sale-flag-20261124). */
+  onSale?: true;
   availability: Pick<StorefrontAvailabilityResult, "status" | "sellable">;
   /** The member's own fulfillment as Commerce projects it; absent when Commerce sends none or an unknown value. */
   fulfillment?: "physical" | "digital";

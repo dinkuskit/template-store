@@ -6,6 +6,8 @@ export type PublicPriceView = Readonly<{
   saleText: string | null;
   /** USD minor units the shopper pays for one unit, when Commerce projects it (cart totals). */
   unitMinor?: string;
+  /** Commerce says this price is the item's Sale price (commerce-sale-flag-20261124); absent for a Regular price. Coupons reads it. */
+  onSale?: true;
 }>;
 
 export function formatUsdMinor(minor: string): string {

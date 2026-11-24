@@ -1,0 +1,15 @@
+# 1. The owner makes SPRING25 (25% off, 100 uses)
+create: 200
+
+# 2. The shopper presses Pay with SPRING25: authorized, one use held, checkout attempt open
+after the authorized Pay: {"holds":["c_8319dcc5434bc5881022 until 2026-11-24T17:51:56.256Z"],"attempts":["fd07eab8 paying"],"paymentsPosts":2,"capability":true}
+
+# 3. Commerce stops accepting the key: its capability record is removed (a key Commerce no longer has answers CAPABILITY_DENIED)
+after revocation: {"holds":["c_8319dcc5434bc5881022 until 2026-11-24T17:51:56.256Z"],"attempts":["fd07eab8 paying"],"paymentsPosts":2,"capability":false}
+
+# 4. The same browser, with the revoked key, posts the checkout form
+Pay with SPRING25: HTTP 422, redirect none, empty cart drawn: true, coupon box taking codes: false
+Pay with no code (would release the cart's holds if the key were accepted): HTTP 422, redirect none, empty cart drawn: true, coupon box taking codes: false
+Apply SPRING25: HTTP 422, redirect none, empty cart drawn: true, coupon box taking codes: false
+after all three: {"holds":["c_8319dcc5434bc5881022 until 2026-11-24T17:51:56.256Z"],"attempts":["fd07eab8 paying"],"paymentsPosts":2,"capability":false}
+holds, attempts and Payments calls unchanged since revocation: true

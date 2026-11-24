@@ -1,0 +1,20 @@
+# 1. Commerce's public catalog (the real Registry build from this branch) flags the sale cap and not the mug
+{"name":"Dinkus Demo Structured Cap","price":{"currency":"USD","minor":"2400"},"onSale":true}
+{"name":"Dinkus Demo Ceramic Mug","price":{"currency":"USD","minor":"1800"},"onSale":"(absent)"}
+
+# 2. The owner makes NOSALE20: 20% off, with "Don't discount items already on sale" ticked
+create: 200
+stored: [{"code":"NOSALE20","excludeSale":true}]
+
+# 3. A cart with the $24 sale cap and the $18 regular mug; the shopper applies NOSALE20
+checkout page: {"applied":["NOSALE20 −$3.60\nRemove"],"refused":[],"discount":["Discount\nNOSALE20\n−$3.60"]}
+
+# 4. Pay: Commerce gets the answer, and Payments gets the per-line amounts off
+Pay answered: https://checkout.stripe.com/c/pay/cs_test_(stand-in session) | alerts: []
+Commerce's saved attempt (what it sends Payments), read from the store database before the server stopped:
+  addons [{"from":"dinkus-coupons","codes":["NOSALE20"]}]; subtotal 4200, discount 360, net 3840, shipping 500, total 4340
+  line cap (on sale):  unit 2400, discount 0,   net 2400
+  line mug (regular):  unit 1800, discount 360, net 1440
+
+# 5. A cart with only the sale cap; the shopper applies NOSALE20
+checkout page: {"applied":[],"refused":["nosale20: This code doesn't apply to anything in your cart."],"discount":[]} | alerts: ["nosale20: This code doesn't apply to anything in your cart."]
