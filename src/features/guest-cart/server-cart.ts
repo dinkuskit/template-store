@@ -10,6 +10,7 @@ import {
 } from "./checkout-protocol.js";
 import { canDispatchInstalledGuestCheckout } from "./checkout-admission.js";
 import { withStoreRuntime, type AddonAnswer } from "../coupons/index.js";
+import type { TaxAnswer } from "../tax/index.js";
 import { GUEST_CART_MAX_LINES, GUEST_CART_MAX_QUANTITY } from "./intent.js";
 import { checkoutLimited, playgroundCheckoutConfigured, visitorIp } from "../playground-checkout/index.js";
 import { withCheckoutVisitor } from "../playground-checkout/payments-port.js";
@@ -430,7 +431,7 @@ export async function startServerCheckout(
   ctx: ServerCartContext,
   contact: GuestCheckoutContact,
   news = false,
-  addons: readonly AddonAnswer[] = [],
+  addons: readonly (AddonAnswer | TaxAnswer)[] = [],
 ): Promise<ServerCartResult> {
   const key = readCartKey(ctx.cookies);
   if (!key) return failure("NO_CART");
@@ -441,7 +442,8 @@ export async function startServerCheckout(
   }
   // news: the shopper ticked "Email me with news and offers" (commerce-abandoned-cart-email-20261122).
   const body = { contact, ...(news ? { news: true } : {}), ...(addons.length ? { addons } : {}) };
-  // With a coupon's answer, checkout starts through Commerce's add-ons door, which checks every line's price again.
+  // With a coupon's or Tax's answer, checkout starts through Commerce's add-ons door, which checks every line's price
+  // again, and that a tax answer priced the order's own address.
   const answer = await callCommerce(ctx, addons.length ? "addons" : "start", body, key);
   if (!answer.ok) {
     const latest = await readServerCart(ctx);
