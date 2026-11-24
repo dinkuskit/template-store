@@ -81,7 +81,8 @@ the owner's catalog switch is on, with or without a feed channel
 (GrillTrack `template-agent-feed-lists-all-20261122`). The JSON agent feed
 also carries the optional UCP `rating` (`value`, `scale_min`, `scale_max`,
 `count`) from the installed Reviews public rating route for the product
-family. It omits missing or unavailable ratings and never includes buyer
+family. After one second of rating reads, the feed returns the Commerce
+catalog with the ratings it has already received. It never includes buyer
 names, review text, or order data. Commerce still decides which products
 appear; an opted-out feed does not query Reviews.
 

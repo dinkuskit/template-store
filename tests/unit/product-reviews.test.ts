@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { moreReviewsHref, ratingText, readProductReviews, readPublishedProductRatings, reviewsHeading, reviewsJsonLd, starFill } from "../../src/features/product-reviews/index.js";
 import { REVIEWS_REGISTRY_RUNTIME_ID } from "../../src/features/review-form/index.js";
@@ -50,6 +50,50 @@ it("keeps rating reads bounded and does not drop healthy products when a sibling
   expect(seen).toEqual(ids);
   expect(peak).toBe(4);
   expect([...ratings.keys()]).toEqual(ids.slice(3));
+});
+
+it("returns on the feed's rating deadline even when the first Reviews read never answers", async () => {
+  vi.useFakeTimers();
+  try {
+    const dispatch = vi.fn(() => new Promise<never>(() => {}));
+    let result: Awaited<ReturnType<typeof readPublishedProductRatings>> | undefined;
+    void readPublishedProductRatings({ handlePublicPluginApiRoute: dispatch }, new URL(PAGE), ["first", "second"])
+      .then(value => { result = value; });
+    await vi.advanceTimersByTimeAsync(999);
+    expect(result).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(result).toEqual(new Map());
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps ratings read before the deadline and starts no more batches after it", async () => {
+  vi.useFakeTimers();
+  try {
+    const ids = Array.from({ length: 6 }, (_, index) => `product-${index}`);
+    const late = Promise.withResolvers<unknown>();
+    const reads: string[] = [];
+    const dispatch = async (_id: string, _method: string, _route: string, request: Request) => {
+      const productId = new URL(request.url).searchParams.get("product")!;
+      reads.push(productId);
+      return productId === ids[2] ? late.promise : raw({ productId, rating: LIST.rating });
+    };
+    let result: Awaited<ReturnType<typeof readPublishedProductRatings>> | undefined;
+    void readPublishedProductRatings({ handlePublicPluginApiRoute: dispatch }, new URL(PAGE), ids)
+      .then(value => { result = value; });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect([...(result?.keys() ?? [])]).toEqual([ids[0], ids[1], ids[3], ids[4]]);
+    expect(reads).toEqual(ids.slice(0, 5));
+    late.resolve(raw({ productId: ids[2], rating: LIST.rating }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(result?.has(ids[2]!)).toBe(false);
+    expect(reads).toEqual(ids.slice(0, 5));
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 describe("a product page's rating and reviews", () => {

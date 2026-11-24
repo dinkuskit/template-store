@@ -9,6 +9,8 @@ import { REVIEWS_REGISTRY_RUNTIME_ID } from "../review-form/index.js";
 const ROUTE = "list";
 const RATING_ROUTE = "rating";
 const RATING_CONCURRENCY = 4;
+// Leave the rest of the Catalog worker's feed fetch budget for the authoritative Commerce response.
+const RATING_BUDGET_MS = 1000;
 const MAX_RESPONSE_BYTES = 256 * 1024;
 /** Reviews answers 20 reviews a page; more than this in one answer is not a page of reviews. */
 const MAX_REVIEWS = 50;
@@ -93,12 +95,14 @@ export async function readPublishedProductRatings(runtime: Runtime | null | unde
   const ids = [...new Set(productIds)].filter(id => id.length > 0 && id.length <= 200);
   if (!ids.length || typeof runtime?.handlePublicPluginApiRoute !== "function") return ratings;
   const dispatch = runtime.handlePublicPluginApiRoute.bind(runtime);
+  let timedOut = false;
   const read = async (id: string) => {
     try {
       const address = new URL(`/_emdash/api/plugins/${REVIEWS_REGISTRY_RUNTIME_ID}/${RATING_ROUTE}`, url);
       address.searchParams.set("product", id);
       const result = await dispatch(REVIEWS_REGISTRY_RUNTIME_ID, "GET", RATING_ROUTE,
         new Request(address, { headers: { accept: "application/json" } }));
+      if (timedOut) return false;
       const envelope = record(result);
       if (envelope?.success === false && record(envelope.error)?.code === "NOT_FOUND") return false;
       const data = record(bodyOf(result));
@@ -109,10 +113,21 @@ export async function readPublishedProductRatings(runtime: Runtime | null | unde
     }
     return true;
   };
-  // The anonymous runtime has no plugin metadata; a missing public route is store-wide.
-  if (!await read(ids[0]!)) return ratings;
-  for (let i = 1; i < ids.length; i += RATING_CONCURRENCY) {
-    await Promise.all(ids.slice(i, i + RATING_CONCURRENCY).map(read));
+  const collect = async () => {
+    // The anonymous runtime has no plugin metadata; a missing public route is store-wide.
+    if (!await read(ids[0]!)) return;
+    for (let i = 1; !timedOut && i < ids.length; i += RATING_CONCURRENCY) {
+      await Promise.all(ids.slice(i, i + RATING_CONCURRENCY).map(read));
+    }
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<void>(resolve => {
+    timer = setTimeout(() => { timedOut = true; resolve(); }, RATING_BUDGET_MS);
+  });
+  try {
+    await Promise.race([collect(), deadline]);
+  } finally {
+    clearTimeout(timer);
   }
   return ratings;
 }
