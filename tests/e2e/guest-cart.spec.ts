@@ -359,6 +359,82 @@ test("returning to the cart draws changes saved in another tab", async ({ browse
   } finally { await context.close(); }
 });
 
+for (const firstResponse of ["return", "agent"] as const) {
+  test(`a WebMCP redraw wins when the ${firstResponse} response arrives first`, async ({ browser }, testInfo) => {
+    test.setTimeout(180_000);
+    const { itemId } = await storeWithProduct(browser, testInfo, `return-webmcp-${firstResponse}`, false);
+    const context = await browser.newContext({ viewport: testInfo.project.use.viewport });
+    const arrivals = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+    const releases = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
+    try {
+      const shopper = await context.newPage();
+      await openFocusCart(shopper, testInfo, [itemId]);
+      const quantity = shopper.locator("[data-guest-cart-qty]");
+      const subtotal = shopper.locator("[data-guest-cart-subtotal-amount]");
+      await expect(quantity).toHaveValue("1");
+      await expect(subtotal).toHaveText("$24.00");
+
+      const updated = await context.request.post("/cart/update", {
+        form: { [`updates[${itemId}]`]: "3" },
+        headers: { origin: new URL(testInfo.project.use.baseURL!).origin },
+      });
+      expect(updated.ok()).toBe(true);
+
+      await shopper.evaluate(() => {
+        // Signal one task after the real body is read, so the first redraw has finished before releasing the second.
+        const fetchCart = window.fetch;
+        let reads = 0;
+        window.fetch = async (input, init) => {
+          const response = await fetchCart(input, init);
+          if (input === "/cart") {
+            const text = response.text.bind(response);
+            response.text = async () => {
+              const html = await text();
+              setTimeout(() => { document.documentElement.dataset.cartReads = String(++reads); }, 0);
+              return html;
+            };
+          }
+          return response;
+        };
+      });
+      let requests = 0;
+      await shopper.route("**/cart", async (route) => {
+        const index = requests++;
+        const response = await route.fetch();
+        expect(response.ok()).toBe(true);
+        arrivals[index].resolve();
+        await releases[index].promise;
+        await route.fulfill({ response });
+      });
+      await shopper.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
+      await arrivals[0].promise;
+      const agent = await shopper.evaluate(async (id) => {
+        const { Dinkus } = window as unknown as { Dinkus: { actions: DinkusStorefrontActions } };
+        const before = await Dinkus.actions.getCart();
+        if (!before.ok || before.itemCount !== 3) throw new Error("The return refresh must have been drawn from three saved items");
+        return Dinkus.actions.updateCart({ version: before.version, lines: [{ id, quantity: 5 }] });
+      }, itemId);
+      expect(agent).toMatchObject({ ok: true, cart: { itemCount: 5, subtotalMinor: 12000 } });
+      await arrivals[1].promise;
+
+      const order = firstResponse === "return" ? [0, 1] : [1, 0];
+      for (const [step, index] of order.entries()) {
+        releases[index].resolve();
+        await expect(shopper.locator("html")).toHaveAttribute("data-cart-reads", String(step + 1));
+      }
+
+      const wire = await (await shopper.request.get("/cart.js")).json();
+      expect(wire).toMatchObject({ ok: true, cart: { itemCount: 5, lines: [{ catalogItemId: itemId, quantity: 5 }] } });
+      await expect(shopper.locator("[data-store-header] [data-guest-cart-count]")).toHaveText("5");
+      await expect(quantity).toHaveValue("5");
+      await expect(subtotal).toHaveText("$120.00");
+    } finally {
+      for (const release of releases) release.resolve();
+      await context.close();
+    }
+  });
+}
+
 test("a second cart change is ignored until the saved cart is drawn", async ({ browser }, testInfo) => {
   test.setTimeout(180_000);
   const first = await storeWithProduct(browser, testInfo, "lock-first", false);

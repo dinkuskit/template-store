@@ -141,6 +141,7 @@ export function hydrateServerCartForms(): void {
   let savingChange = false;
   let redrawAfterSave = false;
   let checkoutAfterSave = false;
+  let latestRedraw: { passive: boolean } | undefined;
 
   function hasQuantityDraft(section: Element): boolean {
     return Array.from(section.querySelectorAll<HTMLInputElement>("[data-guest-cart-qty]"))
@@ -150,24 +151,28 @@ export function hydrateServerCartForms(): void {
   /** Draw the server's current cart; true when it was drawn. Passive refreshes leave local edits alone. */
   async function redrawCart({ passive = false } = {}): Promise<boolean> {
     const section = document.querySelector("[data-server-cart]");
-    if (!section || (passive && hasQuantityDraft(section))) return false;
+    if (!section || (passive && (latestRedraw?.passive === false || hasQuantityDraft(section)))) return false;
     if (savingChange) {
       if (!passive) redrawAfterSave = true;
       return false;
     }
+    // A new redraw supersedes older responses, but a tab return never supersedes a mutation redraw.
+    const redraw = { passive };
+    latestRedraw = redraw;
     try {
       const response = await fetch("/cart", { headers: { accept: "text/html" }, credentials: "same-origin" });
       const next = new DOMParser().parseFromString(await response.text(), "text/html").querySelector("[data-server-cart]");
-      // The shopper may start typing or saving while the refresh is fetching.
-      if (passive && (!section.isConnected || hasQuantityDraft(section))) return false;
+      if (latestRedraw !== redraw || (passive && hasQuantityDraft(section))) return false;
       if (savingChange) {
         if (!passive) redrawAfterSave = true;
-      } else if (response.ok && next) {
+      } else if (section.isConnected && response.ok && next) {
         replaceCartSection(section, next);
         return true;
       }
     } catch {
       // The next visit draws the current cart.
+    } finally {
+      if (latestRedraw === redraw) latestRedraw = undefined;
     }
     return false;
   }
