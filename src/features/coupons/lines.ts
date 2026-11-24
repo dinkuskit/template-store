@@ -37,7 +37,7 @@ export async function couponLines(page: ServerCartPage, context: CatalogContext)
       }
       categories = categoriesOf.get(product.page)!;
     }
-    lines.push({ item, product: product?.id ?? item, price, quantity, sale: Boolean(snapshot.price.saleText), categories });
+    lines.push({ item, product: product?.id ?? item, price, quantity, sale: snapshot.price.onSale === true, categories });
   }
   return lines;
 }

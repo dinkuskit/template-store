@@ -15,6 +15,8 @@ export type GuestCartPublicPrice = Readonly<{
   saleText: string | null;
   /** USD minor units the shopper pays for one unit; absent when unknown. */
   unitMinor?: string | null;
+  /** Commerce says this price is the item's Sale price (commerce-sale-flag-20261124); absent for a Regular price. Coupons reads it. */
+  onSale?: true;
 }>;
 
 export type GuestCartPublicAvailability = Readonly<{
@@ -460,6 +462,7 @@ function projectPublicPrice(value: unknown): GuestCartPublicPrice | null {
     ...(typeof value.unitMinor === "string" && UNIT_MINOR.test(value.unitMinor)
       ? { unitMinor: value.unitMinor }
       : {}),
+    ...(value.onSale === true ? { onSale: true } : {}),
   };
 }
 

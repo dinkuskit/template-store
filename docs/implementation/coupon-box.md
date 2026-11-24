@@ -20,7 +20,7 @@ No script is needed. Applied codes ride along as hidden `coupon` fields, at most
 
 EmDash plugins cannot call each other, so the store's own server code does the asking. Both calls are private plugin routes, made through `withEmDashRuntime` from `emdash/middleware` with nobody signed in (the courier does the same).
 
-1. `POST checkout/answer` on Coupons with the cart key's public half, the visitor's connection, the email when one was typed, the codes, and the cart's lines. The lines come in Commerce's line order (cart lines sorted by catalog item id). Each line has its unit price in cents, the product it belongs to, whether it is on sale, and its product page's categories.
+1. `POST checkout/answer` on Coupons with the cart key's public half, the visitor's connection, the email when one was typed, the codes, and the cart's lines. The lines come in Commerce's line order (cart lines sorted by catalog item id). Each line has its unit price in cents, the product it belongs to, whether it is on sale (Commerce's public catalog flags a Sale price with `onSale: true`, Commerce `commerce-sale-flag-20261124`; the store never works it out from prices), and its product page's categories.
 2. On Pay the same call carries `hold: true`, so each code that applies holds a use for this cart.
 3. Coupons' `answer` goes to Commerce's private `checkout/addons/start` door (Commerce `commerce-addons-door-20261124`). Commerce checks the items, prices and quantities once more against the saved cart and does the totals.
 

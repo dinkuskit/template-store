@@ -31,6 +31,13 @@ describe("coupon lines", () => {
     expect(await couponLines(page, {} as never)).toEqual([{ item: "mug", product: "prod-mug", price: "1800", quantity: 2, sale: false, categories: ["kitchen"] }]);
   });
 
+  it("say a line is on sale only when Commerce flagged its price (commerce-sale-flag-20261124)", async () => {
+    Object.assign(state, { catalogFails: false, pagesFail: false, entryFails: false });
+    const onSale = { ...page as object, snapshots: [{ id: "mug", found: true, price: { unitMinor: "1500", saleText: null, onSale: true } }] } as never;
+    expect((await couponLines(onSale, {} as never))?.map((line) => [line.price, line.sale])).toEqual([["1500", true]]);
+    expect((await couponLines(page, {} as never))?.map((line) => line.sale)).toEqual([false]);
+  });
+
   it("are not made when the catalog, the product pages or a product page can't be read", async () => {
     for (const failing of ["catalogFails", "pagesFail", "entryFails"] as const) {
       Object.assign(state, { catalogFails: false, pagesFail: false, entryFails: false, [failing]: true });
