@@ -74,8 +74,11 @@ export function confirmedOrderView(checkout: GuestCheckoutProjection): Confirmed
       : shipping?.mode === "flat" ? (shippingCharge ? `Flat rate (${shippingCharge})` : "Flat rate shipping")
       : delivery && shippingCharge ? (record(shipping?.charge)?.minor === "0" ? "Free shipping" : `Standard shipping (${shippingCharge})`)
       : null);
+  // What discount codes took off, as /track-order shows it (template-checkout-coupon-box-20261124).
+  const discount = record(pricing?.couponDiscount)?.minor;
   const totals = ([
     ["Subtotal", money(pricing?.merchandiseSubtotal)],
+    ["Discount", typeof discount === "string" && /^\d+$/u.test(discount) && discount !== "0" ? `-${money(pricing?.couponDiscount)}` : null],
     ["Shipping", money(shipping?.charge, true)],
     ["Tax", money(pricing?.tax ?? pricing?.taxTotal)],
     ["Total", money(order.total ?? checkout.total)],

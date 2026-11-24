@@ -23,4 +23,12 @@ On a fresh local store with Payments stood in by `tests/paired/helpers/dinkuskit
 
 That run found the store's pinned courier could not find Commerce, because a Registry store names it by an opaque id. The courier pin moves to dinkuskit/courier#4, which looks Commerce up by its `registry_slug`. A Node dev store has no Cloudflare timer, so the proof ran the same `courierTick()` from a throwaway dev route, naming Commerce with the courier's `senders` option because a locally mounted plugin has no `registry_slug`.
 
+## A forged cart key, and a $0 order
+
+On the same kind of store ([edge-trace.txt](edge-trace.txt)):
+
+- **A cart key Commerce refuses.** A shopper applied SPRING25. Their page's form, hidden coupon field included, was then posted with their cart id and a wrong secret. The store answered 422 and drew an empty cart (`edge-forged-key.jpg`). Coupons' holds, the shopper's checkout attempts and the Payments calls were 0, 0 and 0 before, and 0, 0 and 0 after. The real shopper's Pay right after still went to Stripe with one hold.
+- **A $0 order.** FREE100 (100% off) and FREESHIP on the $18 mug with $5 shipping showed −$18.00 and free shipping (`edge-zero-applied.jpg`). Pay held both codes, and Commerce made the order paid at $0.00 without calling Payments (2 Payments calls before, 2 after). The shopper went to the order confirmation page.
+- **What that found:** the confirmation page had no Discount row, so it read Subtotal $18.00, Total $0.00. It now shows "Discount -$18.00", as `/track-order` already does (`edge-zero-order.jpg`, `tests/unit/order-view-discount.test.ts`).
+
 Not proven here: a real Stripe payment. A beta store run is the next check.
