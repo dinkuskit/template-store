@@ -65,6 +65,8 @@ export async function checkCoupons(
       message: null,
     },
     answer: asked.answer,
-    ok: applied.length === asked.codes.length,
+    // Every code asked has its own result, every one applies, and an applying code comes with the answer Commerce
+    // prices: anything less waits for the shopper rather than starting checkout without the discount shown.
+    ok: asked.codes.length === codes.length && applied.length === codes.length && (!applied.length || asked.answer !== null),
   };
 }

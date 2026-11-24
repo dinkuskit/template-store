@@ -10,6 +10,8 @@ The discount box sits in the checkout page's order summary. It takes codes only 
 - **Remove** next to an applied code sends `couponRemove=<code>` and redraws the same way.
 - **Pay** checks the codes again. A refused code stops checkout and shows why. Otherwise checkout starts with the discount.
 
+Pay goes ahead only when Coupons answered every code, every code applies, and the answer for Commerce came with them; anything less keeps checkout waiting. If the catalog or a product page can't be read, the codes aren't checked at all and the box says "Discount codes can't be checked right now".
+
 If Pay stops before Coupons is asked (a contact field is refused, or checkout is closed), the codes are kept and what they take off is drawn again, holding nothing. If Coupons does not answer, each kept code is listed as "not checked yet" with its own Remove button, so the shopper can check out without it.
 
 No script is needed. Applied codes ride along as hidden `coupon` fields, at most 6, each at most 64 characters, with repeats dropped whatever their case.

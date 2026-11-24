@@ -11,6 +11,8 @@ Decision `template-checkout-coupon-box-20261124`. Taken on 24 Nov 2026 on a loca
 | Phone: Pay with an email the form refuses | "Enter a valid email address to continue."; both codes are kept as hidden fields and still listed, and the Discount row still shows −$4.50, so the next Pay carries them | `mobile-refused-email.jpg`, `mobile-refused-box.jpg` |
 | Coupon form reading and answer checks | `tests/unit/coupon-box.test.ts`, 5 passed | |
 | A refused or revoked cart key never holds or releases uses | `tests/unit/coupon-box-cart.test.ts`, 2 passed | |
+| Pay waits unless every code has a result, applies, and comes with the answer for Commerce | `tests/unit/coupon-box-ready.test.ts`, 4 passed (3 fail without the fix) | |
+| No code is checked when the catalog or a product page can't be read | `tests/unit/coupon-lines.test.ts`, 2 passed (1 fails without the fix) | |
 | Whole unit suite and types | `vitest run tests/unit` passed; `astro check` 0 errors | |
 
 ## Private routes through EmDash's own HTTP dispatch
