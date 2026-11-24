@@ -36,8 +36,9 @@ export async function checkCoupons(
   hold: boolean,
 ): Promise<Readonly<{ box: CouponBox; answer: AddonAnswer | null; ok: boolean }>> {
   const origin = trustedStoreOrigin(ctx);
-  const cart = cartKeyId(readCartKey(ctx.cookies));
-  if (!cart) return { box: { ...COUPONS_OFF, on: true }, answer: null, ok: true };
+  // Only a cart key Commerce just accepted names a cart here, so a foreign or revoked key cannot hold or release uses.
+  const cart = page.result.ok ? cartKeyId(readCartKey(ctx.cookies)) : null;
+  if (!cart) return { box: { ...COUPONS_OFF, on: true }, answer: null, ok: !codes.length };
   if (!codes.length) {
     if (hold) await releaseCoupons(origin, cart);
     return { box: { ...COUPONS_OFF, on: true }, answer: null, ok: true };

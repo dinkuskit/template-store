@@ -80,6 +80,12 @@ if (Astro.request.method === "POST") {
       page = await loadServerCartPage(cartContext, admitted);
     }
   }
+  // Pay stopped before Coupons was asked (a contact field, or checkout closed): keep the codes and redraw what they
+  // take off, holding nothing, so the next Pay still carries them.
+  if (typed && !typed.applying && typed.codes.length && !coupons.results.length && !coupons.message) {
+    const email = read?.values.email ?? "";
+    coupons = (await checkCoupons(cartContext, page, typed.codes, /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email) ? email : undefined, false)).box;
+  }
   if (!typed?.applying) Astro.response.status = 422;
 }
 ---

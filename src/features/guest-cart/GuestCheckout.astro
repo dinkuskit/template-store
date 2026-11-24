@@ -31,6 +31,8 @@ const {
 const couponsOn = Boolean(coupons?.on);
 const applied = coupons?.results.filter((result) => result.ok) ?? [];
 const refused = coupons?.results.filter((result) => !result.ok) ?? [];
+// Codes the form keeps that Coupons could not check (it did not answer): each still gets a Remove button.
+const unchecked = coupons?.codes.filter((code) => !coupons.results.some((result) => result.code === code)) ?? [];
 const { view } = page;
 // Shown disabled until Commerce publishes the store's allowed shipping countries.
 const COMING_SOON_SHIPPING_COUNTRIES = ["Canada", "United Kingdom", "Australia", "Germany", "France", "Japan"];
@@ -165,12 +167,18 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
               {refused.map((result) => <p><strong>{result.code}</strong>: {result.ok ? "" : result.message}</p>)}
             </div>
           )}
-          {applied.length > 0 && (
+          {(applied.length > 0 || unchecked.length > 0) && (
             <ul class="guest-cart-coupon__applied" data-guest-cart-coupons-applied>
               {applied.map((result) => (
                 <li data-guest-cart-coupon-applied={result.code}>
                   <span><strong>{result.code}</strong> {result.ok && result.off !== "0" ? `−${formatUsdMinor(result.off)}` : ""}{result.ok && result.freeShipping ? (result.off !== "0" ? " and free shipping" : "Free shipping") : ""}</span>
                   <button type="submit" name="couponRemove" value={result.code} formnovalidate aria-label={`Remove ${result.code}`}>Remove</button>
+                </li>
+              ))}
+              {unchecked.map((code) => (
+                <li data-guest-cart-coupon-unchecked={code}>
+                  <span><strong>{code}</strong> not checked yet</span>
+                  <button type="submit" name="couponRemove" value={code} formnovalidate aria-label={`Remove ${code}`}>Remove</button>
                 </li>
               ))}
             </ul>
@@ -295,7 +303,8 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
   .guest-cart-coupon [data-guest-cart-coupon-error]{color:var(--store-alert-ink);background:var(--store-alert);padding:.6rem .8rem;border-radius:.25rem}
   .guest-cart-coupon__applied{list-style:none;margin:0;padding:0;display:grid;gap:.4rem}
   .guest-cart-coupon__applied li{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid #2d3a54;border-radius:.35rem;background:#0b111e;color:#fffefb}
-  .guest-cart-coupon__applied button{padding:.3rem .6rem;font-size:.85rem}
+  .guest-cart-coupon__applied button{padding:.3rem .6rem;font-size:.85rem;flex:none;white-space:nowrap}
+  .guest-cart-coupon__applied span{min-width:0;overflow-wrap:anywhere}
   .guest-checkout-handoff-note{margin:0 0 .65rem;color:#c2cad8;font-size:.9rem;line-height:1.45}
   .guest-checkout-actions button{margin:.4rem .6rem .4rem 0;padding:.75rem 1.15rem;border:1px solid #3c4c6b;border-radius:.4rem;background:#1e293b;color:#fffefb;font:inherit;font-weight:800;cursor:pointer}
   .guest-checkout-actions [data-guest-cart-checkout]:not(:disabled){background:#c83e2b;border-color:#c83e2b;color:#fffefb}

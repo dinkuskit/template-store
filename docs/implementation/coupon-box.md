@@ -10,6 +10,8 @@ The discount box sits in the checkout page's order summary. It takes codes only 
 - **Remove** next to an applied code sends `couponRemove=<code>` and redraws the same way.
 - **Pay** checks the codes again. A refused code stops checkout and shows why. Otherwise checkout starts with the discount.
 
+If Pay stops before Coupons is asked (a contact field is refused, or checkout is closed), the codes are kept and what they take off is drawn again, holding nothing. If Coupons does not answer, each kept code is listed as "not checked yet" with its own Remove button, so the shopper can check out without it.
+
 No script is needed. Applied codes ride along as hidden `coupon` fields, at most 6, each at most 64 characters, with repeats dropped whatever their case.
 
 ## How the store asks
@@ -20,7 +22,7 @@ EmDash plugins cannot call each other, so the store's own server code does the a
 2. On Pay the same call carries `hold: true`, so each code that applies holds a use for this cart.
 3. Coupons' `answer` goes to Commerce's private `checkout/addons/start` door (Commerce `commerce-addons-door-20261124`). Commerce checks the items and prices once more and does the totals.
 
-When Pay goes ahead with no code, the store calls Coupons' `checkout/release` so the cart's held uses go back. Holds also lapse on their own after an hour.
+Only a cart key that Commerce has just accepted names a cart to Coupons. A refused or revoked key never asks, holds or releases anything. When Pay goes ahead with no code, the store calls Coupons' `checkout/release` so the cart's held uses go back. Holds also lapse on their own after an hour.
 
 The store refuses Coupons' answer unless it comes `from: "dinkus-coupons"`, names every line in the order sent with the price sent, and every amount is whole cents. A refused or missing answer shows "Discount codes can't be checked right now" and keeps checkout waiting.
 
