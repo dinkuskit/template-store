@@ -4,7 +4,7 @@ GrillTrack `template-checkout-coupon-box-20261124`. The owner approved the plain
 
 ## What the shopper sees
 
-The discount box sits in the checkout page's order summary. It takes codes only when the store has the Coupons plugin (`dinkus-coupons`) installed, the cart has items, and no payment is waiting. Otherwise the old disabled box stays. The playground never takes codes.
+The discount box sits in the checkout page's order summary. It takes codes only when the store has the Coupons plugin (`dinkus-coupons`) installed, its Commerce has the add-ons door, the cart has items, and no payment is waiting. Otherwise the old disabled box stays. The playground never takes codes.
 
 - **Apply** sends the whole checkout form with `intent=apply`. The page redraws with what was typed kept, each code's result, a Discount row, and "Free" shipping when a code gives free shipping. Nothing starts.
 - **Remove** next to an applied code sends `couponRemove=<code>` and redraws the same way.

@@ -31,4 +31,19 @@ On the same kind of store ([edge-trace.txt](edge-trace.txt)):
 - **A $0 order.** FREE100 (100% off) and FREESHIP on the $18 mug with $5 shipping showed −$18.00 and free shipping (`edge-zero-applied.jpg`). Pay held both codes, and Commerce made the order paid at $0.00 without calling Payments (2 Payments calls before, 2 after). The shopper went to the order confirmation page.
 - **What that found:** the confirmation page had no Discount row, so it read Subtotal $18.00, Total $0.00. It now shows "Discount -$18.00", as `/track-order` already does (`edge-zero-order.jpg`, `tests/unit/order-view-discount.test.ts`).
 
+## A key revoked after it was accepted
+
+On a fresh store ([revoke-trace.txt](revoke-trace.txt)), a shopper pressed Pay with SPRING25. Their key was accepted, one use was held, and the checkout attempt stayed open at the Stripe step (2 Payments calls). Commerce has no revoke button: a key stops working when Commerce no longer holds its record, and then answers `CAPABILITY_DENIED`. So the proof deleted that record from the store's database.
+
+The same browser then posted the checkout form three times:
+- Pay with SPRING25;
+- Pay with no code, which would release the cart's holds if the key were accepted;
+- Apply SPRING25.
+
+Each answered 422 with an empty cart, and the box took no codes. Afterwards the hold was the same row with the same end time, the attempt was the same, and Payments calls were still 2.
+
+## The box waits for Commerce's door
+
+The box takes codes only when the store's Commerce declares the private `checkout/addons/start` route, not just when Coupons is installed. So installing Coupons on a Commerce release without the door leaves the old disabled box (`tests/unit/coupon-box-commerce-door.test.ts`). The revocation run above used Commerce from #306, and its box took codes as before.
+
 Not proven here: a real Stripe payment. A beta store run is the next check.

@@ -1,4 +1,5 @@
 import { installedPluginIds } from "@dinkuskit/courier";
+import { COMMERCE_REGISTRY_RUNTIME_ID } from "../guest-cart/checkout-protocol.js";
 
 /**
  * The checkout page's coupon box (template-checkout-coupon-box-20261124). EmDash plugins cannot call each other, so
@@ -9,6 +10,7 @@ export const COUPONS_SLUG = "dinkus-coupons";
 export const COUPON_CODES_MAX = 6;
 export const COUPON_CODE_MAX = 64;
 const ANSWER_ROUTE = "checkout/answer";
+const ADDONS_ROUTE = "checkout/addons/start";
 const MAX_ANSWER_BYTES = 64 * 1024;
 
 /** The part of EmDash's runtime this file uses. */
@@ -119,9 +121,14 @@ export async function askCoupons(origin: string, ask: CouponAsk): Promise<Coupon
   });
 }
 
-/** Whether the store has the Coupons plugin, so the box takes codes. */
-export async function couponsInstalled(): Promise<boolean> {
-  return Boolean(await withStoreRuntime(async (runtime) => Boolean(await couponsPluginId(runtime))));
+/**
+ * Whether the box takes codes: the store has the Coupons plugin, and its Commerce has the add-ons door
+ * (commerce-addons-door-20261124). A Commerce release without the door leaves the old disabled box, so Coupons
+ * installed first never shows a code that checkout could not carry.
+ */
+export async function couponsInstalled(commerceId: string = COMMERCE_REGISTRY_RUNTIME_ID): Promise<boolean> {
+  return Boolean(await withStoreRuntime(async (runtime) =>
+    isPost(runtime, commerceId, ADDONS_ROUTE) && Boolean(await couponsPluginId(runtime))));
 }
 
 /** The codes the form carries: kept ones, minus a removed one, plus a newly typed one; at most 6, no repeats. */
