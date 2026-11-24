@@ -75,7 +75,7 @@ export function parseTaxAnswer(raw: unknown, lines: readonly TaxLine[]): { answe
 
 /**
  * What checkout does about sales tax. `none`: Tax is not installed, or the order's state is not switched on, so
- * checkout starts untaxed. `answer`: the rates go to Commerce with any coupon. `unavailable`: Tax is installed but
+ * checkout starts untaxed. `answer`: the rates go to Commerce beside the coupon answer, if there is one. `unavailable`: Tax is installed but
  * did not answer, so checkout waits rather than starting without the tax it may owe.
  */
 export type TaxCheck = Readonly<{ kind: "none" }> | Readonly<{ kind: "answer"; answer: TaxAnswer }> | Readonly<{ kind: "unavailable" }>;
