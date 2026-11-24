@@ -7001,6 +7001,47 @@
       "superseded_by": null,
       "updated_at": "2026-11-23T03:55:50+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": null,
+      "candidate_refs": [],
+      "choice": "A plain-form discount box on /checkout, no script: Apply and Remove redraw the page; the store's own server code asks the Coupons plugin's private checkout/answer route about the codes and lines, shows each code's result, and on Pay asks again with a hold and hands Coupons' answer to Commerce's private checkout/addons/start door, where Commerce checks items and prices and does the totals. The box only takes codes when Coupons is installed; a refused code stops checkout so the shopper sees why.",
+      "context_ref": "dinkuskit/commerce GrillTrack commerce-addons-door-20261124",
+      "created_at": "2026-11-24T15:35:10+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-24T15:35:11+00:00",
+          "choice": "A plain-form discount box on /checkout, no script: Apply and Remove redraw the page; the store's own server code asks the Coupons plugin's private checkout/answer route about the codes and lines, shows each code's result, and on Pay asks again with a hold and hands Coupons' answer to Commerce's private checkout/addons/start door, where Commerce checks items and prices and does the totals. The box only takes codes when Coupons is installed; a refused code stops checkout so the shopper sees why.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-checkout-coupon-box-20261124",
+      "implementation_ref": null,
+      "question": "How does the checkout page take discount codes now that Coupons is its own plugin?",
+      "rationale": "The owner agreed decision 7 (checkout page box, plain form, no script) and the build on 24 Nov 2026.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-24T15:35:11+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -7023,5 +7064,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-23T03:55:50+00:00"
+  "updated_at": "2026-11-24T15:35:11+00:00"
 }

@@ -13,6 +13,7 @@ import { registrySandboxRunner, selectedRegistrySandboxRunner } from "./scripts/
 import { pairedCommerceDescriptor, pairedCommercePin, pairedCommerceProfile, resolvePairedCommerceDir } from "./scripts/lib/paired-commerce.mjs";
 
 import { PAIRED_REVIEWS_DIR_ENV, pairedReviewsDescriptor, resolvePairedReviewsDir } from "./scripts/lib/paired-reviews.mjs";
+import { pairedCouponsDescriptor, resolvePairedCouponsDir } from "./scripts/lib/paired-coupons.mjs";
 import { commerceProfile, commerceProfileDefine } from "./src/features/commerce-profile/profiles.mjs";
 import { storeCloudflareEmail, storeEmailFrom } from "./src/features/store-email/sender.mjs";
 
@@ -68,6 +69,9 @@ const pairedReviewsDir = pairedCommerce && !isCloudflare && process.env[PAIRED_R
   ? resolvePairedReviewsDir(process.env)
   : null;
 const pairedReviews = pairedReviewsDir ? await pairedReviewsDescriptor(pairedReviewsDir) : undefined;
+// DinkusKit Coupons runs only where DINKUS_PAIRED_COUPONS_DIR names a built checkout (scripts/lib/paired-coupons.mjs).
+const pairedCouponsDir = pairedCommerce && !isCloudflare ? resolvePairedCouponsDir(process.env) : null;
+const pairedCoupons = pairedCouponsDir ? await pairedCouponsDescriptor(pairedCouponsDir) : undefined;
 const accessOptions = selectedRegistryAccessOptions(process.env);
 
 // The store has no default Wrangler file: the demo Worker's wrangler.jsonc was retired with the hosted demo
@@ -123,7 +127,7 @@ export default defineConfig({
       // On Cloudflare the Worker Loader runs the installed plugins; on Node the workerd runner does, and
       // astro dev hands them to Miniflare (EmDash's documented loop: build the plugin, run the site).
       ...(isCloudflare ? { sandboxRunner: cloudflareSandbox() } : pairedCommerce ? { sandboxRunner: "@emdash-cms/sandbox-workerd/sandbox" } : {}),
-      ...(pairedCommerce ? { sandboxed: [pairedCommerce, ...(pairedReviews ? [pairedReviews] : [])] } : {}),
+      ...(pairedCommerce ? { sandboxed: [pairedCommerce, ...(pairedReviews ? [pairedReviews] : []), ...(pairedCoupons ? [pairedCoupons] : [])] } : {}),
     }),
   ],
   vite: {
