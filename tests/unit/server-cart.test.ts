@@ -26,9 +26,10 @@ import {
 } from "../../src/features/guest-cart/server-cart.js";
 import { getPickUp, postAdd, postChange, postStop, postUpdate, postUpdateForm } from "../../src/features/guest-cart/cart-routes.js";
 import { loadCheckoutReturn } from "../../src/features/guest-cart/server-return.js";
+import { loadServerCartPage } from "../../src/features/guest-cart/server-view.js";
 
 type Line = { catalogItemId: string; quantity: number };
-type Attempt = { attemptId: string; state: "pending" | "paid" | "released-retry"; redirectUrl: string | null; order?: Record<string, unknown> };
+type Attempt = { attemptId: string; state: "pending" | "paid" | "recoverable-failure" | "released-retry"; redirectUrl: string | null; order?: Record<string, unknown> };
 
 /** A stand-in for Commerce's public guest routes: prepare, cart (read or versioned replace) and start. */
 function fakeCommerce() {
@@ -184,6 +185,28 @@ describe("server cart", () => {
     const held = await addToServerCart(context(commerce, jar), { catalogItemId: "item_cap", quantity: 1 });
     expect(held).toMatchObject({ ok: false, error: { code: "CHECKOUT_FROZEN" }, cart: { itemCount: 1 } });
     expect(cartJson(held)).toMatchObject({ ok: false, checkout: { open: true, continueUrl: "https://checkout.stripe.com/c/pay/x" } });
+  });
+
+  it("keeps the cart held independently of whether the attempt has a usable payment link", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    const ctx = context(commerce, jar);
+    await addToServerCart(ctx, { catalogItemId: "item_hat", quantity: 1 });
+    const cart = commerce.carts.get("cap1")!;
+    const pay = "https://checkout.stripe.com/c/pay/x";
+    expect(await loadServerCartPage(ctx, true)).toMatchObject({ paymentHeld: false, openPayment: null });
+    cart.attempt = { attemptId: "att_1", state: "pending", redirectUrl: pay };
+    expect(await loadServerCartPage(ctx, true)).toMatchObject({ paymentHeld: true, openPayment: pay });
+    cart.attempt.redirectUrl = null;
+    expect(await loadServerCartPage(ctx, true)).toMatchObject({ paymentHeld: true, openPayment: null });
+    cart.attempt.state = "recoverable-failure";
+    expect(await loadServerCartPage(ctx, true)).toMatchObject({ paymentHeld: true, openPayment: null });
+    cart.attempt.state = "released-retry";
+    expect(await loadServerCartPage(ctx, true)).toMatchObject({ paymentHeld: false, openPayment: null });
+    cart.attempt.state = "paid";
+    expect(await loadServerCartPage(ctx, true)).toMatchObject({ paymentHeld: false, openPayment: null });
+    expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
+    expect(commerce.calls.some(({ route }) => route === "start")).toBe(false);
   });
 
   it("reads no cookie as an empty cart and puts a stale count right", async () => {
@@ -523,6 +546,23 @@ describe("thank-you page", () => {
       .toEqual({ kind: "confirming", refreshUrl: "/checkout/success?check=1", refreshSeconds: 3 });
     expect(await loadCheckoutReturn(context(commerce, jar, { url: "https://shop.test/checkout/success?check=10" }))).toEqual({ kind: "slow" });
     expect(await loadCheckoutReturn(context(commerce, jar, { url: "https://shop.test/checkout/success?check=abc" }))).toEqual({ kind: "slow" });
+  });
+
+  it("keeps a recoverable payment on a manual status check until Commerce releases it", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 1 });
+    const cart = commerce.carts.get("cap1")!;
+    const url = "https://shop.test/checkout/success?session_id=cs_ignored";
+    cart.attempt = { attemptId: "att_1", state: "recoverable-failure", redirectUrl: null };
+    expect(await loadCheckoutReturn(context(commerce, jar, { url }))).toEqual({ kind: "held" });
+    expect(jar.jar.get(CART_COUNT_COOKIE)).toBe("1");
+    cart.attempt.state = "released-retry";
+    expect(await loadCheckoutReturn(context(commerce, jar, { url })))
+      .toEqual({ kind: "not-paid", redirect: "/cart?cart_error=NOT_PAID" });
+    expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
+    expect(cart.lines).toHaveLength(1);
+    expect(commerce.calls.some(({ route }) => route === "start")).toBe(false);
   });
 
   it("sends an unpaid return back to the cart with the items kept, and has no order without the cookie", async () => {
