@@ -86,6 +86,28 @@ export async function ensureStorefrontProductFields(db: unknown): Promise<void> 
   }
 }
 
+/** Each product's one standard category; it mirrors seed/seed.json (template-product-category-field-20261124). */
+export const PRODUCT_CATEGORY_FIELD_INPUT: CreateFieldInput = {
+  slug: "product_category",
+  label: "Standard category (for Google, Meta and tax; pick it in the Commerce panel)",
+  type: "string",
+  translatable: false,
+  validation: { maxLength: 64, pattern: "^$|^[a-z]{2}(-[0-9]{1,4}){0,10}$" },
+};
+
+/**
+ * Gives a store set up from an older seed the standard category field, empty,
+ * so every product starts Uncategorized until the owner picks one. A store
+ * without products, or with the field already, is not changed.
+ */
+export async function ensureStorefrontProductCategory(db: unknown): Promise<void> {
+  const registry = new SchemaRegistry(db as never);
+  if (!(await registry.getCollection("products"))) return;
+  if (!(await registry.getField("products", PRODUCT_CATEGORY_FIELD_INPUT.slug))) {
+    await registry.createField("products", PRODUCT_CATEGORY_FIELD_INPUT);
+  }
+}
+
 /** The category field that lists its products; it mirrors seed/seed.json (template-store#118). */
 export const CATEGORY_PRODUCTS_FIELD: CreateFieldInput = {
   slug: "products",

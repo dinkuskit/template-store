@@ -5,7 +5,7 @@ import { OptionsRepository } from "emdash";
 import { runMigrations } from "emdash/db";
 import { createDialect } from "emdash/db/sqlite";
 import { applySeed } from "emdash/seed";
-import { PAGE_URL_PATTERN, STORE_FOLDER_GROUP, VISUAL_LABEL_FIELD_LABEL } from "../../src/features/store-shell/product-schema-upgrade.js";
+import { PAGE_URL_PATTERN, PRODUCT_CATEGORY_FIELD_INPUT, STORE_FOLDER_GROUP, VISUAL_LABEL_FIELD_LABEL } from "../../src/features/store-shell/product-schema-upgrade.js";
 import {
   STOREFRONT_UPGRADES,
   STOREFRONT_UPGRADES_OPTION,
@@ -44,7 +44,7 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(await recorded()).toBeNull();
     expect((await products()).visual_label?.required).toBe(1);
 
-    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products", "005_commerce_box_off", "006_store_folder", "007_start_in_staging"]);
+    expect(await upgradeStorefront(db)).toEqual(["001_storefront_search", "002_product_fields", "003_page_addresses", "004_category_products", "005_commerce_box_off", "006_store_folder", "007_start_in_staging", "008_product_category"]);
     expect(await recorded()).toEqual(ALL);
     // template-site-visibility-20261122: an upgraded store that never chose starts in staging.
     expect((await sql<{ value: string }>`select value from options where name = 'site:staging'`.execute(db)).rows[0]?.value).toBe("true");
@@ -53,6 +53,9 @@ describe("storefront upgrades a store runs on its own", () => {
     expect(after.summary && after.details).toBeTruthy();
     // The seed's demonstrations name no Commerce product, so the box comes off.
     expect(after.commerce_item_id).toBeUndefined();
+    // template-product-category-field-20261124: the standard category arrives empty, so every product is Uncategorized.
+    expect(after.product_category).toMatchObject({ required: 0, label: PRODUCT_CATEGORY_FIELD_INPUT.label });
+    expect((await sql<{ n: number }>`select count(*) as n from ec_products where coalesce(product_category, '') <> ''`.execute(db)).rows[0]?.n).toBe(0);
     expect(await pageAddress()).toBe(PAGE_URL_PATTERN);
     // admin-one-store-folder-128: the catalog joins the Store folder; Pages stays inline.
     expect(await groups()).toMatchObject({ products: STORE_FOLDER_GROUP, categories: STORE_FOLDER_GROUP, pages: null });

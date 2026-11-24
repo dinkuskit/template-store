@@ -112,6 +112,7 @@ export interface Product {
   summary?: PortableTextBlock[];
   details?: ProductDetailsBlock[];
   visual_label?: string;
+  product_category?: string;
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date | null;
