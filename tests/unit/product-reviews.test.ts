@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { moreReviewsHref, ratingText, readProductReviews, reviewsHeading, reviewsJsonLd, starFill } from "../../src/features/product-reviews/index.js";
+import { moreReviewsHref, ratingText, readProductReviews, readPublishedProductRatings, reviewsHeading, reviewsJsonLd, starFill } from "../../src/features/product-reviews/index.js";
 import { REVIEWS_REGISTRY_RUNTIME_ID } from "../../src/features/review-form/index.js";
 
 const PAGE = "https://store.example.test/products/camp-mug";
@@ -25,6 +25,32 @@ function page(answer: unknown, url = PAGE) {
   };
   return { ctx: { locals, request: new Request(url), url: new URL(url) }, calls };
 }
+
+it("keeps rating reads bounded and does not drop healthy products when a sibling fails", async () => {
+  const ids = Array.from({ length: 10 }, (_, index) => `prod_${index}`);
+  const seen: string[] = [];
+  let active = 0, peak = 0;
+  const runtime = {
+    async handlePublicPluginApiRoute(_plugin: string, _method: string, _route: string, request: Request) {
+      const productId = new URL(request.url).searchParams.get("product")!;
+      seen.push(productId);
+      peak = Math.max(peak, ++active);
+      try {
+        await new Promise<void>(resolve => setImmediate(resolve));
+        if (productId === "prod_0") throw new Error("sandbox unavailable for this read");
+        if (productId === "prod_1") return raw("not JSON");
+        if (productId === "prod_2") return raw({ productId, rating: null });
+        return raw({ productId, rating: LIST.rating });
+      } finally {
+        active--;
+      }
+    },
+  };
+  const ratings = await readPublishedProductRatings(runtime, new URL(PAGE), [...ids, "prod_3", ""]);
+  expect(seen).toEqual(ids);
+  expect(peak).toBe(4);
+  expect([...ratings.keys()]).toEqual(ids.slice(3));
+});
 
 describe("a product page's rating and reviews", () => {
   it("reads Reviews' list inside the server under the product's Commerce id", async () => {

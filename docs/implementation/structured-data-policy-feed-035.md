@@ -78,7 +78,13 @@ That eligibility decides the Google Merchant and Meta feeds only. The agent
 catalog feed (`/feeds/agent-catalog.json`), `/llms.txt`, `/llms-full.txt` and
 `/agents.md` list every listable, priced product with a published page while
 the owner's catalog switch is on, with or without a feed channel
-(GrillTrack `template-agent-feed-lists-all-20261122`).
+(GrillTrack `template-agent-feed-lists-all-20261122`). The JSON agent feed
+also carries the optional UCP `rating` (`value`, `scale_min`, `scale_max`,
+`count`) from the installed Reviews public rating route for the product
+family. It omits missing or unavailable ratings and never includes buyer
+names, review text, or order data. Commerce still decides which products
+appear; an opted-out feed does not query Reviews.
+
 Primary and gallery media ids resolve through the same approved media lookup
 as storefront images. Only resolved public image URLs enter the Commerce feed
 builders; payload-supplied URLs and unreadable or unsafe media are omitted.

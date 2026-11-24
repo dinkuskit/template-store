@@ -7,6 +7,8 @@ import { REVIEWS_REGISTRY_RUNTIME_ID } from "../review-form/index.js";
  * no published review, shows neither.
  */
 const ROUTE = "list";
+const RATING_ROUTE = "rating";
+const RATING_CONCURRENCY = 4;
 const MAX_RESPONSE_BYTES = 256 * 1024;
 /** Reviews answers 20 reviews a page; more than this in one answer is not a page of reviews. */
 const MAX_REVIEWS = 50;
@@ -15,6 +17,7 @@ const MAX_CURSOR = 2000;
 export const REVIEWS_CURSOR_PARAM = "reviews";
 export const REVIEWS_ANCHOR = "reviews";
 
+export type PublishedProductRating = Readonly<{ value: number; scale_min: 1; scale_max: 5; count: number }>;
 export type ProductRatingView = Readonly<{ value: number; max: 5; count: number }>;
 export type ProductReviewView = Readonly<{
   id: string;
@@ -48,14 +51,14 @@ const UNSHOWABLE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u;
 const words = (value: unknown, max: number) => (typeof value === "string" && value.length <= max && !UNSHOWABLE.test(value) ? value : null);
 const DATE = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
-/** Reviews' rating as the page shows it; null for anything that is not a rating of at least one review. */
-function ratingOf(value: unknown): ProductRatingView | null {
+/** A published rating on Reviews' UCP scale, with no other fields from the route. */
+function ratingOf(value: unknown): PublishedProductRating | null {
   const rating = record(value);
   if (!rating || rating.scale_min !== 1 || rating.scale_max !== 5) return null;
   const { value: average, count } = rating;
   if (typeof average !== "number" || !(average >= 1 && average <= 5)) return null;
   if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 1) return null;
-  return { value: Math.round(average * 10) / 10, max: 5, count };
+  return { value: average, scale_min: 1, scale_max: 5, count };
 }
 
 function reviewOf(value: unknown): ProductReviewView | null {
@@ -84,6 +87,36 @@ function bodyOf(answer: unknown): unknown {
   return new TextEncoder().encode(body.value).byteLength > MAX_RESPONSE_BYTES ? null : JSON.parse(body.value);
 }
 
+/** Read only published aggregates for the family IDs the agent feed already lists. */
+export async function readPublishedProductRatings(runtime: Runtime | null | undefined, url: URL, productIds: readonly string[]) {
+  const ratings = new Map<string, PublishedProductRating>();
+  const ids = [...new Set(productIds)].filter(id => id.length > 0 && id.length <= 200);
+  if (!ids.length || typeof runtime?.handlePublicPluginApiRoute !== "function") return ratings;
+  const dispatch = runtime.handlePublicPluginApiRoute.bind(runtime);
+  const read = async (id: string) => {
+    try {
+      const address = new URL(`/_emdash/api/plugins/${REVIEWS_REGISTRY_RUNTIME_ID}/${RATING_ROUTE}`, url);
+      address.searchParams.set("product", id);
+      const result = await dispatch(REVIEWS_REGISTRY_RUNTIME_ID, "GET", RATING_ROUTE,
+        new Request(address, { headers: { accept: "application/json" } }));
+      const envelope = record(result);
+      if (envelope?.success === false && record(envelope.error)?.code === "NOT_FOUND") return false;
+      const data = record(bodyOf(result));
+      const rating = data?.productId === id && ratingOf(data.rating);
+      if (rating) ratings.set(id, rating);
+    } catch {
+      // Missing, invalid, or unavailable rating data must not break the Commerce feed.
+    }
+    return true;
+  };
+  // The anonymous runtime has no plugin metadata; a missing public route is store-wide.
+  if (!await read(ids[0]!)) return ratings;
+  for (let i = 1; i < ids.length; i += RATING_CONCURRENCY) {
+    await Promise.all(ids.slice(i, i + RATING_CONCURRENCY).map(read));
+  }
+  return ratings;
+}
+
 /**
  * The product's rating and one page of its published reviews, or null when there is nothing to show: Reviews
  * is not installed, the product has no published review, or Reviews did not answer what it promises. A page
@@ -105,7 +138,10 @@ export async function readProductReviews(ctx: ProductReviewsContext, productId: 
     if (!rating || !Array.isArray(answer.reviews) || answer.reviews.length > MAX_REVIEWS) return null;
     const reviews = answer.reviews.map(reviewOf).filter((review): review is ProductReviewView => review !== null);
     const next = words(answer.cursor, MAX_CURSOR);
-    return { rating, reviews, next: next || null, later: Boolean(cursor) };
+    return {
+      rating: { value: Math.round(rating.value * 10) / 10, max: 5, count: rating.count },
+      reviews, next: next || null, later: Boolean(cursor),
+    };
   } catch {
     return null;
   }
