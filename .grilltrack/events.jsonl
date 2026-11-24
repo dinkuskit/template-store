@@ -299,3 +299,4 @@
 {"action": "decision_proposed", "at": "2026-11-24T22:18:46+00:00", "data": {"decision_id": "template-product-category-pick-20261124"}, "event_id": "7f112f67-4336-43cb-9883-a9cf4ff303ca"}
 {"action": "decision_locked", "at": "2026-11-24T22:18:47+00:00", "data": {"decision_id": "template-product-category-pick-20261124"}, "event_id": "5e7b2fc6-6e88-409e-bd4a-f81321283730"}
 {"action": "decision_proposed", "at": "2026-11-24T22:18:47+00:00", "data": {"decision_id": "template-product-category-feeds-20261124"}, "event_id": "8a3ed671-2eb6-4c09-912b-d62966e9b699"}
+{"action": "decision_locked", "at": "2026-11-24T22:25:30+00:00", "data": {"decision_id": "template-product-category-feeds-20261124"}, "event_id": "dbbda89f-3916-4bfd-b092-b36aa6d634a2"}
