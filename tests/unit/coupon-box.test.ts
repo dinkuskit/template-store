@@ -32,7 +32,7 @@ describe("the coupon box form", () => {
 describe("Coupons' answer", () => {
   const answer = {
     codes: [{ code: "SAVE10", ok: true, off: "1100", freeShipping: false }, { code: "NOPE", ok: false, reason: "not_found", message: "This code isn't valid." }],
-    answer: { from: "dinkus-coupons", ref: "h_1.c_2", codes: ["SAVE10"], lines: [{ item: "boots", price: "8000", off: "800" }, { item: "mug", price: "1500", off: "300" }] },
+    answer: { from: "dinkus-coupons", ref: "h_1.c_2", codes: ["SAVE10"], lines: [{ item: "boots", price: "8000", qty: 1, off: "800" }, { item: "mug", price: "1500", qty: 2, off: "300" }] },
   };
 
   it("passes an answer that names every line with the price sent", () => {
@@ -40,9 +40,10 @@ describe("Coupons' answer", () => {
     expect(parseCouponAnswer({ codes: [], answer: null }, lines)).toEqual({ codes: [], answer: null });
   });
 
-  it("refuses an answer for other lines, other prices, or from another plugin", () => {
+  it("refuses an answer for other lines, prices or quantities, or from another plugin", () => {
     expect(parseCouponAnswer({ ...answer, answer: { ...answer.answer, lines: answer.answer.lines.slice(0, 1) } }, lines)).toBeNull();
-    expect(parseCouponAnswer({ ...answer, answer: { ...answer.answer, lines: [{ item: "boots", price: "7000", off: "800" }, answer.answer.lines[1]] } }, lines)).toBeNull();
+    expect(parseCouponAnswer({ ...answer, answer: { ...answer.answer, lines: [{ item: "boots", price: "7000", qty: 1, off: "800" }, answer.answer.lines[1]] } }, lines)).toBeNull();
+    expect(parseCouponAnswer({ ...answer, answer: { ...answer.answer, lines: [answer.answer.lines[0], { item: "mug", price: "1500", qty: 1, off: "300" }] } }, lines)).toBeNull();
     expect(parseCouponAnswer({ ...answer, answer: { ...answer.answer, from: "other" } }, lines)).toBeNull();
     expect(parseCouponAnswer({ codes: [{ code: "X", ok: true, off: "-5", freeShipping: false }], answer: null }, lines)).toBeNull();
   });

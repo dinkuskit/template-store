@@ -59,7 +59,7 @@ export type CouponLine = Readonly<{ item: string; product: string; price: string
 export type CouponResult =
   | Readonly<{ code: string; ok: true; off: string; freeShipping: boolean }>
   | Readonly<{ code: string; ok: false; reason: string; message: string }>;
-export type AddonAnswer = Readonly<{ from: string; ref?: string; codes: readonly string[]; ship?: "free"; lines: readonly { item: string; price: string; off: string }[] }>;
+export type AddonAnswer = Readonly<{ from: string; ref?: string; codes: readonly string[]; ship?: "free"; lines: readonly { item: string; price: string; qty: number; off: string }[] }>;
 export type CouponAnswer = Readonly<{ codes: readonly CouponResult[]; answer: AddonAnswer | null }>;
 
 export type CouponAsk = Readonly<{
@@ -94,8 +94,9 @@ export function parseCouponAnswer(raw: unknown, lines: readonly CouponLine[]): C
   if (answer === null) return { codes, answer: null };
   if (!record(answer) || answer.from !== COUPONS_SLUG || !Array.isArray(answer.codes) || !Array.isArray(answer.lines) ||
       answer.lines.length !== lines.length) return null;
-  // Every line, in the order sent; Commerce checks the items and prices once more.
-  if (!answer.lines.every((line, index) => record(line) && line.item === lines[index]!.item && line.price === lines[index]!.price && cents(line.off))) return null;
+  // Every line, in the order sent, with the price and quantity sent; Commerce checks them once more against the cart.
+  if (!answer.lines.every((line, index) => record(line) && line.item === lines[index]!.item && line.price === lines[index]!.price &&
+      line.qty === lines[index]!.quantity && cents(line.off))) return null;
   return { codes, answer: answer as AddonAnswer };
 }
 

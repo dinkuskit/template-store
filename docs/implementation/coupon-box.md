@@ -20,13 +20,13 @@ EmDash plugins cannot call each other, so the store's own server code does the a
 
 1. `POST checkout/answer` on Coupons with the cart key's public half, the visitor's connection, the email when one was typed, the codes, and the cart's lines. The lines come in Commerce's line order (cart lines sorted by catalog item id). Each line has its unit price in cents, the product it belongs to, whether it is on sale, and its product page's categories.
 2. On Pay the same call carries `hold: true`, so each code that applies holds a use for this cart.
-3. Coupons' `answer` goes to Commerce's private `checkout/addons/start` door (Commerce `commerce-addons-door-20261124`). Commerce checks the items and prices once more and does the totals.
+3. Coupons' `answer` goes to Commerce's private `checkout/addons/start` door (Commerce `commerce-addons-door-20261124`). Commerce checks the items, prices and quantities once more against the saved cart and does the totals.
 
 Only a cart key that Commerce has just accepted names a cart to Coupons. A refused or revoked key never asks, holds or releases anything. When Pay goes ahead with no code, the store calls Coupons' `checkout/release` so the cart's held uses go back. Holds also lapse on their own after an hour.
 
 Coupons counts a use when the store's courier brings Commerce's `order.paid` news, about once a minute. The courier asks for Commerce as `dinkus-commerce`, and finds it under its Registry id through EmDash's `registry_slug`, so the store pins `@dinkuskit/courier` at a commit with that lookup (dinkuskit/courier#4).
 
-The store refuses Coupons' answer unless it comes `from: "dinkus-coupons"`, names every line in the order sent with the price sent, and every amount is whole cents. A refused or missing answer shows "Discount codes can't be checked right now" and keeps checkout waiting.
+The store refuses Coupons' answer unless it comes `from: "dinkus-coupons"`, names every line in the order sent with the price and quantity sent, and every amount is whole cents. A refused or missing answer shows "Discount codes can't be checked right now" and keeps checkout waiting.
 
 ## Running it locally
 
