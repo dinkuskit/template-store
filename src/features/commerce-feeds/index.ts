@@ -134,6 +134,7 @@ export async function buildInstalledCommerceFeedFacts(
 export { buildGoogleMerchantFeed, buildMetaCatalogFeed };
 export {
   buildAgentCatalogFeed,
+  buildInstalledAgentCatalogFeed,
   buildInstalledStorefrontAgentFeedOptions,
   buildStorefrontAgentsMd,
   buildStorefrontLlmsFullTxt,

@@ -15,12 +15,15 @@ const lines: CouponLine[] = [
 
 describe("the coupon box form", () => {
   it("keeps applied codes, adds a typed one, and drops repeats whatever their case", () => {
-    expect(readCouponForm(form([["coupon", "SAVE10"], ["couponCode", " save10 "], ["intent", "apply"]]))).toEqual({ codes: ["SAVE10"], applying: true });
-    expect(readCouponForm(form([["coupon", "SAVE10"], ["couponCode", "SHIP"]]))).toEqual({ codes: ["SAVE10", "SHIP"], applying: false });
+    expect(readCouponForm(form([["coupon", "SAVE10"], ["couponCode", " save10 "], ["intent", "apply"]]))).toEqual({ codes: ["SAVE10"], applying: true, draft: "" });
+    expect(readCouponForm(form([["coupon", "SAVE10"], ["couponCode", "SHIP"]]))).toEqual({ codes: ["SAVE10", "SHIP"], applying: false, draft: "" });
   });
 
-  it("removes a code and counts Remove as applying, so checkout does not start", () => {
-    expect(readCouponForm(form([["coupon", "SAVE10"], ["coupon", "SHIP"], ["couponRemove", "save10"]]))).toEqual({ codes: ["SHIP"], applying: true });
+  it("removes only the selected code, keeping the unsubmitted draft out of the check", () => {
+    expect(readCouponForm(form([["coupon", "SAVE10"], ["coupon", "SHIP"], ["couponCode", " NEW20 "], ["couponRemove", "save10"]])))
+      .toEqual({ codes: ["SHIP"], applying: true, draft: " NEW20 " });
+    expect(readCouponForm(form([["coupon", "SAVE10"], ["couponRemove", "save10"], ["couponCode", "x".repeat(65)]])))
+      .toEqual({ codes: [], applying: true, draft: "x".repeat(64) });
   });
 
   it("takes at most 6 codes of at most 64 characters", () => {

@@ -132,18 +132,18 @@ export async function couponsInstalled(commerceId: string = COMMERCE_REGISTRY_RU
     isPost(runtime, commerceId, ADDONS_ROUTE) && Boolean(await couponsPluginId(runtime))));
 }
 
-/** The codes the form carries: kept ones, minus a removed one, plus a newly typed one; at most 6, no repeats. */
-export function readCouponForm(form: FormData): Readonly<{ codes: string[]; applying: boolean }> {
-  const typed = String(form.get("couponCode") ?? "").trim();
+/** The codes to check, and the unsubmitted draft to show again after Remove. */
+export function readCouponForm(form: FormData): Readonly<{ codes: string[]; applying: boolean; draft: string }> {
+  const typed = String(form.get("couponCode") ?? "");
   const removed = String(form.get("couponRemove") ?? "").trim().toUpperCase();
   const kept = form.getAll("coupon").map((value) => String(value).trim());
   const codes: string[] = [];
-  for (const code of [...kept, typed]) {
+  for (const code of removed ? kept : [...kept, typed.trim()]) {
     if (!code || code.length > COUPON_CODE_MAX || code.toUpperCase() === removed) continue;
     if (codes.some((other) => other.toUpperCase() === code.toUpperCase())) continue;
     if (codes.length < COUPON_CODES_MAX) codes.push(code);
   }
-  return { codes, applying: form.get("intent") === "apply" || removed.length > 0 };
+  return { codes, applying: form.get("intent") === "apply" || removed.length > 0, draft: removed ? typed.slice(0, COUPON_CODE_MAX) : "" };
 }
 
 /** Gives a cart's held uses back when checkout starts with no code; holds lapse on their own after an hour. */
