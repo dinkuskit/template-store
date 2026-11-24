@@ -46,7 +46,15 @@ The store refuses Tax's answer unless all of these hold:
 ## When Tax does not answer
 
 If Tax is installed but does not answer, or answers out of shape, checkout
-waits. The shopper sees "Sales tax can't be worked out right now. Try again in
+waits. It also waits when Tax is installed but cannot be asked, or when the
+store cannot tell whether it is installed:
+
+- Tax is loaded without its private `checkout/answer` route;
+- an active Registry install of Tax is not loaded, or there are two;
+- the store's plugin list cannot be read.
+
+Checkout starts untaxed only when the store is sure Tax is not installed, or
+when Tax answers that the order's state is not switched on. The shopper sees "Sales tax can't be worked out right now. Try again in
 a moment." Nothing starts without the tax the order may owe.
 
 ## Running it locally

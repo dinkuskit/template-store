@@ -26,21 +26,33 @@ const isPost = (runtime: StoreRuntime, id: string) => {
   return Boolean(meta && meta.public === false && meta.methods?.some((method) => method.toUpperCase() === "POST"));
 };
 
-/** The installed Tax plugin's id: its own id outside the Registry, or the one Registry install whose slug is dinkus-tax. */
-export async function taxPluginId(runtime: StoreRuntime): Promise<string | null> {
+/**
+ * Where the Tax plugin is. `absent` only when the store is sure Tax is not installed: not loaded by its own id, and no
+ * active Registry install with its slug. A Tax that is installed but cannot be asked (no private POST route, its install
+ * not loaded, more than one install, or the store's plugin list unreadable) is `unavailable`, so checkout waits rather
+ * than starting untaxed.
+ */
+export type TaxPlugin = Readonly<{ kind: "absent" }> | Readonly<{ kind: "found"; id: string }> | Readonly<{ kind: "unavailable" }>;
+
+export async function findTax(runtime: StoreRuntime): Promise<TaxPlugin> {
   const ids = installedPluginIds(runtime as never);
-  if (ids.includes(TAX_SLUG) && isPost(runtime, TAX_SLUG)) return TAX_SLUG;
+  if (ids.includes(TAX_SLUG)) return isPost(runtime, TAX_SLUG) ? { kind: "found", id: TAX_SLUG } : { kind: "unavailable" };
+  // Registry installs live in the store's database; a runtime without one has none.
+  if (!runtime.db) return { kind: "absent" };
+  let rows: unknown[];
   try {
-    const rows = await runtime.db?.selectFrom("_plugin_state").select(["plugin_id", "registry_slug"])
-      .where("source", "=", "registry").where("status", "=", "active").execute() ?? [];
-    const found = rows.flatMap((row) => {
-      const { plugin_id: id, registry_slug: slug } = (row ?? {}) as { plugin_id?: unknown; registry_slug?: unknown };
-      return typeof id === "string" && slug === TAX_SLUG && ids.includes(id) && isPost(runtime, id) ? [id] : [];
-    });
-    return found.length === 1 ? found[0]! : null;
+    rows = await runtime.db.selectFrom("_plugin_state").select(["plugin_id", "registry_slug"])
+      .where("source", "=", "registry").where("status", "=", "active").execute();
   } catch {
-    return null;
+    return { kind: "unavailable" };
   }
+  const installs = rows.flatMap((row) => {
+    const { plugin_id: id, registry_slug: slug } = (row ?? {}) as { plugin_id?: unknown; registry_slug?: unknown };
+    return slug === TAX_SLUG ? [id] : [];
+  });
+  if (!installs.length) return { kind: "absent" };
+  const [id] = installs;
+  return installs.length === 1 && typeof id === "string" && ids.includes(id) && isPost(runtime, id) ? { kind: "found", id } : { kind: "unavailable" };
 }
 
 /** The cart's lines as the add-ons door names them: Commerce's line order (sorted by catalog item id), unit prices in cents. */
@@ -74,17 +86,19 @@ export function parseTaxAnswer(raw: unknown, lines: readonly TaxLine[]): { answe
 }
 
 /**
- * What checkout does about sales tax. `none`: Tax is not installed, or the order's state is not switched on, so
- * checkout starts untaxed. `answer`: the rates go to Commerce beside the coupon answer, if there is one. `unavailable`: Tax is installed but
- * did not answer, so checkout waits rather than starting without the tax it may owe.
+ * What checkout does about sales tax. `none`: Tax is surely not installed, or it answered that the order's state is not
+ * switched on, so checkout starts untaxed. `answer`: the rates go to Commerce beside the coupon answer, if there is one.
+ * `unavailable`: Tax is or may be installed but did not answer, so checkout waits rather than starting without the tax
+ * it may owe.
  */
 export type TaxCheck = Readonly<{ kind: "none" }> | Readonly<{ kind: "answer"; answer: TaxAnswer }> | Readonly<{ kind: "unavailable" }>;
 
 export async function checkTax(ctx: ServerCartContext, page: ServerCartPage, contact: GuestCheckoutContact): Promise<TaxCheck> {
   const origin = trustedStoreOrigin(ctx);
   const checked = await withStoreRuntime<TaxCheck>(async (runtime) => {
-    const id = await taxPluginId(runtime);
-    if (!id) return { kind: "none" };
+    const tax = await findTax(runtime);
+    if (tax.kind !== "found") return { kind: tax.kind === "absent" ? "none" : "unavailable" };
+    const { id } = tax;
     // The delivery address; billing when nothing ships, as Commerce names the address it taxes.
     const address = contact.delivery ?? contact.billing;
     const lines = taxLines(page);
@@ -103,7 +117,8 @@ export async function checkTax(ctx: ServerCartContext, page: ServerCartPage, con
       return { kind: "unavailable" };
     }
   });
-  return checked ?? { kind: "none" };
+  // No store runtime: Commerce cannot be reached either, and whether Tax is installed is unknown.
+  return checked ?? { kind: "unavailable" };
 }
 
 export const TAX_UNAVAILABLE = "Sales tax can't be worked out right now. Try again in a moment.";
