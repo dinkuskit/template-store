@@ -7,7 +7,7 @@ GrillTrack `template-checkout-coupon-box-20261124`. The owner approved the plain
 The discount box sits in the checkout page's order summary. It takes codes only when the store has the Coupons plugin (`dinkus-coupons`) installed, its Commerce has the add-ons door, the cart has items, and no payment is waiting. Otherwise the old disabled box stays. The playground never takes codes.
 
 - **Apply** sends the whole checkout form with `intent=apply`. The page redraws with what was typed kept, each code's result, a Discount row, and "Free" shipping when a code gives free shipping. Nothing starts.
-- **Remove** next to an applied code sends `couponRemove=<code>` and redraws the same way.
+- **Remove** next to an applied code sends `couponRemove=<code>` and redraws the same way. A different code typed in the input stays there without being checked.
 - **Pay** checks the codes again. A refused code stops checkout and shows why. Otherwise checkout starts with the discount.
 
 Pay goes ahead only when Coupons answered every code, every code applies, and the answer for Commerce came with them; anything less keeps checkout waiting. If the catalog or a product page can't be read, the codes aren't checked at all and the box says "Discount codes can't be checked right now".

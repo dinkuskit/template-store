@@ -26,6 +26,7 @@ import { getEmDashCollection } from "emdash";
 import {
   buildAgentCatalogFeed,
   buildGoogleMerchantFeed,
+  buildInstalledAgentCatalogFeed,
   buildInstalledCommerceFeedFacts,
   buildInstalledStorefrontAgentFeedOptions,
   buildMetaCatalogFeed,
@@ -33,6 +34,7 @@ import {
   buildStorefrontLlmsFullTxt,
   buildStorefrontLlmsTxt,
 } from "../../src/features/commerce-feeds/index.js";
+import { REVIEWS_REGISTRY_RUNTIME_ID } from "../../src/features/review-form/index.js";
 
 const getCollection = vi.mocked(getEmDashCollection);
 
@@ -105,6 +107,53 @@ describe("installed Commerce feed facts", () => {
       if (name === "categories") return { entries: categories } as never;
       throw new Error(`unexpected collection ${name}`);
     });
+  });
+
+  it("enriches only eligible families and preserves Commerce and Reviews authority", async () => {
+    const ctx = context([
+      catalogItem("commerce-hat"), catalogItem("commerce-cap"), catalogItem("commerce-mug", { name: "" }), catalogItem("commerce-orphan"),
+    ]);
+    ctx.request = new Request("https://shop.example.test/feeds/agent-catalog.json?cursor=foreign", { headers: { cookie: "shopper=private" } });
+    const commerce = ctx.runtime.handlePublicPluginApiRoute;
+    const reviewReads: string[] = [];
+    const rating = { value: 4.3, scale_min: 1, scale_max: 5, count: 3 };
+    const handle = vi.fn(async (plugin: string, method: string, route: string, request: Request) => {
+      if (plugin !== REVIEWS_REGISTRY_RUNTIME_ID) return commerce();
+      const url = new URL(request.url);
+      expect(method).toBe("GET");
+      expect(route).toBe("rating");
+      expect([...url.searchParams.keys()]).toEqual(["product"]);
+      expect(request.headers.has("cookie")).toBe(false);
+      const productId = url.searchParams.get("product")!;
+      reviewReads.push(productId);
+      // A valid published aggregate has no review text/name in the resulting feed even if the plugin sent extra keys.
+      const data = productId === "commerce-hat"
+        ? { productId, rating: { ...rating, unexpected: "private" }, text: "private" }
+        : { productId: "another-product", rating };
+      return { success: true, data: { __emdashPluginResponse: true, status: 200, body: { kind: "text", value: JSON.stringify(data) } } };
+    });
+    const feed = await buildInstalledAgentCatalogFeed({ ...ctx, runtime: { handlePublicPluginApiRoute: handle } });
+    expect(reviewReads).toEqual(["commerce-hat", "commerce-cap"]);
+    expect(feed.products.map((item) => [item.id, item.rating])).toEqual([["commerce-hat", rating], ["commerce-cap", undefined]]);
+    expect(feed.products[0]).toMatchObject({ canonicalUrl: "https://shop.example.test/products/hat", price: { minor: "1250" } });
+  });
+
+  it("does not query Reviews on opt-out and stops probing an uninstalled Reviews route after one call", async () => {
+    const items = [catalogItem("commerce-hat"), catalogItem("commerce-cap")];
+    const ctx = context(items);
+    let offCatalog = true;
+    const dispatch = vi.fn(async (plugin: string) => plugin === REVIEWS_REGISTRY_RUNTIME_ID
+      ? { success: false, error: { code: "NOT_FOUND" } }
+      : { success: true, data: { products: items, offCatalog } });
+    const run = () => buildInstalledAgentCatalogFeed({ ...ctx, runtime: { handlePublicPluginApiRoute: dispatch } });
+    const reviewCalls = () => dispatch.mock.calls.filter(([id]) => id === REVIEWS_REGISTRY_RUNTIME_ID).length;
+    expect((await run()).products).toEqual([]);
+    expect(reviewCalls()).toBe(0);
+    offCatalog = false;
+    const { products } = await run();
+    expect(reviewCalls()).toBe(1);
+    expect(products).toHaveLength(2);
+    for (const item of products) expect(item).not.toHaveProperty("rating");
   });
 
   it("joins only published pages, keeps projected channels, and uses the page canonical origin", async () => {

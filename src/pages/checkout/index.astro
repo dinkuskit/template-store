@@ -42,6 +42,7 @@ let error: ContactFieldError | { field: null; message: string } | null = null;
 // The coupon box takes codes only when the Coupons plugin is installed (template-checkout-coupon-box-20261124).
 // A shopper can try a code before the store takes payments; it is checked again when checkout starts.
 let coupons: CouponBox = !page.view.empty && !page.paymentHeld ? await couponBoxOn(isPlayground) : COUPONS_OFF;
+let couponDraft = "";
 // The checkout form posts here: the server checks it, starts checkout from the saved cart and sends the shopper
 // to Stripe, with no script needed (template-cart-real-form-20261113).
 if (Astro.request.method === "POST") {
@@ -50,7 +51,8 @@ if (Astro.request.method === "POST") {
   const typed = form && coupons.on ? readCouponForm(form) : null;
   const read = form ? readContactForm(form, page.view.needsDelivery) : null;
   if (form && typed?.applying) {
-    // Apply or Remove: show what the codes take off, keep what was typed, start nothing.
+    // Remove carries a draft forward without sending it to Coupons. Apply checks the typed code.
+    couponDraft = typed.draft;
     const email = read?.values.email ?? "";
     coupons = (await checkCoupons(cartContext, page, typed.codes, /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email) ? email : undefined, false)).box;
     values = read?.values ?? null;
@@ -115,6 +117,7 @@ if (Astro.request.method === "POST") {
         values={values}
         error={error}
         coupons={coupons}
+        couponDraft={couponDraft}
       />
     </main>
     <StoreFooter profile={profile} />

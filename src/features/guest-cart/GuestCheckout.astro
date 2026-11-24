@@ -17,6 +17,8 @@ interface Props {
   error?: (ContactFieldError | Readonly<{ field: null; message: string }>) | null;
   /** The discount code box, when the Coupons plugin is installed (template-checkout-coupon-box-20261124). */
   coupons?: CouponBox | null;
+  /** A code left in the input when the shopper removed a different code. */
+  couponDraft?: string;
 }
 
 const {
@@ -27,6 +29,7 @@ const {
   values = null,
   error = null,
   coupons = null,
+  couponDraft = "",
 } = Astro.props;
 const couponsOn = Boolean(coupons?.on);
 const applied = coupons?.results.filter((result) => result.ok) ?? [];
@@ -158,7 +161,7 @@ const dataName = (field: string) => field === "postalCode" ? "postal-code" : fie
           <label for="guest-cart-coupon">Discount code</label>
           {coupons!.codes.map((code) => <input type="hidden" name="coupon" value={code} />)}
           <div class="guest-cart-coupon__row">
-            <input id="guest-cart-coupon" name="couponCode" data-guest-cart-coupon type="text" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter a code" aria-describedby={refused.length || coupons!.message ? "guest-cart-coupon-note" : undefined} autofocus={refused.length > 0} />
+            <input id="guest-cart-coupon" name="couponCode" data-guest-cart-coupon type="text" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter a code" value={couponDraft} aria-describedby={refused.length || coupons!.message ? "guest-cart-coupon-note" : undefined} autofocus={refused.length > 0} />
             <button type="submit" name="intent" value="apply" formnovalidate data-guest-cart-coupon-apply>Apply</button>
           </div>
           {(coupons!.message || refused.length > 0) && (
