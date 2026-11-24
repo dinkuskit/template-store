@@ -46,4 +46,8 @@ Each answered 422 with an empty cart, and the box took no codes. Afterwards the 
 
 The box takes codes only when the store's Commerce declares the private `checkout/addons/start` route, not just when Coupons is installed. So installing Coupons on a Commerce release without the door leaves the old disabled box (`tests/unit/coupon-box-commerce-door.test.ts`). The revocation run above used Commerce from #306, and its box took codes as before.
 
+## A quantity changed in another tab
+
+Coupons' answer now names each line's quantity, the store refuses an answer whose quantity differs from the line it sent, and Commerce refuses one that does not match the saved cart (dinkuskit/commerce#306). On a fresh store with all three ([qty-trace.txt](qty-trace.txt)), a shopper applied SPRING25 to one $18 mug (−$4.50, `qty-1-applied.jpg`), changed the mug to 2 on the cart page in another tab, and pressed Pay on the first tab, which still showed −$4.50. Pay asked Coupons again with the saved cart, held one use, and Commerce priced 2 × $18.00 − $9.00 + $5.00 shipping = $32.00 before sending the shopper to Stripe (`qty-2-sent-to-stripe.jpg`). The old −$4.50 never reached checkout.
+
 Not proven here: a real Stripe payment. A beta store run is the next check.
