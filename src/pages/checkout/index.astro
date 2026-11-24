@@ -12,6 +12,8 @@ import { PLAYGROUND_FLAT_RATE_SHIPPING } from "../../features/playground/flat-ra
 import { storeBannerText } from "../../features/store-shell/checkout-copy.js";
 import { loadServerCartPage, openPaymentUrl } from "../../features/guest-cart/server-view.js";
 import { readBoundedForm, readContactForm, sameStoreRequest, startServerCheckout, type ContactFieldError, type ContactFormValues } from "../../features/guest-cart/server-cart.js";
+import { COUPONS_OFF, checkCoupons, couponBoxOn, type CouponBox } from "../../features/coupons/checkout.js";
+import { readCouponForm } from "../../features/coupons/index.js";
 import "../../features/store-shell/global.css";
 
 const profile = readStorefrontProfile();
@@ -36,13 +38,22 @@ const admitted = Boolean(effectiveAdmission);
 let page = await loadServerCartPage(cartContext, admitted);
 let values: ContactFormValues | null = null;
 let error: ContactFieldError | { field: null; message: string } | null = null;
+// The coupon box takes codes only when the Coupons plugin is installed (template-checkout-coupon-box-20261124).
+// A shopper can try a code before the store takes payments; it is checked again when checkout starts.
+let coupons: CouponBox = !page.view.empty && !page.paymentHeld ? await couponBoxOn(isPlayground) : COUPONS_OFF;
 // The checkout form posts here: the server checks it, starts checkout from the saved cart and sends the shopper
 // to Stripe, with no script needed (template-cart-real-form-20261113).
 if (Astro.request.method === "POST") {
   // Contact, delivery and billing fit well under 16 KB; a longer body is never parsed.
   const form = sameStoreRequest(cartContext) ? await readBoundedForm(Astro.request, 16 * 1024) : null;
+  const typed = form && coupons.on ? readCouponForm(form) : null;
   const read = form ? readContactForm(form, page.view.needsDelivery) : null;
-  if (!read) {
+  if (form && typed?.applying) {
+    // Apply or Remove: show what the codes take off, keep what was typed, start nothing.
+    const email = read?.values.email ?? "";
+    coupons = (await checkCoupons(cartContext, page, typed.codes, /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email) ? email : undefined, false)).box;
+    values = read?.values ?? null;
+  } else if (!read) {
     error = { field: null, message: "Checkout could not start. Try again." };
   } else if (read.error) {
     values = read.values;
@@ -51,15 +62,31 @@ if (Astro.request.method === "POST") {
     values = read.values;
     error = { field: null, message: page.view.checkoutReason };
   } else {
-    const started = await startServerCheckout(cartContext, read.contact, read.news);
-    if (started.ok && started.checkout.state === "paid") return Astro.redirect("/checkout/success", 303);
-    const payment = started.ok ? openPaymentUrl(started) : null;
-    if (payment) return Astro.redirect(payment, 303);
-    values = read.values;
-    error = { field: null, message: started.ok ? "Checkout could not start. Try again." : started.error.message };
-    page = await loadServerCartPage(cartContext, admitted);
+    // Each code is checked again and holds a use for this cart; a code refused now stops here, so the shopper sees why.
+    const checked = typed ? await checkCoupons(cartContext, page, typed.codes, read.contact.email, true) : null;
+    if (checked) coupons = checked.box;
+    const started = checked && !checked.ok
+      ? null
+      : await startServerCheckout(cartContext, read.contact, read.news, checked?.answer ? [checked.answer] : []);
+    if (!started) {
+      values = read.values;
+      error = { field: null, message: coupons.message ?? "Check your discount codes, then continue." };
+    } else {
+      if (started.ok && started.checkout.state === "paid") return Astro.redirect("/checkout/success", 303);
+      const payment = started.ok ? openPaymentUrl(started) : null;
+      if (payment) return Astro.redirect(payment, 303);
+      values = read.values;
+      error = { field: null, message: started.ok ? "Checkout could not start. Try again." : started.error.message };
+      page = await loadServerCartPage(cartContext, admitted);
+    }
   }
-  Astro.response.status = 422;
+  // Pay stopped before Coupons was asked (a contact field, or checkout closed): keep the codes and redraw what they
+  // take off, holding nothing, so the next Pay still carries them.
+  if (typed && !typed.applying && typed.codes.length && !coupons.results.length && !coupons.message) {
+    const email = read?.values.email ?? "";
+    coupons = (await checkCoupons(cartContext, page, typed.codes, /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(email) ? email : undefined, false)).box;
+  }
+  if (!typed?.applying) Astro.response.status = 422;
 }
 ---
 <!doctype html>
@@ -82,6 +109,7 @@ if (Astro.request.method === "POST") {
         page={page}
         values={values}
         error={error}
+        coupons={coupons}
       />
     </main>
     <StoreFooter profile={profile} />

@@ -75,6 +75,7 @@ function variantMembers(variants: unknown): PublicCommerceVariant[] {
       selections,
       unitMinor: minor,
       priceText: formatUsdMinor(minor),
+      ...(member.onSale === true ? { onSale: true } : {}),
       availability: { status: availability.status as PublicCommerceVariant["availability"]["status"], sellable: availability.sellable },
       ...(member.fulfillment === "physical" || member.fulfillment === "digital" ? { fulfillment: member.fulfillment } : {}),
     });
@@ -150,8 +151,10 @@ function product(value: unknown): ProductResult {
     // Keep the concrete default member's explicit fulfillment, without inventing a
     // variant picker. Older or ambiguous projections still require delivery.
     fulfillment: simpleFulfillment(value.variants, id),
-    // Commerce projects customerPays only; never reconstruct a regular/sale pair.
-    price: { listable: true, regularText, saleText: null, ...(unitMinor ? { unitMinor } : {}) },
+    // Commerce projects customerPays only; never reconstruct a regular/sale pair. Its onSale flag
+    // (commerce-sale-flag-20261124) says that price is a Sale price, so Coupons can tell a sale item.
+    price: { listable: true, regularText, saleText: null, ...(unitMinor ? { unitMinor } : {}),
+      ...(unitMinor && value.onSale === true ? { onSale: true } : {}) },
     availability: {
       status: value.availability.status as PublicCommerceProduct["availability"]["status"],
       // Commerce reports a variant parent as not sellable; the parent id is
@@ -292,7 +295,7 @@ export function cartLineProduct(item: PublicCommerceProduct, itemId: string): Pu
     name: `${item.name} \u2014 ${member.selections.map(([, value]) => value).join(" / ")}`,
     // Commerce projects no member SKU; the product's SKU would name a different item.
     sku: "",
-    price: { listable: true, regularText: member.priceText, saleText: null, unitMinor: member.unitMinor },
+    price: { listable: true, regularText: member.priceText, saleText: null, unitMinor: member.unitMinor, ...(member.onSale ? { onSale: true } : {}) },
     availability: { ...member.availability, listable: true },
     // Commerce projects each member's fulfillment, so a digital Size checks out without a delivery address;
     // without one, fail closed to physical as for simple products.

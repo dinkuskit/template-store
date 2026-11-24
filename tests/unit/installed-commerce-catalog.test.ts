@@ -6,6 +6,7 @@ import {
   readInstalledCommerceProducts,
 } from "../../src/features/commerce-catalog/installed.js";
 import { COMMERCE_REGISTRY_RUNTIME_ID } from "../../src/features/guest-cart/checkout-protocol.js";
+import { projectGuestCartCatalogSnapshot } from "../../src/features/guest-cart/present.js";
 
 const item = (id = "item") => ({ id, name: "Neutral product", sku: "NEUTRAL", price: { currency: "USD", minor: "125" },
   availability: { status: "in-stock", sellable: true, listable: true } });
@@ -264,6 +265,21 @@ describe("installed Commerce public catalog consumer", () => {
     expect(products.get("hoodie")).toBeNull();
     expect(products.get("hoodie-l")).toMatchObject({ price: { unitMinor: "4500" }, availability: { status: "out-of-stock", sellable: false } });
     expect(products.get("hoodie-m")).toBeNull();
+  });
+
+  it("carries Commerce's sale flag on a simple product and on the chosen member, and only when Commerce sends true", async () => {
+    // commerce-sale-flag-20261124: Coupons needs to know which cart lines are on sale.
+    const onSaleMember = structuredClone(sized);
+    (onSaleMember.variants.members[0] as Record<string, unknown>).onSale = true;
+    const ctx = context([{ ...item("hat"), onSale: true }, item("cap"), { ...item("odd"), onSale: "yes" }, onSaleMember, onSaleMember]);
+    const products = await readInstalledCommerceProducts(["hat", "cap", "odd", "hoodie-s", "hoodie-l"], ctx);
+    expect(products.get("hat")?.price).toEqual({ listable: true, regularText: "$1.25", saleText: null, unitMinor: "125", onSale: true });
+    for (const id of ["cap", "odd", "hoodie-l"]) expect(products.get(id)?.price).not.toHaveProperty("onSale");
+    expect(products.get("hoodie-s")?.price).toEqual({ listable: true, regularText: "$40.00", saleText: null, unitMinor: "4000", onSale: true });
+    const snapshot = projectGuestCartCatalogSnapshot({ ...products.get("hat"), found: true, thumbnail: null });
+    expect(snapshot).toMatchObject({ found: true, price: { onSale: true } });
+    const regular = projectGuestCartCatalogSnapshot({ ...products.get("cap"), found: true, thumbnail: null });
+    expect(regular && regular.found && regular.price).not.toHaveProperty("onSale");
   });
 
   it("fails a cart lookup when Commerce cannot answer, so the cart keeps its lines", async () => {
