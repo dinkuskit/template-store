@@ -179,10 +179,11 @@ export const ratingText = (value: number) => value.toFixed(1);
 /** "1 review for Camp mug" or "12 reviews for Camp mug", WooCommerce's reviews heading. */
 export const reviewsHeading = (count: number, productName: string) => `${count} ${count === 1 ? "review" : "reviews"} for ${productName}`;
 
-/** The same page's address showing the next page of reviews. */
-export function moreReviewsHref(url: URL, next: string): string {
+/** The same product's address for another page of reviews; null returns to the latest. */
+export function reviewsPageHref(url: URL, cursor: string | null): string {
   const address = new URL(url);
-  address.searchParams.set(REVIEWS_CURSOR_PARAM, next);
+  if (cursor === null) address.searchParams.delete(REVIEWS_CURSOR_PARAM);
+  else address.searchParams.set(REVIEWS_CURSOR_PARAM, cursor);
   return `${address.pathname}${address.search}#${REVIEWS_ANCHOR}`;
 }
 
