@@ -28,6 +28,11 @@ function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function publicShipBy(availability: Record<string, unknown>): { shipBy?: string } {
+  return availability.status === "available-on-backorder" && typeof availability.shipBy === "string"
+    ? { shipBy: availability.shipBy } : {};
+}
+
 const MINOR = /^(0|[1-9][0-9]*)$/u;
 
 function usdMinor(value: unknown): string | null {
@@ -76,7 +81,11 @@ function variantMembers(variants: unknown): PublicCommerceVariant[] {
       unitMinor: minor,
       priceText: formatUsdMinor(minor),
       ...(member.onSale === true ? { onSale: true } : {}),
-      availability: { status: availability.status as PublicCommerceVariant["availability"]["status"], sellable: availability.sellable },
+      availability: {
+        status: availability.status as PublicCommerceVariant["availability"]["status"],
+        sellable: availability.sellable,
+        ...publicShipBy(availability),
+      },
       ...(member.fulfillment === "physical" || member.fulfillment === "digital" ? { fulfillment: member.fulfillment } : {}),
     });
   }
@@ -160,6 +169,7 @@ function product(value: unknown): ProductResult {
       // Commerce reports a variant parent as not sellable; the parent id is
       // never added to the cart, and checkout reprices server-side.
       sellable: value.availability.sellable, listable: true,
+      ...publicShipBy(value.availability),
     },
     // A bad image degrades to a placeholder. It must not hide the price.
     image: readCommerceImage(value.image, value.name),
