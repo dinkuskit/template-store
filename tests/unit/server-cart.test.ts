@@ -45,7 +45,7 @@ function fakeCommerce() {
     lines: [],
     order: attempt?.state === "paid"
       ? {
-          orderId: "order:1001", receiptId: "rcpt_1",
+          orderId: "order:internal-id", receiptId: "rcpt_1",
           lines: [{ catalogItemId: "item_hat", name: "Hat", quantity: 2, unitPrice: { currency: "USD", minor: "1500" } }],
           total: { currency: "USD", minor: "3000" },
           ...attempt.order,
@@ -508,11 +508,24 @@ describe("thank-you page", () => {
     const commerce = fakeCommerce();
     const jar = fakeCookies();
     await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 2 });
-    commerce.carts.get("cap1")!.attempt = { attemptId: "att_1", state: "paid", redirectUrl: null };
+    commerce.carts.get("cap1")!.attempt = { attemptId: "att_1", state: "paid", redirectUrl: null, order: { number: 1001 } };
     const paid = await loadCheckoutReturn(context(commerce, jar, { url: "https://shop.test/checkout/success?session_id=cs_forged" }));
     expect(paid).toMatchObject({ kind: "paid", order: { orderNumber: "1001", totals: [{ label: "Total", amount: "$30.00" }] } });
     expect(jar.jar.get(CART_COUNT_COOKIE)).toBe("0");
     expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
+  });
+
+  it("keeps the paid receipt when Commerce has no lookup number", async () => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    await addToServerCart(context(commerce, jar), { catalogItemId: "item_hat", quantity: 2 });
+    const cart = commerce.carts.get("cap1")!;
+    for (const number of [undefined, null, "1001", 0, -1, 1.5, 1e15]) {
+      cart.attempt = { attemptId: "att_1", state: "paid", redirectUrl: null, order: { number } };
+      expect(await loadCheckoutReturn(context(commerce, jar))).toMatchObject({
+        kind: "paid", order: { orderNumber: null, totals: [{ label: "Total", amount: "$30.00" }] },
+      });
+    }
   });
 
   it("shows where Commerce has the order now: Processing, or Completed with carrier and tracking, never delivered", async () => {
