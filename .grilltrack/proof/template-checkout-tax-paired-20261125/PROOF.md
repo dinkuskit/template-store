@@ -38,8 +38,13 @@ The full trace is in [trace.txt](trace.txt).
 | **H.** Tax cannot answer: Tennessee is on, but the store no longer holds a table in use for it | "Sales tax can't be worked out right now. Try again in a moment." No checkout attempt, Payments call or tax answer was made. | `h-tax-unavailable.jpg` |
 | **I.** Confirmed absence: the store restarted without Tax | Checkout went on untaxed to the Tennessee address: Payments got $85.00, with no tax line and no add-on. | |
 | **I2.** Tax installed but cannot be asked: an active Registry install of `dinkus-tax` in the store's database, not loaded | The same "can't be worked out" message, and nothing started. | `h-tax-unavailable.jpg` (the same page) |
+| **J.** Upgrade, on a phone (iPhone 13): a cart saved while the store had no Tax plugin; the store restarts with Tax; the same browser comes back | The saved cart (same id) loaded. Pay to 1 Public Square, Nashville was taxed at 9.75%: Payments got "Camp mug × 2 $30.00, Shipping $5.00, Sales tax $3.42" ($38.42). | `j-phone-checkout-tn.jpg` |
 
 A mismatched address is not reachable from this form. The checkout always asks Tax for the address it then hands Commerce. The door's own refusal of an answer for another address is covered by Commerce's test "a tax answer for another address, or with a missing or malformed rate, freezes nothing" (`tests/features/checkout/checkout-pricing.test.mjs`).
+
+## Stored data
+
+This PR stores nothing new. The cart, its key and the order stay in Commerce, and the tax answer stays in Tax. A store without Tax keeps checking out untaxed exactly as before (I). A cart saved before Tax was installed loads and pays taxed afterwards (J).
 
 ## What the first try at H found
 

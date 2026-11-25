@@ -110,3 +110,12 @@ I2:
   Pay answered: stayed on the page: ["Sales tax can't be worked out right now. Try again in a moment."]
   counts before → after: {"answers":8,"payments":41,"sessions":9,"attempts":9} → {"answers":8,"payments":41,"sessions":9,"attempts":9}
   (the stand-in install record removed)
+
+# J. Upgrade, on a phone: a cart saved while the store had no Tax plugin, paid after Tax is installed
+  before Tax: cart 4bb50e84-ee01-421e-8840-1ca6b1edc44f saved with 2 Camp mugs
+  after Tax is installed, the same browser comes back: cart 4bb50e84-ee01-421e-8840-1ca6b1edc44f
+J:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"bfe78a6a-e30e-44ec-9c8e-f0c3d0e924aa"}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"3842"},"tax":{"currency":"USD","minor":"342"},"stripeLines":["Camp mug × 2 3000","Shipping 500","Sales tax 342"]}
+  counts before → after: {"answers":8,"payments":43,"sessions":9,"attempts":9} → {"answers":9,"payments":47,"sessions":10,"attempts":10}
