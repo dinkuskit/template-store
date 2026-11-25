@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-11-22T20:37:30+00:00",
-    "domain": "agent catalog feed listing",
-    "started_at": "2026-11-22T20:37:30+00:00",
+    "confirmed_at": "2026-11-25T04:30:24+00:00",
+    "domain": "Template EmDash 1.6 source upgrade",
+    "started_at": "2026-11-25T04:30:24+00:00",
     "status": "confirmed",
-    "summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."
+    "summary": "The owner approved starting the EmDash 1.6 upgrade on 25 Nov 2026: version PRs with proof first; each deploy and journeys run still needs the owner's go."
   },
   "decisions": [
     {
@@ -7042,6 +7042,75 @@
       "superseded_by": null,
       "updated_at": "2026-11-24T15:35:11+00:00",
       "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:8cce9dc",
+      "candidate_refs": [],
+      "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+      "context_ref": null,
+      "created_at": "2026-11-25T04:30:24+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Template EmDash 1.6 source upgrade",
+      "history": [
+        {
+          "at": "2026-11-25T04:30:24+00:00",
+          "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-25T04:30:24+00:00",
+          "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-25T04:30:57+00:00",
+          "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+          "from": "implemented",
+          "implementation_ref": "git:440b20e",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-emdash16-20261125",
+      "implementation_ref": "git:440b20e",
+      "question": "Which EmDash and Commerce does the store template run before v1?",
+      "rationale": "The owner approved the 1.6 upgrade on 25 Nov 2026. 1.6 adds one additive migration (098_user_last_login), no new plugin permissions or capabilities, scheduled publishing on time, and a fix for plugin routes 404ing after an install.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-11-25T04:30:57+00:00",
+      "verification_ref": ".grilltrack/proof/emdash-1-6-20261125/PROOF.md"
     }
   ],
   "last_activation": {
@@ -7064,5 +7133,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-24T15:35:11+00:00"
+  "updated_at": "2026-11-25T04:30:57+00:00"
 }
