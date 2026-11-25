@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-11-25T04:30:24+00:00",
-    "domain": "Template EmDash 1.6 source upgrade",
-    "started_at": "2026-11-25T04:30:24+00:00",
+    "confirmed_at": "2026-11-25T04:50:32+00:00",
+    "domain": "agent catalog feed listing",
+    "started_at": "2026-11-25T04:50:32+00:00",
     "status": "confirmed",
-    "summary": "The owner approved starting the EmDash 1.6 upgrade on 25 Nov 2026: version PRs with proof first; each deploy and journeys run still needs the owner's go."
+    "summary": "The owner agreed the five standard category decisions on 24 Nov 2026 and said to build them."
   },
   "decisions": [
     {
@@ -7111,6 +7111,177 @@
       "superseded_by": null,
       "updated_at": "2026-11-25T04:30:57+00:00",
       "verification_ref": ".grilltrack/proof/emdash-1-6-20261125/PROOF.md"
+    },
+    {
+      "baseline_ref": "git:1662715",
+      "candidate_refs": [],
+      "choice": "Shopify's open Standard Product Taxonomy (MIT), pinned at version 2026-11. When Shopify releases a new version, a named storefront upgrade step moves each saved category forward with Shopify's published old-to-new version map; no category is re-picked by hand.",
+      "context_ref": null,
+      "created_at": "2026-11-25T04:50:32+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-25T04:50:32+00:00",
+          "choice": "Shopify's open Standard Product Taxonomy (MIT), pinned at version 2026-11. When Shopify releases a new version, a named storefront upgrade step moves each saved category forward with Shopify's published old-to-new version map; no category is re-picked by hand.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-product-category-list-20261124",
+      "implementation_ref": null,
+      "question": "Which standard category list does every product use, for the Google and Meta feeds, the agent catalog and sales tax?",
+      "rationale": "Shopify uses one category from this list for its catalog, sales channels and tax; the DinkusKit agent catalog already filters on it; Shopify publishes a map from it to Google's list. The owner chose it on the decision card, 24 Nov 2026 22:13 UTC.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-25T04:50:32+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1662715",
+      "candidate_refs": [],
+      "choice": "A Product category field on the product page (Content > Products), slug product_category, one per product and shared by all its variants, as on Shopify. It holds the bare Shopify category id as a string, such as aa-1-13-8. Empty means Uncategorized. A named storefront upgrade step adds the field to stores set up from an older seed. The store's own Categories (menu categories) stay as they are. Store code hands the category to the Tax plugin with each cart line.",
+      "context_ref": null,
+      "created_at": "2026-11-25T04:50:32+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-product-category-list-20261124"
+      ],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-25T04:50:33+00:00",
+          "choice": "A Product category field on the product page (Content > Products), slug product_category, one per product and shared by all its variants, as on Shopify. It holds the bare Shopify category id as a string, such as aa-1-13-8. Empty means Uncategorized. A named storefront upgrade step adds the field to stores set up from an older seed. The store's own Categories (menu categories) stay as they are. Store code hands the category to the Tax plugin with each cart line.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-product-category-field-20261124",
+      "implementation_ref": null,
+      "question": "Where does a product's standard category live, and in what shape?",
+      "rationale": "Same product screen the owner already uses (one product screen lock), no Commerce backend bytes (15 free on 2b4537f), one per product like Shopify. The owner chose it on the decision card, 24 Nov 2026 22:15 UTC.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-25T04:50:33+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1662715",
+      "candidate_refs": [],
+      "choice": "Copy Shopify: the Product category box arrives filled with a suggestion worked out from the product's name, description and first photo; the owner keeps it or searches the list for another, and saving the product confirms it. With no pick and no suggestion the product is Uncategorized. How the box is built in EmDash is proved before it is built.",
+      "context_ref": null,
+      "created_at": "2026-11-25T04:50:33+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-product-category-field-20261124"
+      ],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-25T04:50:33+00:00",
+          "choice": "Copy Shopify: the Product category box arrives filled with a suggestion worked out from the product's name, description and first photo; the owner keeps it or searches the list for another, and saving the product confirms it. With no pick and no suggestion the product is Uncategorized. How the box is built in EmDash is proved before it is built.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-product-category-pick-20261124",
+      "implementation_ref": null,
+      "question": "How does a product's category get picked?",
+      "rationale": "Shopify's product category flow (help.shopify.com/en/manual/products/details/product-category, read 24 Nov 2026). The owner chose it on the decision card, 24 Nov 2026 22:16 UTC.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-25T04:50:33+00:00",
+      "verification_ref": null
+    },
+    {
+      "baseline_ref": "git:1662715",
+      "candidate_refs": [],
+      "choice": "Google and Meta feeds send google_product_category as Google's numeric id, taken from Shopify's published map from Shopify 2026-11 to Google 2021-09-21, and product_type from the store's own category on the product page. The agent catalog feed sends the Shopify id with its taxonomy version and full name. An Uncategorized product, or one whose category has no Google match, sends no google_product_category, and Google and Meta categorize it themselves. No fb_product_category.",
+      "context_ref": null,
+      "created_at": "2026-11-25T04:50:33+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [
+        "template-product-category-list-20261124",
+        "template-product-category-field-20261124"
+      ],
+      "domain": "agent catalog feed listing",
+      "history": [
+        {
+          "at": "2026-11-25T04:50:33+00:00",
+          "choice": "Google and Meta feeds send google_product_category as Google's numeric id, taken from Shopify's published map from Shopify 2026-11 to Google 2021-09-21, and product_type from the store's own category on the product page. The agent catalog feed sends the Shopify id with its taxonomy version and full name. An Uncategorized product, or one whose category has no Google match, sends no google_product_category, and Google and Meta categorize it themselves. No fb_product_category.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-product-category-feeds-20261124",
+      "implementation_ref": null,
+      "question": "What does each product feed send for a product's category?",
+      "rationale": "Google accepts google_product_category as an id or path and product_type for a store's own categories; Meta recommends google_product_category (read 24 Nov 2026). The owner chose it on the decision card, 24 Nov 2026 22:17 UTC.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "locked",
+      "superseded_by": null,
+      "updated_at": "2026-11-25T04:50:33+00:00",
+      "verification_ref": null
     }
   ],
   "last_activation": {
@@ -7133,5 +7304,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-25T04:30:57+00:00"
+  "updated_at": "2026-11-25T04:50:33+00:00"
 }
