@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { moreReviewsHref, ratingText, readProductReviews, readPublishedProductRatings, reviewsHeading, reviewsJsonLd, starFill } from "../../src/features/product-reviews/index.js";
+import { ratingText, readProductReviews, readPublishedProductRatings, reviewsHeading, reviewsJsonLd, reviewsPageHref, starFill } from "../../src/features/product-reviews/index.js";
 import { REVIEWS_REGISTRY_RUNTIME_ID } from "../../src/features/review-form/index.js";
 
 const PAGE = "https://store.example.test/products/camp-mug";
@@ -119,8 +119,9 @@ describe("a product page's rating and reviews", () => {
     const view = await readProductReviews(ctx, "prod_1");
     expect(view).toMatchObject({ next: "next-2", later: true });
     expect(calls[0]?.url.searchParams.get("cursor")).toBe("next-1");
-    expect(moreReviewsHref(ctx.url, "next-2")).toBe("/products/camp-mug?reviews=next-2#reviews");
-    expect(moreReviewsHref(new URL(`${PAGE}?variant=v1`), "a b&c")).toBe("/products/camp-mug?variant=v1&reviews=a+b%26c#reviews");
+    expect(reviewsPageHref(ctx.url, "next-2")).toBe("/products/camp-mug?reviews=next-2#reviews");
+    expect(reviewsPageHref(new URL(`${PAGE}?variant=v1`), "a b&c")).toBe("/products/camp-mug?variant=v1&reviews=a+b%26c#reviews");
+    expect(reviewsPageHref(new URL(`${PAGE}?variant=v1&reviews=next-1&reviews=duplicate#cart`), null)).toBe("/products/camp-mug?variant=v1#reviews");
     // A cursor no page of ours made is not passed on.
     const hostile = page(raw(LIST), `${PAGE}?reviews=${"x".repeat(2001)}`);
     await readProductReviews(hostile.ctx, "prod_1");

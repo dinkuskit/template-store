@@ -1,5 +1,5 @@
 ---
-import { REVIEWS_ANCHOR, moreReviewsHref, reviewsHeading, type ProductReviewsView } from "./index.js";
+import { REVIEWS_ANCHOR, reviewsHeading, reviewsPageHref, type ProductReviewsView } from "./index.js";
 
 interface Props {
   view: ProductReviewsView;
@@ -28,7 +28,13 @@ const ANONYMOUS = "Verified buyer";
       </li>
     ))}
   </ol>
-  {view.next && <p><a class="product-reviews__more" data-product-reviews-more rel="nofollow" href={moreReviewsHref(Astro.url, view.next)}>More reviews</a></p>}
+  {view.later && view.reviews.length === 0 && <p>No reviews on this page.</p>}
+  {(view.later || view.next) && (
+    <nav class="product-reviews__pages" aria-label="Review pages">
+      {view.later && <a href={reviewsPageHref(Astro.url, null)}>Back to latest reviews</a>}
+      {view.next && <a data-product-reviews-more rel="nofollow" href={reviewsPageHref(Astro.url, view.next)}>More reviews</a>}
+    </nav>
+  )}
 </section>
 
 <style>
@@ -44,6 +50,7 @@ const ANONYMOUS = "Verified buyer";
   .product-review__body{white-space:pre-line}
   .product-review__reply{margin-top:.75rem;padding:.6rem 1rem;border-left:4px solid var(--store-accent)}
   .product-review__reply p{white-space:pre-line}
-  .product-reviews__more{display:inline-flex;align-items:center;min-height:44px;margin-top:1rem;color:inherit;font-weight:800}
-  .product-reviews__more:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
+  .product-reviews__pages{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;margin-top:1rem}
+  .product-reviews__pages a{display:inline-flex;align-items:center;min-height:44px;min-width:44px;color:inherit;font-weight:800}
+  .product-reviews__pages a:focus-visible{outline:3px solid var(--store-focus-ring);outline-offset:2px}
 </style>
