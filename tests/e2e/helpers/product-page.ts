@@ -91,8 +91,10 @@ async function dismissWelcome(admin: Page, ready: Locator) {
 /** The page's Dinkus Commerce panel, opened in the editor's settings sidebar. */
 export async function openPanel(admin: Page) {
   const trigger = admin.getByLabel("Settings", { exact: true }).getByRole("button", { name: "Dinkus Commerce", exact: true });
-  // On a phone the editor's settings sidebar opens from its Settings button.
-  const settings = admin.getByRole("main").getByRole("button", { name: "Settings", exact: true });
+  // On a phone the editor's settings sidebar opens from a button in its bar: Settings on EmDash 1.5,
+  // Show settings on 1.6.
+  const settings = admin.getByRole("main").getByRole("button", { name: "Settings", exact: true })
+    .or(admin.getByRole("button", { name: "Show settings", exact: true }));
   await expect(trigger.or(settings).first()).toBeVisible({ timeout: 60_000 });
   if (!(await trigger.isVisible())) await settings.click();
   await expect(trigger).toBeVisible();
