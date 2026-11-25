@@ -107,7 +107,7 @@
         },
         {
           "slug": "product_category",
-          "label": "Standard category (for Google, Meta and tax; pick it in the Commerce panel)",
+          "label": "Standard category: a Shopify category id such as aa-2-17, or leave empty (for Google, Meta and tax)",
           "type": "string",
           "translatable": false,
           "validation": {

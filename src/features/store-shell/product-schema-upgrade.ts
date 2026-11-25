@@ -89,7 +89,7 @@ export async function ensureStorefrontProductFields(db: unknown): Promise<void> 
 /** Each product's one standard category; it mirrors seed/seed.json (template-product-category-field-20261124). */
 export const PRODUCT_CATEGORY_FIELD_INPUT: CreateFieldInput = {
   slug: "product_category",
-  label: "Standard category (for Google, Meta and tax; pick it in the Commerce panel)",
+  label: "Standard category: a Shopify category id such as aa-2-17, or leave empty (for Google, Meta and tax)",
   type: "string",
   translatable: false,
   validation: { maxLength: 64, pattern: "^$|^[a-z]{2}(-[0-9]{1,4}){0,10}$" },
