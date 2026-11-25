@@ -41,7 +41,9 @@ const hasDestination = Boolean(order && (order.email || order.recipient || order
         </defs>
       </svg>
       <div class="guest-checkout-order-heading">
-        <h2 data-guest-checkout-order-number>Order {order.orderNumber}</h2>
+        {order.orderNumber
+          ? <h2 data-guest-checkout-order-number>Order #{order.orderNumber}</h2>
+          : <h2>Order details</h2>}
         {order.test && <span class="guest-checkout-test-badge" data-guest-checkout-test>TEST</span>}
         <span class="ephemera-rubber-stamp" data-ephemera-stamp aria-hidden="true">
           <span class="ephemera-rubber-stamp__inner" data-ephemera-stamp-text>{order.test ? "PAID · STRIPE TEST" : "SETTLED · COMMERCE"}</span>
@@ -119,7 +121,7 @@ const hasDestination = Boolean(order && (order.email || order.recipient || order
         </>
       )}
       {contactHref && <p data-guest-checkout-contact>Questions? <a href={contactHref}>Contact the store</a>.</p>}
-      <div class="ephemera-receipt-barcode" data-ephemera-barcode aria-hidden="true" set:html={receiptBarcodeSvg(`DK-${order.orderNumber}`)}></div>
+      {order.orderNumber && <div class="ephemera-receipt-barcode" data-ephemera-barcode aria-hidden="true" set:html={receiptBarcodeSvg(`DK-${order.orderNumber}`)}></div>}
     </div>
   )}
   {result.kind === "confirming" && (
