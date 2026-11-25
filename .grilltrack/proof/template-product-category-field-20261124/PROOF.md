@@ -7,8 +7,8 @@ Builds the template part of `template-product-category-list-20261124`,
 
 | Requirement | Source | Passing case | Refused case | Where | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| One field `product_category` on products, a bare Shopify id, empty = Uncategorized | field ledger entry | `aa-2-17` saves and reads back after a reload | `Hats` is refused: "does not match the required format" | local store, desktop and phone | `editor-desktop*.jpg`, `editor-phone*.jpg`; `tests/unit/product-schema-upgrade.test.ts` |
-| An older store gains the field with no re-seed | template self-upgrade rule (`template-store-self-upgrade-20261028`) | a store made from `tests/fixtures/seed-before-product-categories.json` records `001`..`008` on its first request and shows the field empty | re-running keeps the owner's label and saved pick | local store; unit tests | `tests/unit/storefront-upgrades.test.ts`, `tests/unit/emdash-theme-composition.test.ts` |
+| One field `product_category` on products, a bare Shopify id, empty = Uncategorized | field ledger entry | `aa-2-17-2` saves and reads back after a reload | `Beanies` is refused: "does not match the required format" | filled store upgraded from main, desktop and phone | [upgrade-from-main.md](upgrade-from-main.md) screenshots; `tests/unit/product-schema-upgrade.test.ts` |
+| An older store gains the field with no re-seed, its data intact | template self-upgrade rule (`template-store-self-upgrade-20261028`) | a store filled on main `484f875` adds only upgrade `008`, the field and its column; every earlier row, Commerce storage row and page answer is identical | re-running keeps the owner's label and saved pick | filled local store; unit tests | [upgrade-from-main.md](upgrade-from-main.md); `tests/unit/storefront-upgrades.test.ts`, `tests/unit/emdash-theme-composition.test.ts` |
 | Shopify's list pinned at 2026-11 | list ledger entry | all 14,606 categories, each full name equal to Shopify's `categories.txt` line | unknown, malformed, empty and `__proto__` values read as Uncategorized | Node 24.22.0 | full check below; `tests/unit/product-category.test.ts` |
 | Google id via Shopify's own map | feeds ledger entry | every one of the 14,528 Shopify rules gives the same Google id through the table (Hats `aa-2-17` -> 173, T-Shirts `aa-1-13-8` -> 212) | the 78 categories Shopify maps to nothing (Bundles, Cannabis Products) get no Google id, never their parent's | Node 24.22.0 | full check below |
 
@@ -34,11 +34,9 @@ full name and Google id compared with the files:
 
 ## Screens
 
-On a local store set up from the older seed and then started on this branch,
-the Canvas Cap editor shows the new field last (`editor-desktop.jpg`,
-`editor-phone.jpg`). Typing `Hats` is refused on save (`editor-desktop-refused.jpg`,
-`editor-phone-refused.jpg`); `aa-2-17` saves and is still there after a reload
-(`editor-desktop-saved.jpg`).
+The editor screenshots come from the upgrade run in [upgrade-from-main.md](upgrade-from-main.md) and are
+hosted in dinkuskit/dinkus-pr-assets, not committed here. Until the Commerce box ships, the field asks for a
+Shopify category id or nothing.
 
 ## Not in this change
 
