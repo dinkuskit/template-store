@@ -5,6 +5,11 @@ import type { PublicCommerceImage } from "./media.js";
 export const PUBLIC_FEED_CHANNELS = ["google-merchant", "meta-catalog"] as const;
 export type PublicFeedChannel = (typeof PUBLIC_FEED_CHANNELS)[number];
 
+type PublicCommerceAvailability = Pick<StorefrontAvailabilityResult, "status" | "sellable"> & {
+  /** Optional expected ship date supplied by Commerce for a backorder. */
+  shipBy?: string;
+};
+
 export interface PublicCommerceProduct {
   id: string;
   name: string;
@@ -19,7 +24,7 @@ export interface PublicCommerceProduct {
   feedChannels?: readonly PublicFeedChannel[];
   fulfillment?: "physical" | "digital";
   price: PublicPriceView;
-  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable" | "listable">;
+  availability: PublicCommerceAvailability & Pick<StorefrontAvailabilityResult, "listable">;
   image: PublicCommerceImage | null;
   gallery: readonly PublicCommerceImage[];
   /** Server-projected variant members (e.g. sizes/colors); absent for simple items. */
@@ -41,7 +46,7 @@ export interface PublicCommerceVariant {
   priceText: string;
   /** Commerce says this member's price is its Sale price (commerce-sale-flag-20261124). */
   onSale?: true;
-  availability: Pick<StorefrontAvailabilityResult, "status" | "sellable">;
+  availability: PublicCommerceAvailability;
   /** The member's own fulfillment as Commerce projects it; absent when Commerce sends none or an unknown value. */
   fulfillment?: "physical" | "digital";
 }

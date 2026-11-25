@@ -48,11 +48,7 @@ function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["produ
             valueLabel,
           })),
           price: { currency: "USD" as const, minor: member.unitMinor },
-          availability: {
-            status: member.availability.status,
-            sellable: member.availability.sellable,
-            listable: true,
-          },
+          availability: { ...member.availability, listable: true },
           fulfillment: member.fulfillment ?? "physical",
         })),
       }
@@ -61,11 +57,7 @@ function catalogProduct(product: PublicCommerceProduct): ProductFeedFacts["produ
     id: product.id,
     name: product.name,
     sku: product.sku,
-    availability: {
-      status: product.availability.status,
-      sellable: product.availability.sellable,
-      listable: product.availability.listable,
-    },
+    availability: product.availability,
     image: product.image,
     gallery: [...product.gallery],
     ...(product.price.unitMinor

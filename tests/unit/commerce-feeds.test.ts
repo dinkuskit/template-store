@@ -230,6 +230,33 @@ describe("installed Commerce feed facts", () => {
     } });
   });
 
+  it("passes Commerce's expected ship dates only for the backordered offers that own them", async () => {
+    const stock = (status: string, shipBy?: unknown) => ({ status, shipBy, sellable: true, listable: true });
+    const member = (size: string, availability: ReturnType<typeof stock>) => ({
+      catalogItemId: `hat-${size}`, selections: [{ optionLabel: "Size", valueLabel: size }],
+      price: { currency: "USD", minor: "3400" }, availability,
+    });
+    const channels = ["google-merchant", "meta-catalog"];
+    const [family, simple, old] = await buildInstalledCommerceFeedFacts(context([
+      catalogItem("commerce-hat", {
+        price: undefined, feedChannels: channels, variants: { members: [
+          member("M", stock("in-stock", "2026-12-01")),
+          member("XL", stock("available-on-backorder", "2026-12-13")),
+          member("XS", stock("available-on-backorder", ["2026-12-13"])),
+        ] },
+      }),
+      catalogItem("commerce-cap", { availability: stock("available-on-backorder", "2026-12-08"), feedChannels: channels }),
+      catalogItem("commerce-mug", { availability: stock("available-on-backorder"), feedChannels: channels }),
+    ]));
+    expect(simple!.product.availability).toMatchObject({ shipBy: "2026-12-08" });
+    expect(old!.product.availability).not.toHaveProperty("shipBy");
+    expect(family!.product.variants!.members.map(({ catalogItemId, availability }) => [catalogItemId, availability])).toEqual([
+      ["hat-M", { status: "in-stock", listable: true, sellable: true }],
+      ["hat-XL", { status: "available-on-backorder", listable: true, sellable: true, shipBy: "2026-12-13" }],
+      ["hat-XS", { status: "available-on-backorder", listable: true, sellable: true }],
+    ]);
+  });
+
   it("puts a product the public catalog lists without feed channels in no feed", async () => {
     // Commerce's public catalog carries each product's approved channels; the store never reads its storage
     // for them (template-one-build-registry-20261031), so a stored eligibility the catalog omits counts for nothing.
