@@ -41,21 +41,28 @@ The store refuses Tax's answer unless all of these hold:
 - it comes `from: "dinkus-tax"`;
 - it names every line in the order sent, with the price and quantity sent;
 - it takes nothing off a line;
-- every rate is 0 to 999999 millionths.
+- every rate is 0 to 999999 millionths;
+- its codes, when it sends any, are at most 6, each 1 to 64 printable
+  characters with no spaces, as the add-ons door takes them.
+
+Tax sends one code when the Orders page should note how the rate was found:
+`by-ZIP,-check-address` (matched only to the ZIP) or `rate-typed-by-owner`.
+The order keeps it, and Commerce's Orders page shows it on the Sales tax row.
 
 ## When Tax does not answer
 
 If Tax is installed but does not answer, or answers out of shape, checkout
 waits. It also waits when Tax is installed but cannot be asked, or when the
-store cannot tell whether it is installed:
+store cannot tell whether it is installed. The shopper sees "Sales tax can't
+be worked out right now. Try again in a moment." It waits when:
 
 - Tax is loaded without its private `checkout/answer` route;
 - an active Registry install of Tax is not loaded, or there are two;
 - the store's plugin list cannot be read.
 
 Checkout starts untaxed only when the store is sure Tax is not installed, or
-when Tax answers that the order's state is not switched on. The shopper sees "Sales tax can't be worked out right now. Try again in
-a moment." Nothing starts without the tax the order may owe.
+when Tax answers that the order's state is not switched on. Nothing starts
+without the tax the order may owe.
 
 ## Running it locally
 

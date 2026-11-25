@@ -59,14 +59,20 @@ describe("Tax's answer", () => {
   it("passes an answer naming every line with the price and quantity sent, and no answer at all", () => {
     expect(parseTaxAnswer({ answer }, lines)).toEqual({ answer });
     expect(parseTaxAnswer({ answer: null }, lines)).toEqual({ answer: null });
+    // The Orders note travels as a code, kept with the order.
+    const noted = { ...answer, codes: ["by-ZIP,-check-address"] };
+    expect(parseTaxAnswer({ answer: noted }, lines)).toEqual({ answer: noted });
   });
 
-  it("refuses other lines, an amount off, a rate out of shape, or another plugin's answer", () => {
+  it("refuses other lines, an amount off, a rate or code out of shape, or another plugin's answer", () => {
     expect(parseTaxAnswer({ answer: { ...answer, lines: answer.lines.slice(0, 1) } }, lines)).toBeNull();
     expect(parseTaxAnswer({ answer: { ...answer, lines: [{ ...answer.lines[0], off: "100" }, answer.lines[1]] } }, lines)).toBeNull();
     expect(parseTaxAnswer({ answer: { ...answer, lines: [{ ...answer.lines[0], rate: "9.75" }, answer.lines[1]] } }, lines)).toBeNull();
     expect(parseTaxAnswer({ answer: { ...answer, shipRate: "1000000" } }, lines)).toBeNull();
     expect(parseTaxAnswer({ answer: { ...answer, from: "dinkus-coupons" } }, lines)).toBeNull();
+    for (const codes of ["by-ZIP", ["by ZIP"], [""], ["x".repeat(65)], Array(7).fill("x"), [1]]) {
+      expect(parseTaxAnswer({ answer: { ...answer, codes } }, lines)).toBeNull();
+    }
     expect(parseTaxAnswer({}, lines)).toBeNull();
   });
 });

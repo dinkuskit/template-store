@@ -15,9 +15,12 @@ const ANSWER_ROUTE = "checkout/answer";
 const MAX_ANSWER_BYTES = 64 * 1024;
 
 export type TaxLine = Readonly<{ item: string; price: string; qty: number }>;
-/** Tax's answer as the add-ons door takes it: the address it priced, shipping's rate, and every line's rate. */
+/**
+ * Tax's answer as the add-ons door takes it: the address it priced, shipping's rate, every line's rate, and the Orders
+ * note as at most one code ("by-ZIP,-check-address" or "rate-typed-by-owner"), which the order keeps.
+ */
 export type TaxAnswer = Readonly<{
-  from: string; ref: string; to: string; shipRate: string;
+  from: string; ref: string; to: string; shipRate: string; codes?: readonly string[];
   lines: readonly Readonly<{ item: string; price: string; qty: number; off: "0"; rate: string }>[];
 }>;
 
@@ -80,6 +83,9 @@ export function parseTaxAnswer(raw: unknown, lines: readonly TaxLine[]): { answe
   if (answer === null) return { answer: null };
   if (!record(answer) || answer.from !== TAX_SLUG || typeof answer.ref !== "string" || typeof answer.to !== "string" || !rate(answer.shipRate) ||
     !Array.isArray(answer.lines) || answer.lines.length !== lines.length) return null;
+  // Codes as the add-ons door takes them: at most 6, each 1 to 64 printable characters without spaces.
+  if (answer.codes !== undefined && !(Array.isArray(answer.codes) && answer.codes.length <= 6 &&
+    answer.codes.every((code) => typeof code === "string" && /^[!-~]{1,64}$/u.test(code)))) return null;
   if (!answer.lines.every((line, index) => record(line) && line.item === lines[index]!.item && line.price === lines[index]!.price &&
     line.qty === lines[index]!.qty && line.off === "0" && rate(line.rate))) return null;
   return { answer: answer as TaxAnswer };
