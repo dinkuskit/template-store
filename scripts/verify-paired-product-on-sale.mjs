@@ -12,7 +12,7 @@ import { ensurePairedCommerceBuild, pairedCommerceHead, pairedCommercePin, paire
 import { commerceProfile } from "../src/features/commerce-profile/profiles.mjs";
 
 // The Commerce that holds each page's product (dinkuskit/commerce#208, template-no-commerce-box-20261029):
-// the first beta carrying it, 0.7.0-beta.3, here the 0.9.0-beta.5 beta on EmDash 1.5.0, where every product is made
+// the first beta carrying it, 0.7.0-beta.3, here the 0.9.0-beta.5 beta, run on EmDash 1.6.0, where every product is made
 // for its page (dinkuskit/commerce#241), variant options use the `option` op (#244) and the cart is held by
 // Commerce (#272), which also tells the cart's holder the order status (#278). The pin itself lives in
 // package.json; this records the exact bytes its build must reproduce.

@@ -55,8 +55,10 @@ async function dismissWelcome(page: Page) {
 
 async function openPanel(page: Page) {
   const trigger = page.getByLabel("Settings", { exact: true }).getByRole("button", { name: "Dinkus Commerce", exact: true });
-  // On a phone the editor's settings sidebar opens from its Settings button.
-  const settings = page.getByRole("main").getByRole("button", { name: "Settings", exact: true });
+  // On a phone the editor's settings sidebar opens from a button in its bar: Settings on EmDash 1.5,
+  // Show settings on 1.6.
+  const settings = page.getByRole("main").getByRole("button", { name: "Settings", exact: true })
+    .or(page.getByRole("button", { name: "Show settings", exact: true }));
   await expect(trigger.or(settings).first()).toBeVisible({ timeout: 60_000 });
   if (!(await trigger.isVisible())) await settings.click();
   await expect(trigger).toBeVisible();
