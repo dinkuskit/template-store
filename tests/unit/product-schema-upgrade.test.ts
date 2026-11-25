@@ -10,8 +10,10 @@ import {
   CATEGORY_PRODUCTS_FIELD,
   COMMERCE_PRODUCT_FIELD,
   PAGE_URL_PATTERN,
+  PRODUCT_CATEGORY_FIELD_INPUT,
   VISUAL_LABEL_FIELD_LABEL,
   ensureStorefrontCategoryProducts,
+  ensureStorefrontProductCategory,
   ensureStorefrontPageAddresses,
   ensureStorefrontProductFields,
   removeStorefrontCommerceBox,
@@ -40,6 +42,7 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
       expect(seeded.find((entry: { slug: string }) => entry.slug === field.slug)).toEqual(field);
     }
     expect(seeded.find((entry: { slug: string }) => entry.slug === "visual_label")).toEqual({ slug: "visual_label", label: VISUAL_LABEL_FIELD_LABEL, type: "string" });
+    expect(seeded.find((entry: { slug: string }) => entry.slug === PRODUCT_CATEGORY_FIELD_INPUT.slug)).toEqual(PRODUCT_CATEGORY_FIELD_INPUT);
     const categoryFields = seedNow().collections.find((collection: { slug: string }) => collection.slug === "categories").fields;
     expect(categoryFields.find((entry: { slug: string }) => entry.slug === CATEGORY_PRODUCTS_FIELD.slug)).toEqual(CATEGORY_PRODUCTS_FIELD);
     const seededBlocks = seedNow().blockTypes;
@@ -71,6 +74,26 @@ describe("storefront product schema upgrade (template-sells-anything-20261027)",
     await ensureStorefrontProductFields(db);
     expect((await fields()).visual_label).toMatchObject({ required: 0, label: "Art" });
     expect((await sql<{ label: string }>`select label from _emdash_block_types where slug = 'spec_table'`.execute(db)).rows[0]?.label).toBe("Specs");
+  });
+
+  // template-product-category-field-20261124: one standard category per product, empty until the owner picks it.
+  it("adds the empty standard category field once, keeping an owner's label and saved picks", async () => {
+    expect((await fields()).product_category).toBeUndefined();
+    await ensureStorefrontProductCategory(db);
+    expect((await fields()).product_category).toMatchObject({ type: "string", required: 0, label: PRODUCT_CATEGORY_FIELD_INPUT.label });
+    const validation = (await sql<{ validation: string; translatable: number }>`
+      select validation, translatable from _emdash_fields where slug = 'product_category'`.execute(db)).rows[0];
+    expect(JSON.parse(validation!.validation)).toEqual(PRODUCT_CATEGORY_FIELD_INPUT.validation);
+    expect(validation!.translatable).toBe(0);
+    const pattern = new RegExp(PRODUCT_CATEGORY_FIELD_INPUT.validation!.pattern!);
+    expect(["", "aa", "aa-2-17", "aa-1-13-8"].every((value) => pattern.test(value))).toBe(true);
+    expect(["Hats", "AA-2", "aa-", "gid://shopify/TaxonomyCategory/aa-2-17", " aa-2"].some((value) => pattern.test(value))).toBe(false);
+
+    await sql`update _emdash_fields set label = 'Category' where slug = 'product_category'`.execute(db);
+    await sql`update ec_products set product_category = 'aa-2-17' where slug = 'canvas-cap'`.execute(db);
+    await ensureStorefrontProductCategory(db);
+    expect((await fields()).product_category?.label).toBe("Category");
+    expect((await sql<{ product_category: string }>`select product_category from ec_products where slug = 'canvas-cap'`.execute(db)).rows[0]?.product_category).toBe("aa-2-17");
   });
 
   // A store set up before template-store#118, as the beta store was, has categories without their products list.

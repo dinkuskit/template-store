@@ -104,6 +104,16 @@
           "slug": "visual_label",
           "label": "Placeholder art (optional, used only when Commerce has no image)",
           "type": "string"
+        },
+        {
+          "slug": "product_category",
+          "label": "Standard category: a Shopify category id such as aa-2-17, or leave empty (for Google, Meta and tax)",
+          "type": "string",
+          "translatable": false,
+          "validation": {
+            "maxLength": 64,
+            "pattern": "^$|^[a-z]{2}(-[0-9]{1,4}){0,10}$"
+          }
         }
       ]
     },

@@ -41,6 +41,12 @@ Final pairing is pending the Commerce owner's immutable artifact handoff. No see
 Commerce Products to an initialized starter; preserve its edited CMS content.
 See [operator and compatibility boundaries](docs/implementation/commerce-catalog.md).
 
+## Standard product category
+
+| Stable feature ID | Responsibility | Owned paths | Public entry | Dependencies | Quick proof | Full proof | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `dinkus.product-category` | Each product's one standard category from Shopify's Standard Product Taxonomy pinned at 2026-11 (`template-product-category-list-20261124`): the products field `product_category` holds the bare Shopify id, empty means Uncategorized, variants share it (`template-product-category-field-20261124`); an older store gains the empty field through upgrade step `008_product_category`. The template's table names each category and gives the Google product category id from Shopify's own mapping, or none where Shopify maps none, for the feeds (`template-product-category-feeds-20261124`). The owner picks it in the Commerce panel's box (`template-product-category-pick-20261124`). The store's own Categories stay and go to the feeds as `product_type` | `src/features/product-category/`; `scripts/build-product-taxonomy.mjs`; `tests/unit/product-category.test.ts`; `tests/unit/product-schema-upgrade.test.ts` | `src/features/product-category/index.ts` | Shopify product-taxonomy v2026-11 `dist/en/categories.txt` and `dist/en/integrations/all_mappings.json` (MIT) | `pnpm vitest run tests/unit/product-category.test.ts` | local store: step 008 on an older seed | field and table built; the Commerce box and the feeds sending it follow with a Commerce release |
+
 ## Canonical product URLs and public site verification
 
 Published products are routed only at `/products/{slug}` and categories only
