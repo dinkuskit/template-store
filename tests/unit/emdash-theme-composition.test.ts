@@ -426,7 +426,7 @@ describe("EmDash composition primitives & seed contract", () => {
           select f.slug, f.required from _emdash_fields f join _emdash_collections c on c.id = f.collection_id
           where c.slug = 'products'`.execute(verifyDb)).rows;
         expect(fields.find((field) => field.slug === "visual_label")?.required).toBe(0);
-        expect(fields.map((field) => field.slug)).toEqual(expect.arrayContaining(["summary", "details"]));
+        expect(fields.map((field) => field.slug)).toEqual(expect.arrayContaining(["summary", "details", "product_category"]));
         expect(fields.map((field) => field.slug)).not.toContain("commerce_item_id");
         const blockTypes = (await sql<{ slug: string }>`
           select t.slug from _emdash_block_types t join _emdash_block_type_versions v on v.block_type_id = t.id and v.version = t.current_version

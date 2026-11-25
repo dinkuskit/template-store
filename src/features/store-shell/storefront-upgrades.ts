@@ -1,5 +1,5 @@
 import { OptionsRepository, invalidateSchemaObjectCache } from "emdash";
-import { ensureStorefrontCategoryProducts, ensureStorefrontPageAddresses, ensureStorefrontProductFields, ensureStorefrontStoreFolder, removeStorefrontCommerceBox } from "./product-schema-upgrade.ts";
+import { ensureStorefrontCategoryProducts, ensureStorefrontPageAddresses, ensureStorefrontProductCategory, ensureStorefrontProductFields, ensureStorefrontStoreFolder, removeStorefrontCommerceBox } from "./product-schema-upgrade.ts";
 import { ensureStorefrontSearchSupport } from "./search-upgrade.ts";
 import { startUndecidedStoreInStaging } from "../site-visibility/index.ts";
 
@@ -30,6 +30,7 @@ export const STOREFRONT_UPGRADES: readonly StorefrontUpgrade[] = [
   { name: "005_commerce_box_off", run: removeStorefrontCommerceBox },
   { name: "006_store_folder", run: ensureStorefrontStoreFolder },
   { name: "007_start_in_staging", run: startUndecidedStoreInStaging },
+  { name: "008_product_category", run: ensureStorefrontProductCategory },
 ];
 
 function recordedNames(value: unknown): string[] {
