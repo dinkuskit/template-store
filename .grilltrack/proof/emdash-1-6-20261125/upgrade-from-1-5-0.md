@@ -52,9 +52,9 @@ product_pages 16.
 
 Pictures of the upgraded store, taken after step 4:
 
-- [`upgraded-admin-products.png`](ASSETS_BASE/upgraded-admin-products.png): Content > Products, all 13 pages (the 9 from 1.5 and the 4 made on 1.6). The footer reads EmDash v1.6.0.
-- [`unpublish-asks-first.png`](ASSETS_BASE/unpublish-asks-first.png): on 1.6, Unpublish on a published product page asks "Unpublish Product?" first. Cancel was pressed, so the page stayed published.
-- [`phone-show-settings-commerce-panel.png`](ASSETS_BASE/phone-show-settings-commerce-panel.png): on a phone (Pixel 7), Show settings opens the sheet with the Dinkus Commerce panel.
+- [`upgraded-admin-products.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/upgraded-admin-products.png): Content > Products, all 13 pages (the 9 from 1.5 and the 4 made on 1.6). The footer reads EmDash v1.6.0.
+- [`unpublish-asks-first.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/unpublish-asks-first.png): on 1.6, Unpublish on a published product page asks "Unpublish Product?" first. Cancel was pressed, so the page stayed published.
+- [`phone-show-settings-commerce-panel.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/phone-show-settings-commerce-panel.png): on a phone (Pixel 7), Show settings opens the sheet with the Dinkus Commerce panel.
 
 ## For each store's own upgrade
 

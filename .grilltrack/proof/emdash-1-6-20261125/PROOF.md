@@ -12,13 +12,13 @@ bundle under its Registry runtime id on a fresh 1.6.0 store and ran `tests/paire
 same result.
 
 The screenshots from that run are hosted in dinkuskit/dinkus-pr-assets (manifest with sizes and SHA-256 digests:
-[`README.md`](ASSETS_BASE/README.md)):
+[`README.md`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/README.md)):
 
-- [`desktop-2-published-on-sale.png`](ASSETS_BASE/desktop-2-published-on-sale.png), [`phone-2-published-on-sale.png`](ASSETS_BASE/phone-2-published-on-sale.png): a product page published from the admin, on sale on the shop.
-- [`desktop-13-scheduled-on-sale.png`](ASSETS_BASE/desktop-13-scheduled-on-sale.png): a page EmDash published on schedule, its product on sale with nobody signed in.
-- [`desktop-cart-0-default-sold-out-other-size-buyable.png`](ASSETS_BASE/desktop-cart-0-default-sold-out-other-size-buyable.png): a product with Sizes, one sold out.
-- [`desktop-cart-2-cart-small.png`](ASSETS_BASE/desktop-cart-2-cart-small.png): the cart Commerce holds, with the chosen Size and its price.
-- [`desktop-cart-5-checkout-with-print.png`](ASSETS_BASE/desktop-cart-5-checkout-with-print.png): checkout with a digital and a printed line.
+- [`desktop-2-published-on-sale.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/desktop-2-published-on-sale.png), [`phone-2-published-on-sale.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/phone-2-published-on-sale.png): a product page published from the admin, on sale on the shop.
+- [`desktop-13-scheduled-on-sale.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/desktop-13-scheduled-on-sale.png): a page EmDash published on schedule, its product on sale with nobody signed in.
+- [`desktop-cart-0-default-sold-out-other-size-buyable.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/desktop-cart-0-default-sold-out-other-size-buyable.png): a product with Sizes, one sold out.
+- [`desktop-cart-2-cart-small.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/desktop-cart-2-cart-small.png): the cart Commerce holds, with the chosen Size and its price.
+- [`desktop-cart-5-checkout-with-print.png`](https://github.com/dinkuskit/dinkus-pr-assets/blob/3403d9dae787d52b837273984bffa0ecdf6557b8/template-store/pr-279-9f5c5ad/desktop-cart-5-checkout-with-print.png): checkout with a digital and a printed line.
 
 ## What 1.6 changed for these tests
 
