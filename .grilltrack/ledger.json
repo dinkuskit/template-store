@@ -4,11 +4,11 @@
   "current_focus": {
     "cadence": "sequential",
     "confirmed": true,
-    "confirmed_at": "2026-11-22T20:37:30+00:00",
+    "confirmed_at": "2026-11-25T04:50:32+00:00",
     "domain": "agent catalog feed listing",
-    "started_at": "2026-11-22T20:37:30+00:00",
+    "started_at": "2026-11-25T04:50:32+00:00",
     "status": "confirmed",
-    "summary": "The owner approved on 22 Nov 2026: with the catalog switch on, every product on sale with a published page is listed; the Google and Meta boxes decide only those two feeds."
+    "summary": "The owner agreed the five standard category decisions on 24 Nov 2026 and said to build them."
   },
   "decisions": [
     {
@@ -7044,18 +7044,87 @@
       "verification_ref": null
     },
     {
+      "baseline_ref": "git:8cce9dc",
+      "candidate_refs": [],
+      "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+      "context_ref": null,
+      "created_at": "2026-11-25T04:30:24+00:00",
+      "deferred_reason": null,
+      "delivery_ref": null,
+      "dependencies": [],
+      "domain": "Template EmDash 1.6 source upgrade",
+      "history": [
+        {
+          "at": "2026-11-25T04:30:24+00:00",
+          "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+          "from": "proposed",
+          "implementation_ref": null,
+          "note": "user accepted the scoped decision",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "locked",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-25T04:30:24+00:00",
+          "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+          "from": "locked",
+          "implementation_ref": null,
+          "note": "bounded implementation recorded",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "implemented",
+          "verification_ref": null
+        },
+        {
+          "at": "2026-11-25T04:30:57+00:00",
+          "choice": "EmDash 1.6.0 (emdash, @emdash-cms/cloudflare, auth, blocks 1.6.0; plugin-cli 0.13.7; sandbox-workerd 0.9.8) with Commerce v0.9.0-beta.5 (6077448045244b877c8ecc75aed2b0cc9b4a509e) unchanged: its Registry build is byte-identical on 1.5 and 1.6. Payments and Ship playground pins stay at their releases.",
+          "from": "implemented",
+          "implementation_ref": "git:440b20e",
+          "note": "verification recorded in cumulative context",
+          "repair_required": false,
+          "review_classifications": [],
+          "review_ref": null,
+          "review_result": null,
+          "review_source_identity": null,
+          "to": "verified",
+          "verification_ref": null
+        }
+      ],
+      "id": "template-emdash16-20261125",
+      "implementation_ref": "git:440b20e",
+      "question": "Which EmDash and Commerce does the store template run before v1?",
+      "rationale": "The owner approved the 1.6 upgrade on 25 Nov 2026. 1.6 adds one additive migration (098_user_last_login), no new plugin permissions or capabilities, scheduled publishing on time, and a fix for plugin routes 404ing after an install.",
+      "repair_required": false,
+      "review_classifications": [],
+      "review_history": [],
+      "review_ref": null,
+      "review_result": null,
+      "review_source_identity": null,
+      "status": "verified",
+      "superseded_by": null,
+      "updated_at": "2026-11-25T04:30:57+00:00",
+      "verification_ref": ".grilltrack/proof/emdash-1-6-20261125/PROOF.md"
+    },
+    {
       "baseline_ref": "git:1662715",
       "candidate_refs": [],
       "choice": "Shopify's open Standard Product Taxonomy (MIT), pinned at version 2026-11. When Shopify releases a new version, a named storefront upgrade step moves each saved category forward with Shopify's published old-to-new version map; no category is re-picked by hand.",
       "context_ref": null,
-      "created_at": "2026-11-24T22:18:46+00:00",
+      "created_at": "2026-11-25T04:50:32+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [],
       "domain": "agent catalog feed listing",
       "history": [
         {
-          "at": "2026-11-24T22:18:46+00:00",
+          "at": "2026-11-25T04:50:32+00:00",
           "choice": "Shopify's open Standard Product Taxonomy (MIT), pinned at version 2026-11. When Shopify releases a new version, a named storefront upgrade step moves each saved category forward with Shopify's published old-to-new version map; no category is re-picked by hand.",
           "from": "proposed",
           "implementation_ref": null,
@@ -7081,7 +7150,7 @@
       "review_source_identity": null,
       "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-24T22:18:46+00:00",
+      "updated_at": "2026-11-25T04:50:32+00:00",
       "verification_ref": null
     },
     {
@@ -7089,7 +7158,7 @@
       "candidate_refs": [],
       "choice": "A Product category field on the product page (Content > Products), slug product_category, one per product and shared by all its variants, as on Shopify. It holds the bare Shopify category id as a string, such as aa-1-13-8. Empty means Uncategorized. A named storefront upgrade step adds the field to stores set up from an older seed. The store's own Categories (menu categories) stay as they are. Store code hands the category to the Tax plugin with each cart line.",
       "context_ref": null,
-      "created_at": "2026-11-24T22:18:46+00:00",
+      "created_at": "2026-11-25T04:50:32+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -7098,7 +7167,7 @@
       "domain": "agent catalog feed listing",
       "history": [
         {
-          "at": "2026-11-24T22:18:46+00:00",
+          "at": "2026-11-25T04:50:33+00:00",
           "choice": "A Product category field on the product page (Content > Products), slug product_category, one per product and shared by all its variants, as on Shopify. It holds the bare Shopify category id as a string, such as aa-1-13-8. Empty means Uncategorized. A named storefront upgrade step adds the field to stores set up from an older seed. The store's own Categories (menu categories) stay as they are. Store code hands the category to the Tax plugin with each cart line.",
           "from": "proposed",
           "implementation_ref": null,
@@ -7124,7 +7193,7 @@
       "review_source_identity": null,
       "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-24T22:18:46+00:00",
+      "updated_at": "2026-11-25T04:50:33+00:00",
       "verification_ref": null
     },
     {
@@ -7132,7 +7201,7 @@
       "candidate_refs": [],
       "choice": "Copy Shopify: the Product category box arrives filled with a suggestion worked out from the product's name, description and first photo; the owner keeps it or searches the list for another, and saving the product confirms it. With no pick and no suggestion the product is Uncategorized. How the box is built in EmDash is proved before it is built.",
       "context_ref": null,
-      "created_at": "2026-11-24T22:18:46+00:00",
+      "created_at": "2026-11-25T04:50:33+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -7141,7 +7210,7 @@
       "domain": "agent catalog feed listing",
       "history": [
         {
-          "at": "2026-11-24T22:18:47+00:00",
+          "at": "2026-11-25T04:50:33+00:00",
           "choice": "Copy Shopify: the Product category box arrives filled with a suggestion worked out from the product's name, description and first photo; the owner keeps it or searches the list for another, and saving the product confirms it. With no pick and no suggestion the product is Uncategorized. How the box is built in EmDash is proved before it is built.",
           "from": "proposed",
           "implementation_ref": null,
@@ -7167,7 +7236,7 @@
       "review_source_identity": null,
       "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-24T22:18:47+00:00",
+      "updated_at": "2026-11-25T04:50:33+00:00",
       "verification_ref": null
     },
     {
@@ -7175,7 +7244,7 @@
       "candidate_refs": [],
       "choice": "Google and Meta feeds send google_product_category as Google's numeric id, taken from Shopify's published map from Shopify 2026-11 to Google 2021-09-21, and product_type from the store's own category on the product page. The agent catalog feed sends the Shopify id with its taxonomy version and full name. An Uncategorized product, or one whose category has no Google match, sends no google_product_category, and Google and Meta categorize it themselves. No fb_product_category.",
       "context_ref": null,
-      "created_at": "2026-11-24T22:18:47+00:00",
+      "created_at": "2026-11-25T04:50:33+00:00",
       "deferred_reason": null,
       "delivery_ref": null,
       "dependencies": [
@@ -7185,7 +7254,7 @@
       "domain": "agent catalog feed listing",
       "history": [
         {
-          "at": "2026-11-24T22:25:30+00:00",
+          "at": "2026-11-25T04:50:33+00:00",
           "choice": "Google and Meta feeds send google_product_category as Google's numeric id, taken from Shopify's published map from Shopify 2026-11 to Google 2021-09-21, and product_type from the store's own category on the product page. The agent catalog feed sends the Shopify id with its taxonomy version and full name. An Uncategorized product, or one whose category has no Google match, sends no google_product_category, and Google and Meta categorize it themselves. No fb_product_category.",
           "from": "proposed",
           "implementation_ref": null,
@@ -7211,7 +7280,7 @@
       "review_source_identity": null,
       "status": "locked",
       "superseded_by": null,
-      "updated_at": "2026-11-24T22:25:30+00:00",
+      "updated_at": "2026-11-25T04:50:33+00:00",
       "verification_ref": null
     }
   ],
@@ -7235,5 +7304,5 @@
   "status": "active",
   "title": "Reconcile current main into PR43 checkout repair",
   "track_id": "gt-join-2082043c036aa939e706c9c093908348",
-  "updated_at": "2026-11-24T22:25:30+00:00"
+  "updated_at": "2026-11-25T04:50:33+00:00"
 }
