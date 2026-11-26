@@ -7,7 +7,7 @@ import { isSafeOrderLineImageUrl } from "./checkout-protocol.js";
 
 /** The thank-you page's order, drawn on the server from Commerce's paid order (template-thank-you-server-20261113). */
 export type ConfirmedOrderView = Readonly<{
-  orderNumber: string;
+  orderNumber: string | null;
   test: boolean;
   lines: readonly Readonly<{
     id: string;
@@ -84,7 +84,7 @@ export function confirmedOrderView(checkout: GuestCheckoutProjection): Confirmed
     ["Total", money(order.total ?? checkout.total)],
   ] as const).flatMap(([label, amount]) => amount ? [{ label, amount }] : []);
   return {
-    orderNumber: order.orderId.replace(/^order:/u, ""),
+    orderNumber: order.number === undefined ? null : String(order.number),
     test: order.test === true,
     lines: order.lines.map((line) => {
       const unit = line.unitPrice && /^-?\d+$/u.test(line.unitPrice.minor) ? Number(line.unitPrice.minor) : NaN;

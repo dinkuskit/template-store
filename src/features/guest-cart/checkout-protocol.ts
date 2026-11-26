@@ -61,6 +61,8 @@ export type GuestCheckoutProjection = Readonly<{
   order: Readonly<{
     orderId: string;
     receiptId: string;
+    /** Commerce Orders' short number, used by the guest order lookup. */
+    number?: number;
     lines: readonly GuestCheckoutOrderLine[];
     total?: GuestCheckoutMoney;
     test?: boolean;
@@ -287,10 +289,13 @@ function projectCheckout(value: unknown): GuestCheckoutProjection | null {
       topContact;
     const orderShippingMethod = boundedText(rawOrder.shippingMethod, 160) ?? topShippingMethod;
     const fulfillment = parseFulfillment(rawOrder.status, rawOrder.completed);
+    const number = rawOrder.number;
     order = {
       orderId: value.order.orderId,
       receiptId: value.order.receiptId,
       lines,
+      // Commerce's lookup accepts at most 15 decimal digits, starting at 1.
+      ...(typeof number === "number" && Number.isInteger(number) && number >= 1 && number < 1e15 ? { number } : {}),
       ...(total ? { total } : {}),
       ...(typeof rawOrder.test === "boolean" ? { test: rawOrder.test } : {}),
       ...(orderContact ? { contact: orderContact } : {}),
