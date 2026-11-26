@@ -119,3 +119,18 @@ J:
   order keeps addons: [{"from":"dinkus-tax","ref":"bfe78a6a-e30e-44ec-9c8e-f0c3d0e924aa"}]
   Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"3842"},"tax":{"currency":"USD","minor":"342"},"stripeLines":["Camp mug × 2 3000","Shipping 500","Sales tax 342"]}
   counts before → after: {"answers":8,"payments":43,"sessions":9,"attempts":9} → {"answers":9,"payments":47,"sessions":10,"attempts":10}
+
+# K (before the fix, head 30307c9). Tax cannot answer while SPRING25 is applied: Trail boots to Nashville, Tennessee on with no table in use
+K (before the fix, head 30307c9):
+  Pay answered: stayed on the page: ["Sales tax can't be worked out right now. Try again in a moment."]
+  counts before → after: {"answers":9,"payments":50,"sessions":10,"attempts":10} → {"answers":9,"payments":50,"sessions":10,"attempts":10}
+  Coupons holds before → after Pay: 0 → 1
+  (Tennessee's table in use put back)
+
+
+# K (with the fix). Tax cannot answer while SPRING25 is applied: Trail boots to Nashville, Tennessee on with no table in use
+K (with the fix):
+  Pay answered: stayed on the page: ["Sales tax can't be worked out right now. Try again in a moment."]
+  counts before → after: {"answers":9,"payments":50,"sessions":10,"attempts":10} → {"answers":9,"payments":50,"sessions":10,"attempts":10}
+  Coupons holds before → after Pay: 0 → 0
+  (Tennessee's table in use put back)

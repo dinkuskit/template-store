@@ -40,6 +40,19 @@ The full trace is in [trace.txt](trace.txt). The screenshots live in dinkuskit/d
 | **I2.** Tax installed but cannot be asked: an active Registry install of `dinkus-tax` in the store's database, not loaded | The same "can't be worked out" message, and nothing started. | [h-tax-unavailable.jpg](https://github.com/dinkuskit/dinkus-pr-assets/blob/6c6c38bfdfbb73d8fcbd276f1fcf95234dc50544/template-store/pr-276-a50339b/h-tax-unavailable.jpg) (the same page) |
 | **J.** Upgrade, on a phone (iPhone 13): a cart saved while the store had no Tax plugin; the store restarts with Tax; the same browser comes back | The saved cart (same id) loaded. Pay to 1 Public Square, Nashville was taxed at 9.75%: Payments got "Camp mug × 2 $30.00, Shipping $5.00, Sales tax $3.42" ($38.42). | [j-phone-checkout-tn.jpg](https://github.com/dinkuskit/dinkus-pr-assets/blob/6c6c38bfdfbb73d8fcbd276f1fcf95234dc50544/template-store/pr-276-a50339b/j-phone-checkout-tn.jpg) |
 
+## A later fix: Tax is asked before any coupon holds a use
+
+An advisory audit on 26 Nov found that Pay held a coupon's use before asking Tax. So a checkout that Tax stopped left a limited-use code tied up for that cart until the hold ran out. Pay now asks Tax first, and Coupons holds uses only when Tax has answered.
+
+On the same paired store, Trail boots went to Nashville with SPRING25 applied, while Tennessee had no table in use (see trace K):
+
+- **Before the fix (head `30307c9`):** "Sales tax can't be worked out right now", nothing started, and Coupons' holds went from 0 to 1.
+- **With the fix:** the same message, nothing started, and holds stayed at 0.
+
+The same audit also led to two smaller changes, each with a new unit test that fails without it:
+- A Tax loaded by its own id beside a Registry install of Tax makes checkout wait instead of asking one of them.
+- A reply that only reads as `null` once turned into JSON (such as `NaN`) makes checkout wait instead of starting untaxed.
+
 A mismatched address is not reachable from this form. The checkout always asks Tax for the address it then hands Commerce. The door's own refusal of an answer for another address is covered by Commerce's test "a tax answer for another address, or with a missing or malformed rate, freezes nothing" (`tests/features/checkout/checkout-pricing.test.mjs`).
 
 ## Stored data

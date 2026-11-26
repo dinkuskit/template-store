@@ -39,23 +39,26 @@ export type TaxPlugin = Readonly<{ kind: "absent" }> | Readonly<{ kind: "found";
 
 export async function findTax(runtime: StoreRuntime): Promise<TaxPlugin> {
   const ids = installedPluginIds(runtime as never);
-  if (ids.includes(TAX_SLUG)) return isPost(runtime, TAX_SLUG) ? { kind: "found", id: TAX_SLUG } : { kind: "unavailable" };
   // Registry installs live in the store's database; a runtime without one has none.
-  if (!runtime.db) return { kind: "absent" };
-  let rows: unknown[];
-  try {
-    rows = await runtime.db.selectFrom("_plugin_state").select(["plugin_id", "registry_slug"])
-      .where("source", "=", "registry").where("status", "=", "active").execute();
-  } catch {
-    return { kind: "unavailable" };
+  let rows: unknown[] = [];
+  if (runtime.db) {
+    try {
+      rows = await runtime.db.selectFrom("_plugin_state").select(["plugin_id", "registry_slug"])
+        .where("source", "=", "registry").where("status", "=", "active").execute();
+    } catch {
+      return { kind: "unavailable" };
+    }
   }
   const installs = rows.flatMap((row) => {
     const { plugin_id: id, registry_slug: slug } = (row ?? {}) as { plugin_id?: unknown; registry_slug?: unknown };
     return slug === TAX_SLUG ? [id] : [];
   });
-  if (!installs.length) return { kind: "absent" };
-  const [id] = installs;
-  return installs.length === 1 && typeof id === "string" && ids.includes(id) && isPost(runtime, id) ? { kind: "found", id } : { kind: "unavailable" };
+  // A Tax loaded by its own id (a local store) and a Registry install of Tax are two Taxes: checkout cannot tell
+  // which one keeps the owner's states, so it waits rather than ask the wrong one.
+  const candidates = [...new Set([...(ids.includes(TAX_SLUG) ? [TAX_SLUG] : []), ...installs])];
+  if (!candidates.length) return { kind: "absent" };
+  const [id] = candidates;
+  return candidates.length === 1 && typeof id === "string" && ids.includes(id) && isPost(runtime, id) ? { kind: "found", id } : { kind: "unavailable" };
 }
 
 /** The cart's lines as the add-ons door names them: Commerce's line order (sorted by catalog item id), unit prices in cents. */
@@ -117,7 +120,9 @@ export async function checkTax(ctx: ServerCartContext, page: ServerCartPage, con
       if (typeof text !== "string" || new TextEncoder().encode(text).byteLength > MAX_ANSWER_BYTES) return { kind: "unavailable" };
       const body = JSON.parse(text) as unknown;
       const parsed = parseTaxAnswer(record(body) && body.success === true ? body.data : null, lines);
-      if (!parsed) return { kind: "unavailable" };
+      // Untaxed only on Tax's own null: a reply that merely turns into null as JSON (NaN, Infinity) is out of shape.
+      const said = record(raw) && record(raw.data) ? raw.data.answer : undefined;
+      if (!parsed || (parsed.answer === null && said !== null)) return { kind: "unavailable" };
       return parsed.answer ? { kind: "answer", answer: parsed.answer } : { kind: "none" };
     } catch {
       return { kind: "unavailable" };

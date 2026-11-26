@@ -65,19 +65,19 @@ if (Astro.request.method === "POST") {
     values = read.values;
     error = { field: null, message: page.view.checkoutReason };
   } else {
-    // Each code is checked again and holds a use for this cart; a code refused now stops here, so the shopper sees why.
-    const checked = typed ? await checkCoupons(cartContext, page, typed.codes, read.contact.email, true) : null;
-    if (checked) coupons = checked.box;
     // Sales tax for the order's address, when the Tax plugin is installed (dinkuskit/tax ledger shared-addons-door):
     // it goes to Commerce beside the coupon's answer, and a Tax that does not answer stops checkout, so no order is
-    // ever paid without the tax it owes.
-    const tax = checked && !checked.ok ? null : await checkTax(cartContext, page, read.contact);
-    const started = !tax || tax.kind === "unavailable"
+    // ever paid without the tax it owes. Tax is asked first, so a checkout it stops holds no coupon use.
+    const tax = await checkTax(cartContext, page, read.contact);
+    // Each code is checked again and holds a use for this cart; a code refused now stops here, so the shopper sees why.
+    const checked = typed && tax.kind !== "unavailable" ? await checkCoupons(cartContext, page, typed.codes, read.contact.email, true) : null;
+    if (checked) coupons = checked.box;
+    const started = tax.kind === "unavailable" || (checked && !checked.ok)
       ? null
       : await startServerCheckout(cartContext, read.contact, read.news, [...(checked?.answer ? [checked.answer] : []), ...(tax.kind === "answer" ? [tax.answer] : [])]);
     if (!started) {
       values = read.values;
-      error = { field: null, message: tax?.kind === "unavailable" ? TAX_UNAVAILABLE : coupons.message ?? "Check your discount codes, then continue." };
+      error = { field: null, message: tax.kind === "unavailable" ? TAX_UNAVAILABLE : coupons.message ?? "Check your discount codes, then continue." };
     } else {
       if (started.ok && started.checkout.state === "paid") return Astro.redirect("/checkout/success", 303);
       const payment = started.ok ? openPaymentUrl(started) : null;

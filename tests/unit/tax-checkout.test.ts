@@ -111,6 +111,21 @@ describe("checkout asks Tax as it starts", () => {
     }
   });
 
+  it("waits on a reply that only reads as no answer once sent as JSON, such as NaN", async () => {
+    routes = { "dinkus-tax": ["checkout/answer"] };
+    for (const odd of [Number.NaN, Number.POSITIVE_INFINITY]) {
+      reply = () => ({ success: true, data: { answer: odd } });
+      expect(await checkTax(ctx, page, { email: "ana@example.test", delivery })).toEqual({ kind: "unavailable" });
+    }
+  });
+
+  it("waits, asking neither, when a Tax loaded by its own id and a Registry install of Tax are both present", async () => {
+    routes = { "dinkus-tax": ["checkout/answer"], r_tax: ["checkout/answer"] };
+    registry = [{ plugin_id: "r_tax", registry_slug: "dinkus-tax" }];
+    expect(await checkTax(ctx, page, { email: "ana@example.test", delivery })).toEqual({ kind: "unavailable" });
+    expect(asked).toEqual([]);
+  });
+
   it("starts untaxed when the store's Registry installs hold no Tax", async () => {
     registry = [{ plugin_id: "r_coupons", registry_slug: "dinkus-coupons" }];
     expect(await checkTax(ctx, page, { email: "ana@example.test", delivery })).toEqual({ kind: "none" });

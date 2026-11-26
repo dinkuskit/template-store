@@ -24,13 +24,15 @@ EmDash plugins cannot call each other, so the store's own server code does the
 asking. It calls a private route with nobody signed in, the same way it asks
 Coupons (`src/features/tax/index.ts`).
 
-1. Once Coupons has answered, Pay calls `POST checkout/answer` on Tax
-   (`dinkus-tax`). It sends `{ address, lines }`:
+1. Pay first calls `POST checkout/answer` on Tax (`dinkus-tax`), before any
+   coupon holds a use, so a checkout Tax stops ties up no coupon. It sends
+   `{ address, lines }`:
    - `address` is the delivery address, or billing when nothing ships;
    - `lines` are the cart's lines in Commerce's line order (sorted by catalog
      item id), as `{ item, price, qty }` with the unit price in cents.
 2. Tax answers with the rates for that address, or `{ answer: null }` when the
-   address's state is not switched on.
+   address's state is not switched on. Then Coupons checks the codes and holds
+   their uses.
 3. The answer goes to Commerce's private `checkout/addons/start` door, beside
    Coupons' answer. Commerce takes the discounts off first and then works out
    the tax, so the store never sends Tax what a coupon took off. Commerce
@@ -57,8 +59,11 @@ store cannot tell whether it is installed. The shopper sees "Sales tax can't
 be worked out right now. Try again in a moment." It waits when:
 
 - Tax is loaded without its private `checkout/answer` route;
-- an active Registry install of Tax is not loaded, or there are two;
-- the store's plugin list cannot be read.
+- an active Registry install of Tax is not loaded, or there are two, or one
+  sits beside a Tax loaded by its own id (a local store);
+- the store's plugin list cannot be read;
+- Tax's reply only reads as "no answer" once turned into JSON (such as `NaN`).
+  Only Tax's own `null` means untaxed.
 
 Checkout starts untaxed only when the store is sure Tax is not installed, or
 when Tax answers that the order's state is not switched on. Nothing starts
