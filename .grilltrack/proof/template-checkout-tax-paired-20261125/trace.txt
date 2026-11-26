@@ -1,0 +1,136 @@
+# Setup
+products: {"camp-mug":"$15","trail-boots":"$80","field-guide":"$10"}
+checkout connected (Stripe test, flat shipping $5.00)
+Commerce store settings: store in the US, sells and ships to the US
+
+# The owner switches on sales tax and makes a coupon
+Alabama, typed 9.25%, Tax shipping ticked: Collecting sales tax in Alabama.
+Tennessee, official: Getting Tennessee's official rates. Tennessee switches on by itself when they're in.
+SPRING25 (25% off): already SPRING25
+
+# A. Alabama (typed rate 9.25%, shipping taxed): two Camp mugs with SPRING25
+A:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-coupons","ref":"h_8f8ef8020e1de7347f10.c_54ca26cacb12a9e19709","codes":["SPRING25"]},{"from":"dinkus-tax","ref":"c261d26b-8c89-409c-bb80-411034a869a7","codes":["rate-typed-by-owner"]}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"3004"},"tax":{"currency":"USD","minor":"254"},"stripeLines":["Camp mug × 2 2250","Shipping 500","Sales tax 254"]}
+  counts before → after: {"answers":1,"payments":2,"sessions":0,"attempts":0} → {"answers":2,"payments":6,"sessions":1,"attempts":1}
+  Tax kept under the answer's ref (no address): {"id":"c261d26b-8c89-409c-bb80-411034a869a7","at":"2026-11-25T15:48:52.627Z","state":"AL","match":"typed","districts":[],"rates":["92500"],"shipRate":"92500"}
+
+# B. Tennessee official tables, street match: Trail boots to 1 Public Square, Nashville 37201
+B:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"ebce8d38-12e5-4759-a386-4e49c73708be"}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"9329"},"tax":{"currency":"USD","minor":"829"},"stripeLines":["Trail boots 8000","Shipping 500","Sales tax 829"]}
+  counts before → after: {"answers":2,"payments":7,"sessions":1,"attempts":1} → {"answers":3,"payments":11,"sessions":2,"attempts":2}
+  Tax answer kept: {"id":"ebce8d38-12e5-4759-a386-4e49c73708be","at":"2026-11-25T15:50:04.456Z","state":"TN","match":"street","districts":["1:52006","45:47","79:91951"],"rates":["97500"],"shipRate":"97500"}
+
+# C. Tennessee, street not in the table (falls back to the ZIP): Trail boots to 999999 Nowhere Rd, 37201; then paid
+C:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"8e0c66e0-f496-464a-9bd6-3628e1dcb6c6","codes":["by-ZIP,-check-address"]}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"9329"},"tax":{"currency":"USD","minor":"829"},"stripeLines":["Trail boots 8000","Shipping 500","Sales tax 829"]}
+  counts before → after: {"answers":3,"payments":11,"sessions":2,"attempts":2} → {"answers":4,"payments":15,"sessions":3,"attempts":3}
+  Tax answer kept: {"id":"8e0c66e0-f496-464a-9bd6-3628e1dcb6c6","at":"2026-11-25T15:50:06.643Z","state":"TN","match":"zip","districts":["1:52006","45:47","79:91951"],"rates":["97500"],"shipRate":"97500"}
+  Stand-in Payments now looks this attempt up as paid; the shopper comes back to /checkout/success
+  Thank-you page: Order confirmation | Order confirmed. | Order 9a6cdd27-bf45-4a22-830c-0022cf42427e | TEST | PAID · STRIPE TEST | Items | No image | Trail boots × 1 | $80.00 | Subtotal | $80.00 | Shipping | $5.00 | Tax
+  Commerce order kept: {"number":1001}
+
+# D. Digital only: Field guide, no delivery, billing in Alabama (typed 9.25%)
+D:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"4521478e-a70b-44c9-aac2-3c9ac0f5bd6a","codes":["rate-typed-by-owner"]}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"1093"},"tax":{"currency":"USD","minor":"93"},"stripeLines":["Field guide (PDF) 1000","Sales tax 93"]}
+  counts before → after: {"answers":4,"payments":17,"sessions":3,"attempts":3} → {"answers":5,"payments":21,"sessions":4,"attempts":4}
+  Tax answer kept: {"id":"4521478e-a70b-44c9-aac2-3c9ac0f5bd6a","at":"2026-11-25T15:50:36.456Z","state":"AL","match":"typed","districts":[],"rates":["92500"],"shipRate":"92500"}
+
+# E. Illinois, not switched on: Camp mug to Chicago 60601
+E:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: null
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"2000"},"tax":null,"stripeLines":["Camp mug 1500","Shipping 500"]}
+  counts before → after: {"answers":5,"payments":21,"sessions":4,"attempts":4} → {"answers":5,"payments":25,"sessions":5,"attempts":5}
+  Tax answers kept before → after: 5 → 5 (Tax answered null: nothing to keep)
+
+# C (cont). The paid Tennessee ZIP order on Commerce > Orders
+  Orders page shows: Item	Options	Price	Qty	Total | Trail boots		$80.00	× 1	$80.00 | Items subtotal	$80.00 | Shipping	$5.00 | Sales tax · by ZIP, check address	$8.29 | Order total	$93.29
+
+# F. Doors refuse callers from outside the store's own code
+  anonymous → Tax checkout/answer: 401 {"success":false,"error":{"code":"UNAUTHORIZED","message":"Authentication required"}}
+  anonymous → Commerce checkout/addons/start: 401 {"success":false,"error":{"code":"UNAUTHORIZED","message":"Authentication required"}}
+  Administrator → Tax checkout/answer: 400 {"success":false,"error":{"code":"ROUTE_ERROR","message":"Plugin dinkus-tax:0.0.0 route checkout/answer failed: STORE_ONLY: Only the store's own code may use th
+  Administrator → Commerce checkout/addons/start: 400 {"success":false,"error":{"code":"ROUTE_ERROR","message":"Plugin r_fjzjvld3ssb4j63o:0.8.0 route checkout/addons/start failed: STORE_ONLY: Only the store's own c
+
+# F2. Forged tax fields in the checkout form are ignored (Alabama, one Camp mug)
+F2:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"00a9a4d2-507f-4987-b99b-c1c927871369","codes":["rate-typed-by-owner"]}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"2185"},"tax":{"currency":"USD","minor":"185"},"stripeLines":["Camp mug 1500","Shipping 500","Sales tax 185"]}
+  counts before → after: {"answers":5,"payments":25,"sessions":5,"attempts":5} → {"answers":6,"payments":29,"sessions":6,"attempts":6}
+  Tax answer used: AL ["92500"] (the forged zero rate never reached Commerce)
+
+# F3. A cart key with the wrong secret is refused before any tax, order or payment
+  POST /checkout: 422 page says: ["Checkout","Your cart is empty. Return to cart or continue shopping."]
+  counts before → after: {"answers":6,"payments":29,"sessions":6,"attempts":6} → {"answers":6,"payments":29,"sessions":6,"attempts":6}
+
+# F4. A revoked cart key (its record deleted) is refused before any tax, order or payment
+  POST /checkout: 422 page says: ["Checkout","Your cart is empty. Return to cart or continue shopping."]
+  counts before → after: {"answers":6,"payments":29,"sessions":6,"attempts":6} → {"answers":6,"payments":29,"sessions":6,"attempts":6}
+
+# G. Stale quantity: the checkout tab shows 1 Camp mug, a second tab adds 2 more, then the first tab pays
+G:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"915ec1e3-fb05-44f5-9755-55d51b758bb3","codes":["rate-typed-by-owner"]}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"5462"},"tax":{"currency":"USD","minor":"462"},"stripeLines":["Camp mug × 3 4500","Shipping 500","Sales tax 462"]}
+  counts before → after: {"answers":6,"payments":29,"sessions":6,"attempts":6} → {"answers":7,"payments":33,"sessions":7,"attempts":7}
+  checkout tab showed: Quantity 1. Pay charged the cart as it is now: Camp mug × 3, Tax asked for those 3 lines (9.25% of $45.00 = $4.16, plus $0.46 on shipping = $4.62).
+
+# H (first try, kept for the record). Tennessee's table records deleted from storage: Tax still held the table's districts in memory and no ZIP piece, so the address read as an unknown ZIP and got the state's highest rate, flagged by ZIP (the owner's rule for unknown ZIPs). Not a failure; H below removes the table in use instead.
+H:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"196f1d45-4fc4-46e4-a247-f79ed51c5c7f","codes":["by-ZIP,-check-address"]}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"9329"},"tax":{"currency":"USD","minor":"829"},"stripeLines":["Trail boots 8000","Shipping 500","Sales tax 829"]}
+  counts before → after: {"answers":7,"payments":33,"sessions":7,"attempts":7} → {"answers":8,"payments":37,"sessions":8,"attempts":8}
+  (Tennessee tables put back: 2 records)
+
+# H. Tax cannot answer (Tennessee is on, but the store no longer holds a table in use for it): checkout stops, nothing starts
+H:
+  Pay answered: stayed on the page: ["Sales tax can't be worked out right now. Try again in a moment."]
+  counts before → after: {"answers":8,"payments":37,"sessions":8,"attempts":8} → {"answers":8,"payments":37,"sessions":8,"attempts":8}
+  (Tennessee's table in use put back)
+
+# I. Confirmed absence: the store restarted without the Tax plugin (no DINKUS_PAIRED_TAX_DIR, no Registry install of dinkus-tax)
+I:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: null
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"8500"},"tax":null,"stripeLines":["Trail boots 8000","Shipping 500"]}
+  counts before → after: {"answers":8,"payments":37,"sessions":8,"attempts":8} → {"answers":8,"payments":41,"sessions":9,"attempts":9}
+
+# I2. Discovery refusal: a Registry install of dinkus-tax is active in the store's database but not loaded
+I2:
+  Pay answered: stayed on the page: ["Sales tax can't be worked out right now. Try again in a moment."]
+  counts before → after: {"answers":8,"payments":41,"sessions":9,"attempts":9} → {"answers":8,"payments":41,"sessions":9,"attempts":9}
+  (the stand-in install record removed)
+
+# J. Upgrade, on a phone: a cart saved while the store had no Tax plugin, paid after Tax is installed
+  before Tax: cart 4bb50e84-ee01-421e-8840-1ca6b1edc44f saved with 2 Camp mugs
+  after Tax is installed, the same browser comes back: cart 4bb50e84-ee01-421e-8840-1ca6b1edc44f
+J:
+  Pay answered: sent to Stripe https://checkout.stripe.com/c/pay/cs_test_…
+  order keeps addons: [{"from":"dinkus-tax","ref":"bfe78a6a-e30e-44ec-9c8e-f0c3d0e924aa"}]
+  Payments (real validatePaymentRequest + createPricedChargeLines, main 9d7479c): {"valid":true,"total":{"currency":"USD","minor":"3842"},"tax":{"currency":"USD","minor":"342"},"stripeLines":["Camp mug × 2 3000","Shipping 500","Sales tax 342"]}
+  counts before → after: {"answers":8,"payments":43,"sessions":9,"attempts":9} → {"answers":9,"payments":47,"sessions":10,"attempts":10}
+
+# K (before the fix, head 30307c9). Tax cannot answer while SPRING25 is applied: Trail boots to Nashville, Tennessee on with no table in use
+K (before the fix, head 30307c9):
+  Pay answered: stayed on the page: ["Sales tax can't be worked out right now. Try again in a moment."]
+  counts before → after: {"answers":9,"payments":50,"sessions":10,"attempts":10} → {"answers":9,"payments":50,"sessions":10,"attempts":10}
+  Coupons holds before → after Pay: 0 → 1
+  (Tennessee's table in use put back)
+
+
+# K (with the fix). Tax cannot answer while SPRING25 is applied: Trail boots to Nashville, Tennessee on with no table in use
+K (with the fix):
+  Pay answered: stayed on the page: ["Sales tax can't be worked out right now. Try again in a moment."]
+  counts before → after: {"answers":9,"payments":50,"sessions":10,"attempts":10} → {"answers":9,"payments":50,"sessions":10,"attempts":10}
+  Coupons holds before → after Pay: 0 → 0
+  (Tennessee's table in use put back)
