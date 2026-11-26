@@ -1,0 +1,52 @@
+{
+  "about": "Every external commit this repository pins (workflow actions and reusable workflows, agent skills, runtime sources), by source repository. tests/workflows/pin-audit.test.mjs fails CI's Store checks for a pinned commit that is not listed here. Add a commit in the change that pins it, after reviewing its source (node .github/scripts/pin-audit.mjs --resolve --base origin/main writes the source diff under .artifacts/pin-audit), with where it was reviewed.",
+  "reviewed": {
+    "actions/cache": {
+      "0057852bfaa89a56745cba8c7296529d2fc39830": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then",
+      "55cc8345863c7cc4c66a329aec7e433d2d1c52a9": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "actions/checkout": {
+      "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "actions/create-github-app-token": {
+      "64ab729a6294000f5aa4a4bc0b73d1f32bc45510": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "actions/download-artifact": {
+      "9000827ccba6bdab643e8b6fd33ac0654aef8333": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "actions/setup-node": {
+      "49933ea5288caeca8642d1e84afbd3f7d6820020": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "actions/upload-artifact": {
+      "ea165f8d65b6e75b540449e92b4886f43607fa02": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "dinkuskit/clawsweeper": {
+      "b2dd2b5b3fe978645e954f8544612249e77e2891": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "dinkuskit/commerce": {
+      "6077448045244b877c8ecc75aed2b0cc9b4a509e": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "dinkuskit/courier": {
+      "9016d1e880315303708a0f113fe67d3e36942591": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "dinkuskit/inventory": {
+      "5889c7d59398376da51ac400d5c1f1214aba2c6b": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "dinkuskit/payments": {
+      "4589ac818017b5a65cdde29a60aaec23aca5f795": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "dinkuskit/reviews": {
+      "d17945911a0058e4061ee078eb78ab3147d5805d": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "dinkuskit/ship": {
+      "b032a1d689baf6674b900a3c9c57c191d64733e6": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "pnpm/action-setup": {
+      "b906affcce14559ad1aafd4ab0e942779e9f58b1": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    },
+    "saariuslystoned/SaariusSkills": {
+      "5c8476507b0a83e4aef6b54f2e5dfdca2105b6db": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then",
+      "23f2bb1208b3baa7aedaa87faec00395f9bdd061": "baseline: already pinned on main at da48200f49388e1e2688396a9c1693e3eb206032 when the pin audit was added; not re-reviewed then"
+    }
+  }
+}
