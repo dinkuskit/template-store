@@ -89,6 +89,43 @@ describe("order lookup page", () => {
     });
   });
 
+  it("recovers a full Commerce order with three long Unicode option choices per line", async () => {
+    const longLabel = "森".repeat(160);
+    const lines = Array.from({ length: 100 }, (_, i) => ({ ...ORDER.lines[0]!, catalogItemId: `item-${i}` }));
+    const choices = lines.map(({ catalogItemId }) => ({
+      catalogItemId,
+      productId: "tee",
+      selections: Array.from({ length: 3 }, (_, i) => ({
+        optionId: `option-${i}`,
+        valueId: "value",
+        optionLabel: `${i}${longLabel.slice(1)}`,
+        valueLabel: longLabel,
+      })),
+    }));
+    const answer = { success: true, data: { ok: true, order: { ...ORDER, lines, choices } } };
+    expect(new TextEncoder().encode(JSON.stringify(answer)).byteLength).toBeGreaterThan(64 * 1024);
+    const result = await lookUpOrder(page(answer).ctx);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.order.lines).toHaveLength(100);
+    expect(result.order.lines.at(-1)?.options).toBe(choices.at(-1)?.selections
+      .map(({ optionLabel, valueLabel }) => `${optionLabel}: ${valueLabel}`).join(" · "));
+  });
+
+  it("accepts exactly 1 MiB of UTF-8 and rejects one byte more", async () => {
+    const budget = 1024 * 1024;
+    const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    const answer = { success: true, data: { ok: true, order: ORDER }, extra: "" };
+    const remaining = budget - bytes(answer);
+    answer.extra = "森".repeat(Math.floor(remaining / 3)) + "x".repeat(remaining % 3);
+    expect(bytes(answer)).toBe(budget);
+    expect(await lookUpOrder(page(answer).ctx)).toMatchObject({ ok: true, order: { number: "1004" } });
+
+    answer.extra += "x";
+    expect(bytes(answer)).toBe(budget + 1);
+    expect(await lookUpOrder(page(answer).ctx)).toMatchObject({ ok: false, code: "UNAVAILABLE" });
+  });
+
   it("shows Commerce's one not-found answer and keeps what the shopper typed", async () => {
     const { ctx } = page({ success: true, data: { ok: false, error: { code: "ORDER_NOT_FOUND", message: "ignored" } } });
     expect(await lookUpOrder(ctx)).toEqual({

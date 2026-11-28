@@ -11,8 +11,9 @@ export const ORDER_LOOKUP_PATH = "/track-order";
 const ROUTE = "orders/lookup";
 /** An order number and an email fit well under 2 KB; a longer body is never parsed. */
 const MAX_FORM_BYTES = 2 * 1024;
-/** One order with its lines fits well under 64 KB; a longer answer is refused. */
-const MAX_RESPONSE_BYTES = 64 * 1024;
+/** Commerce can return 100 lines with three option choices per line. Leave room for the IDs and UTF-8/JSON
+ * expansion of the labels while still rejecting an unexpectedly large response before parsing it. */
+const MAX_RESPONSE_BYTES = 1024 * 1024;
 
 export const ORDER_LOOKUP_TEXT = Object.freeze({
   INVALID_INPUT: "Enter your order number and the email used at checkout.",
