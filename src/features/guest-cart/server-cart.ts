@@ -28,7 +28,8 @@ export { CART_COUNT_COOKIE_NAME as CART_COUNT_COOKIE } from "./cart-cookie-name.
 import { CART_COUNT_COOKIE_NAME as CART_COUNT_COOKIE } from "./cart-cookie-name.js";
 /** Commerce keeps an untouched cart 30 days (commerce-cart-expiry-20261113); the cookie lasts as long. */
 export const CART_COOKIE_SECONDS = 30 * 86_400;
-const MAX_RESPONSE_BYTES = 64 * 1024;
+// A full cart can carry multibyte variant choices both on the checkout and on its paid order.
+const MAX_RESPONSE_BYTES = 1024 * 1024;
 const CAPABILITY = /^[A-Za-z0-9._~-]{1,256}\.[A-Za-z0-9._~-]{1,256}$/u;
 
 export type ServerCartLine = Readonly<{ catalogItemId: string; quantity: number }>;

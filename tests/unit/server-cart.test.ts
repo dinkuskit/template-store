@@ -515,6 +515,35 @@ describe("thank-you page", () => {
     expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
   });
 
+  it.each([
+    { label: "at 1 MiB", bytes: 1024 * 1024, malformed: false, kind: "paid" },
+    { label: "a byte over 1 MiB", bytes: 1024 * 1024 + 1, malformed: false, kind: "unavailable" },
+    { label: "at 1 MiB but invalid", bytes: 1024 * 1024, malformed: true, kind: "unavailable" },
+  ])("checks a UTF-8 Commerce receipt $label", async ({ bytes, malformed, kind }) => {
+    const commerce = fakeCommerce();
+    const jar = fakeCookies();
+    const ctx = context(commerce, jar);
+    await addToServerCart(ctx, { catalogItemId: "item_hat", quantity: 2 });
+    const order = { number: 1001, fixturePadding: "", ...(malformed ? { orderId: "" } : {}) };
+    commerce.carts.get("cap1")!.attempt = { attemptId: "att_1", state: "paid", redirectUrl: null, order };
+    const wire = () => commerce.dispatch(COMMERCE_REGISTRY_RUNTIME_ID, "POST", "checkout/guest/cart", new Request(ctx.url, {
+      method: "POST",
+      headers: { "sec-fetch-site": "same-origin", [GUEST_CHECKOUT_CAPABILITY_HEADER]: "cap1.secret" },
+      body: "{}",
+    }));
+    const spare = bytes - Buffer.byteLength(JSON.stringify(await wire()), "utf8");
+    order.fixturePadding = "山".repeat(Math.floor(spare / 3)) + "x".repeat(spare % 3);
+    const text = JSON.stringify(await wire());
+    expect(Buffer.byteLength(text, "utf8")).toBe(bytes);
+    expect(text.length).toBeLessThan(1024 * 1024);
+
+    const result = await loadCheckoutReturn(ctx);
+    expect(result.kind).toBe(kind);
+    if (kind === "paid") expect(result).toMatchObject({ order: { orderNumber: "1001", totals: [{ label: "Total", amount: "$30.00" }] } });
+    expect(jar.jar.get(CART_COOKIE)).toBe("cap1.secret");
+    expect(jar.jar.get(CART_COUNT_COOKIE)).toBe(kind === "paid" ? "0" : "2");
+  });
+
   it("keeps the paid receipt when Commerce has no lookup number", async () => {
     const commerce = fakeCommerce();
     const jar = fakeCookies();
