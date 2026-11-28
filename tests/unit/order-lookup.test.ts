@@ -89,6 +89,35 @@ describe("order lookup page", () => {
     });
   });
 
+  it("recovers a full Commerce order with three long Unicode option choices per line", async () => {
+    const longLabel = "森".repeat(160);
+    const lines = Array.from({ length: 100 }, (_, i) => ({ ...ORDER.lines[0]!, catalogItemId: `item-${i}` }));
+    const choices = lines.map(({ catalogItemId }) => ({
+      catalogItemId,
+      productId: "tee",
+      selections: Array.from({ length: 3 }, (_, i) => ({
+        optionId: `option-${i}`,
+        valueId: "value",
+        optionLabel: `${i}${longLabel.slice(1)}`,
+        valueLabel: longLabel,
+      })),
+    }));
+    const answer = { success: true, data: { ok: true, order: { ...ORDER, lines, choices } } };
+    expect(new TextEncoder().encode(JSON.stringify(answer)).byteLength).toBeGreaterThan(64 * 1024);
+    const result = await lookUpOrder(page(answer).ctx);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.order.lines).toHaveLength(100);
+    expect(result.order.lines.at(-1)?.options).toBe(choices.at(-1)?.selections
+      .map(({ optionLabel, valueLabel }) => `${optionLabel}: ${valueLabel}`).join(" · "));
+  });
+
+  it("still rejects a response over its UTF-8 byte budget", async () => {
+    // Multibyte text makes this answer exceed 1 MiB without exceeding 1 million JS characters.
+    const answer = { success: true, data: { ok: true, order: ORDER }, extra: "森".repeat(350_000) };
+    expect(await lookUpOrder(page(answer).ctx)).toMatchObject({ ok: false, code: "UNAVAILABLE" });
+  });
+
   it("shows Commerce's one not-found answer and keeps what the shopper typed", async () => {
     const { ctx } = page({ success: true, data: { ok: false, error: { code: "ORDER_NOT_FOUND", message: "ignored" } } });
     expect(await lookUpOrder(ctx)).toEqual({
