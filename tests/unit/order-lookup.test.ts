@@ -112,9 +112,17 @@ describe("order lookup page", () => {
       .map(({ optionLabel, valueLabel }) => `${optionLabel}: ${valueLabel}`).join(" · "));
   });
 
-  it("still rejects a response over its UTF-8 byte budget", async () => {
-    // Multibyte text makes this answer exceed 1 MiB without exceeding 1 million JS characters.
-    const answer = { success: true, data: { ok: true, order: ORDER }, extra: "森".repeat(350_000) };
+  it("accepts exactly 1 MiB of UTF-8 and rejects one byte more", async () => {
+    const budget = 1024 * 1024;
+    const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    const answer = { success: true, data: { ok: true, order: ORDER }, extra: "" };
+    const remaining = budget - bytes(answer);
+    answer.extra = "森".repeat(Math.floor(remaining / 3)) + "x".repeat(remaining % 3);
+    expect(bytes(answer)).toBe(budget);
+    expect(await lookUpOrder(page(answer).ctx)).toMatchObject({ ok: true, order: { number: "1004" } });
+
+    answer.extra += "x";
+    expect(bytes(answer)).toBe(budget + 1);
     expect(await lookUpOrder(page(answer).ctx)).toMatchObject({ ok: false, code: "UNAVAILABLE" });
   });
 
